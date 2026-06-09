@@ -18,11 +18,18 @@ A complete dynamic fleet-management system with:
 
 ## Business Problem
 
-Fleet businesses often manage vehicles, drivers, fuel, repairs, trip expenses, asset assignment, and collections manually. This creates duplicate entries, missing bills, fuel misuse, poor repair tracking, and no clear vehicle-wise profit/loss.
+Fleet businesses often manage vehicles, drivers, fuel, repairs, and trip expenses manually. This creates:
 
-## Product Goal
+- Duplicate entries
+- Missing bills
+- Poor trip tracking
+- Fuel misuse
+- No vehicle-wise profit/loss
+- No asset assignment history
+- No proper repair approval flow
+- No mobile field workflow
 
-Create one platform that connects daily operations, mobile field updates, approvals, finance, documents, and reports.
+This project solves those problems by connecting operations, mobile updates, approvals, and reports in one platform.
 
 ## User Roles
 
@@ -30,23 +37,23 @@ Create one platform that connects daily operations, mobile field updates, approv
 |---|---|
 | Super Admin | Full system control |
 | Admin | Company-level setup and management |
-| Manager | Oversees vehicles, trips, staff, and reports |
-| Supervisor | Assigns trips and verifies field updates |
-| Driver | Starts/ends trips and adds fuel/expense updates |
-| Assistant Driver | Supports driver activity |
-| Collector | Handles collections and payment proof |
+| Manager | Oversees vehicles, trips, finance status |
+| Supervisor | Assigns trips, verifies field updates |
+| Driver | Starts/ends trips, adds fuel/expenses |
+| Assistant Driver / Cleaner | Supports driver trip activity |
+| Collector | Handles collection/payment confirmation |
 | Mechanic | Handles repair/service jobs |
-| Finance | Approves expenses, collections, and P&L |
+| Finance | Approves expenses, collections, P&L |
 | Viewer | Read-only access |
 
 ## Core Modules
 
 1. Authentication and RBAC
-2. Company and branch settings
+2. Company / branch settings
 3. Vehicle management
-4. Driver and staff management
+4. Driver/staff management
 5. Asset management
-6. Asset assignment and history
+6. Asset assignment
 7. Trip / transfer management
 8. Fuel management
 9. Expense management
@@ -54,7 +61,7 @@ Create one platform that connects daily operations, mobile field updates, approv
 11. Repair tickets
 12. Service jobs
 13. Collections
-14. Finance approvals
+14. Finance approval
 15. P&L reporting
 16. Notifications
 17. Mobile workflows
@@ -64,13 +71,32 @@ Create one platform that connects daily operations, mobile field updates, approv
 
 ## MVP Scope
 
-The MVP must include login, roles, permissions, vehicle CRUD, driver CRUD, asset CRUD, asset assignment, trip create/start/end, fuel entry with bill photo, expense entry with proof photo, repair ticket creation, basic P&L, driver mobile trip flow, dashboard, and reports export foundation.
+The MVP must include:
+
+- Login
+- Roles and permissions
+- Vehicle CRUD
+- Driver CRUD
+- Asset CRUD
+- Asset assignment history
+- Trip creation/start/end
+- Fuel entry with bill photo
+- Expense entry with proof photo
+- Repair ticket creation
+- Basic P&L
+- Driver mobile trip flow
+- Admin dashboard
+- Reports export foundation
 
 ## Out of Scope for MVP
 
-- Tally/TDL integration
+Keep these for later:
+
 - Hardware GPS integration
+- Tally integration
 - Advanced route optimization
 - AI analytics
-- Complex offline sync
+- Warehouse/inventory
 - Customer billing automation
+- Multi-company billing subscription
+- Complex offline sync

@@ -2,20 +2,20 @@
 
 ## Active Phase
 
-Phase 0: Project Bootstrap
+Phase 1: Auth, Roles, Permissions
 
 ## Immediate Tasks
 
-- [ ] Create backend project foundation
-- [ ] Create web project foundation
-- [ ] Create mobile project foundation
-- [ ] Add TypeScript
-- [ ] Add `.env.example`
-- [ ] Add clean folder structure
-- [ ] Add backend health endpoint
-- [ ] Add database config
-- [ ] Add common error response
-- [ ] Update progress after implementation
+- [x] Create backend project foundation
+- [x] Create web project foundation
+- [x] Create mobile project foundation
+- [x] Add TypeScript
+- [x] Add `.env.example`
+- [x] Add clean folder structure
+- [x] Add backend health endpoint
+- [x] Add database config
+- [x] Add common error response
+- [x] Add progress update after implementation
 
 ## Do Not Start Yet
 

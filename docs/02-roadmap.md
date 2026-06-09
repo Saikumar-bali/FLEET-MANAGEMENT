@@ -1,20 +1,24 @@
 # Roadmap
 
-## Strategy
+## Roadmap Strategy
 
-Build a usable MVP first. Keep advanced integrations for later.
+Because the timeline is tight, build a practical MVP first. Do not try to build a full enterprise product in the first version.
 
 ## 3-Week MVP Roadmap
 
 ### Week 1: Foundation and Masters
 
+Goal: Create the backend, authentication, core database, and web dashboard foundation.
+
 Deliverables:
 
+- Repo setup
 - Backend setup
-- Web setup
+- Frontend setup
 - Database setup
 - Auth login
-- Roles and permissions
+- JWT auth
+- Role and permission seed
 - Dashboard shell
 - Vehicle module
 - Driver module
@@ -23,12 +27,16 @@ Deliverables:
 
 Acceptance:
 
-- Admin can log in.
-- Vehicles, drivers, and assets can be managed.
-- Assets can be assigned.
-- Permission checks protect create, update, delete, and view actions.
+- Admin can log in
+- Admin can create/edit/delete vehicles
+- Admin can create/edit/delete drivers
+- Admin can create/edit/delete assets
+- Admin can assign assets to vehicle/driver
+- Every create/update/delete operation is protected by permission middleware
 
 ### Week 2: Trips, Fuel, Expenses, Repair
+
+Goal: Build the main business workflows.
 
 Deliverables:
 
@@ -42,21 +50,26 @@ Deliverables:
 - Expense entry
 - Expense proof upload
 - Repair ticket
+- Maintenance schedule
+- Basic notifications
 - Basic approval status
 
 Acceptance:
 
-- Supervisor can assign a trip.
-- Driver can update trip status.
-- Fuel calculation works.
-- Expense proof can be uploaded.
-- Trip events are recorded.
+- Supervisor can assign trip
+- Driver can update trip status
+- Fuel amount/litre/rate calculation works
+- Expense proof can be uploaded
+- Repair ticket can be created
+- Trip status changes are recorded in audit log
 
-### Week 3: Mobile App, Reports, Polish
+### Week 3: Mobile App, Reports, Polish, Deployment
+
+Goal: Make the system usable end-to-end.
 
 Deliverables:
 
-- React Native setup
+- React Native app setup
 - Mobile login
 - My assigned trip
 - Start trip
@@ -64,25 +77,28 @@ Deliverables:
 - Add fuel
 - Add expense
 - Upload photo
-- Dashboard cards
-- Vehicle report
-- Trip P&L
+- Basic dashboard cards
+- Vehicle-wise report
+- Trip-wise P&L
 - Fuel report
-- Deployment notes
+- Deployment guide
+- Production-ready environment config
 
 Acceptance:
 
-- Driver can complete a trip flow from mobile.
-- Admin can view operations on web.
-- Finance can see basic profit and loss.
+- Driver can complete a full trip flow from mobile
+- Admin can view trip and fuel data on web
+- Finance can see basic P&L
+- App can be deployed
+- Senior review checklist passes
 
-## Later Production Roadmap
+## 90-Day Production Roadmap
 
 ### Month 1
 
 - Stable MVP
 - Complete web CRUD modules
-- Trip, fuel, and repair workflow
+- Trip/fuel/repair workflow
 - Mobile driver flow
 - Basic reports
 
@@ -93,16 +109,16 @@ Acceptance:
 - Better dashboard
 - Maps
 - Live mobile location
-- Offline draft support
+- Offline-first improvements
 - More reports
 - Role customization UI
 
 ### Month 3
 
-- Device tracking integration
+- Hardware GPS/Traccar integration
 - Multi-branch support
 - Advanced P&L
-- Vendor and customer modules
+- Vendor/customer modules
 - Audit improvements
 - Performance optimization
 - Production monitoring
