@@ -1,16 +1,19 @@
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
+import { criticalRoleManagementPermissionKeys, criticalSuperAdminPermissionKeys } from '../../constants/rbac';
+
+const roleWithPermissionsInclude = {
+  rolePermissions: {
+    include: {
+      permission: true,
+    },
+  },
+} as const;
 
 export async function listRoles() {
   return prisma.role.findMany({
     orderBy: { createdAt: 'asc' },
-    include: {
-      rolePermissions: {
-        include: {
-          permission: true,
-        },
-      },
-    },
+    include: roleWithPermissionsInclude,
   });
 }
 
@@ -28,15 +31,19 @@ export async function createRole(input: {
       status: input.status,
       isSystem: false,
     },
+    include: roleWithPermissionsInclude,
   });
 }
 
-export async function updateRole(roleId: string, input: {
-  name?: string;
-  key?: string;
-  description?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
-}) {
+export async function updateRole(
+  roleId: string,
+  input: {
+    name?: string;
+    key?: string;
+    description?: string;
+    status?: 'ACTIVE' | 'INACTIVE';
+  },
+) {
   const existingRole = await prisma.role.findUnique({
     where: { id: roleId },
   });
@@ -49,6 +56,10 @@ export async function updateRole(roleId: string, input: {
     throw new AppError('System roles cannot change their key', 400);
   }
 
+  if (existingRole.key === 'super_admin' && input.status === 'INACTIVE') {
+    throw new AppError('The super_admin role cannot be deactivated', 400);
+  }
+
   return prisma.role.update({
     where: { id: roleId },
     data: {
@@ -57,12 +68,34 @@ export async function updateRole(roleId: string, input: {
       description: input.description === '' ? null : input.description,
       status: input.status,
     },
+    include: roleWithPermissionsInclude,
   });
 }
 
-export async function assignRolePermissions(roleId: string, permissionKeys: string[]) {
+function ensurePermissionSet(permissionKeys: string[], requiredPermissionKeys: string[], errorMessage: string) {
+  const permissionKeySet = new Set(permissionKeys);
+
+  for (const requiredPermissionKey of requiredPermissionKeys) {
+    if (!permissionKeySet.has(requiredPermissionKey)) {
+      throw new AppError(errorMessage, 400);
+    }
+  }
+}
+
+export async function assignRolePermissions(
+  roleId: string,
+  permissionKeys: string[],
+  currentUser?: { id: string; roleId: string },
+) {
   const role = await prisma.role.findUnique({
     where: { id: roleId },
+    include: {
+      users: {
+        select: {
+          id: true,
+        },
+      },
+    },
   });
 
   if (!role) {
@@ -81,6 +114,30 @@ export async function assignRolePermissions(roleId: string, permissionKeys: stri
     throw new AppError(`Unknown permission keys: ${missingKeys.join(', ')}`, 400);
   }
 
+  if (role.key === 'super_admin') {
+    ensurePermissionSet(
+      permissionKeys,
+      criticalSuperAdminPermissionKeys,
+      'Critical permissions cannot be removed from super_admin',
+    );
+  }
+
+  if (currentUser && role.users.some((user) => user.id === currentUser.id)) {
+    try {
+      ensurePermissionSet(
+        permissionKeys,
+        criticalRoleManagementPermissionKeys,
+        'You cannot remove your own ability to manage roles and permissions',
+      );
+    } catch (error) {
+      if (error instanceof AppError && error.message === 'You cannot remove your own ability to manage roles and permissions') {
+        throw new AppError(error.message, 403);
+      }
+
+      throw error;
+    }
+  }
+
   await prisma.$transaction([
     prisma.rolePermission.deleteMany({
       where: { roleId },
@@ -95,12 +152,6 @@ export async function assignRolePermissions(roleId: string, permissionKeys: stri
 
   return prisma.role.findUnique({
     where: { id: roleId },
-    include: {
-      rolePermissions: {
-        include: {
-          permission: true,
-        },
-      },
-    },
+    include: roleWithPermissionsInclude,
   });
 }

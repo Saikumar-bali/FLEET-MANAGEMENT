@@ -4,6 +4,7 @@ import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
+import { UsersPage } from '../pages/UsersPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 
 function App() {
@@ -15,7 +16,12 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/roles" element={<RolesPage />} />
+              <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
+                <Route path="/roles" element={<RolesPage />} />
+              </Route>
+              <Route element={<ProtectedRoute requiredPermissions={['user_view']} />}>
+                <Route path="/users" element={<UsersPage />} />
+              </Route>
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

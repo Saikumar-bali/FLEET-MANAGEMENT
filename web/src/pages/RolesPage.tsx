@@ -63,7 +63,7 @@ export function RolesPage() {
         if (rolesResponse.data.length > 0) {
           const firstRole = rolesResponse.data[0];
           setSelectedRoleId(firstRole.id);
-          setSelectedPermissionKeys(firstRole.rolePermissions.map((entry) => entry.permission.key));
+          setSelectedPermissionKeys((firstRole.rolePermissions ?? []).map((entry) => entry.permission.key));
           setRoleForm({
             name: firstRole.name,
             key: firstRole.key,
@@ -90,7 +90,7 @@ export function RolesPage() {
       return;
     }
 
-    setSelectedPermissionKeys(selectedRole.rolePermissions.map((entry) => entry.permission.key));
+    setSelectedPermissionKeys((selectedRole.rolePermissions ?? []).map((entry) => entry.permission.key));
     setRoleForm({
       name: selectedRole.name,
       key: selectedRole.key,
@@ -212,7 +212,7 @@ export function RolesPage() {
             >
               <strong>{role.name}</strong>
               <span>{role.key}</span>
-              <small>{role.rolePermissions.length} permissions</small>
+              <small>{(role.rolePermissions ?? []).length} permissions</small>
             </button>
           ))}
         </div>

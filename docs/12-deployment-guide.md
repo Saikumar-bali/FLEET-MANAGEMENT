@@ -67,6 +67,8 @@ Required deployed environment variables:
 - `DATABASE_URL`: pooled Neon application connection
 - `DIRECT_URL`: direct Neon migration connection
 - `JWT_SECRET`: random secret of at least 32 characters
+- `JWT_EXPIRES_IN`: access-token TTL, for example `15m`
+- `JWT_REFRESH_EXPIRES_IN`: refresh-token TTL, for example `7d`
 - `CORS_ORIGIN`: deployed web URL, for example `https://fleet-staging.example.com`
 - `NODE_ENV`: `staging` for staging
 - `ADMIN_EMAIL`: seed email for the super admin user
@@ -94,12 +96,25 @@ The Vite proxy remains available for local development. Deployed API requests us
 
 1. Create and configure the Neon staging database.
 2. Configure all backend Vercel preview/staging variables.
-3. Deploy the backend and verify `GET /api/v1/health`.
-4. Confirm the health response reports `"database": "connected"`.
-5. Set web `VITE_API_URL` to the deployed backend origin.
-6. Deploy the web project.
-7. Verify the web app can call the deployed backend.
-8. Run lint/build checks and record the staging result in `progress.md`.
+3. From the repository root, run the build checks and then from `backend/` run the Prisma commands:
+
+```bash
+npm install
+npm run backend:build
+npm run web:build
+
+cd backend
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+```
+
+4. Deploy the backend and verify `GET /api/v1/health`.
+5. Confirm the health response reports `"database": "connected"`.
+6. Set web `VITE_API_URL` to the deployed backend origin.
+7. Deploy the web project.
+8. Verify the web app can call the deployed backend.
+9. Record the staging result in `progress.md`.
 
 ## Environment Checklist
 
@@ -134,8 +149,12 @@ Web:
 - [x] Auth API verification completed locally:
   - super admin login: pass
   - `/api/v1/auth/me`: pass
+  - `/api/v1/roles`: pass
+  - `/api/v1/permissions`: pass
+  - `/api/v1/users`: pass
   - request without token: `401`
   - request without permission: `403`
+  - super admin critical-permission removal blocked: `400`
 - [ ] Staging `GET /api/v1/health` reports database connected
 - [x] No secrets are committed
 - [ ] Production deployment remains blocked until staging passes
@@ -144,11 +163,27 @@ Web:
 
 ### 2026-06-09 local plus Neon verification
 
+- Prisma generate result: success.
 - Prisma push result: Neon schema sync succeeded after using the Prisma-safe pooled URL for `DATABASE_URL` and the unpooled URL for `DIRECT_URL`.
-- Seed result: success. The database contained 10 roles, 50 permissions, 179 role-permission mappings, and the env-driven super admin user.
+- Prisma seed result: success.
+- Current seeded database baseline after cleanup of temporary verification records:
+  - roles: `10`
+  - permissions: `51`
+  - role-permission mappings: `182`
+  - users: `1` env-driven super admin
 - Auth proof:
   - `POST /api/v1/auth/login` succeeded for the seeded super admin
-  - `GET /api/v1/auth/me` returned the current user and 50 permissions
+  - `GET /api/v1/auth/me` returned the current user and 51 permissions
+  - `GET /api/v1/roles` succeeded with `role_view`
+  - `GET /api/v1/permissions` succeeded with `permission_view`
+  - `GET /api/v1/users` succeeded with `user_view`
   - `GET /api/v1/permissions` without a token returned `401`
-  - a viewer test account received `403` on `POST /api/v1/roles`
+  - a no-permission verification user received `403` on `GET /api/v1/users`
+  - `PATCH /api/v1/roles/:id/permissions` returned `400` when critical permissions were removed from `super_admin`
+- User-management proof:
+  - `POST /api/v1/users` succeeded
+  - `PATCH /api/v1/users/:id` succeeded
+  - `PATCH /api/v1/users/:id/status` succeeded
+  - `PATCH /api/v1/users/:id/password` succeeded
+  - temporary verification user and temporary verification role were removed after the checks
 - Remaining gap: staging deployment verification on Vercel is still pending.

@@ -116,6 +116,10 @@ textarea {
   gap: 1rem;
 }
 
+.wrap-row {
+  flex-wrap: wrap;
+}
+
 .page-grid {
   display: grid;
   gap: 1.2rem;

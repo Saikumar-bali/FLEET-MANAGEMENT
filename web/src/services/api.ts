@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
 import { ApiError } from '../types/api';
-import type { AuthPayload, PermissionRecord, RoleRecord } from '../types/auth';
+import type { AuthPayload, PermissionRecord, RoleRecord, UserRecord } from '../types/auth';
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -20,10 +20,32 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers,
   });
 
-  const data = (await response.json()) as ApiResponse<T>;
+  const responseText = await response.text();
+  let data: ApiResponse<T> | null = null;
+
+  if (responseText) {
+    try {
+      data = JSON.parse(responseText) as ApiResponse<T>;
+    } catch {
+      data = null;
+    }
+  }
 
   if (!response.ok) {
-    throw new ApiError(data.message || 'Request failed', response.status, data.errors);
+    throw new ApiError(
+      data?.message || response.statusText || 'Request failed',
+      response.status,
+      data?.errors,
+      responseText || undefined,
+    );
+  }
+
+  if (!data) {
+    return {
+      success: true,
+      message: 'Operation successful',
+      data: undefined as T,
+    };
   }
 
   return data;
@@ -95,6 +117,69 @@ export function updateRolePermissions(token: string, roleId: string, permissionK
   return request<RoleRecord>(`/roles/${roleId}/permissions`, {
     method: 'PATCH',
     body: JSON.stringify({ permissionKeys }),
+    token,
+  });
+}
+
+export function getUsers(token: string) {
+  return request<UserRecord[]>('/users', { token });
+}
+
+export function getUser(token: string, userId: string) {
+  return request<UserRecord>(`/users/${userId}`, { token });
+}
+
+export function createUser(
+  token: string,
+  payload: {
+    name: string;
+    email: string;
+    mobile?: string;
+    password: string;
+    roleId: string;
+    status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  },
+) {
+  return request<UserRecord>('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateUser(
+  token: string,
+  userId: string,
+  payload: Partial<{
+    name: string;
+    mobile: string;
+    roleId: string;
+    status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  }>,
+) {
+  return request<UserRecord>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateUserStatus(
+  token: string,
+  userId: string,
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
+) {
+  return request<UserRecord>(`/users/${userId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+    token,
+  });
+}
+
+export function updateUserPassword(token: string, userId: string, password: string) {
+  return request<{ id: string }>(`/users/${userId}/password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ password }),
     token,
   });
 }

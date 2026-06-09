@@ -39,7 +39,10 @@ export async function updateRoleController(req: Request, res: Response) {
 
 export async function assignRolePermissionsController(req: Request, res: Response) {
   const roleId = String(req.params.id);
-  const role = await assignRolePermissions(roleId, req.body.permissionKeys);
+  const role = await assignRolePermissions(roleId, req.body.permissionKeys, {
+    id: req.authUser!.id,
+    roleId: req.authUser!.role.id,
+  });
 
   await createAuditLog(req, {
     userId: req.authUser?.id,

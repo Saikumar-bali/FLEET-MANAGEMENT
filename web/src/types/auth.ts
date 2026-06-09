@@ -45,3 +45,20 @@ export type PermissionRecord = {
   action: string;
   description: string | null;
 };
+
+export type UserRecord = {
+  id: string;
+  name: string;
+  email: string;
+  mobile: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  role: {
+    id: string;
+    name: string;
+    key: string;
+    status: 'ACTIVE' | 'INACTIVE';
+  };
+};

@@ -8,6 +8,7 @@ import healthRoutes from './modules/health/health.routes';
 import authRoutes from './modules/auth/auth.routes';
 import roleRoutes from './modules/roles/roles.routes';
 import permissionRoutes from './modules/permissions/permissions.routes';
+import userRoutes from './modules/users/users.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -22,6 +23,7 @@ app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
+app.use('/api/v1/users', userRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 

@@ -18,6 +18,7 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'user_create', module: 'users', action: 'create', description: 'Create users' },
   { key: 'user_update', module: 'users', action: 'update', description: 'Update users' },
   { key: 'user_delete', module: 'users', action: 'delete', description: 'Delete users' },
+  { key: 'user_deactivate', module: 'users', action: 'deactivate', description: 'Deactivate users' },
   { key: 'role_view', module: 'roles', action: 'view', description: 'View roles' },
   { key: 'role_create', module: 'roles', action: 'create', description: 'Create roles' },
   { key: 'role_update', module: 'roles', action: 'update', description: 'Update roles' },
@@ -79,6 +80,23 @@ export const roleDefinitions: RoleDefinition[] = [
   { name: 'Viewer', key: 'viewer', description: 'Read-only operator', isSystem: true, status: 'ACTIVE' },
 ];
 
+export const criticalSuperAdminPermissionKeys = [
+  'role_view',
+  'role_update',
+  'permission_view',
+  'permission_assign',
+  'user_view',
+  'user_create',
+  'user_update',
+];
+
+export const criticalRoleManagementPermissionKeys = [
+  'role_view',
+  'role_update',
+  'permission_view',
+  'permission_assign',
+];
+
 const allPermissionKeys = permissionDefinitions.map((permission) => permission.key);
 const viewOnlyPermissionKeys = permissionDefinitions
   .filter((permission) => permission.action === 'view')
@@ -115,6 +133,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'report_view',
     'report_export',
     'settings_view',
+    'user_deactivate',
   ],
   supervisor: [
     'vehicle_view',
