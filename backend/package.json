@@ -2,18 +2,22 @@
   "name": "fleet-management-backend",
   "version": "1.0.0",
   "description": "Fleet Management Platform - Backend API",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "lint": "tsc --noEmit"
+    "build": "prisma generate && tsc",
+    "start": "node dist/src/server.js",
+    "lint": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate:deploy": "prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -26,6 +30,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.13.10",
     "nodemon": "^3.1.9",
+    "prisma": "^6.19.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }

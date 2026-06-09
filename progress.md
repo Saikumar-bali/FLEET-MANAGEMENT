@@ -2,13 +2,14 @@
 
 ## Current Status
 
-Phase 0 project bootstrap completed. Monorepo foundation with backend, web, and mobile apps initialized.
+Phase 0.5 deployment foundation and Phase 0 hardening implemented. Staging is based on Vercel and Neon PostgreSQL. Phase 1 has not started.
 
 ## Phase Progress
 
 | Phase | Name | Status |
 |---|---|---|
 | Phase 0 | Project Bootstrap | Completed |
+| Phase 0.5 | Vercel + Neon Staging Foundation | Implemented - awaiting live staging verification |
 | Phase 1 | Auth, Roles, Permissions | Not Started |
 | Phase 2 | Vehicle, Driver, Asset Masters | Not Started |
 | Phase 3 | Asset Assignment and History | Not Started |
@@ -32,7 +33,12 @@ Phase 0 project bootstrap completed. Monorepo foundation with backend, web, and 
 - Added common response/error format (`sendSuccess`/`sendError`).
 - Added clean folder structures per architecture docs.
 - All TypeScript checks pass.
+- Phase 0.5: Added root backend/web orchestration scripts while leaving mobile excluded.
+- Added Prisma + Neon PostgreSQL foundation with pooled `DATABASE_URL`, direct `DIRECT_URL`, and real `SELECT 1` health checks.
+- Added strict deployed-environment validation and removed the production JWT secret fallback.
+- Added Vercel serverless backend and SPA web deployment configuration.
+- Added staging deployment and environment setup documentation.
 
 ## Next Step
 
-Proceed with Phase 1: Auth, Roles, Permissions.
+Configure Neon and Vercel staging environment variables, deploy both staging projects, and verify staging before beginning Phase 1.

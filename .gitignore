@@ -3,6 +3,8 @@ dist/
 build/
 .env
 *.log
+*.tsbuildinfo
+.vercel/
 .DS_Store
 Thumbs.db
 uploads/

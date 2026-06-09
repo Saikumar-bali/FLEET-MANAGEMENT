@@ -2,7 +2,7 @@
 
 ## Active Phase
 
-Phase 1: Auth, Roles, Permissions
+Phase 0.5: Vercel + Neon Staging Foundation and Phase 0 Hardening
 
 ## Immediate Tasks
 

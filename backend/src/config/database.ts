@@ -1,29 +1,29 @@
 import { config } from './index';
-
-let dbInitialized = false;
+import { prisma } from '../lib/prisma';
 
 export async function initDatabase(): Promise<void> {
-  if (dbInitialized) return;
-
   if (!config.databaseUrl) {
-    console.warn('DATABASE_URL not configured. Database connection will not be established.');
-    return;
+    throw new Error('DATABASE_URL is required to initialize the database');
   }
 
   try {
-    // Database connection placeholder
-    // Example with Prisma:
-    //   const { PrismaClient } = require('@prisma/client');
-    //   const prisma = new PrismaClient({ datasources: { db: { url: config.databaseUrl } } });
-    //   await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
     console.log('Database connected successfully');
-    dbInitialized = true;
   } catch (error) {
     console.error('Database connection failed:', error);
     throw error;
   }
 }
 
-export function isDbInitialized(): boolean {
-  return dbInitialized;
+export async function checkDatabaseConnection(): Promise<boolean> {
+  if (!config.databaseUrl) {
+    return false;
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch {
+    return false;
+  }
 }

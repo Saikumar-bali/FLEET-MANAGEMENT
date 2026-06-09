@@ -1,0 +1,15 @@
+{
+  "name": "fleet-management",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:lint": "npm --prefix backend run lint",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:lint": "npm --prefix web run lint",
+    "build": "npm run backend:build && npm run web:build",
+    "lint": "npm run backend:lint && npm run web:lint"
+  }
+}

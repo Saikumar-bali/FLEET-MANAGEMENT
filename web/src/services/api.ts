@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api/v1';
+import { API_BASE_URL } from '../config/api';
 
 interface ApiResponse<T> {
   success: boolean;

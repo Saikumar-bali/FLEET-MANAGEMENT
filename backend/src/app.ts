@@ -14,7 +14,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/api/v1/health', healthRoutes);
+app.use('/api/v1/health', healthRoutes);
 
 app.use(errorHandler);
 
