@@ -2,16 +2,17 @@
 
 ## Current Status
 
-Phase 1 and Phase 1.1 are implemented and verified locally against Neon PostgreSQL. Auth, roles, permissions, and users are working together with the current custom RBAC foundation. Staging deployment verification on Vercel remains the remaining gate before Phase 2.
+Phase 1, Phase 1.1, and Phase 1.2 are implemented and verified. The backend and web staging deployments are live on Vercel, connected to Neon PostgreSQL, and verified through health, API smoke tests, and deployed web login.
 
 ## Phase Progress
 
 | Phase | Name | Status |
 |---|---|---|
 | Phase 0 | Project Bootstrap | Completed |
-| Phase 0.5 | Vercel + Neon Staging Foundation | Implemented - awaiting live staging verification |
+| Phase 0.5 | Vercel + Neon Staging Foundation | Completed |
 | Phase 1 | Auth, Roles, Permissions, Users | Completed locally and verified against Neon |
 | Phase 1.1 | RBAC Hardening, User Management, Staging Readiness | Completed locally and verified against Neon |
+| Phase 1.2 | Live Staging Deployment Verification | Completed |
 | Phase 2 | Vehicle, Driver, Asset Masters | Not Started |
 | Phase 3 | Asset Assignment and History | Not Started |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
@@ -50,6 +51,14 @@ Phase 1 and Phase 1.1 are implemented and verified locally against Neon PostgreS
 - Phase 1.1: Added self-protection and last-active-super-admin protections for user and role administration flows.
 - Phase 1.1: Hardened the web API client against non-JSON and empty error responses.
 - Phase 1.1: Updated deployment documentation with the exact Neon, Vercel, and Prisma staging commands required for staging readiness.
+- Phase 1.2: Verified that `backend/api/index.ts` exports the Express app without `app.listen`, while `backend/src/server.ts` remains the local-only runtime entry.
+- Phase 1.2: Confirmed the web app uses `VITE_API_URL` for deployed API calls and still falls back to `/api/v1` locally.
+- Phase 1.2: Fixed backend Vercel rewrites to send `/api` and `/api/*` traffic to `api/index.ts`.
+- Phase 1.2: Added a deployment-safe backend smoke test for health, login, current-user, roles, and users verification without printing tokens.
+- Phase 1.2: Added `docs/STAGING_VERIFICATION.md` with backend, web, Neon, Prisma, health-check, auth-verification, and rollback instructions.
+- Phase 1.2: Created dedicated Vercel staging projects for backend and web with stable `vercel.app` URLs.
+- Phase 1.2: Resolved local Vercel CLI TLS failures by using `NODE_OPTIONS=--use-system-ca` during staging deployment commands.
+- Phase 1.2: Completed live staging verification for backend health, backend smoke test, and deployed web login.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded and produced the current baseline of 10 roles, 51 permissions, 182 role-permission mappings, and 1 seeded super admin user.
@@ -73,6 +82,7 @@ Phase 1 and Phase 1.1 are implemented and verified locally against Neon PostgreS
 - `npm run backend:build`: pass
 - `npm run web:lint`: pass
 - `npm run web:build`: pass
+- `npm --prefix backend run smoke:test`: pass against the local API
 - `npm run prisma:generate`: pass
 - `npm run prisma:db:push`: pass against Neon
 - `npm run prisma:seed`: pass against Neon
@@ -91,7 +101,10 @@ Phase 1 and Phase 1.1 are implemented and verified locally against Neon PostgreS
   - protected route without permission: `403`
   - `super_admin` critical permission removal blocked: `400`
   - user create/update/status/password flows: pass
+  - staging backend health: pass at `https://fleet-management-backend-staging.vercel.app/api/v1/health`
+  - staging backend smoke test: pass at `https://fleet-management-backend-staging.vercel.app`
+  - staging web login: pass at `https://fleet-management-web-staging.vercel.app/login`
 
 ## Next Step
 
-Complete live Vercel staging deployment verification with the documented Neon and env setup, confirm `/api/v1/health` reports `database: connected` on staging, and only then begin Phase 2.
+Phase 2 is now allowed from a deployment-readiness perspective, but it should begin only as Phase 2 scope work and not by extending auth or staging tasks further.

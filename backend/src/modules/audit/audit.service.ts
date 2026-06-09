@@ -1,5 +1,4 @@
 import type { Request } from 'express';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 type AuditInput = {
@@ -17,7 +16,7 @@ export async function createAuditLog(req: Request | null, input: AuditInput) {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId ?? null,
-      metadata: input.metadata as Prisma.InputJsonValue | undefined,
+      metadata: input.metadata ? JSON.parse(JSON.stringify(input.metadata)) : undefined,
       ipAddress: req?.ip,
       userAgent: req?.get('user-agent'),
     },

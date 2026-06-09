@@ -8,7 +8,9 @@ import type { RequestUser } from '../../types/auth';
 type UserWithRolePermissions = Awaited<ReturnType<typeof getUserById>>;
 
 function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
-  const permissionKeys = user.role.rolePermissions.map((rolePermission) => rolePermission.permission.key);
+  const permissionKeys = user.role.rolePermissions.map(
+    (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
+  );
   const safeUser: RequestUser = {
     id: user.id,
     name: user.name,

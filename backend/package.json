@@ -4,10 +4,12 @@
   "description": "Fleet Management Platform - Backend API",
   "main": "dist/src/server.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/src/server.js",
     "lint": "tsc --noEmit",
+    "smoke:test": "ts-node scripts/smoke-test.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:migrate:deploy": "prisma migrate deploy",

@@ -60,7 +60,9 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
       status: user.role.status,
     },
   };
-  req.authPermissions = user.role.rolePermissions.map((rolePermission) => rolePermission.permission.key);
+  req.authPermissions = user.role.rolePermissions.map(
+    (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
+  );
 
   return next();
 }

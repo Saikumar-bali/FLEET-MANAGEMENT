@@ -1,4 +1,3 @@
-import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { hashPassword } from '../../utils/auth';
@@ -18,9 +17,16 @@ const userWithRoleSelect = {
       },
     },
   },
-} satisfies Prisma.UserInclude;
+};
 
-type UserWithRole = Prisma.UserGetPayload<{ include: typeof userWithRoleSelect }>;
+async function findUserWithRoleById(userId: string) {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: userWithRoleSelect,
+  });
+}
+
+type UserWithRole = NonNullable<Awaited<ReturnType<typeof findUserWithRoleById>>>;
 
 function sanitizeUser(user: UserWithRole) {
   return {
@@ -76,7 +82,9 @@ async function countActiveSuperAdmins() {
 }
 
 function roleHasCriticalManagementPermissions(role: NonNullable<Awaited<ReturnType<typeof getRoleWithPermissions>>>) {
-  const permissionKeys = new Set(role.rolePermissions.map((entry) => entry.permission.key));
+  const permissionKeys = new Set(
+    role.rolePermissions.map((entry: { permission: { key: string } }) => entry.permission.key),
+  );
   return criticalRoleManagementPermissionKeys.every((permissionKey) => permissionKeys.has(permissionKey));
 }
 

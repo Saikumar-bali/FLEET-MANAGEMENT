@@ -109,7 +109,7 @@ export async function assignRolePermissions(
   });
 
   if (permissions.length !== permissionKeys.length) {
-    const foundKeys = new Set(permissions.map((permission) => permission.key));
+    const foundKeys = new Set(permissions.map((permission: { key: string }) => permission.key));
     const missingKeys = permissionKeys.filter((permissionKey) => !foundKeys.has(permissionKey));
     throw new AppError(`Unknown permission keys: ${missingKeys.join(', ')}`, 400);
   }
@@ -122,7 +122,7 @@ export async function assignRolePermissions(
     );
   }
 
-  if (currentUser && role.users.some((user) => user.id === currentUser.id)) {
+  if (currentUser && role.users.some((user: { id: string }) => user.id === currentUser.id)) {
     try {
       ensurePermissionSet(
         permissionKeys,
@@ -143,7 +143,7 @@ export async function assignRolePermissions(
       where: { roleId },
     }),
     prisma.rolePermission.createMany({
-      data: permissions.map((permission) => ({
+      data: permissions.map((permission: { id: string }) => ({
         roleId,
         permissionId: permission.id,
       })),
