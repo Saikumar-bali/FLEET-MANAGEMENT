@@ -69,6 +69,8 @@ Required deployed environment variables:
 - `JWT_SECRET`: random secret of at least 32 characters
 - `CORS_ORIGIN`: deployed web URL, for example `https://fleet-staging.example.com`
 - `NODE_ENV`: `staging` for staging
+- `ADMIN_EMAIL`: seed email for the super admin user
+- `ADMIN_PASSWORD`: seed password for the super admin user
 
 The serverless entry is `backend/api/index.ts`. It exports the Express app without calling `app.listen`. `backend/src/server.ts` remains the local development entry.
 
@@ -111,6 +113,8 @@ Backend:
 - [ ] `JWT_EXPIRES_IN` reviewed
 - [ ] `JWT_REFRESH_EXPIRES_IN` reviewed
 - [ ] `CORS_ORIGIN` exactly matches the web origin
+- [ ] `ADMIN_EMAIL` is configured for seeding
+- [ ] `ADMIN_PASSWORD` is configured for seeding
 - [ ] `UPLOAD_DIR` reviewed
 - [ ] `MAX_FILE_SIZE` reviewed
 
@@ -120,11 +124,31 @@ Web:
 
 ## Verification Checklist
 
-- [ ] `npm run backend:lint`
-- [ ] `npm run backend:build`
-- [ ] `npm run web:lint`
-- [ ] `npm run web:build`
-- [ ] Local `GET /api/v1/health` works
+- [x] `npm run backend:lint`
+- [x] `npm run backend:build`
+- [x] `npm run web:lint`
+- [x] `npm run web:build`
+- [x] Local `GET /api/v1/health` works
+- [x] Neon `prisma db push` works with pooled `DATABASE_URL` and direct `DIRECT_URL`
+- [x] Neon `prisma db seed` works with env-driven `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+- [x] Auth API verification completed locally:
+  - super admin login: pass
+  - `/api/v1/auth/me`: pass
+  - request without token: `401`
+  - request without permission: `403`
 - [ ] Staging `GET /api/v1/health` reports database connected
-- [ ] No secrets are committed
+- [x] No secrets are committed
 - [ ] Production deployment remains blocked until staging passes
+
+## Verification Proof
+
+### 2026-06-09 local plus Neon verification
+
+- Prisma push result: Neon schema sync succeeded after using the Prisma-safe pooled URL for `DATABASE_URL` and the unpooled URL for `DIRECT_URL`.
+- Seed result: success. The database contained 10 roles, 50 permissions, 179 role-permission mappings, and the env-driven super admin user.
+- Auth proof:
+  - `POST /api/v1/auth/login` succeeded for the seeded super admin
+  - `GET /api/v1/auth/me` returned the current user and 50 permissions
+  - `GET /api/v1/permissions` without a token returned `401`
+  - a viewer test account received `403` on `POST /api/v1/roles`
+- Remaining gap: staging deployment verification on Vercel is still pending.

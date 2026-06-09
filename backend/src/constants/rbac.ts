@@ -1,0 +1,148 @@
+type PermissionDefinition = {
+  key: string;
+  module: string;
+  action: string;
+  description: string;
+};
+
+type RoleDefinition = {
+  name: string;
+  key: string;
+  description: string;
+  isSystem: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+};
+
+export const permissionDefinitions: PermissionDefinition[] = [
+  { key: 'user_view', module: 'users', action: 'view', description: 'View users' },
+  { key: 'user_create', module: 'users', action: 'create', description: 'Create users' },
+  { key: 'user_update', module: 'users', action: 'update', description: 'Update users' },
+  { key: 'user_delete', module: 'users', action: 'delete', description: 'Delete users' },
+  { key: 'role_view', module: 'roles', action: 'view', description: 'View roles' },
+  { key: 'role_create', module: 'roles', action: 'create', description: 'Create roles' },
+  { key: 'role_update', module: 'roles', action: 'update', description: 'Update roles' },
+  { key: 'role_delete', module: 'roles', action: 'delete', description: 'Delete roles' },
+  { key: 'permission_view', module: 'permissions', action: 'view', description: 'View permissions' },
+  { key: 'permission_assign', module: 'permissions', action: 'assign', description: 'Assign permissions' },
+  { key: 'vehicle_view', module: 'vehicles', action: 'view', description: 'View vehicles' },
+  { key: 'vehicle_create', module: 'vehicles', action: 'create', description: 'Create vehicles' },
+  { key: 'vehicle_update', module: 'vehicles', action: 'update', description: 'Update vehicles' },
+  { key: 'vehicle_delete', module: 'vehicles', action: 'delete', description: 'Delete vehicles' },
+  { key: 'driver_view', module: 'drivers', action: 'view', description: 'View drivers' },
+  { key: 'driver_create', module: 'drivers', action: 'create', description: 'Create drivers' },
+  { key: 'driver_update', module: 'drivers', action: 'update', description: 'Update drivers' },
+  { key: 'driver_delete', module: 'drivers', action: 'delete', description: 'Delete drivers' },
+  { key: 'asset_view', module: 'assets', action: 'view', description: 'View assets' },
+  { key: 'asset_create', module: 'assets', action: 'create', description: 'Create assets' },
+  { key: 'asset_update', module: 'assets', action: 'update', description: 'Update assets' },
+  { key: 'asset_delete', module: 'assets', action: 'delete', description: 'Delete assets' },
+  { key: 'asset_assign', module: 'assets', action: 'assign', description: 'Assign assets' },
+  { key: 'asset_return', module: 'assets', action: 'return', description: 'Return assets' },
+  { key: 'trip_view', module: 'trips', action: 'view', description: 'View trips' },
+  { key: 'trip_create', module: 'trips', action: 'create', description: 'Create trips' },
+  { key: 'trip_update', module: 'trips', action: 'update', description: 'Update trips' },
+  { key: 'trip_start', module: 'trips', action: 'start', description: 'Start trips' },
+  { key: 'trip_end', module: 'trips', action: 'end', description: 'End trips' },
+  { key: 'trip_cancel', module: 'trips', action: 'cancel', description: 'Cancel trips' },
+  { key: 'fuel_view', module: 'fuel', action: 'view', description: 'View fuel logs' },
+  { key: 'fuel_create', module: 'fuel', action: 'create', description: 'Create fuel logs' },
+  { key: 'fuel_update', module: 'fuel', action: 'update', description: 'Update fuel logs' },
+  { key: 'fuel_approve', module: 'fuel', action: 'approve', description: 'Approve fuel logs' },
+  { key: 'fuel_reject', module: 'fuel', action: 'reject', description: 'Reject fuel logs' },
+  { key: 'expense_view', module: 'expenses', action: 'view', description: 'View expenses' },
+  { key: 'expense_create', module: 'expenses', action: 'create', description: 'Create expenses' },
+  { key: 'expense_update', module: 'expenses', action: 'update', description: 'Update expenses' },
+  { key: 'expense_approve', module: 'expenses', action: 'approve', description: 'Approve expenses' },
+  { key: 'expense_reject', module: 'expenses', action: 'reject', description: 'Reject expenses' },
+  { key: 'repair_view', module: 'repairs', action: 'view', description: 'View repairs' },
+  { key: 'repair_create', module: 'repairs', action: 'create', description: 'Create repairs' },
+  { key: 'repair_update', module: 'repairs', action: 'update', description: 'Update repairs' },
+  { key: 'repair_close', module: 'repairs', action: 'close', description: 'Close repairs' },
+  { key: 'finance_view', module: 'finance', action: 'view', description: 'View finance' },
+  { key: 'finance_approve', module: 'finance', action: 'approve', description: 'Approve finance records' },
+  { key: 'report_view', module: 'reports', action: 'view', description: 'View reports' },
+  { key: 'report_export', module: 'reports', action: 'export', description: 'Export reports' },
+  { key: 'settings_view', module: 'settings', action: 'view', description: 'View settings' },
+  { key: 'settings_update', module: 'settings', action: 'update', description: 'Update settings' },
+];
+
+export const roleDefinitions: RoleDefinition[] = [
+  { name: 'Super Admin', key: 'super_admin', description: 'Full platform control', isSystem: true, status: 'ACTIVE' },
+  { name: 'Admin', key: 'admin', description: 'Company administration', isSystem: true, status: 'ACTIVE' },
+  { name: 'Manager', key: 'manager', description: 'Operations manager', isSystem: true, status: 'ACTIVE' },
+  { name: 'Supervisor', key: 'supervisor', description: 'Field supervisor', isSystem: true, status: 'ACTIVE' },
+  { name: 'Driver', key: 'driver', description: 'Assigned driver', isSystem: true, status: 'ACTIVE' },
+  { name: 'Assistant Driver', key: 'assistant_driver', description: 'Assistant driver', isSystem: true, status: 'ACTIVE' },
+  { name: 'Collector', key: 'collector', description: 'Collection operator', isSystem: true, status: 'ACTIVE' },
+  { name: 'Mechanic', key: 'mechanic', description: 'Repair operator', isSystem: true, status: 'ACTIVE' },
+  { name: 'Finance', key: 'finance', description: 'Finance approver', isSystem: true, status: 'ACTIVE' },
+  { name: 'Viewer', key: 'viewer', description: 'Read-only operator', isSystem: true, status: 'ACTIVE' },
+];
+
+const allPermissionKeys = permissionDefinitions.map((permission) => permission.key);
+const viewOnlyPermissionKeys = permissionDefinitions
+  .filter((permission) => permission.action === 'view')
+  .map((permission) => permission.key);
+
+export const defaultRolePermissionMap: Record<string, string[]> = {
+  super_admin: allPermissionKeys,
+  admin: allPermissionKeys.filter((permissionKey) => permissionKey !== 'role_delete'),
+  manager: [
+    'user_view',
+    'role_view',
+    'permission_view',
+    'vehicle_view',
+    'vehicle_create',
+    'vehicle_update',
+    'driver_view',
+    'driver_create',
+    'driver_update',
+    'asset_view',
+    'asset_create',
+    'asset_update',
+    'asset_assign',
+    'asset_return',
+    'trip_view',
+    'trip_create',
+    'trip_update',
+    'trip_start',
+    'trip_end',
+    'trip_cancel',
+    'fuel_view',
+    'expense_view',
+    'repair_view',
+    'finance_view',
+    'report_view',
+    'report_export',
+    'settings_view',
+  ],
+  supervisor: [
+    'vehicle_view',
+    'driver_view',
+    'asset_view',
+    'asset_assign',
+    'asset_return',
+    'trip_view',
+    'trip_create',
+    'trip_update',
+    'trip_start',
+    'trip_end',
+    'trip_cancel',
+    'fuel_view',
+    'fuel_approve',
+    'fuel_reject',
+    'expense_view',
+    'expense_approve',
+    'expense_reject',
+    'repair_view',
+    'repair_create',
+    'repair_update',
+    'report_view',
+  ],
+  driver: ['trip_view', 'trip_start', 'trip_end', 'fuel_create', 'expense_create'],
+  assistant_driver: ['trip_view', 'fuel_create', 'expense_create'],
+  collector: ['finance_view', 'report_view'],
+  mechanic: ['repair_view', 'repair_update', 'repair_close'],
+  finance: ['finance_view', 'finance_approve', 'fuel_view', 'expense_view', 'report_view', 'report_export'],
+  viewer: viewOnlyPermissionKeys,
+};

@@ -80,4 +80,6 @@ export const config = {
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxFileSize: positiveInteger('MAX_FILE_SIZE', '5242880'),
   corsOrigin,
+  adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || '',
+  adminPassword: process.env.ADMIN_PASSWORD?.trim() || '',
 };
