@@ -14,6 +14,7 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
   const safeUser: RequestUser = {
     id: user.id,
     name: user.name,
+    username: user.username,
     email: user.email,
     mobile: user.mobile,
     status: user.status,
@@ -31,9 +32,14 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
   };
 }
 
-async function getUserByEmail(email: string) {
-  return prisma.user.findUnique({
-    where: { email },
+async function getUserByIdentifier(identifier: string) {
+  return prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identifier },
+        { username: identifier },
+      ],
+    },
     include: {
       role: {
         include: {
@@ -65,17 +71,17 @@ async function getUserById(userId: string) {
   });
 }
 
-export async function login(req: Request, email: string, password: string) {
-  const user = await getUserByEmail(email);
+export async function login(req: Request, identifier: string, password: string) {
+  const user = await getUserByIdentifier(identifier);
 
   if (!user) {
     await createAuditLog(req, {
       action: 'auth.login_failed',
       entityType: 'user',
-      metadata: { email },
+      metadata: { identifier },
     });
 
-    throw new AppError('Invalid email or password', 401);
+    throw new AppError('Invalid username/email or password', 401);
   }
 
   const passwordMatches = await verifyPassword(password, user.passwordHash);
@@ -86,10 +92,10 @@ export async function login(req: Request, email: string, password: string) {
       action: 'auth.login_failed',
       entityType: 'user',
       entityId: user.id,
-      metadata: { email: user.email },
+      metadata: { identifier, email: user.email, username: user.username },
     });
 
-    throw new AppError('Invalid email or password', 401);
+    throw new AppError('Invalid username/email or password', 401);
   }
 
   const authUser = mapUserWithPermissions(user);

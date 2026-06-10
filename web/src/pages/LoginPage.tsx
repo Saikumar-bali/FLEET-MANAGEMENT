@@ -5,7 +5,7 @@ import { ApiError } from '../types/api';
 
 export function LoginPage() {
   const auth = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,7 +20,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await auth.login(email, password);
+      await auth.login(identifier, password);
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message);
@@ -36,20 +36,19 @@ export function LoginPage() {
     <div className="login-shell">
       <section className="login-panel">
         <p className="eyebrow">Fleet Management Platform</p>
-        <h1 className="login-title">Sign in to manage roles and permissions</h1>
+        <h1 className="login-title">Sign in to continue</h1>
         <p className="login-copy">
-          This first dashboard slice is intentionally narrow: secure session entry, current-user checks,
-          and dynamic RBAC controls.
+          Use your username or email and password to access the low-density admin workspace.
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label>
-            <span>Email</span>
+            <span>Username or email</span>
             <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="admin@example.com"
+              type="text"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              placeholder="admin"
               required
             />
           </label>

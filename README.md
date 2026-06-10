@@ -69,3 +69,20 @@ Build a business-ready fleet management system for:
 ## Important Rule
 
 Do not start GPS, complex maps, or mobile animations before the backend workflows are stable.
+
+## Demo Login Seed
+
+For local or demo-only environments, the backend seed now supports memorable role-based credentials when `ENABLE_DEMO_USERS=true`.
+
+- Super admin: username `admin`
+- Admin: username `opsadmin`, password `opsadmin@123`
+- Manager: username `manager`, password `manager@123`
+- Supervisor: username `supervisor`, password `supervisor@123`
+- Driver: username `driver`, password `driver@123`
+- Assistant driver: username `assistantdriver`, password `assistant@123`
+- Collector: username `collector`, password `collector@123`
+- Mechanic: username `mechanic`, password `mechanic@123`
+- Finance: username `finance`, password `finance@123`
+- Viewer: username `viewer`, password `viewer@123`
+
+The super admin password continues to come from `ADMIN_PASSWORD`, so it can stay environment-controlled instead of being committed as a shared production secret.

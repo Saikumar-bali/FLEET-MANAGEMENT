@@ -32,6 +32,7 @@ function sanitizeUser(user: UserWithRole) {
   return {
     id: user.id,
     name: user.name,
+    username: user.username,
     email: user.email,
     mobile: user.mobile,
     status: user.status,
@@ -67,6 +68,16 @@ async function ensureEmailAvailable(email: string, excludedUserId?: string) {
 
   if (existingUser && existingUser.id !== excludedUserId) {
     throw new AppError('Email address is already in use', 400);
+  }
+}
+
+async function ensureUsernameAvailable(username: string, excludedUserId?: string) {
+  const existingUser = await prisma.user.findFirst({
+    where: { username },
+  });
+
+  if (existingUser && existingUser.id !== excludedUserId) {
+    throw new AppError('Username is already in use', 400);
   }
 }
 
@@ -171,12 +182,14 @@ export async function getUserById(userId: string) {
 
 export async function createUser(input: {
   name: string;
+  username: string;
   email: string;
   mobile?: string;
   password: string;
   roleId: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 }) {
+  await ensureUsernameAvailable(input.username);
   await ensureEmailAvailable(input.email);
 
   const role = await prisma.role.findUnique({
@@ -192,6 +205,7 @@ export async function createUser(input: {
   const user = await prisma.user.create({
     data: {
       name: input.name,
+      username: input.username,
       email: input.email,
       mobile: input.mobile || null,
       passwordHash,
@@ -207,11 +221,12 @@ export async function createUser(input: {
 export async function updateUser(params: {
   userId: string;
   currentUserId: string;
-  input: {
-    name?: string;
-    mobile?: string;
-    roleId?: string;
-    status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+    input: {
+      name?: string;
+      username?: string;
+      mobile?: string;
+      roleId?: string;
+      status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   };
 }) {
   const { userId, currentUserId, input } = params;
@@ -234,6 +249,10 @@ export async function updateUser(params: {
     }
   }
 
+  if (input.username) {
+    await ensureUsernameAvailable(input.username, userId);
+  }
+
   await assertSuperAdminSafety({
     targetUser: user,
     nextRoleId: input.roleId,
@@ -251,6 +270,7 @@ export async function updateUser(params: {
     where: { id: userId },
     data: {
       name: input.name,
+      username: input.username,
       mobile: input.mobile === '' ? null : input.mobile,
       roleId: input.roleId,
       status: input.status,

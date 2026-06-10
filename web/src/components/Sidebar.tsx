@@ -45,6 +45,7 @@ export function Sidebar() {
       <div className="sidebar-footer">
         <div className="sidebar-profile">
           <p className="profile-name">{auth.user?.name}</p>
+          <p className="profile-meta">{auth.user?.username ? `@${auth.user.username}` : auth.user?.email}</p>
           <p className="profile-role">{auth.user?.role.name}</p>
           <p className="profile-meta">{auth.permissions.length} active permissions</p>
         </div>

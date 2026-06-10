@@ -2,7 +2,7 @@
   color: #101828;
   background: #f5f7fb;
   font-family: Inter, 'Segoe UI', Tahoma, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   font-weight: 400;
   text-rendering: optimizeLegibility;
@@ -28,7 +28,7 @@
   --warning: #b54708;
   --warning-soft: #fffaeb;
   --shadow-soft: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-panel: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow-panel: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 
 * {
@@ -64,15 +64,15 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 228px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.25rem 1rem;
+  gap: 0.95rem;
+  padding: 1rem 0.85rem;
   background: var(--bg-sidebar);
   color: var(--text-inverse);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -85,7 +85,7 @@ button {
 
 .sidebar-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.08rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -148,7 +148,7 @@ button {
 .sidebar-profile {
   display: grid;
   gap: 0.2rem;
-  padding: 0.9rem;
+  padding: 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -156,7 +156,7 @@ button {
 
 .profile-name {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 600;
 }
 
@@ -168,15 +168,15 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 1.25rem 1.5rem 1.5rem;
-  gap: 1rem;
+  padding: 1rem 1.15rem 1.15rem;
+  gap: 0.85rem;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.8rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--border-soft);
 }
@@ -198,7 +198,7 @@ button {
 
 .page-title {
   margin: 0;
-  font-size: clamp(1.35rem, 1.3vw, 1.55rem);
+  font-size: clamp(1.12rem, 1.05vw, 1.32rem);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -211,7 +211,7 @@ button {
 .permission-help {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
 }
 
 .topbar-meta {
@@ -247,7 +247,7 @@ button {
 
 .page-header-title {
   margin: 0;
-  font-size: clamp(1.35rem, 1.4vw, 1.65rem);
+  font-size: clamp(1.16rem, 1.1vw, 1.36rem);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -258,7 +258,7 @@ button {
 
 .page-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.8rem;
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
@@ -293,7 +293,7 @@ button {
 }
 
 .card {
-  padding: 1rem;
+  padding: 0.85rem;
   border: 1px solid var(--border-soft);
   border-radius: 14px;
   background: var(--bg-panel);
@@ -314,7 +314,7 @@ button {
 .form-grid,
 .permission-groups {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .metric-grid {
@@ -341,7 +341,7 @@ button {
 
 .metric-value {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.14rem;
   font-weight: 600;
 }
 
@@ -361,12 +361,12 @@ button {
 .detail-value {
   margin: 0;
   color: var(--text-primary);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
 }
 
 .table-card {
   display: grid;
-  gap: 0.95rem;
+  gap: 0.75rem;
 }
 
 .table-toolbar {
@@ -376,14 +376,14 @@ button {
 
 .table-toolbar-title {
   margin: 0;
-  font-size: 1.02rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 
 .table-toolbar-copy {
   margin: 0.2rem 0 0;
   color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 .toolbar-cluster {
@@ -411,7 +411,7 @@ button {
 }
 
 .data-table th {
-  padding: 0.7rem 0.8rem;
+  padding: 0.56rem 0.68rem;
   text-align: left;
   color: var(--text-muted);
   font-size: 0.78rem;
@@ -423,10 +423,10 @@ button {
 }
 
 .data-table td {
-  padding: 0.75rem 0.8rem;
+  padding: 0.6rem 0.68rem;
   border-bottom: 1px solid var(--border-soft);
   color: var(--text-primary);
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   vertical-align: top;
 }
 
@@ -469,8 +469,8 @@ button {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  min-height: 36px;
-  padding: 0.5rem 0.9rem;
+  min-height: 32px;
+  padding: 0.42rem 0.75rem;
   border-radius: 9px;
   border: 1px solid transparent;
   font-size: 0.85rem;
@@ -563,7 +563,7 @@ button:disabled {
   display: grid;
   place-items: center;
   min-height: 220px;
-  padding: 1.25rem;
+  padding: 0.95rem;
   border: 1px dashed var(--border-color);
   border-radius: 14px;
   background: var(--bg-panel-subtle);
@@ -606,7 +606,7 @@ button:disabled {
 
 .stack-form {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .form-grid {
@@ -630,13 +630,13 @@ input,
 select,
 textarea {
   width: 100%;
-  min-height: 36px;
-  padding: 0.5rem 0.7rem;
+  min-height: 32px;
+  padding: 0.42rem 0.62rem;
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: #fff;
   color: var(--text-primary);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 textarea {
@@ -654,7 +654,7 @@ textarea:focus {
 .form-section {
   display: grid;
   gap: 0.85rem;
-  padding: 0.9rem;
+  padding: 0.75rem;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: var(--bg-panel-subtle);
@@ -695,7 +695,7 @@ textarea:focus {
   display: grid;
   gap: 0.3rem;
   width: 100%;
-  padding: 0.85rem 0.9rem;
+  padding: 0.72rem 0.78rem;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: var(--bg-panel);
@@ -756,7 +756,7 @@ textarea:focus {
 .permission-module-card {
   display: grid;
   gap: 0.75rem;
-  padding: 0.9rem;
+  padding: 0.76rem;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: var(--bg-panel-subtle);
@@ -824,7 +824,7 @@ textarea:focus {
 
 .list-detail-layout {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.95fr);
 }
 
@@ -862,7 +862,7 @@ textarea:focus {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: 1rem;
   background: var(--bg-overlay);
   z-index: 40;
 }
@@ -873,7 +873,7 @@ textarea:focus {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border: 1px solid var(--border-soft);
-  border-radius: 16px;
+  border-radius: 14px;
   background: #fff;
   box-shadow: var(--shadow-panel);
   overflow: hidden;
@@ -889,7 +889,7 @@ textarea:focus {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.8rem;
-  padding: 1rem 1rem 0.85rem;
+  padding: 0.82rem 0.9rem 0.72rem;
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -898,12 +898,12 @@ textarea:focus {
   justify-content: flex-end;
   border-top: 1px solid var(--border-soft);
   border-bottom: 0;
-  padding: 0.85rem 1rem 1rem;
+  padding: 0.72rem 0.9rem 0.9rem;
 }
 
 .modal-body {
   overflow: auto;
-  padding: 1rem;
+  padding: 0.9rem;
 }
 
 .modal-title {
@@ -916,21 +916,21 @@ textarea:focus {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 .login-panel {
   width: min(460px, 100%);
   padding: 1.5rem;
   border: 1px solid var(--border-soft);
-  border-radius: 16px;
+  border-radius: 14px;
   background: #fff;
   box-shadow: var(--shadow-panel);
 }
 
 .login-title {
   margin: 0;
-  font-size: 1.55rem;
+  font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -938,13 +938,13 @@ textarea:focus {
 .login-copy {
   margin: 0.7rem 0 0;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
 }
 
 .login-form {
   display: grid;
-  gap: 0.95rem;
-  margin-top: 1.2rem;
+  gap: 0.8rem;
+  margin-top: 1rem;
 }
 
 @media (max-width: 1180px) {

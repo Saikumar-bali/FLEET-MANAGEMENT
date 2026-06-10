@@ -3,7 +3,7 @@ import { sendSuccess } from '../../utils/response';
 import { getCurrentUser, login, logout, refreshSession } from './auth.service';
 
 export async function loginController(req: Request, res: Response) {
-  const result = await login(req, req.body.email, req.body.password);
+  const result = await login(req, req.body.identifier, req.body.password);
   return sendSuccess(res, result, 'Login successful');
 }
 

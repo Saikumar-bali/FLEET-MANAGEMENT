@@ -55,10 +55,10 @@ export function getHealth() {
   return request<{ status: string; timestamp: string; uptime: number; database: string }>('/health');
 }
 
-export function login(email: string, password: string) {
+export function login(identifier: string, password: string) {
   return request<AuthPayload>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
 }
 
@@ -133,6 +133,7 @@ export function createUser(
   token: string,
   payload: {
     name: string;
+    username: string;
     email: string;
     mobile?: string;
     password: string;
@@ -152,6 +153,7 @@ export function updateUser(
   userId: string,
   payload: Partial<{
     name: string;
+    username: string;
     mobile: string;
     roleId: string;
     status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';

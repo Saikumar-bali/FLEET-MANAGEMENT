@@ -28,7 +28,7 @@ export async function createUserController(req: Request, res: Response) {
     action: 'user.create',
     entityType: 'user',
     entityId: user.id,
-    metadata: { email: user.email, roleId: user.role.id },
+    metadata: { username: user.username, email: user.email, roleId: user.role.id },
   });
 
   return sendSuccess(res, user, 'User created successfully', 201);
@@ -46,7 +46,7 @@ export async function updateUserController(req: Request, res: Response) {
     action: 'user.update',
     entityType: 'user',
     entityId: user.id,
-    metadata: { roleId: user.role.id, status: user.status },
+    metadata: { username: user.username, roleId: user.role.id, status: user.status },
   });
 
   return sendSuccess(res, user, 'User updated successfully');

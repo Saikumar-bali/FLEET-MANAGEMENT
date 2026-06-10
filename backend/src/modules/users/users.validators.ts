@@ -6,6 +6,7 @@ export const userIdParamsSchema = z.object({
 
 export const createUserSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(50, 'Username is too long').regex(/^[a-z0-9._-]+$/i, 'Username may contain letters, numbers, dot, underscore, and hyphen').transform((value) => value.trim().toLowerCase()),
   email: z.email('A valid email is required').transform((value) => value.toLowerCase()),
   mobile: z.string().max(20, 'Mobile number is too long').optional().or(z.literal('')),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -15,6 +16,7 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(50, 'Username is too long').regex(/^[a-z0-9._-]+$/i, 'Username may contain letters, numbers, dot, underscore, and hyphen').transform((value) => value.trim().toLowerCase()).optional(),
   mobile: z.string().max(20, 'Mobile number is too long').optional().or(z.literal('')),
   roleId: z.string().min(1, 'Role is required').optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),

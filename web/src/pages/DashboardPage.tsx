@@ -41,7 +41,10 @@ export function DashboardPage() {
           <div className="content-span-5 metric-card">
             <p className="metric-label">Current user</p>
             <p className="metric-value">{auth.user?.name ?? 'Unknown user'}</p>
-            <p className="table-secondary">{auth.user?.email}</p>
+            <p className="table-secondary">
+              {auth.user?.username ? `@${auth.user.username} • ` : ''}
+              {auth.user?.email}
+            </p>
           </div>
           <div className="content-span-3 metric-card">
             <p className="metric-label">Current role</p>
@@ -101,6 +104,10 @@ export function DashboardPage() {
           <div>
             <p className="detail-label">Authentication</p>
             <p className="detail-value">{auth.accessToken ? 'Authenticated' : 'Signed out'}</p>
+          </div>
+          <div>
+            <p className="detail-label">Username</p>
+            <p className="detail-value">{auth.user?.username ? `@${auth.user.username}` : 'Not set'}</p>
           </div>
           <div>
             <p className="detail-label">Mobile</p>

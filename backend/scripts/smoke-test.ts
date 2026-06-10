@@ -50,7 +50,7 @@ async function requestJson<T>(
 
 async function main() {
   const apiBaseUrl = requiredEnv('API_BASE_URL').replace(/\/$/, '');
-  const adminEmail = requiredEnv('ADMIN_EMAIL');
+  const adminIdentifier = process.env.ADMIN_USERNAME?.trim() || requiredEnv('ADMIN_EMAIL');
   const adminPassword = requiredEnv('ADMIN_PASSWORD');
   const results: CheckResult[] = [];
 
@@ -73,7 +73,7 @@ async function main() {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      email: adminEmail,
+      identifier: adminIdentifier,
       password: adminPassword,
     }),
   });

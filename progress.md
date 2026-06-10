@@ -78,6 +78,9 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
 - Phase 2.1: Reworked `/roles` with a cleaner table, grouped permission matrix, clearer create/edit separation, and visible system-role treatment.
 - Phase 2.1: Polished the access dashboard to surface current user, current role, permission count, quick links, and backend health status.
 - Phase 2.1: Verified the full UI flow with Playwright, including create user, list refresh, role update, status changes, password reset, roles page load, and route-level access denial for a limited-permission user.
+- Phase 2.1: Added username support to users and auth so the platform can sign in with either username or email.
+- Phase 2.1: Added opt-in demo-user seeding for memorable local/demo credentials by role while keeping the super admin password environment-controlled.
+- Phase 2.1: Tightened the shared web template further to a lower-density 13px root scale with smaller cards, controls, modal spacing, and shell chrome.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
@@ -108,6 +111,12 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
   - `user.update`
   - `user.update_status`
   - `user.update_password`
+- Username auth and demo seed proof:
+  - Prisma schema pushed to Neon with the new nullable unique `username` field
+  - Seed executed with `ENABLE_DEMO_USERS=true`
+  - Demo usernames present in Neon: `admin`, `opsadmin`, `manager`, `supervisor`, `driver`, `assistantdriver`, `collector`, `mechanic`, `finance`, `viewer`
+  - Local browser verification confirmed `admin` + `admin@123` login, `driver` + `driver@123` login, and `driver` denied access to `/users`
+  - Local browser verification measured the root UI font size at `13px`
 - Secret scan result: no committed Neon credentials or admin/JWT secrets were found in tracked files
 - Mobile status: not modified
 

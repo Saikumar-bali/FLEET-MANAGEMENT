@@ -1,6 +1,7 @@
 export type AuthUser = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
@@ -49,6 +50,7 @@ export type PermissionRecord = {
 export type UserRecord = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';

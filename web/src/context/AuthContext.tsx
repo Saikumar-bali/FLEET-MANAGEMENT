@@ -13,7 +13,7 @@ import { ApiError } from '../types/api';
 
 type AuthContextValue = AuthState & {
   isBootstrapping: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
@@ -87,8 +87,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(() => ({
     ...state,
     isBootstrapping,
-    async login(email: string, password: string) {
-      const response = await api.login(email, password);
+    async login(identifier: string, password: string) {
+      const response = await api.login(identifier, password);
       const nextState = applyAuthPayload(response.data);
       writeStoredSession({
         accessToken: nextState.accessToken!,

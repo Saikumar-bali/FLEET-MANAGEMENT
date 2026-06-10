@@ -1,6 +1,7 @@
 export type RequestUser = {
   id: string;
   name: string;
+  username: string | null;
   email: string;
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';

@@ -22,6 +22,7 @@ import { ApiError } from '../types/api';
 
 type UserFormState = {
   name: string;
+  username: string;
   email: string;
   mobile: string;
   password: string;
@@ -31,6 +32,7 @@ type UserFormState = {
 
 const initialUserFormState: UserFormState = {
   name: '',
+  username: '',
   email: '',
   mobile: '',
   password: '',
@@ -48,6 +50,7 @@ function getCreateFormState(roles: RoleRecord[]): UserFormState {
 function getEditFormState(user: UserRecord): UserFormState {
   return {
     name: user.name,
+    username: user.username ?? '',
     email: user.email,
     mobile: user.mobile ?? '',
     password: '',
@@ -202,6 +205,7 @@ export function UsersPage() {
     try {
       const response = await updateUserRequest(auth.accessToken, selectedUser.id, {
         name: editForm.name,
+        username: editForm.username,
         mobile: editForm.mobile,
         roleId: editForm.roleId,
         status: editForm.status,
@@ -348,9 +352,14 @@ export function UsersPage() {
                   render: (user) => (
                     <div className="user-name-cell">
                       <strong>{user.name}</strong>
-                      <span className="table-secondary">{user.email}</span>
+                      <span className="table-secondary">@{user.username ?? 'unassigned'} • {user.email}</span>
                     </div>
                   ),
+                },
+                {
+                  key: 'username',
+                  header: 'Username',
+                  render: (user) => user.username ? `@${user.username}` : 'Not set',
                 },
                 {
                   key: 'role',
@@ -400,6 +409,10 @@ export function UsersPage() {
                     <p className="detail-value">{selectedUser.email}</p>
                   </div>
                   <div>
+                    <p className="detail-label">Username</p>
+                    <p className="detail-value">{selectedUser.username ? `@${selectedUser.username}` : 'Not set'}</p>
+                  </div>
+                  <div>
                     <p className="detail-label">Status</p>
                     <StatusBadge status={selectedUser.status} />
                   </div>
@@ -420,6 +433,14 @@ export function UsersPage() {
                       <input
                         value={editForm.name}
                         onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
+                        disabled={!canUpdateUser}
+                      />
+                    </label>
+                    <label>
+                      <span>Username</span>
+                      <input
+                        value={editForm.username}
+                        onChange={(event) => setEditForm((current) => ({ ...current, username: event.target.value }))}
                         disabled={!canUpdateUser}
                       />
                     </label>
@@ -554,6 +575,14 @@ export function UsersPage() {
                   value={createForm.name}
                   onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
                   required
+                />
+              </label>
+              <label>
+                <span>Username</span>
+                <input
+                  value={createForm.username}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, username: event.target.value }))}
+                  placeholder="admin"
                 />
               </label>
               <label>
