@@ -852,9 +852,28 @@ textarea:focus {
   font-size: 0.9rem;
 }
 
+.stack-cell {
+  display: grid;
+  gap: 0.18rem;
+}
+
 .table-secondary {
   color: var(--text-secondary);
   font-size: 0.8rem;
+}
+
+.assignment-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.assignment-item {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--bg-panel-subtle);
 }
 
 .modal-backdrop {

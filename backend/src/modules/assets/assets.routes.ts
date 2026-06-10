@@ -1,22 +1,33 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/authMiddleware';
-import { requirePermission, requireAnyPermission } from '../../middlewares/permissions';
+import { requireAnyPermission, requirePermission } from '../../middlewares/permissions';
 import { validateRequest } from '../../middlewares/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
+  assignAssetController,
   createAssetCategoryController,
   createAssetController,
   getAssetController,
+  listAssetAssignmentsController,
   listAssetCategoriesController,
+  listAssetHistoryController,
   listAssetsController,
+  markAssetDamagedController,
+  markAssetLostController,
+  returnAssetController,
+  transferAssetController,
   updateAssetCategoryController,
   updateAssetController,
   updateAssetStatusController,
 } from './assets.controller';
 import {
+  assetAssignmentBodySchema,
   assetCategoryIdParamsSchema,
   assetIdParamsSchema,
   assetQuerySchema,
+  assetReturnBodySchema,
+  assetStatusActionBodySchema,
+  assetTransferBodySchema,
   createAssetCategorySchema,
   createAssetSchema,
   updateAssetCategorySchema,
@@ -41,6 +52,50 @@ router.patch(
   requirePermission('asset_update'),
   validateRequest({ params: assetCategoryIdParamsSchema, body: updateAssetCategorySchema }),
   asyncHandler(updateAssetCategoryController),
+);
+
+// Asset actions and details
+router.get(
+  '/:id/assignments',
+  requirePermission('asset_view'),
+  validateRequest({ params: assetIdParamsSchema }),
+  asyncHandler(listAssetAssignmentsController),
+);
+router.get(
+  '/:id/history',
+  requirePermission('asset_view'),
+  validateRequest({ params: assetIdParamsSchema }),
+  asyncHandler(listAssetHistoryController),
+);
+router.post(
+  '/:id/assign',
+  requirePermission('asset_assign'),
+  validateRequest({ params: assetIdParamsSchema, body: assetAssignmentBodySchema }),
+  asyncHandler(assignAssetController),
+);
+router.post(
+  '/:id/return',
+  requirePermission('asset_return'),
+  validateRequest({ params: assetIdParamsSchema, body: assetReturnBodySchema }),
+  asyncHandler(returnAssetController),
+);
+router.post(
+  '/:id/transfer',
+  requirePermission('asset_transfer'),
+  validateRequest({ params: assetIdParamsSchema, body: assetTransferBodySchema }),
+  asyncHandler(transferAssetController),
+);
+router.post(
+  '/:id/mark-damaged',
+  requirePermission('asset_mark_damaged'),
+  validateRequest({ params: assetIdParamsSchema, body: assetStatusActionBodySchema }),
+  asyncHandler(markAssetDamagedController),
+);
+router.post(
+  '/:id/mark-lost',
+  requirePermission('asset_mark_lost'),
+  validateRequest({ params: assetIdParamsSchema, body: assetStatusActionBodySchema }),
+  asyncHandler(markAssetLostController),
 );
 
 // Assets

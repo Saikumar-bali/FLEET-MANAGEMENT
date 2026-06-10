@@ -28,6 +28,10 @@ export const assetIdParamsSchema = z.object({
 });
 
 const assetStatusEnum = z.enum(['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'LOST', 'UNDER_REPAIR', 'RETIRED']);
+const assetHolderTypeEnum = z.enum(['VEHICLE', 'DRIVER', 'USER']);
+
+const notesField = z.string().max(1000).optional().or(z.literal(''));
+const proofUrlField = z.string().url('Proof URL must be a valid URL').optional().or(z.literal(''));
 
 export const createAssetSchema = z.object({
   assetCode: z.string().min(1, 'Asset code is required'),
@@ -37,7 +41,7 @@ export const createAssetSchema = z.object({
   purchaseDate: z.string().datetime().optional().nullable(),
   purchaseAmount: z.number().min(0).optional().nullable(),
   currentStatus: assetStatusEnum.default('AVAILABLE'),
-  notes: z.string().optional().or(z.literal('')),
+  notes: notesField,
 });
 
 export const updateAssetSchema = z.object({
@@ -48,11 +52,36 @@ export const updateAssetSchema = z.object({
   purchaseDate: z.string().datetime().optional().nullable(),
   purchaseAmount: z.number().min(0).optional().nullable(),
   currentStatus: assetStatusEnum.optional(),
-  notes: z.string().optional().or(z.literal('')),
+  notes: notesField,
 });
 
 export const updateAssetStatusSchema = z.object({
   currentStatus: assetStatusEnum,
+  notes: notesField,
+  proofUrl: proofUrlField,
+});
+
+export const assetAssignmentBodySchema = z.object({
+  assignedToType: assetHolderTypeEnum,
+  assignedToId: z.string().min(1, 'Assigned holder is required'),
+  notes: notesField,
+});
+
+export const assetReturnBodySchema = z.object({
+  notes: notesField,
+  proofUrl: proofUrlField,
+});
+
+export const assetTransferBodySchema = z.object({
+  assignedToType: assetHolderTypeEnum,
+  assignedToId: z.string().min(1, 'Assigned holder is required'),
+  notes: notesField,
+  proofUrl: proofUrlField,
+});
+
+export const assetStatusActionBodySchema = z.object({
+  notes: notesField,
+  proofUrl: proofUrlField,
 });
 
 export const assetQuerySchema = z.object({

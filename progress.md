@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 2.2 is completed and staging verified. Username login, staged admin acceptance, low-density UI acceptance, and demo-user production safety are now verified on top of the existing Phase 2 masters foundation. Phase 3 has not started.
+Phase 3 is completed locally and verified against Neon. Asset assignment, return, transfer, damaged/lost handling, and asset history are now working on top of the existing Phase 2.2 staging-ready baseline. Phase 4 has not started.
 
 ## Phase Progress
 
@@ -16,7 +16,7 @@ Phase 2.2 is completed and staging verified. Username login, staged admin accept
 | Phase 2 | Vehicle, Driver, Asset Masters | Completed |
 | Phase 2.1 | Enterprise UI Refresh and User Flow Hardening | Completed locally and verified |
 | Phase 2.2 | Staging Verification and Admin UI Acceptance | Completed and staging verified |
-| Phase 3 | Asset Assignment and History | Not Started |
+| Phase 3 | Asset Assignment and History | Completed locally and verified against Neon |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
@@ -89,6 +89,11 @@ Phase 2.2 is completed and staging verified. Username login, staged admin accept
 - Phase 2.2: Verified staging backend users API create, update, password reset, duplicate username validation, and duplicate email validation without exposing `passwordHash`.
 - Phase 2.2: Completed deployed staging web acceptance for login, create user, immediate list refresh, duplicate-error display, edit user, password reset, and roles page load.
 - Phase 2.2: Re-confirmed the low-density enterprise UI on deployed staging with a `13px` root font size and compact shell/card spacing.
+- Phase 3: Added Prisma models and enums for `AssetAssignment` and `AssetHistory`, including holder typing, assignment lifecycle statuses, and action history tracking.
+- Phase 3: Added backend asset assignment, return, transfer, mark-damaged, and mark-lost APIs with strict permission enforcement, holder validation, and safe status transitions.
+- Phase 3: Added assignment/history audit logging and automatic asset-history creation for asset create, update, assignment, return, transfer, damaged, lost, repaired, and retired flows.
+- Phase 3: Added reusable holder-label enrichment for vehicles, drivers, and users so both APIs and UI can show readable assignment targets.
+- Phase 3: Reworked the asset detail page with a compact current-assignment card, assignment records, action modal flow, and assignment history table.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
@@ -170,6 +175,37 @@ Phase 2.2 is completed and staging verified. Username login, staged admin accept
   - compact sidebar, cards, topbar, and non-oversized headings confirmed
 - Mobile status: not modified
 
+### 2026-06-10 (Phase 3)
+
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- `npm run prisma:generate`: pass
+- `npm run prisma:db:push`: pass against Neon
+- `npm run prisma:seed`: pass against Neon
+- Local backend health check: `GET /api/v1/health` returned `database: connected`
+- Asset assignment API verification:
+  - assign asset to vehicle: pass
+  - double assignment blocked with clean `400`: pass
+  - return asset: pass
+  - reassign to driver: pass
+  - transfer asset to user: pass
+  - mark damaged: pass
+  - mark lost on a separate asset: pass
+  - asset history contains `CREATED`, `ASSIGNED`, `RETURNED`, `TRANSFERRED`, and `DAMAGED`: pass
+  - limited-permission user without `asset_assign` receives `403`: pass
+- Local Playwright UI verification:
+  - login as admin: pass
+  - asset detail current-assignment card visible: pass
+  - assignment records panel visible: pass
+  - assignment history table visible: pass
+  - asset action buttons visible with low-density layout preserved: pass
+  - history table shows transferred and damaged events: pass
+  - root font size remains `13px`
+- Secret scan result: no committed Neon credentials, admin credentials, or JWT secrets found in tracked files
+- Mobile status: not modified
+
 ### 2026-06-09 (Phase 2)
 
 - `npm run backend:lint`: pass
@@ -208,4 +244,4 @@ Phase 2.2 is completed and staging verified. Username login, staged admin accept
 
 ## Next Step
 
-Phase 2 business masters can continue from this staging-verified baseline. Phase 3 remains blocked until explicitly approved for start.
+Phase 4 Trip / Transfer Workflow is the exact next recommended phase. It remains blocked until explicitly approved for start.

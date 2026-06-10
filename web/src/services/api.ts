@@ -1,7 +1,21 @@
 import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
 import { ApiError } from '../types/api';
-import type { AuthPayload, AssetCategoryRecord, AssetRecord, DocumentRecord, DriverRecord, PaginatedResponse, PermissionRecord, RoleRecord, UserRecord, VehicleRecord } from '../types/auth';
+import type {
+  AssetAssignmentRecord,
+  AssetCategoryRecord,
+  AssetHistoryRecord,
+  AssetHolderType,
+  AssetRecord,
+  AuthPayload,
+  DocumentRecord,
+  DriverRecord,
+  PaginatedResponse,
+  PermissionRecord,
+  RoleRecord,
+  UserRecord,
+  VehicleRecord,
+} from '../types/auth';
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -325,7 +339,15 @@ export function getAsset(token: string, assetId: string) {
 
 export function createAsset(
   token: string,
-  payload: { assetCode: string; name: string; assetCategoryId: string },
+  payload: {
+    assetCode: string;
+    name: string;
+    assetCategoryId: string;
+    serialNumber?: string;
+    purchaseDate?: string;
+    purchaseAmount?: number;
+    notes?: string;
+  },
 ) {
   return request<AssetRecord>('/assets', {
     method: 'POST',
@@ -346,6 +368,92 @@ export function updateAssetStatus(token: string, assetId: string, currentStatus:
   return request<AssetRecord>(`/assets/${assetId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ currentStatus }),
+    token,
+  });
+}
+
+export function getAssetAssignments(token: string, assetId: string) {
+  return request<AssetAssignmentRecord[]>(`/assets/${assetId}/assignments`, { token });
+}
+
+export function getAssetHistory(token: string, assetId: string) {
+  return request<AssetHistoryRecord[]>(`/assets/${assetId}/history`, { token });
+}
+
+export function assignAsset(
+  token: string,
+  assetId: string,
+  payload: {
+    assignedToType: AssetHolderType;
+    assignedToId: string;
+    notes?: string;
+  },
+) {
+  return request<AssetAssignmentRecord>(`/assets/${assetId}/assign`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function returnAsset(
+  token: string,
+  assetId: string,
+  payload: {
+    notes?: string;
+    proofUrl?: string;
+  },
+) {
+  return request<AssetAssignmentRecord>(`/assets/${assetId}/return`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function transferAsset(
+  token: string,
+  assetId: string,
+  payload: {
+    assignedToType: AssetHolderType;
+    assignedToId: string;
+    notes?: string;
+    proofUrl?: string;
+  },
+) {
+  return request<AssetAssignmentRecord>(`/assets/${assetId}/transfer`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function markAssetDamaged(
+  token: string,
+  assetId: string,
+  payload: {
+    notes?: string;
+    proofUrl?: string;
+  },
+) {
+  return request<AssetRecord>(`/assets/${assetId}/mark-damaged`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function markAssetLost(
+  token: string,
+  assetId: string,
+  payload: {
+    notes?: string;
+    proofUrl?: string;
+  },
+) {
+  return request<AssetRecord>(`/assets/${assetId}/mark-lost`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
     token,
   });
 }

@@ -125,8 +125,61 @@ export type AssetRecord = {
   currentStatus: 'AVAILABLE' | 'ASSIGNED' | 'DAMAGED' | 'LOST' | 'UNDER_REPAIR' | 'RETIRED';
   notes: string | null;
   assetCategory: AssetCategoryRecord;
+  currentAssignment?: AssetAssignmentRecord | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AssetHolderType = 'VEHICLE' | 'DRIVER' | 'USER';
+
+export type AssetHolderSummary = {
+  type: AssetHolderType;
+  id: string;
+  label: string;
+  secondary: string | null;
+};
+
+export type AssetAssignmentRecord = {
+  id: string;
+  assetId: string;
+  assignedToType: AssetHolderType;
+  assignedToId: string;
+  assignedById: string | null;
+  assignedAt: string;
+  returnedAt: string | null;
+  status: 'ACTIVE' | 'RETURNED' | 'TRANSFERRED' | 'DAMAGED' | 'LOST';
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedBy: {
+    id: string;
+    name: string;
+    email: string;
+    username: string | null;
+  } | null;
+  holder: AssetHolderSummary;
+};
+
+export type AssetHistoryRecord = {
+  id: string;
+  assetId: string;
+  action: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'RETURNED' | 'TRANSFERRED' | 'DAMAGED' | 'LOST' | 'REPAIRED' | 'RETIRED';
+  fromHolderType: AssetHolderType | null;
+  fromHolderId: string | null;
+  toHolderType: AssetHolderType | null;
+  toHolderId: string | null;
+  remarks: string | null;
+  proofUrl: string | null;
+  createdById: string | null;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+    username: string | null;
+  } | null;
+  fromHolder: AssetHolderSummary | null;
+  toHolder: AssetHolderSummary | null;
 };
 
 export type DocumentRecord = {

@@ -34,6 +34,8 @@ model User {
   role          Role           @relation(fields: [roleId], references: [id])
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  assetAssignmentsAssigned AssetAssignment[] @relation("AssetAssignmentAssignedBy")
+  assetHistoriesCreated    AssetHistory[]    @relation("AssetHistoryCreatedBy")
 
   @@map("users")
 }
@@ -123,6 +125,32 @@ enum AssetStatus {
   RETIRED
 }
 
+enum AssetAssignmentHolderType {
+  VEHICLE
+  DRIVER
+  USER
+}
+
+enum AssetAssignmentStatus {
+  ACTIVE
+  RETURNED
+  TRANSFERRED
+  DAMAGED
+  LOST
+}
+
+enum AssetHistoryAction {
+  CREATED
+  UPDATED
+  ASSIGNED
+  RETURNED
+  TRANSFERRED
+  DAMAGED
+  LOST
+  REPAIRED
+  RETIRED
+}
+
 enum DocumentEntityType {
   VEHICLE
   DRIVER
@@ -198,8 +226,48 @@ model Asset {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
   assetCategory   AssetCategory @relation(fields: [assetCategoryId], references: [id])
+  assignments     AssetAssignment[]
+  history         AssetHistory[]
 
   @@map("assets")
+}
+
+model AssetAssignment {
+  id             String                    @id @default(cuid())
+  assetId        String                    @map("asset_id")
+  assignedToType AssetAssignmentHolderType @map("assigned_to_type")
+  assignedToId   String                    @map("assigned_to_id")
+  assignedById   String?                   @map("assigned_by_id")
+  assignedAt     DateTime                  @default(now()) @map("assigned_at")
+  returnedAt     DateTime?                 @map("returned_at")
+  status         AssetAssignmentStatus     @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+  asset          Asset                     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assignedBy     User?                     @relation("AssetAssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([assetId, status])
+  @@map("asset_assignments")
+}
+
+model AssetHistory {
+  id             String                    @id @default(cuid())
+  assetId        String                    @map("asset_id")
+  action         AssetHistoryAction
+  fromHolderType AssetAssignmentHolderType? @map("from_holder_type")
+  fromHolderId   String?                   @map("from_holder_id")
+  toHolderType   AssetAssignmentHolderType? @map("to_holder_type")
+  toHolderId     String?                   @map("to_holder_id")
+  remarks        String?
+  proofUrl       String?                   @map("proof_url")
+  createdById    String?                   @map("created_by_id")
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  asset          Asset                     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdBy      User?                     @relation("AssetHistoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([assetId, createdAt])
+  @@map("asset_history")
 }
 
 model Document {
