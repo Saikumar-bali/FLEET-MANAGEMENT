@@ -18,7 +18,21 @@ import { sendError } from './utils/response';
 
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://validator.swagger.io'],
+        fontSrc: ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'],
+        connectSrc: ["'self'", 'https://cdn.jsdelivr.net', 'https://validator.swagger.io'],
+        workerSrc: ["'self'", 'blob:'],
+      },
+    },
+  }),
+);
 app.use(cors({ origin: config.corsOrigin }));
 app.use(morgan('dev'));
 app.use(express.json());
