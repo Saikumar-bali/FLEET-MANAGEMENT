@@ -3,9 +3,14 @@ dotenv.config();
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isDeployedEnvironment = nodeEnv === 'production' || nodeEnv === 'staging';
+const enableDemoUsers = process.env.ENABLE_DEMO_USERS === 'true';
 
 if (!['development', 'test', 'staging', 'production'].includes(nodeEnv)) {
   throw new Error('NODE_ENV must be development, test, staging, or production');
+}
+
+if (nodeEnv === 'production' && enableDemoUsers) {
+  throw new Error('ENABLE_DEMO_USERS=true is not allowed when NODE_ENV is production');
 }
 
 function requiredInDeployedEnvironment(name: string, fallback = ''): string {
@@ -72,6 +77,7 @@ if (isDeployedEnvironment && jwtSecret.length < 32) {
 export const config = {
   port: positiveInteger('PORT', '4000'),
   nodeEnv,
+  enableDemoUsers,
   databaseUrl,
   directUrl,
   jwtSecret,
@@ -81,5 +87,6 @@ export const config = {
   maxFileSize: positiveInteger('MAX_FILE_SIZE', '5242880'),
   corsOrigin,
   adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || '',
+  adminUsername: process.env.ADMIN_USERNAME?.trim().toLowerCase() || '',
   adminPassword: process.env.ADMIN_PASSWORD?.trim() || '',
 };

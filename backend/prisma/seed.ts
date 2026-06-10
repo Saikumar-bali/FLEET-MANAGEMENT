@@ -4,11 +4,16 @@ import { defaultRolePermissionMap, permissionDefinitions, roleDefinitions } from
 
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase() || 'development';
 const demoUsersEnabled = process.env.ENABLE_DEMO_USERS === 'true';
 
 function validateSeedEnvironment() {
   if (!adminEmail || !adminPassword) {
     throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required to seed the super admin user');
+  }
+
+  if (nodeEnv === 'production' && demoUsersEnabled) {
+    throw new Error('ENABLE_DEMO_USERS=true is not allowed when NODE_ENV is production');
   }
 }
 

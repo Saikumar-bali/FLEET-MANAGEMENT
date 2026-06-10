@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-management flow hardening now sit on top of the existing Phase 2 masters foundation. Phase 3 has not started.
+Phase 2.2 is completed and staging verified. Username login, staged admin acceptance, low-density UI acceptance, and demo-user production safety are now verified on top of the existing Phase 2 masters foundation. Phase 3 has not started.
 
 ## Phase Progress
 
@@ -15,6 +15,7 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
 | Phase 1.2 | Live Staging Deployment Verification | Completed |
 | Phase 2 | Vehicle, Driver, Asset Masters | Completed |
 | Phase 2.1 | Enterprise UI Refresh and User Flow Hardening | Completed locally and verified |
+| Phase 2.2 | Staging Verification and Admin UI Acceptance | Completed and staging verified |
 | Phase 3 | Asset Assignment and History | Not Started |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
@@ -81,6 +82,13 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
 - Phase 2.1: Added username support to users and auth so the platform can sign in with either username or email.
 - Phase 2.1: Added opt-in demo-user seeding for memorable local/demo credentials by role while keeping the super admin password environment-controlled.
 - Phase 2.1: Tightened the shared web template further to a lower-density 13px root scale with smaller cards, controls, modal spacing, and shell chrome.
+- Phase 2.2: Added a hard production safety guard so `ENABLE_DEMO_USERS=true` is blocked both at backend startup and during Prisma seed when `NODE_ENV=production`.
+- Phase 2.2: Re-verified Prisma generate, Prisma db push, and Prisma seed against the Neon staging database.
+- Phase 2.2: Confirmed the staging Neon `users` table contains the `username` column, the super admin username is `admin`, and staging demo users exist for the expected demo roles.
+- Phase 2.2: Verified staging backend auth works with both username login and email login for the admin account.
+- Phase 2.2: Verified staging backend users API create, update, password reset, duplicate username validation, and duplicate email validation without exposing `passwordHash`.
+- Phase 2.2: Completed deployed staging web acceptance for login, create user, immediate list refresh, duplicate-error display, edit user, password reset, and roles page load.
+- Phase 2.2: Re-confirmed the low-density enterprise UI on deployed staging with a `13px` root font size and compact shell/card spacing.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
@@ -118,6 +126,48 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
   - Local browser verification confirmed `admin` + `admin@123` login, `driver` + `driver@123` login, and `driver` denied access to `/users`
   - Local browser verification measured the root UI font size at `13px`
 - Secret scan result: no committed Neon credentials or admin/JWT secrets were found in tracked files
+- Mobile status: not modified
+
+### 2026-06-10 (Phase 2.2)
+
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- `npm run prisma:generate`: pass
+- `npm run prisma:db:push`: pass against Neon staging, schema already in sync
+- `npm run prisma:seed`: pass against Neon staging
+- Staging smoke test: `5 passed, 0 failed`
+- Production demo-user guard:
+  - backend startup config import fails when `NODE_ENV=production` and `ENABLE_DEMO_USERS=true`
+  - Prisma seed fails when `NODE_ENV=production` and `ENABLE_DEMO_USERS=true`
+- Staging database proof:
+  - `users.username` column exists
+  - super admin username is `admin`
+  - demo-user rows exist for the expected non-production demo accounts
+- Staging API proof:
+  - login with username `admin`: pass
+  - login with email `admin@fleet.local`: pass
+  - `GET /api/v1/auth/me`: pass
+  - `GET /api/v1/users`: pass
+  - `POST /api/v1/users`: pass
+  - `PATCH /api/v1/users/:id`: pass
+  - `PATCH /api/v1/users/:id/password`: pass
+  - duplicate username returns clean `400`
+  - duplicate email returns clean `400`
+  - `passwordHash` not returned in tested responses
+- Staging web proof:
+  - admin username login works
+  - Create User button is clearly visible
+  - create user from deployed UI works
+  - new user appears immediately in the table
+  - duplicate create shows a clean error message
+  - edit user works
+  - password reset works
+  - Roles page still works
+- Low-density UI proof:
+  - deployed root font size verified at `13px`
+  - compact sidebar, cards, topbar, and non-oversized headings confirmed
 - Mobile status: not modified
 
 ### 2026-06-09 (Phase 2)
@@ -158,4 +208,4 @@ Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-
 
 ## Next Step
 
-Phase 2 business masters can continue from this hardened UI baseline. Phase 3 remains blocked until explicitly approved for start.
+Phase 2 business masters can continue from this staging-verified baseline. Phase 3 remains blocked until explicitly approved for start.

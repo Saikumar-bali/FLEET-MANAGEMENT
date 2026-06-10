@@ -72,7 +72,7 @@ Do not start GPS, complex maps, or mobile animations before the backend workflow
 
 ## Demo Login Seed
 
-For local or demo-only environments, the backend seed now supports memorable role-based credentials when `ENABLE_DEMO_USERS=true`.
+For local or staging-demo environments only, the backend seed supports memorable role-based credentials when `ENABLE_DEMO_USERS=true`.
 
 - Super admin: username `admin`
 - Admin: username `opsadmin`, password `opsadmin@123`
@@ -86,3 +86,7 @@ For local or demo-only environments, the backend seed now supports memorable rol
 - Viewer: username `viewer`, password `viewer@123`
 
 The super admin password continues to come from `ADMIN_PASSWORD`, so it can stay environment-controlled instead of being committed as a shared production secret.
+
+Production safety rule:
+
+- `ENABLE_DEMO_USERS=true` is blocked when `NODE_ENV=production`.

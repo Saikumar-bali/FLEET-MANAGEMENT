@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 2.1 only: enterprise UI refresh and user-management flow hardening for backend + web. Mobile remains out of scope.
+Phase 2.2 acceptance only: deployed staging verification for username login, user-management flow, and low-density enterprise UI. Mobile remains out of scope.
 
 ## Visual Review Checklist
 
@@ -54,3 +54,32 @@ Summary:
 - The seeded admin no longer blocks the create-user flow.
 - The user-management UI now supports clearer enterprise-style spacing and smaller typography.
 - Permission-based route protection was verified through an actual login with a limited test user.
+
+## Deployed Staging Acceptance
+
+Deployed web checked:
+
+- `https://fleet-management-web-staging.vercel.app/login`
+- `https://fleet-management-web-staging.vercel.app/`
+- `https://fleet-management-web-staging.vercel.app/users`
+- `https://fleet-management-web-staging.vercel.app/roles`
+
+Staging acceptance result:
+
+- `PASS` Login with username `admin`
+- `PASS` Create User button is clearly visible
+- `PASS` Create new test user from deployed UI
+- `PASS` New user appears in the table immediately
+- `PASS` Duplicate create shows clean error text
+- `PASS` Edit user works
+- `PASS` Password reset works
+- `PASS` Roles page still works
+
+Low-density UI confirmation:
+
+- Root font size verified at `13px`
+- Sidebar width verified at `228px`
+- Cards are compact
+- Topbar remains clean and small
+- Create and edit remain clearly separated
+- No oversized headings were observed on the checked pages

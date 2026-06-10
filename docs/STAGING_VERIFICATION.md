@@ -39,9 +39,17 @@ Use Vercel for backend and web staging, Neon PostgreSQL for the staging database
 - `JWT_REFRESH_EXPIRES_IN`
 - `CORS_ORIGIN`
 - `ADMIN_EMAIL`
+- `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
+- `ENABLE_DEMO_USERS` for local/staging demo only, never production
 - `UPLOAD_DIR`
 - `MAX_FILE_SIZE`
+
+## Demo User Safety Rule
+
+- Demo users are allowed only for local or staging demo use.
+- Keep `ENABLE_DEMO_USERS=false` in committed env examples.
+- If `NODE_ENV=production` and `ENABLE_DEMO_USERS=true`, backend startup and Prisma seed must fail with a clear error.
 
 ## Required Web Environment Variables
 
@@ -60,7 +68,9 @@ vercel env add JWT_EXPIRES_IN production
 vercel env add JWT_REFRESH_EXPIRES_IN production
 vercel env add CORS_ORIGIN production
 vercel env add ADMIN_EMAIL production
+vercel env add ADMIN_USERNAME production
 vercel env add ADMIN_PASSWORD production
+vercel env add ENABLE_DEMO_USERS production
 vercel env add UPLOAD_DIR production
 vercel env add MAX_FILE_SIZE production
 vercel --prod --yes
@@ -110,7 +120,7 @@ https://<backend-staging-domain>/api/v1/health
 
 1. Open the backend health URL and confirm `database` is `connected`.
 2. Open the deployed web app URL.
-3. Sign in with the seeded super admin from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+3. Sign in with the seeded super admin using username `admin` or the configured admin email.
 4. Confirm the dashboard loads without API errors.
 5. Confirm roles page loads and lists roles.
 6. Confirm users page loads and lists users.
@@ -122,14 +132,14 @@ https://<backend-staging-domain>/api/v1/health
 Run this from `backend/` after the backend preview URL is known:
 
 ```bash
-API_BASE_URL=https://<backend-staging-domain> ADMIN_EMAIL=<admin-email> ADMIN_PASSWORD=<admin-password> npm run smoke:test
+API_BASE_URL=https://<backend-staging-domain> ADMIN_USERNAME=<admin-username> ADMIN_PASSWORD=<admin-password> npm run smoke:test
 ```
 
 On PowerShell:
 
 ```powershell
 $env:API_BASE_URL='https://<backend-staging-domain>'
-$env:ADMIN_EMAIL='<admin-email>'
+$env:ADMIN_USERNAME='<admin-username>'
 $env:ADMIN_PASSWORD='<admin-password>'
 npm run smoke:test
 ```
@@ -157,3 +167,40 @@ vercel whoami
 - Backend health verification: pass, `database: connected`
 - Remote smoke test verification: pass
 - Deployed web login verification: pass
+
+## 2026-06-10 Phase 2.2 Verification
+
+- Prisma generate: pass
+- Prisma db push against Neon staging: pass, database already in sync
+- Prisma seed against Neon staging: pass
+- Database verification:
+  - `users.username` column exists
+  - super admin username is `admin`
+  - demo users exist in staging Neon for `opsadmin`, `manager`, `supervisor`, `driver`, `assistantdriver`, `collector`, `mechanic`, `finance`, `viewer`
+- Production demo-user guard verification:
+  - backend startup config import fails when `NODE_ENV=production` and `ENABLE_DEMO_USERS=true`
+  - Prisma seed fails when `NODE_ENV=production` and `ENABLE_DEMO_USERS=true`
+- Backend API verification against staging backend:
+  - login with username `admin`: pass
+  - login with email `admin@fleet.local`: pass
+  - `GET /api/v1/auth/me`: pass
+  - `GET /api/v1/users`: pass
+  - `POST /api/v1/users`: pass
+  - `PATCH /api/v1/users/:id`: pass
+  - `PATCH /api/v1/users/:id/password`: pass
+  - duplicate username returns clean `400`
+  - duplicate email returns clean `400`
+  - `passwordHash` is not returned in tested API responses
+- Frontend staging acceptance:
+  - admin username login: pass
+  - Users page create button visible: pass
+  - create user from UI: pass
+  - new user appears immediately in list: pass
+  - duplicate create shows clean error: pass
+  - edit user: pass
+  - password reset: pass
+  - Roles page load: pass
+- Enterprise density acceptance:
+  - deployed root font size verified at `13px`
+  - deployed sidebar width verified at `228px`
+  - deployed cards and topbar spacing verified as compact and readable

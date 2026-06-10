@@ -583,6 +583,7 @@ export function UsersPage() {
                   value={createForm.username}
                   onChange={(event) => setCreateForm((current) => ({ ...current, username: event.target.value }))}
                   placeholder="admin"
+                  required
                 />
               </label>
               <label>
