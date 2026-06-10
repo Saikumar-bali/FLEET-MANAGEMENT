@@ -1,17 +1,12 @@
 import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { authMiddleware } from '../../middlewares/authMiddleware';
-import { requirePermission } from '../../middlewares/permissions';
-import { asyncHandler } from '../../utils/asyncHandler';
 import { openApiSpec } from '../../docs/openapi';
 
 const router = Router();
 
-router.use(
+router.use('/', swaggerUi.serve);
+router.get(
   '/',
-  asyncHandler(authMiddleware),
-  requirePermission('settings_view'),
-  swaggerUi.serve,
   swaggerUi.setup(openApiSpec, {
     customSiteTitle: 'Fleet Management API Docs',
     customfavIcon: '',
@@ -25,7 +20,7 @@ router.use(
   }),
 );
 
-router.get('/openapi.json', asyncHandler(authMiddleware), requirePermission('settings_view'), (_req, res) => {
+router.get('/openapi.json', (_req, res) => {
   res.json(openApiSpec);
 });
 
