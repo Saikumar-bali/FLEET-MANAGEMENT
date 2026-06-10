@@ -1,18 +1,19 @@
 const statusStyles: Record<string, { bg: string; color: string }> = {
-  AVAILABLE: { bg: '#e8fff3', color: '#127a4a' },
-  ON_TRIP: { bg: '#e0f0ff', color: '#1a5fa8' },
-  ON_LEAVE: { bg: '#fff0da', color: '#a85c00' },
-  UNDER_MAINTENANCE: { bg: '#fff0da', color: '#a85c00' },
-  UNDER_REPAIR: { bg: '#ffe3e3', color: '#9f1239' },
-  INACTIVE: { bg: '#e9ecef', color: '#5a6474' },
-  SOLD: { bg: '#e9ecef', color: '#5a6474' },
-  ACCIDENT: { bg: '#ffe3e3', color: '#9f1239' },
-  SUSPENDED: { bg: '#ffe3e3', color: '#9f1239' },
-  ACTIVE: { bg: '#e8fff3', color: '#127a4a' },
-  ASSIGNED: { bg: '#e0f0ff', color: '#1a5fa8' },
-  DAMAGED: { bg: '#ffe3e3', color: '#9f1239' },
-  LOST: { bg: '#ffe3e3', color: '#9f1239' },
-  RETIRED: { bg: '#e9ecef', color: '#5a6474' },
+  AVAILABLE: { bg: '#edf7f1', color: '#0f6b42' },
+  ON_TRIP: { bg: '#eef4ff', color: '#2a5bd7' },
+  ON_LEAVE: { bg: '#fff6e8', color: '#9a6400' },
+  UNDER_MAINTENANCE: { bg: '#fff6e8', color: '#9a6400' },
+  UNDER_REPAIR: { bg: '#fff0f1', color: '#b42318' },
+  INACTIVE: { bg: '#f2f4f7', color: '#475467' },
+  SOLD: { bg: '#f2f4f7', color: '#475467' },
+  ACCIDENT: { bg: '#fff0f1', color: '#b42318' },
+  SUSPENDED: { bg: '#fff0f1', color: '#b42318' },
+  ACTIVE: { bg: '#edf7f1', color: '#0f6b42' },
+  ASSIGNED: { bg: '#eef4ff', color: '#2a5bd7' },
+  DAMAGED: { bg: '#fff0f1', color: '#b42318' },
+  LOST: { bg: '#fff0f1', color: '#b42318' },
+  RETIRED: { bg: '#f2f4f7', color: '#475467' },
+  SYSTEM: { bg: '#f4f3ff', color: '#6941c6' },
 };
 
 type StatusBadgeProps = {
@@ -24,15 +25,12 @@ export function StatusBadge({ status }: StatusBadgeProps) {
 
   return (
     <span
-      className="status-pill"
+      className="status-badge"
       style={{
         background: style.bg,
         color: style.color,
-        padding: '0.3rem 0.75rem',
-        borderRadius: '999px',
-        fontSize: '0.8rem',
+        border: `1px solid ${style.color}22`,
         fontWeight: 600,
-        display: 'inline-block',
       }}
     >
       {status.replace(/_/g, ' ')}

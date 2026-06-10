@@ -1,19 +1,21 @@
 import type { ReactNode } from 'react';
 
 type PageHeaderProps = {
+  eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
 };
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
-    <div className="section-header" style={{ marginBottom: '1.5rem' }}>
+    <header className="page-header">
       <div>
-        <p className="eyebrow">{description ?? ''}</p>
-        <h2 className="page-title" style={{ margin: 0 }}>{title}</h2>
+        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+        <h1 className="page-header-title">{title}</h1>
+        {description ? <p className="page-header-copy">{description}</p> : null}
       </div>
-      {actions ? <div className="button-row">{actions}</div> : null}
-    </div>
+      {actions ? <div className="page-header-actions">{actions}</div> : null}
+    </header>
   );
 }

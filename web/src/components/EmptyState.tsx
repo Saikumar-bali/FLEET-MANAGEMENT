@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react';
 
 type EmptyStateProps = {
+  title?: string;
   message: string;
   action?: ReactNode;
 };
 
-export function EmptyState({ message, action }: EmptyStateProps) {
+export function EmptyState({ title = 'Nothing to show yet', message, action }: EmptyStateProps) {
   return (
-    <div className="centered-state">
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ color: '#5a6474', marginBottom: '1rem' }}>{message}</p>
+    <div className="state-panel">
+      <div>
+        <h3>{title}</h3>
+        <p>{message}</p>
         {action}
       </div>
     </div>

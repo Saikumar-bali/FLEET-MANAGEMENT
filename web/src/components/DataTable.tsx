@@ -4,7 +4,7 @@ type Column<T> = {
   key: string;
   header: string;
   render: (item: T) => ReactNode;
-  sortable?: boolean;
+  width?: string;
 };
 
 type DataTableProps<T> = {
@@ -31,24 +31,13 @@ export function DataTable<T>({
   isLoading,
 }: DataTableProps<T>) {
   return (
-    <div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="data-table-shell">
+      <div className="data-table-scroll">
+        <table className="data-table">
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(20,33,61,0.1)' }}>
+            <tr>
               {columns.map((col) => (
-                <th
-                  key={col.key}
-                  style={{
-                    textAlign: 'left',
-                    padding: '0.75rem 0.5rem',
-                    fontSize: '0.8rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: '#5a6474',
-                    fontWeight: 600,
-                  }}
-                >
+                <th key={col.key} style={col.width ? { width: col.width } : undefined}>
                   {col.header}
                 </th>
               ))}
@@ -57,13 +46,13 @@ export function DataTable<T>({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length} style={{ padding: '2rem', textAlign: 'center', color: '#5a6474' }}>
+                <td colSpan={columns.length} className="data-table-state-cell">
                   Loading...
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} style={{ padding: '2rem', textAlign: 'center', color: '#5a6474' }}>
+                <td colSpan={columns.length} className="data-table-state-cell">
                   No data found
                 </td>
               </tr>
@@ -72,20 +61,10 @@ export function DataTable<T>({
                 <tr
                   key={keyExtractor(item)}
                   onClick={() => onRowClick?.(item)}
-                  style={{
-                    borderBottom: '1px solid rgba(20,33,61,0.06)',
-                    cursor: onRowClick ? 'pointer' : undefined,
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(20,33,61,0.03)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
+                  className={onRowClick ? 'data-table-row-clickable' : undefined}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: '0.75rem 0.5rem' }}>
+                    <td key={col.key}>
                       {col.render(item)}
                     </td>
                   ))}
@@ -96,17 +75,16 @@ export function DataTable<T>({
         </table>
       </div>
       {pagination && pagination.totalPages > 1 ? (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+        <div className="table-pagination">
           <button
             type="button"
             className="secondary-button"
             disabled={pagination.page <= 1}
             onClick={() => pagination.onPageChange(pagination.page - 1)}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
           >
             Previous
           </button>
-          <span style={{ display: 'flex', alignItems: 'center', padding: '0 0.5rem', color: '#5a6474', fontSize: '0.85rem' }}>
+          <span className="table-pagination-copy">
             Page {pagination.page} of {pagination.totalPages}
           </span>
           <button
@@ -114,7 +92,6 @@ export function DataTable<T>({
             className="secondary-button"
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => pagination.onPageChange(pagination.page + 1)}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
           >
             Next
           </button>

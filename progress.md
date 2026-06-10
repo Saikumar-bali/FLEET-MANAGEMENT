@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 2 is implemented and verified. Vehicle, Driver, Asset, AssetCategory, and Document master modules are complete with full backend APIs, permission enforcement, audit logging, pagination/search/filter, and frontend pages.
+Phase 2.1 is completed and locally verified. The enterprise UI refresh and user-management flow hardening now sit on top of the existing Phase 2 masters foundation. Phase 3 has not started.
 
 ## Phase Progress
 
@@ -14,6 +14,7 @@ Phase 2 is implemented and verified. Vehicle, Driver, Asset, AssetCategory, and 
 | Phase 1.1 | RBAC Hardening, User Management, Staging Readiness | Completed locally and verified against Neon |
 | Phase 1.2 | Live Staging Deployment Verification | Completed |
 | Phase 2 | Vehicle, Driver, Asset Masters | Completed |
+| Phase 2.1 | Enterprise UI Refresh and User Flow Hardening | Completed locally and verified |
 | Phase 3 | Asset Assignment and History | Not Started |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
@@ -70,11 +71,45 @@ Phase 2 is implemented and verified. Vehicle, Driver, Asset, AssetCategory, and 
 - Phase 2: Created frontend pages for vehicles list/detail, drivers list/detail, assets list/detail, and asset categories management.
 - Phase 2: Added frontend sidebar navigation items for Vehicles, Drivers, Assets, and Asset Categories with permission gating.
 - Phase 2: Added frontend routes with permission-aware ProtectedRoute wrappers for vehicle_view, driver_view, and asset_view.
+- Phase 2.1: Refreshed the web design system with smaller typography, tighter enterprise spacing, cleaner neutral colors, lower-shadow cards, and consistent button, badge, and form patterns.
+- Phase 2.1: Updated the app shell with a cleaner admin-style sidebar, route-aware top bar, section labels, and clearer role visibility.
+- Phase 2.1: Added reusable modal, confirm dialog, form section, loading, empty, error, page-header, table, and status UI primitives to support a denser enterprise workflow.
+- Phase 2.1: Rebuilt `/users` so create mode is separate from edit mode, the seeded admin no longer blocks new-user creation, and status/password actions are isolated from profile editing.
+- Phase 2.1: Reworked `/roles` with a cleaner table, grouped permission matrix, clearer create/edit separation, and visible system-role treatment.
+- Phase 2.1: Polished the access dashboard to surface current user, current role, permission count, quick links, and backend health status.
+- Phase 2.1: Verified the full UI flow with Playwright, including create user, list refresh, role update, status changes, password reset, roles page load, and route-level access denial for a limited-permission user.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
 
 ## Verification Proof
+
+### 2026-06-10 (Phase 2.1)
+
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- Local backend health check: `GET /api/v1/health` returned `database: connected`
+- Playwright local UI verification: `10 passed, 0 failed`
+- Verified through the UI:
+  - login as super admin works
+  - dashboard shows current user, current role, permission count, and backend health
+  - create user action is visible and opens a separate modal
+  - create user works with email, password, role, and status
+  - the users list refreshes and selects the new user
+  - role update works
+  - suspend/reactivate status actions work
+  - password reset works
+  - roles page still loads with the grouped permission matrix
+  - a limited-permission user is denied access to `/users`
+- Audit log proof for the latest UI-created test user includes:
+  - `user.create`
+  - `user.update`
+  - `user.update_status`
+  - `user.update_password`
+- Secret scan result: no committed Neon credentials or admin/JWT secrets were found in tracked files
+- Mobile status: not modified
 
 ### 2026-06-09 (Phase 2)
 
@@ -114,4 +149,4 @@ Phase 2 is implemented and verified. Vehicle, Driver, Asset, AssetCategory, and 
 
 ## Next Step
 
-Phase 2 is complete. Phase 3 (Asset Assignment and History) should begin next.
+Phase 2 business masters can continue from this hardened UI baseline. Phase 3 remains blocked until explicitly approved for start.
