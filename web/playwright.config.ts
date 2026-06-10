@@ -5,13 +5,13 @@ export default defineConfig({
   timeout: 30000,
   retries: 1,
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:5173',
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173',
-    port: 4173,
-    timeout: 120000,
+    command: 'node ../backend/dist/src/server.js',
+    port: 4000,
+    timeout: 30000,
     reuseExistingServer: true,
   },
 });

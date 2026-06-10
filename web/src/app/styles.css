@@ -988,6 +988,90 @@ textarea:focus {
   font-size: 0.8rem;
 }
 
+.role-permission-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.role-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.role-search-input {
+  max-width: 280px;
+}
+
+.permission-count {
+  white-space: nowrap;
+}
+
+.permission-module-row {
+  background: var(--bg-panel-subtle);
+}
+
+.permission-module-cell {
+  padding: 0.5rem 0.68rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.permission-module-name {
+  text-transform: capitalize;
+}
+
+.permission-module-count {
+  margin-left: 0.5rem;
+  font-weight: 400;
+}
+
+.permission-module-actions {
+  float: right;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.compact-module-btn {
+  font-size: 0.78rem;
+  min-height: 24px;
+  padding: 0.15rem 0.5rem;
+}
+
+.permission-code {
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+.permission-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.permission-cell {
+  text-align: center;
+}
+
+.role-status-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 200px;
+}
+
+.role-edit-h4 {
+  margin: 0;
+}
+
+.role-edit-desc {
+  margin: 0.2rem 0 0;
+}
+
 .assignment-list {
   display: grid;
   gap: 0.55rem;

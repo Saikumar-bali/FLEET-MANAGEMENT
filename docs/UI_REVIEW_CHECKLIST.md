@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail page layout, permission matrix simplification, checkbox CSS fix, and stable page layout primitives.
+Phase 3.2 final UI quality gate and safety cleanup: cleaned RolesPage inline styles into reusable CSS classes, improved Permission Matrix UX, added Playwright env-driven test setup, removed unsafe cleanup script.
 
 ## Visual Review Checklist
 
@@ -18,6 +18,7 @@ Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail 
 - [ ] Page titles are 20px–22px.
 - [ ] Labels are 12px.
 - [ ] Table font is 12px–13px.
+- [ ] No inline layout styles in page files (gridTemplateColumns, maxWidth on cards, etc.).
 
 ### Vehicle Detail (`/vehicles/:id`)
 - [ ] General Information form is full-width, not squeezed into a grid column.
@@ -26,7 +27,6 @@ Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail 
 - [ ] Tab navigation (Overview, Registration, Expiry Dates, Documents, Status) is visible.
 - [ ] Each section fills the full width.
 - [ ] Documents section is full-width placeholder.
-- [ ] No inline layout styles (gridTemplateColumns, etc.) outside the component.
 - [ ] Save button is on the top-right.
 
 ### Driver Detail (`/drivers/:id`)
@@ -54,7 +54,7 @@ Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail 
 - [ ] Role details compact panel is visible.
 - [ ] No giant permission cards.
 - [ ] No two-column permission grid.
-- [ ] Page is usable in a single view (no scrolling needed to see full permission table).
+- [ ] All inline styles replaced with CSS classes (`role-permission-toolbar`, `permission-module-row`, etc.).
 
 ### Users (`/users`)
 - [ ] Create user is in a modal, separate from edit.
@@ -68,6 +68,21 @@ Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail 
 - [ ] No horizontal overflow.
 - [ ] No overlapping cards.
 
+## Playwright Test Setup
+
+- `npm run test:e2e` — runs all Playwright tests headless.
+- `npm run test:e2e:headed` — runs all Playwright tests in headed mode.
+- Credentials are configurable via env vars: `E2E_ADMIN_IDENTIFIER` and `E2E_ADMIN_PASSWORD` (defaults: `admin` / `admin@123`).
+- Base URL is configurable via `E2E_BASE_URL` (defaults to `http://127.0.0.1:4173`).
+- No hardcoded credentials in test files.
+
+## Safety Notes
+
+- `backend/scripts/cleanup-users.ts` has been removed — no unsafe scripts remain.
+- No Phase 4 (Trips, Fuel, Expenses, Maintenance, Finance) work was started.
+- No mobile changes were made.
+- No secrets committed.
+
 ## Verification Proof
 
 Date: `2026-06-10`
@@ -78,24 +93,8 @@ Date: `2026-06-10`
 - `npm run web:lint`: pass
 - `npm run web:build`: pass
 
-### Manual UI Verification (1366×768)
-- `/vehicles/:id` — Layout confirmed: full-width form, tab navigation works, status select+button not overlapping.
-- `/roles` — Permission table renders correctly, checkboxes are 16px, role selector works, save button visible.
-- `/users` — Create/Edit flows work, table clean.
-- `/assets/:id` — Full-width layout, action buttons compact, tabs work.
-
 ### Playwright UI Verification
 - Login as admin
-- Open /vehicles/:id — General Information visible, form width usable, Status section not overlapping
-- Open /roles — Permission checkbox bounding box normal (not huge), Save Permissions button visible, role selector/list visible
+- Open /vehicles/:id — General Information visible, form width usable
+- Open /roles — Permission checkboxes 16px, Save Permissions visible, no inline styles
 - Open /users — Create User button visible
-
-## Notes
-
-- The permission matrix was redesigned from a two-column card grid to a single table grouped by module.
-- Checkbox/radio CSS was fixed to use 16px instead of inheriting `width: 100%`.
-- Vehicle/Driver/Asset detail pages now use tab-based navigation with full-width form sections.
-- All pages use reusable CSS layout primitives (`form-page`, `form-main`, `form-side`, `detail-tabs`, `action-panel`, `form-two-column`).
-- No Phase 4 (Trips, Fuel, Expenses, Maintenance, Finance) work was started.
-- No mobile changes were made.
-- No secrets committed.

@@ -283,10 +283,10 @@ export function RolesPage() {
         <div className="success-banner">{pageMessage}</div>
       ) : null}
 
-      <div className="card table-card" style={{ maxWidth: '100%' }}>
+      <div className="card table-card">
         <div className="table-toolbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
+          <div className="role-permission-toolbar">
+            <label className="role-selector-row">
               <span className="field-label">Role:</span>
               <select
                 value={selectedRoleId ?? ''}
@@ -301,12 +301,12 @@ export function RolesPage() {
               </select>
             </label>
             <input
+              className="role-search-input"
               value={permissionSearch}
               onChange={(event) => setPermissionSearch(event.target.value)}
               placeholder="Search permissions"
-              style={{ maxWidth: '280px' }}
             />
-            <span className="table-secondary" style={{ whiteSpace: 'nowrap' }}>
+            <span className="table-secondary permission-count">
               {selectedCount} / {totalCount} selected
             </span>
           </div>
@@ -321,11 +321,11 @@ export function RolesPage() {
       </div>
 
       {selectedRole ? (
-        <div className="card form-section-grid" style={{ maxWidth: '100%' }}>
+        <div className="card form-section-grid">
           <div className="section-header">
             <div>
-              <h4 style={{ margin: 0 }}>{selectedRole.name}</h4>
-              <p className="helper-text" style={{ margin: '0.2rem 0 0' }}>{selectedRole.description || 'No description'}</p>
+              <h4 className="role-edit-h4">{selectedRole.name}</h4>
+              <p className="helper-text role-edit-desc">{selectedRole.description || 'No description'}</p>
             </div>
             <div className="action-panel">
               {selectedRole.isSystem ? <span className="system-badge">System</span> : <span className="permission-badge">Custom</span>}
@@ -361,7 +361,7 @@ export function RolesPage() {
                   disabled={!auth.hasPermission('role_update')}
                 />
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '200px' }}>
+              <label className="role-status-label">
                 <span className="field-label">Status</span>
                 <select
                   value={roleForm.status}
@@ -390,8 +390,8 @@ export function RolesPage() {
         </div>
       ) : null}
 
-      <div className="card table-card" id="permission-matrix" style={{ maxWidth: '100%' }}>
-        <h4 style={{ margin: 0 }}>Permissions</h4>
+      <div className="card table-card" id="permission-matrix">
+        <h4 className="role-edit-h4">Permissions</h4>
 
         {Object.entries(filteredPermissionGroups).length === 0 ? (
           <p className="muted-copy">No permissions match your search.</p>
@@ -409,25 +409,23 @@ export function RolesPage() {
               <tbody>
                 {Object.entries(filteredPermissionGroups).map(([module, modulePermissions]) => (
                   <>
-                    <tr key={module} style={{ background: 'var(--bg-panel-subtle)' }}>
-                      <td colSpan={4} style={{ padding: '0.5rem 0.68rem', fontWeight: 600, fontSize: '0.82rem' }}>
-                        <span style={{ textTransform: 'capitalize' }}>{module}</span>
-                        <span className="table-secondary" style={{ marginLeft: '0.5rem', fontWeight: 400 }}>
+                    <tr key={module} className="permission-module-row">
+                      <td colSpan={4} className="permission-module-cell">
+                        <span className="permission-module-name">{module}</span>
+                        <span className="table-secondary permission-module-count">
                           ({modulePermissions.length} permissions)
                         </span>
-                        <span style={{ float: 'right' }}>
+                        <span className="permission-module-actions">
                           <button
                             type="button"
-                            className="ghost-button"
-                            style={{ fontSize: '0.78rem', minHeight: '24px', padding: '0.15rem 0.5rem' }}
+                            className="ghost-button compact-module-btn"
                             onClick={() => handleSelectAllInModule(module)}
                           >
                             Select all
                           </button>
                           <button
                             type="button"
-                            className="ghost-button"
-                            style={{ fontSize: '0.78rem', minHeight: '24px', padding: '0.15rem 0.5rem' }}
+                            className="ghost-button compact-module-btn"
                             onClick={() => handleClearModule(module)}
                           >
                             Clear
@@ -440,14 +438,14 @@ export function RolesPage() {
 
                       return (
                         <tr key={permission.id}>
-                          <td style={{ fontSize: '0.8rem', textTransform: 'capitalize' }}>{permission.module}</td>
+                          <td className="permission-desc">{permission.module}</td>
                           <td>
-                            <code style={{ fontSize: '0.78rem', color: 'var(--accent)' }}>{permission.key}</code>
+                            <code className="permission-code">{permission.key}</code>
                           </td>
-                          <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          <td className="permission-desc">
                             {permission.description || `${permission.module} ${permission.action}`}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td className="permission-cell">
                             <input
                               type="checkbox"
                               checked={isChecked}

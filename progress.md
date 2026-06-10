@@ -17,6 +17,8 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 | Phase 2.1 | Enterprise UI Refresh and User Flow Hardening | Completed locally and verified |
 | Phase 2.2 | Staging Verification and Admin UI Acceptance | Completed and staging verified |
 | Phase 3 | Asset Assignment and History | Completed locally and verified against Neon |
+| Phase 3.1 | Enterprise Frontend UX Stabilization | Completed locally and verified |
+| Phase 3.2 | Final UI Quality Gate and Safety Cleanup | Completed locally and verified |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
@@ -324,6 +326,34 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
   - Users page (Create User button visible)
 
 **Phase 4 status:** Not started. Trips, Fuel, Expenses, Maintenance, Finance, GPS, Tally all remain blocked until explicitly approved.
+
+### 2026-06-10 (Phase 3.2 — Final UI Quality Gate and Safety Cleanup)
+
+**RolesPage inline style cleanup:**
+- Replaced all inline styles with reusable CSS classes: `role-permission-toolbar`, `role-selector-row`, `role-search-input`, `permission-count`, `permission-module-row`, `permission-module-cell`, `permission-module-name`, `permission-module-count`, `permission-module-actions`, `compact-module-btn`, `permission-code`, `permission-desc`, `permission-cell`, `role-status-label`, `role-edit-h4`, `role-edit-desc`.
+- Removed all `style={{ maxWidth: '100%' }}` from card containers.
+- Removed all inline `style={{ textTransform: 'capitalize' }}`, `style={{ margin: 0 }}`, `style={{ float: 'right' }}`, `style={{ fontSize: '0.78rem' }}`, etc.
+
+**Permission Matrix UX improvements:**
+- Permission module rows now use proper CSS classes for background, padding, and font styling.
+- Module count and actions use dedicated classes for consistent alignment.
+- Checkbox cells use centered alignment class.
+- Description cells use consistent font-size and color classes.
+
+**Playwright test setup:**
+- Added `test:e2e` and `test:e2e:headed` scripts to `web/package.json`.
+- Updated `playwright.config.ts` with env-driven `E2E_BASE_URL`.
+- Updated `ui-regression.spec.ts` to use `E2E_ADMIN_IDENTIFIER` and `E2E_ADMIN_PASSWORD` env vars (defaults: `admin` / `admin@123`).
+- Extracted `loginAsAdmin` helper to eliminate duplicate login code.
+- Renamed test suite from "Phase 3.1" to "Phase 3.2".
+
+**Safety cleanup:**
+- Removed `backend/scripts/cleanup-users.ts` entirely — no unsafe scripts remain.
+- Confirmed no references to cleanup script exist anywhere in the codebase.
+
+**Docs updated:**
+- `docs/UI_REVIEW_CHECKLIST.md` updated with Phase 3.2 checks, Playwright env var instructions, and safety notes.
+- `progress.md` updated with Phase 3.2 completion status.
 
 ## Next Step
 
