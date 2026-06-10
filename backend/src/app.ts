@@ -13,6 +13,7 @@ import vehicleRoutes from './modules/vehicles/vehicles.routes';
 import driverRoutes from './modules/drivers/drivers.routes';
 import assetRoutes from './modules/assets/assets.routes';
 import documentRoutes from './modules/documents/documents.routes';
+import docsRoutes from './modules/docs/docs.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -32,6 +33,7 @@ app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/drivers', driverRoutes);
 app.use('/api/v1/assets', assetRoutes);
 app.use('/api/v1/documents', documentRoutes);
+app.use('/api/v1/docs', docsRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 
