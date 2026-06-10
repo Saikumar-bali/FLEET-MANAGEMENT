@@ -1,5 +1,4 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { FormSection } from '../components/FormSection';
@@ -82,6 +81,16 @@ export function RolesPage() {
       return groups;
     }, {});
   }, [permissionSearch, permissions]);
+
+  const selectedCount = useMemo(
+    () => selectedPermissionKeys.length,
+    [selectedPermissionKeys],
+  );
+
+  const totalCount = useMemo(
+    () => permissions.length,
+    [permissions],
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -213,6 +222,22 @@ export function RolesPage() {
     }
   }
 
+  function handleSelectAllInModule(module: string) {
+    const moduleKeys = (filteredPermissionGroups[module] ?? []).map((p) => p.key);
+    setSelectedPermissionKeys((current) => {
+      const existing = new Set(current);
+      for (const key of moduleKeys) {
+        existing.add(key);
+      }
+      return Array.from(existing);
+    });
+  }
+
+  function handleClearModule(module: string) {
+    const moduleKeys = new Set((filteredPermissionGroups[module] ?? []).map((p) => p.key));
+    setSelectedPermissionKeys((current) => current.filter((key) => !moduleKeys.has(key)));
+  }
+
   if (isLoading) {
     return <LoadingState message="Loading roles and permission coverage..." />;
   }
@@ -236,210 +261,236 @@ export function RolesPage() {
   }
 
   return (
-    <section className="page-grid">
-      <div className="content-span-12">
-        <PageHeader
-          eyebrow="Security"
-          title="Roles and permissions"
-          description="Review system roles, add custom roles, and manage permission coverage with a grouped matrix."
-          actions={auth.hasPermission('role_create') ? (
+    <section className="form-page">
+      <div className="section-header">
+        <div>
+          <PageHeader
+            eyebrow="Security"
+            title="Roles and permissions"
+            description="Review system roles, add custom roles, and manage permission coverage."
+          />
+        </div>
+        <div className="action-panel">
+          {auth.hasPermission('role_create') ? (
             <button type="button" className="primary-button" onClick={() => setIsCreateOpen(true)}>
               Create role
             </button>
           ) : null}
-        />
+        </div>
       </div>
 
       {pageMessage ? (
-        <div className="content-span-12">
-          <div className="success-banner">{pageMessage}</div>
-        </div>
+        <div className="success-banner">{pageMessage}</div>
       ) : null}
 
-      <div className="content-span-12 list-detail-layout">
-        <article className="card table-card selection-panel">
-          <div className="table-toolbar">
-            <div>
-              <h3 className="table-toolbar-title">Role list</h3>
-              <p className="table-toolbar-copy">System and custom roles stay visible in a compact list.</p>
-            </div>
-          </div>
-
-          <DataTable
-            columns={[
-              {
-                key: 'role',
-                header: 'Role',
-                render: (role) => (
-                  <div className="user-name-cell">
-                    <strong>{role.name}</strong>
-                    <span className="table-secondary">{role.key}</span>
-                  </div>
-                ),
-              },
-              {
-                key: 'type',
-                header: 'Type',
-                render: (role) => role.isSystem ? <span className="system-badge">System</span> : <span className="permission-badge">Custom</span>,
-                width: '120px',
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (role) => <StatusBadge status={role.status} />,
-                width: '120px',
-              },
-              {
-                key: 'permissions',
-                header: 'Permissions',
-                render: (role) => `${(role.rolePermissions ?? []).length} assigned`,
-                width: '140px',
-              },
-            ]}
-            data={roles}
-            keyExtractor={(role) => role.id}
-            onRowClick={(role) => setSelectedRoleId(role.id)}
-          />
-        </article>
-
-        <aside className="detail-panel">
-          <article className="card detail-card">
-            <div className="table-toolbar">
-              <div>
-                <h3 className="table-toolbar-title">{selectedRole?.name ?? 'Role details'}</h3>
-                <p className="table-toolbar-copy">Edit role metadata separately from the create-role flow.</p>
-              </div>
-              {selectedRole?.isSystem ? <span className="system-badge">System</span> : null}
-            </div>
-
-            {selectedRole ? (
-              <>
-                <FormSection title="Role details" description="System roles keep their key locked, while custom roles remain editable.">
-                  <div className="form-grid">
-                    <label>
-                      <span>Name</span>
-                      <input
-                        value={roleForm.name}
-                        onChange={(event) => setRoleForm((current) => ({ ...current, name: event.target.value }))}
-                        disabled={!auth.hasPermission('role_update')}
-                      />
-                    </label>
-                    <label>
-                      <span>Key</span>
-                      <input
-                        value={roleForm.key}
-                        onChange={(event) => setRoleForm((current) => ({ ...current, key: event.target.value }))}
-                        disabled={!auth.hasPermission('role_update') || selectedRole.isSystem}
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    <span>Description</span>
-                    <textarea
-                      value={roleForm.description}
-                      onChange={(event) => setRoleForm((current) => ({ ...current, description: event.target.value }))}
-                      disabled={!auth.hasPermission('role_update')}
-                    />
-                  </label>
-                  <label>
-                    <span>Status</span>
-                    <select
-                      value={roleForm.status}
-                      onChange={(event) =>
-                        setRoleForm((current) => ({
-                          ...current,
-                          status: event.target.value as RoleFormState['status'],
-                        }))
-                      }
-                      disabled={!auth.hasPermission('role_update')}
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                    </select>
-                  </label>
-                  {roleError ? <div className="error-banner">{roleError}</div> : null}
-                  {auth.hasPermission('role_update') ? (
-                    <div className="button-row">
-                      <button type="button" className="primary-button" onClick={() => void handleUpdateRole()} disabled={isSavingRole}>
-                        {isSavingRole ? 'Saving...' : 'Update role'}
-                      </button>
-                    </div>
-                  ) : null}
-                </FormSection>
-              </>
-            ) : null}
-          </article>
-        </aside>
-      </div>
-
-      <article className="card content-span-12" id="permission-matrix">
+      <div className="card table-card" style={{ maxWidth: '100%' }}>
         <div className="table-toolbar">
-          <div>
-            <h3 className="table-toolbar-title">Permission matrix</h3>
-            <p className="table-toolbar-copy">Search by key or description, then save grouped permissions for the selected role.</p>
-          </div>
-          <div className="table-toolbar-actions">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
+              <span className="field-label">Role:</span>
+              <select
+                value={selectedRoleId ?? ''}
+                onChange={(event) => setSelectedRoleId(event.target.value)}
+                style={{ width: 'auto', minWidth: '200px' }}
+              >
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name} {role.isSystem ? '(System)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
             <input
               value={permissionSearch}
               onChange={(event) => setPermissionSearch(event.target.value)}
               placeholder="Search permissions"
+              style={{ maxWidth: '280px' }}
             />
+            <span className="table-secondary" style={{ whiteSpace: 'nowrap' }}>
+              {selectedCount} / {totalCount} selected
+            </span>
+          </div>
+          <div className="action-panel">
+            {auth.hasPermission('permission_assign') ? (
+              <button type="button" className="primary-button" onClick={() => void handleSavePermissions()} disabled={isSavingPermissions}>
+                {isSavingPermissions ? 'Saving...' : 'Save Permissions'}
+              </button>
+            ) : null}
           </div>
         </div>
+      </div>
 
-        <div className="permission-groups">
-          {Object.entries(filteredPermissionGroups).map(([module, modulePermissions]) => (
-            <section key={module} className="permission-module-card">
-              <div>
-                <h4 className="permission-module-title">{module}</h4>
-                <p className="permission-help">{modulePermissions.length} permissions</p>
-              </div>
-              <div className="permission-grid">
-                {modulePermissions.map((permission) => {
-                  const isChecked = selectedPermissionKeys.includes(permission.key);
+      {selectedRole ? (
+        <div className="card form-section-grid" style={{ maxWidth: '100%' }}>
+          <div className="section-header">
+            <div>
+              <h4 style={{ margin: 0 }}>{selectedRole.name}</h4>
+              <p className="helper-text" style={{ margin: '0.2rem 0 0' }}>{selectedRole.description || 'No description'}</p>
+            </div>
+            <div className="action-panel">
+              {selectedRole.isSystem ? <span className="system-badge">System</span> : <span className="permission-badge">Custom</span>}
+              <StatusBadge status={selectedRole.status} />
+            </div>
+          </div>
 
-                  return (
-                    <label key={permission.id} className="permission-tile">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={!auth.hasPermission('permission_assign')}
-                        onChange={(event) => {
-                          const checked = event.target.checked;
-                          setSelectedPermissionKeys((currentKeys) =>
-                            checked
-                              ? [...currentKeys, permission.key]
-                              : currentKeys.filter((permissionKey) => permissionKey !== permission.key),
-                          );
-                        }}
-                      />
-                      <div>
-                        <strong>{permission.key}</strong>
-                        <p>{permission.description ?? `${permission.module} ${permission.action}`}</p>
-                      </div>
-                    </label>
-                  );
-                })}
+          {auth.hasPermission('role_update') ? (
+            <FormSection title="Edit role" description="Update role name, key, or status.">
+              <div className="form-two-column">
+                <label>
+                  <span className="field-label">Name</span>
+                  <input
+                    value={roleForm.name}
+                    onChange={(event) => setRoleForm((current) => ({ ...current, name: event.target.value }))}
+                    disabled={!auth.hasPermission('role_update')}
+                  />
+                </label>
+                <label>
+                  <span className="field-label">Key</span>
+                  <input
+                    value={roleForm.key}
+                    onChange={(event) => setRoleForm((current) => ({ ...current, key: event.target.value }))}
+                    disabled={!auth.hasPermission('role_update') || selectedRole.isSystem}
+                  />
+                </label>
               </div>
-            </section>
-          ))}
+              <label>
+                <span className="field-label">Description</span>
+                <textarea
+                  value={roleForm.description}
+                  onChange={(event) => setRoleForm((current) => ({ ...current, description: event.target.value }))}
+                  disabled={!auth.hasPermission('role_update')}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '200px' }}>
+                <span className="field-label">Status</span>
+                <select
+                  value={roleForm.status}
+                  onChange={(event) =>
+                    setRoleForm((current) => ({
+                      ...current,
+                      status: event.target.value as RoleFormState['status'],
+                    }))
+                  }
+                  disabled={!auth.hasPermission('role_update')}
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </label>
+              {roleError ? <div className="error-banner">{roleError}</div> : null}
+              {auth.hasPermission('role_update') ? (
+                <div className="button-row">
+                  <button type="button" className="primary-button" onClick={() => void handleUpdateRole()} disabled={isSavingRole}>
+                    {isSavingRole ? 'Saving...' : 'Update role'}
+                  </button>
+                </div>
+              ) : null}
+            </FormSection>
+          ) : null}
         </div>
+      ) : null}
+
+      <div className="card table-card" id="permission-matrix" style={{ maxWidth: '100%' }}>
+        <h4 style={{ margin: 0 }}>Permissions</h4>
+
+        {Object.entries(filteredPermissionGroups).length === 0 ? (
+          <p className="muted-copy">No permissions match your search.</p>
+        ) : (
+          <div className="data-table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '160px' }}>Module</th>
+                  <th style={{ width: '200px' }}>Permission</th>
+                  <th>Description</th>
+                  <th style={{ width: '80px', textAlign: 'center' }}>Enabled</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(filteredPermissionGroups).map(([module, modulePermissions]) => (
+                  <>
+                    <tr key={module} style={{ background: 'var(--bg-panel-subtle)' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.68rem', fontWeight: 600, fontSize: '0.82rem' }}>
+                        <span style={{ textTransform: 'capitalize' }}>{module}</span>
+                        <span className="table-secondary" style={{ marginLeft: '0.5rem', fontWeight: 400 }}>
+                          ({modulePermissions.length} permissions)
+                        </span>
+                        <span style={{ float: 'right' }}>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            style={{ fontSize: '0.78rem', minHeight: '24px', padding: '0.15rem 0.5rem' }}
+                            onClick={() => handleSelectAllInModule(module)}
+                          >
+                            Select all
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            style={{ fontSize: '0.78rem', minHeight: '24px', padding: '0.15rem 0.5rem' }}
+                            onClick={() => handleClearModule(module)}
+                          >
+                            Clear
+                          </button>
+                        </span>
+                      </td>
+                    </tr>
+                    {modulePermissions.map((permission) => {
+                      const isChecked = selectedPermissionKeys.includes(permission.key);
+
+                      return (
+                        <tr key={permission.id}>
+                          <td style={{ fontSize: '0.8rem', textTransform: 'capitalize' }}>{permission.module}</td>
+                          <td>
+                            <code style={{ fontSize: '0.78rem', color: 'var(--accent)' }}>{permission.key}</code>
+                          </td>
+                          <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {permission.description || `${permission.module} ${permission.action}`}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={!auth.hasPermission('permission_assign')}
+                              onChange={() => {
+                                setSelectedPermissionKeys((currentKeys) =>
+                                  isChecked
+                                    ? currentKeys.filter((permissionKey) => permissionKey !== permission.key)
+                                    : [...currentKeys, permission.key],
+                                );
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {permissionError ? <div className="error-banner" style={{ marginTop: '0.9rem' }}>{permissionError}</div> : null}
 
         <div className="permission-toolbar">
-          <p className="permission-help">
-            {selectedRole ? `Editing permission coverage for ${selectedRole.name}.` : 'Select a role to edit permissions.'}
+          <p className="helper-text">
+            {selectedRole
+              ? `${selectedCount} of ${totalCount} permissions selected for ${selectedRole.name}`
+              : 'Select a role to edit permissions.'}
           </p>
-          {auth.hasPermission('permission_assign') ? (
-            <button type="button" className="primary-button" onClick={() => void handleSavePermissions()} disabled={isSavingPermissions}>
-              {isSavingPermissions ? 'Saving permissions...' : 'Save permissions'}
-            </button>
-          ) : (
-            <span className="table-secondary">You can view this matrix but cannot change it.</span>
-          )}
+          <div className="action-panel">
+            <span className="table-secondary">{selectedCount} selected</span>
+            {auth.hasPermission('permission_assign') ? (
+              <button type="button" className="primary-button" onClick={() => void handleSavePermissions()} disabled={isSavingPermissions}>
+                {isSavingPermissions ? 'Saving...' : 'Save Permissions'}
+              </button>
+            ) : (
+              <span className="table-secondary">View only</span>
+            )}
+          </div>
         </div>
-      </article>
+      </div>
 
       <Modal
         isOpen={isCreateOpen}

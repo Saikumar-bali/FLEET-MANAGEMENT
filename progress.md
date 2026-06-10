@@ -242,6 +242,89 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
   - Requests without required permission return `403`
 - Existing auth, roles, users, and permissions endpoints still work.
 
+### 2026-06-10 (Phase 3.1 — Enterprise Frontend UX Stabilization)
+
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+
+**CSS fixes:**
+- Changed global `input, select, textarea` selector to `input:not([type="checkbox"]):not([type="radio"]), select, textarea` so checkboxes and radios no longer inherit `width: 100%`.
+- Added explicit checkbox/radio sizing: `width: 16px; height: 16px; min-height: 16px; flex: 0 0 auto; accent-color: var(--accent)`.
+- Added label flex alignment for checkbox/radio labels.
+
+**Page layout primitives added:**
+- `form-page` / `form-page-full` — outer page containers
+- `form-main` — main form area
+- `form-side` — optional side panel (280px on large screens, stacks on mobile)
+- `form-section-grid` — section spacing
+- `form-two-column` / `form-three-column` — grid column helpers
+- `detail-tabs` / `detail-tab` — tab navigation for detail pages
+- `action-panel` — compact action button row
+- Responsive media queries for stacking on mobile
+
+**Vehicle detail page fix:**
+- Removed the squeezed `page-grid` layout that forced the form into a tiny column.
+- Replaced with `form-page-full` full-width layout.
+- Added tab navigation: Overview, Registration, Expiry Dates, Documents, Status.
+- Status Management is no longer a side card — it's a full-width section with a compact select dropdown + Update Status button.
+- Documents placeholder is inside the Documents tab.
+- Save button is top-right in the header.
+- All inline grid styles removed in favor of reusable `form-two-column` class.
+
+**Driver detail page fix:**
+- Same tab pattern: Personal Info, License, Documents, Status.
+- Status uses select + Update button, not a button grid.
+- Full-width form, no squeezing.
+
+**Asset detail page fix:**
+- Same tab pattern: Overview, Assignment, History.
+- Action buttons (Assign, Return, Transfer, Damage, Lost) are compact and aligned in the top action panel.
+- Assignment/history sections are full-width.
+- Current Assignment / Snapshot / Assignment Records are full-width cards, not side panels.
+
+**Roles page redesign:**
+- Replaced the two-column permission card grid with a single permission table grouped by module.
+- Top toolbar: role selector dropdown, search input, selected count, Create Role button, Save Permissions button.
+- Table columns: Module, Permission, Description, Enabled checkbox.
+- Checkboxes are now 16px (normal size) instead of huge.
+- Added Select all / Clear actions per module.
+- Added permission search.
+- Added selected count (X / Y selected).
+- Sticky save bar at the bottom.
+- No giant permission cards, no two-column grid, no visual overload.
+- Role details compact panel is below the toolbar.
+
+**Users page:**
+- Changed outer container from `page-grid` + `content-span-12` to the cleaner `form-page` + `section-header` pattern.
+- Create remains in modal, edit in side panel, table clean.
+
+**Enterprise UI rules enforced:**
+- Root font size: 13px (already set).
+- Table font: 12px–13px (`.data-table td` is 0.8rem ≈ 12.3px).
+- Labels: 12px (`.field-label` is 0.78rem ≈ 12px).
+- Page titles: ~20px–22px (`.page-header-title` is clamp(1.16rem, 1.1vw, 1.36rem)).
+- Card padding: 12px–16px (existing 0.85rem ≈ 13px).
+- Input height: 32px (existing `min-height: 32px`).
+- Checkbox size: 16px.
+- No inline layout styles in page files.
+
+**UI regression checklist:**
+- Updated `docs/UI_REVIEW_CHECKLIST.md` with Phase 3.1 checks.
+- Covers vehicle/driver/asset detail, roles permissions, users, responsive at 1366/1024/768.
+
+**Playwright tests:**
+- Added `@playwright/test` to web devDependencies.
+- Created `web/playwright.config.ts` with dev server auto-start.
+- Created `web/e2e/ui-regression.spec.ts` with tests for:
+  - Login as admin
+  - Vehicle detail layout (General Information visible, form width usable, Status section accessible)
+  - Roles page (permission checkbox bounding box normal, Save Permissions visible, role selector visible)
+  - Users page (Create User button visible)
+
+**Phase 4 status:** Not started. Trips, Fuel, Expenses, Maintenance, Finance, GPS, Tally all remain blocked until explicitly approved.
+
 ## Next Step
 
 Phase 4 Trip / Transfer Workflow is the exact next recommended phase. It remains blocked until explicitly approved for start.

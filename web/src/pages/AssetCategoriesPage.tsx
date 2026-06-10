@@ -7,6 +7,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { PageHeader } from '../components/PageHeader';
 
 type CategoryForm = {
   name: string;
@@ -90,81 +91,95 @@ export function AssetCategoriesPage() {
   const canEdit = auth.hasPermission('asset_update');
 
   return (
-    <section className="page-grid roles-grid">
-      <article className="card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Asset Categories</p>
-            <h3>Available categories</h3>
-          </div>
+    <section className="form-page">
+      <div className="section-header">
+        <div>
+          <PageHeader
+            eyebrow="Masters"
+            title="Asset Categories"
+            description="Create and manage asset category configuration."
+          />
         </div>
+      </div>
 
-        {categories.length === 0 ? (
-          <EmptyState message="No categories found. Create the first category to continue." />
-        ) : (
-          <div className="role-list">
-            {categories.map((cat) => (
-              <button key={cat.id} type="button" className={`role-card${cat.id === selectedId ? ' role-card-active' : ''}`} onClick={() => setSelectedId(cat.id)}>
-                <strong>{cat.name}</strong>
-                <span>{cat.key}</span>
-                <small>{cat._count?.assets ?? 0} assets | <StatusBadge status={cat.status} /></small>
-              </button>
-            ))}
+      {error && !categories.length ? <div className="error-banner">{error}</div> : null}
+
+      <div className="list-detail-layout">
+        <article className="card table-card selection-panel">
+          <div className="table-toolbar">
+            <div>
+              <h3 className="table-toolbar-title">Available categories</h3>
+              <p className="table-toolbar-copy">{categories.length} total categories</p>
+            </div>
           </div>
-        )}
-      </article>
 
-      <article className="card">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Category Editor</p>
-            <h3>{selected?.name ?? 'Create category'}</h3>
-          </div>
-        </div>
+          {categories.length === 0 ? (
+            <EmptyState message="No categories found. Create the first category to continue." />
+          ) : (
+            <div className="role-list">
+              {categories.map((cat) => (
+                <button key={cat.id} type="button" className={`role-card${cat.id === selectedId ? ' role-card-active' : ''}`} onClick={() => setSelectedId(cat.id)}>
+                  <div className="role-card-title-row">
+                    <strong>{cat.name}</strong>
+                    <StatusBadge status={cat.status} />
+                  </div>
+                  <span className="role-card-meta">{cat.key}</span>
+                  <small className="role-card-meta">{cat._count?.assets ?? 0} assets</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </article>
 
-        <form className="stack-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Name</span>
-            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
-          </label>
-          <label>
-            <span>Key</span>
-            <input
-              value={form.key}
-              onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.replace(/[^a-z0-9_]/g, '_').toLowerCase() }))}
-              required
-              disabled={!!selected}
-            />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} />
-          </label>
-          <label>
-            <span>Status</span>
-            <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'ACTIVE' | 'INACTIVE' }))}>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-          </label>
+        <aside className="detail-panel">
+          <article className="card detail-card">
+            <div className="table-toolbar">
+              <div>
+                <h3 className="table-toolbar-title">{selected?.name ?? 'Create category'}</h3>
+                <p className="table-toolbar-copy">{selected ? 'Edit the selected category' : 'Add a new category'}</p>
+              </div>
+            </div>
 
-          {error ? <div className="error-banner">{error}</div> : null}
-          {message ? <div className="success-banner">{message}</div> : null}
+            <form className="stack-form" onSubmit={handleSubmit}>
+              <label>
+                <span className="field-label">Name</span>
+                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+              </label>
+              <label>
+                <span className="field-label">Key</span>
+                <input
+                  value={form.key}
+                  onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.replace(/[^a-z0-9_]/g, '_').toLowerCase() }))}
+                  required
+                  disabled={!!selected}
+                />
+              </label>
+              <label>
+                <span className="field-label">Description</span>
+                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
+              </label>
+              <label>
+                <span className="field-label">Status</span>
+                <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'ACTIVE' | 'INACTIVE' }))}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </label>
 
-          <div className="button-row">
-            {!selectedId && canEdit ? (
-              <button type="submit" className="primary-button" disabled={isSaving}>
-                {isSaving ? 'Creating...' : 'Create Category'}
-              </button>
-            ) : null}
-            {selectedId && canEdit ? (
-              <button type="submit" className="secondary-button" disabled={isSaving}>
-                {isSaving ? 'Updating...' : 'Update Category'}
-              </button>
-            ) : null}
-          </div>
-        </form>
-      </article>
+              {error ? <div className="error-banner">{error}</div> : null}
+              {message ? <div className="success-banner">{message}</div> : null}
+
+              <div className="button-row">
+                {canEdit ? (
+                  <button type="submit" className="primary-button" disabled={isSaving}>
+                    {isSaving ? 'Saving...' : selectedId ? 'Update Category' : 'Create Category'}
+                  </button>
+                ) : null}
+              </div>
+            </form>
+          </article>
+        </aside>
+      </div>
     </section>
   );
 }

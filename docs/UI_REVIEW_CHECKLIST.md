@@ -2,84 +2,100 @@
 
 ## Scope
 
-Phase 2.2 acceptance only: deployed staging verification for username login, user-management flow, and low-density enterprise UI. Mobile remains out of scope.
+Phase 3.1 enterprise frontend UX stabilization: fix vehicle/driver/asset detail page layout, permission matrix simplification, checkbox CSS fix, and stable page layout primitives.
 
 ## Visual Review Checklist
 
-- Login works with the seeded admin account.
-- Dashboard shows current user, current role, permission count, and backend health.
-- Users page shows a visible `Create user` action when `user_create` is present.
-- Create user opens a separate modal and does not conflict with edit mode.
-- Email remains editable in create mode.
-- Password is visible and required in create mode.
-- Role dropdown loads available roles.
-- Users list refreshes after create and selects the new user.
-- Edit mode remains separate from create mode.
-- Password reset remains separate from profile editing.
-- Roles page loads without crashing and shows grouped permissions.
-- Sidebar stays permission-based.
-- Route guard shows `Access denied` when `user_view` is missing.
-- Font sizes are compact and readable.
-- Cards, spacing, and headings stay enterprise-sized instead of oversized.
-- Responsive layout remains acceptable for the tested desktop workflow.
+### Global
+- [ ] Root font size is 13px.
+- [ ] Checkboxes are 16px, not full-width.
+- [ ] Radio buttons are 16px, not full-width.
+- [ ] All inputs except checkbox/radio use `width: 100%`.
+- [ ] No horizontal overflow at 1366px, 1024px, or 768px.
+- [ ] No overlapping cards.
+- [ ] Card padding is 12px–16px.
+- [ ] Input height is 32px–36px.
+- [ ] Page titles are 20px–22px.
+- [ ] Labels are 12px.
+- [ ] Table font is 12px–13px.
+
+### Vehicle Detail (`/vehicles/:id`)
+- [ ] General Information form is full-width, not squeezed into a grid column.
+- [ ] Status Management is not a tiny side card that overlaps the form.
+- [ ] Status uses a compact select + Update button, not a 2-column button grid.
+- [ ] Tab navigation (Overview, Registration, Expiry Dates, Documents, Status) is visible.
+- [ ] Each section fills the full width.
+- [ ] Documents section is full-width placeholder.
+- [ ] No inline layout styles (gridTemplateColumns, etc.) outside the component.
+- [ ] Save button is on the top-right.
+
+### Driver Detail (`/drivers/:id`)
+- [ ] Personal Information form is full-width.
+- [ ] Status uses select + Update button, not button grid.
+- [ ] Tab navigation is visible.
+- [ ] No squeezed fields.
+
+### Asset Detail (`/assets/:id`)
+- [ ] Asset form is full-width.
+- [ ] Action buttons (Assign, Return, Transfer, Damage, Lost) are compact and aligned.
+- [ ] Assignment/history tables are readable.
+- [ ] Tab navigation is visible.
+- [ ] No squeezed layout.
+
+### Roles (`/roles`)
+- [ ] Permission checkboxes are 16px (not huge).
+- [ ] Permissions are shown in a table, not a card grid.
+- [ ] Role selector/dropdown is at the top.
+- [ ] Create Role button is visible.
+- [ ] Save Permissions button is visible and sticky.
+- [ ] Search input filters permissions.
+- [ ] Select all / Clear actions per module.
+- [ ] Selected count is shown.
+- [ ] Role details compact panel is visible.
+- [ ] No giant permission cards.
+- [ ] No two-column permission grid.
+- [ ] Page is usable in a single view (no scrolling needed to see full permission table).
+
+### Users (`/users`)
+- [ ] Create user is in a modal, separate from edit.
+- [ ] Table is clean and not cramped.
+- [ ] Edit form is in the detail panel.
+- [ ] Create button is visible.
+
+### General UI
+- [ ] Sidebar/topbar has low density.
+- [ ] Responsive at 1366px, 1024px, and 768px.
+- [ ] No horizontal overflow.
+- [ ] No overlapping cards.
 
 ## Verification Proof
 
 Date: `2026-06-10`
 
-Local UI verification was completed with Playwright against:
+### Build/Lint Results
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
 
-- Web: `http://127.0.0.1:4173`
-- Backend: `http://127.0.0.1:4000`
+### Manual UI Verification (1366×768)
+- `/vehicles/:id` — Layout confirmed: full-width form, tab navigation works, status select+button not overlapping.
+- `/roles` — Permission table renders correctly, checkboxes are 16px, role selector works, save button visible.
+- `/users` — Create/Edit flows work, table clean.
+- `/assets/:id` — Full-width layout, action buttons compact, tabs work.
 
-Playwright flow result:
-
-- `PASS` Login as super admin
-- `PASS` Dashboard shows current user, role, permissions, and backend health
-- `PASS` Users page loads and create flow is clearly available
-- `PASS` Create user modal loads role dropdown and required fields
-- `PASS` New user appears in the list and becomes the selected profile
-- `PASS` User role can be updated from Viewer to Manager
-- `PASS` User status can be suspended and re-activated
-- `PASS` User can be moved to a limited role and password reset separately from profile editing
-- `PASS` Roles page still loads with the grouped permission matrix
-- `PASS` New limited-permission user is denied access to `/users`
-
-Summary:
-
-- `10 passed, 0 failed`
+### Playwright UI Verification
+- Login as admin
+- Open /vehicles/:id — General Information visible, form width usable, Status section not overlapping
+- Open /roles — Permission checkbox bounding box normal (not huge), Save Permissions button visible, role selector/list visible
+- Open /users — Create User button visible
 
 ## Notes
 
-- The seeded admin no longer blocks the create-user flow.
-- The user-management UI now supports clearer enterprise-style spacing and smaller typography.
-- Permission-based route protection was verified through an actual login with a limited test user.
-
-## Deployed Staging Acceptance
-
-Deployed web checked:
-
-- `https://fleet-management-web-staging.vercel.app/login`
-- `https://fleet-management-web-staging.vercel.app/`
-- `https://fleet-management-web-staging.vercel.app/users`
-- `https://fleet-management-web-staging.vercel.app/roles`
-
-Staging acceptance result:
-
-- `PASS` Login with username `admin`
-- `PASS` Create User button is clearly visible
-- `PASS` Create new test user from deployed UI
-- `PASS` New user appears in the table immediately
-- `PASS` Duplicate create shows clean error text
-- `PASS` Edit user works
-- `PASS` Password reset works
-- `PASS` Roles page still works
-
-Low-density UI confirmation:
-
-- Root font size verified at `13px`
-- Sidebar width verified at `228px`
-- Cards are compact
-- Topbar remains clean and small
-- Create and edit remain clearly separated
-- No oversized headings were observed on the checked pages
+- The permission matrix was redesigned from a two-column card grid to a single table grouped by module.
+- Checkbox/radio CSS was fixed to use 16px instead of inheriting `width: 100%`.
+- Vehicle/Driver/Asset detail pages now use tab-based navigation with full-width form sections.
+- All pages use reusable CSS layout primitives (`form-page`, `form-main`, `form-side`, `detail-tabs`, `action-panel`, `form-two-column`).
+- No Phase 4 (Trips, Fuel, Expenses, Maintenance, Finance) work was started.
+- No mobile changes were made.
+- No secrets committed.

@@ -15,11 +15,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <p className="eyebrow">Fleet Management</p>
-        <h1 className="sidebar-title">Access Foundation</h1>
-        <p className="sidebar-copy">
-          Enterprise access administration and master-data controls.
-        </p>
+        <h1 className="sidebar-title">Hippofleet</h1>
       </div>
 
       <nav className="sidebar-nav" aria-label="Primary">

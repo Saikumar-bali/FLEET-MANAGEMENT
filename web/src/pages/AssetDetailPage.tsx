@@ -73,6 +73,14 @@ const initialActionForm: AssetActionForm = {
   proofUrl: '',
 };
 
+type SectionTab = 'overview' | 'assignment' | 'history';
+
+const sectionTabs: { key: SectionTab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'assignment', label: 'Assignment' },
+  { key: 'history', label: 'History' },
+];
+
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return '-';
@@ -105,6 +113,7 @@ export function AssetDetailPage() {
   const [isActionSubmitting, setIsActionSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SectionTab>('overview');
 
   const currentAssignment = asset?.currentAssignment ?? assignments.find((entry) => entry.status === 'ACTIVE') ?? null;
   const canEdit = auth.hasPermission('asset_update');
@@ -399,146 +408,161 @@ export function AssetDetailPage() {
   ];
 
   return (
-    <section>
-      <PageHeader
-        eyebrow={!isNew ? 'Asset Detail' : undefined}
-        title={isNew ? 'Add Asset' : asset ? `${asset.assetCode} - ${asset.name}` : 'Asset'}
-        description={isNew ? 'Register a new asset' : asset ? `Category: ${asset.assetCategory.name}` : undefined}
-        actions={!isNew && asset ? (
-          <>
-            <StatusBadge status={asset.currentStatus} />
+    <section className="form-page-full">
+      <div className="section-header">
+        <div>
+          <a href="/assets" className="eyebrow" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.25rem' }}>Back to Assets</a>
+          <PageHeader
+            title={isNew ? 'Add Asset' : asset ? `${asset.assetCode} - ${asset.name}` : 'Asset'}
+            description={isNew ? 'Register a new asset' : undefined}
+          />
+        </div>
+        <div className="action-panel">
+          {!isNew && asset ? (<><StatusBadge status={asset.currentStatus} />
             {!currentAssignment && canAssign && asset.currentStatus !== 'LOST' && asset.currentStatus !== 'RETIRED' ? (
               <button type="button" className="primary-button" onClick={() => openActionModal('assign')}>
-                Assign Asset
+                Assign
               </button>
             ) : null}
             {currentAssignment && canReturn ? (
               <button type="button" className="secondary-button" onClick={() => openActionModal('return')}>
-                Return Asset
+                Return
               </button>
             ) : null}
             {currentAssignment && canTransfer ? (
               <button type="button" className="secondary-button" onClick={() => openActionModal('transfer')}>
-                Transfer Asset
+                Transfer
               </button>
             ) : null}
             {canMarkDamaged && asset.currentStatus !== 'DAMAGED' ? (
               <button type="button" className="secondary-button" onClick={() => openActionModal('damage')}>
-                Mark Damaged
+                Damage
               </button>
             ) : null}
             {canMarkLost && asset.currentStatus !== 'LOST' ? (
               <button type="button" className="danger-button" onClick={() => openActionModal('lost')}>
-                Mark Lost
+                Lost
               </button>
             ) : null}
-          </>
-        ) : undefined}
-      />
-
-      {error ? <div className="error-banner" style={{ marginBottom: '1rem' }}>{error}</div> : null}
-      {message ? <div className="success-banner" style={{ marginBottom: '1rem' }}>{message}</div> : null}
-
-      <div className="page-grid">
-        <form className={`card stack-form ${isNew ? 'content-span-8' : 'content-span-7'}`} onSubmit={handleSubmit}>
-          <h3>{isNew ? 'Asset Information' : 'Overview'}</h3>
-
-          <div className="form-grid">
-            <label>
-              <span>Asset Code *</span>
-              <input
-                value={form.assetCode}
-                onChange={(event) => setForm((current) => ({ ...current, assetCode: event.target.value }))}
-                required
-                disabled={!isNew && !canEdit}
-              />
-            </label>
-            <label>
-              <span>Name *</span>
-              <input
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                required
-                disabled={!canEdit}
-              />
-            </label>
-          </div>
-
-          <label>
-            <span>Category *</span>
-            <select
-              value={form.assetCategoryId}
-              onChange={(event) => setForm((current) => ({ ...current, assetCategoryId: event.target.value }))}
-              disabled={!canEdit}
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-          </label>
-
-          <div className="form-grid">
-            <label>
-              <span>Serial Number</span>
-              <input
-                value={form.serialNumber}
-                onChange={(event) => setForm((current) => ({ ...current, serialNumber: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </label>
-            <label>
-              <span>Purchase Amount</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.purchaseAmount}
-                onChange={(event) => setForm((current) => ({ ...current, purchaseAmount: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </label>
-          </div>
-
-          <label>
-            <span>Purchase Date</span>
-            <input
-              type="date"
-              value={form.purchaseDate ? form.purchaseDate.substring(0, 10) : ''}
-              onChange={(event) => setForm((current) => ({
-                ...current,
-                purchaseDate: event.target.value ? new Date(event.target.value).toISOString() : '',
-              }))}
-              disabled={!canEdit}
-            />
-          </label>
-
-          <label>
-            <span>Notes</span>
-            <textarea
-              rows={3}
-              value={form.notes}
-              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-              disabled={!canEdit}
-            />
-          </label>
-
-          {canEdit ? (
-            <button type="submit" className="primary-button" disabled={isSaving}>
-              {isSaving ? 'Saving...' : isNew ? 'Create Asset' : 'Update Asset'}
-            </button>
+            {canEdit ? (
+              <button type="submit" form="asset-form" className="primary-button" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            ) : null}</>
           ) : null}
-        </form>
+        </div>
+      </div>
 
-        {!isNew && asset ? (
-          <div className="content-span-5 detail-panel">
-            <div className="card detail-card">
-              <div className="section-header">
-                <h3 style={{ margin: 0 }}>Current Assignment</h3>
-                {currentAssignment ? <StatusBadge status={currentAssignment.status} /> : null}
-              </div>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {message ? <div className="success-banner">{message}</div> : null}
 
+      {!isNew ? (
+        <div className="detail-tabs">
+          {sectionTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`detail-tab${activeSection === tab.key ? ' detail-tab-active' : ''}`}
+              onClick={() => setActiveSection(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <form id="asset-form" className="form-main" onSubmit={handleSubmit}>
+        {isNew || activeSection === 'overview' ? (
+          <div className="card form-section-grid">
+            <h4 style={{ margin: 0 }}>{isNew ? 'Asset Information' : 'Overview'}</h4>
+
+            <div className="form-two-column">
+              <label>
+                <span className="field-label">Asset Code *</span>
+                <input
+                  value={form.assetCode}
+                  onChange={(event) => setForm((current) => ({ ...current, assetCode: event.target.value }))}
+                  required
+                  disabled={!isNew && !canEdit}
+                />
+              </label>
+              <label>
+                <span className="field-label">Name *</span>
+                <input
+                  value={form.name}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  required
+                  disabled={!canEdit}
+                />
+              </label>
+            </div>
+
+            <label>
+              <span className="field-label">Category *</span>
+              <select
+                value={form.assetCategoryId}
+                onChange={(event) => setForm((current) => ({ ...current, assetCategoryId: event.target.value }))}
+                disabled={!canEdit}
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="form-two-column">
+              <label>
+                <span className="field-label">Serial Number</span>
+                <input
+                  value={form.serialNumber}
+                  onChange={(event) => setForm((current) => ({ ...current, serialNumber: event.target.value }))}
+                  disabled={!canEdit}
+                />
+              </label>
+              <label>
+                <span className="field-label">Purchase Amount</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.purchaseAmount}
+                  onChange={(event) => setForm((current) => ({ ...current, purchaseAmount: event.target.value }))}
+                  disabled={!canEdit}
+                />
+              </label>
+            </div>
+
+            <label>
+              <span className="field-label">Purchase Date</span>
+              <input
+                type="date"
+                value={form.purchaseDate ? form.purchaseDate.substring(0, 10) : ''}
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  purchaseDate: event.target.value ? new Date(event.target.value).toISOString() : '',
+                }))}
+                disabled={!canEdit}
+              />
+            </label>
+
+            <label>
+              <span className="field-label">Notes</span>
+              <textarea
+                rows={3}
+                value={form.notes}
+                onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                disabled={!canEdit}
+              />
+            </label>
+          </div>
+        ) : null}
+
+        {!isNew && activeSection === 'assignment' && asset ? (
+          <>
+            <div className="card form-section-grid">
+              <h4 style={{ margin: 0 }}>Current Assignment</h4>
               {currentAssignment ? (
-                <div className="detail-grid">
+                <div className="form-two-column">
                   <div>
                     <p className="detail-label">Assigned To</p>
                     <p className="detail-value">{formatAssignmentHolder(currentAssignment)}</p>
@@ -565,9 +589,9 @@ export function AssetDetailPage() {
               )}
             </div>
 
-            <div className="card detail-card">
-              <h3 style={{ margin: 0 }}>Snapshot</h3>
-              <div className="detail-grid">
+            <div className="card form-section-grid">
+              <h4 style={{ margin: 0 }}>Snapshot</h4>
+              <div className="form-two-column">
                 <div>
                   <p className="detail-label">Status</p>
                   <p className="detail-value">{asset.currentStatus.replace(/_/g, ' ')}</p>
@@ -587,8 +611,8 @@ export function AssetDetailPage() {
               </div>
             </div>
 
-            <div className="card detail-card">
-              <h3 style={{ margin: 0 }}>Assignment Records</h3>
+            <div className="card form-section-grid">
+              <h4 style={{ margin: 0 }}>Assignment Records</h4>
               {assignments.length === 0 ? (
                 <p className="muted-copy">No assignment history yet.</p>
               ) : (
@@ -608,11 +632,11 @@ export function AssetDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </>
         ) : null}
 
-        {!isNew ? (
-          <div className="content-span-12 card table-card">
+        {!isNew && activeSection === 'history' ? (
+          <div className="card table-card">
             <div>
               <h3 className="table-toolbar-title">Assignment History</h3>
               <p className="table-toolbar-copy">Every assign, return, transfer, damaged, and lost action is recorded here.</p>
@@ -624,7 +648,18 @@ export function AssetDetailPage() {
             />
           </div>
         ) : null}
-      </div>
+
+        {isNew ? (
+          <div className="action-panel" style={{ marginTop: '0.5rem' }}>
+            <button type="submit" className="primary-button" disabled={isSaving}>
+              {isSaving ? 'Creating...' : 'Create Asset'}
+            </button>
+            <button type="button" className="secondary-button" onClick={() => navigate('/assets')}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
+      </form>
 
       <Modal
         isOpen={actionMode !== null}

@@ -291,33 +291,28 @@ export function UsersPage() {
     users[0]?.role.key === 'super_admin';
 
   return (
-    <section className="page-grid">
-      <div className="content-span-12">
-        <PageHeader
-          eyebrow="Security"
-          title="Users"
-          description="Create team accounts, assign roles, and handle password or status changes without losing context."
-          actions={canCreateUser ? (
+    <section className="form-page">
+      <div className="section-header">
+        <div>
+          <PageHeader
+            eyebrow="Security"
+            title="Users"
+            description="Create team accounts, assign roles, and handle password or status changes."
+          />
+        </div>
+        <div className="action-panel">
+          {canCreateUser ? (
             <button type="button" className="primary-button" onClick={openCreateMode}>
               Create user
             </button>
           ) : null}
-        />
+        </div>
       </div>
 
-      {pageMessage ? (
-        <div className="content-span-12">
-          <div className="success-banner">{pageMessage}</div>
-        </div>
-      ) : null}
+      {pageMessage ? <div className="success-banner">{pageMessage}</div> : null}
+      {rolesError ? <div className="error-banner">{rolesError}</div> : null}
 
-      {rolesError ? (
-        <div className="content-span-12">
-          <div className="error-banner">{rolesError}</div>
-        </div>
-      ) : null}
-
-      <div className="content-span-12 list-detail-layout">
+      <div className="list-detail-layout">
         <article className="card table-card selection-panel">
           <div className="table-toolbar">
             <div>
