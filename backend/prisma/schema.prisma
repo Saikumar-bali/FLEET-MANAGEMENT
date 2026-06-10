@@ -90,6 +90,135 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+enum VehicleStatus {
+  AVAILABLE
+  ON_TRIP
+  UNDER_MAINTENANCE
+  UNDER_REPAIR
+  INACTIVE
+  SOLD
+  ACCIDENT
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_TRIP
+  ON_LEAVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum AssetCategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ASSIGNED
+  DAMAGED
+  LOST
+  UNDER_REPAIR
+  RETIRED
+}
+
+enum DocumentEntityType {
+  VEHICLE
+  DRIVER
+  ASSET
+}
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  vehicleNumber   String        @unique @map("vehicle_number")
+  vehicleType     String        @map("vehicle_type")
+  brand           String?
+  model           String?
+  year            Int?
+  fuelType        String        @map("fuel_type")
+  chassisNumber   String?       @unique @map("chassis_number")
+  engineNumber    String?       @unique @map("engine_number")
+  rcNumber        String?       @map("rc_number")
+  insuranceExpiry DateTime?     @map("insurance_expiry")
+  fitnessExpiry   DateTime?     @map("fitness_expiry")
+  pollutionExpiry DateTime?     @map("pollution_expiry")
+  permitExpiry    DateTime?     @map("permit_expiry")
+  currentOdometer Int           @default(0) @map("current_odometer")
+  status          VehicleStatus @default(AVAILABLE)
+  currentDriverId String?       @map("current_driver_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  currentDriver   Driver?       @relation(fields: [currentDriverId], references: [id])
+
+  @@map("vehicles")
+}
+
+model Driver {
+  id                String       @id @default(cuid())
+  name              String
+  mobile            String       @unique
+  alternateMobile   String?      @map("alternate_mobile")
+  licenseNumber     String       @unique @map("license_number")
+  licenseExpiry     DateTime?    @map("license_expiry")
+  address           String?
+  emergencyContact  String?      @map("emergency_contact")
+  experienceYears   Int?         @map("experience_years")
+  status            DriverStatus @default(AVAILABLE)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  vehicles          Vehicle[]
+
+  @@map("drivers")
+}
+
+model AssetCategory {
+  id          String             @id @default(cuid())
+  name        String
+  key         String             @unique
+  description String?
+  status      AssetCategoryStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  assets      Asset[]
+
+  @@map("asset_categories")
+}
+
+model Asset {
+  id              String      @id @default(cuid())
+  assetCode       String      @unique @map("asset_code")
+  name            String
+  assetCategoryId String      @map("asset_category_id")
+  serialNumber    String?     @unique @map("serial_number")
+  purchaseDate    DateTime?   @map("purchase_date")
+  purchaseAmount  Decimal?    @map("purchase_amount")
+  currentStatus   AssetStatus @default(AVAILABLE) @map("current_status")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  assetCategory   AssetCategory @relation(fields: [assetCategoryId], references: [id])
+
+  @@map("assets")
+}
+
+model Document {
+  id             String             @id @default(cuid())
+  entityType     DocumentEntityType @map("entity_type")
+  entityId       String             @map("entity_id")
+  documentType   String             @map("document_type")
+  documentNumber String?            @map("document_number")
+  expiryDate     DateTime?          @map("expiry_date")
+  fileUrl        String?            @map("file_url")
+  fileName       String?            @map("file_name")
+  mimeType       String?            @map("mime_type")
+  sizeBytes      Int?               @map("size_bytes")
+  uploadedById   String?            @map("uploaded_by_id")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  @@map("documents")
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String?  @map("user_id")

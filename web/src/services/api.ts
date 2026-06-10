@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
 import { ApiError } from '../types/api';
-import type { AuthPayload, PermissionRecord, RoleRecord, UserRecord } from '../types/auth';
+import type { AuthPayload, AssetCategoryRecord, AssetRecord, DocumentRecord, DriverRecord, PaginatedResponse, PermissionRecord, RoleRecord, UserRecord, VehicleRecord } from '../types/auth';
 
 type RequestOptions = RequestInit & {
   token?: string | null;
@@ -180,6 +180,219 @@ export function updateUserPassword(token: string, userId: string, password: stri
   return request<{ id: string }>(`/users/${userId}/password`, {
     method: 'PATCH',
     body: JSON.stringify({ password }),
+    token,
+  });
+}
+
+// Vehicles
+export function getVehicles(
+  token: string,
+  params?: { search?: string; status?: string; page?: number; limit?: number },
+) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<VehicleRecord>>(`/vehicles${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getVehicle(token: string, vehicleId: string) {
+  return request<VehicleRecord>(`/vehicles/${vehicleId}`, { token });
+}
+
+export function createVehicle(
+  token: string,
+  payload: Partial<VehicleRecord> & { vehicleNumber: string; vehicleType: string; fuelType: string },
+) {
+  return request<VehicleRecord>('/vehicles', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateVehicle(token: string, vehicleId: string, payload: Partial<VehicleRecord>) {
+  return request<VehicleRecord>(`/vehicles/${vehicleId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateVehicleStatus(token: string, vehicleId: string, status: string) {
+  return request<VehicleRecord>(`/vehicles/${vehicleId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+    token,
+  });
+}
+
+// Drivers
+export function getDrivers(
+  token: string,
+  params?: { search?: string; status?: string; page?: number; limit?: number },
+) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<DriverRecord>>(`/drivers${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getDriver(token: string, driverId: string) {
+  return request<DriverRecord>(`/drivers/${driverId}`, { token });
+}
+
+export function createDriver(
+  token: string,
+  payload: { name: string; mobile: string; licenseNumber: string },
+) {
+  return request<DriverRecord>('/drivers', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateDriver(token: string, driverId: string, payload: Partial<DriverRecord>) {
+  return request<DriverRecord>(`/drivers/${driverId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateDriverStatus(token: string, driverId: string, status: string) {
+  return request<DriverRecord>(`/drivers/${driverId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+    token,
+  });
+}
+
+// Assets - Categories
+export function getAssetCategories(token: string) {
+  return request<AssetCategoryRecord[]>('/assets/categories', { token });
+}
+
+export function createAssetCategory(
+  token: string,
+  payload: { name: string; key: string; description?: string; status?: 'ACTIVE' | 'INACTIVE' },
+) {
+  return request<AssetCategoryRecord>('/assets/categories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateAssetCategory(
+  token: string,
+  categoryId: string,
+  payload: Partial<AssetCategoryRecord>,
+) {
+  return request<AssetCategoryRecord>(`/assets/categories/${categoryId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+// Assets
+export function getAssets(
+  token: string,
+  params?: { search?: string; status?: string; categoryId?: string; page?: number; limit?: number },
+) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.categoryId) query.set('categoryId', params.categoryId);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<AssetRecord>>(`/assets${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getAsset(token: string, assetId: string) {
+  return request<AssetRecord>(`/assets/${assetId}`, { token });
+}
+
+export function createAsset(
+  token: string,
+  payload: { assetCode: string; name: string; assetCategoryId: string },
+) {
+  return request<AssetRecord>('/assets', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateAsset(token: string, assetId: string, payload: Partial<AssetRecord>) {
+  return request<AssetRecord>(`/assets/${assetId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateAssetStatus(token: string, assetId: string, currentStatus: string) {
+  return request<AssetRecord>(`/assets/${assetId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ currentStatus }),
+    token,
+  });
+}
+
+// Documents
+export function getDocuments(
+  token: string,
+  params?: { entityType?: string; entityId?: string; documentType?: string },
+) {
+  const query = new URLSearchParams();
+  if (params?.entityType) query.set('entityType', params.entityType);
+  if (params?.entityId) query.set('entityId', params.entityId);
+  if (params?.documentType) query.set('documentType', params.documentType);
+  const qs = query.toString();
+  return request<PaginatedResponse<DocumentRecord>>(`/documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function createDocument(
+  token: string,
+  payload: {
+    entityType: 'VEHICLE' | 'DRIVER' | 'ASSET';
+    entityId: string;
+    documentType: string;
+    documentNumber?: string;
+    expiryDate?: string;
+    fileUrl?: string;
+    fileName?: string;
+    mimeType?: string;
+    sizeBytes?: number;
+  },
+) {
+  return request<DocumentRecord>('/documents', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function updateDocument(token: string, documentId: string, payload: Partial<DocumentRecord>) {
+  return request<DocumentRecord>(`/documents/${documentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function deleteDocument(token: string, documentId: string) {
+  return request<DocumentRecord>(`/documents/${documentId}`, {
+    method: 'DELETE',
     token,
   });
 }

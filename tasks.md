@@ -2,7 +2,7 @@
 
 ## Active Phase
 
-Phase 1: Auth, Roles, Permissions
+Phase 2: Vehicle, Driver, Asset Masters
 
 ## Immediate Tasks
 
@@ -24,9 +24,31 @@ Phase 1: Auth, Roles, Permissions
 - [x] Verify Neon Prisma push
 - [x] Verify Neon seed
 - [x] Verify login, `/auth/me`, unauthorized `401`, and permission denial `403`
+- [x] Add Prisma models for Vehicle, Driver, Asset Category, Asset, Document
+- [x] Add vehicle CRUD APIs with validation and audit logging
+- [x] Add driver CRUD APIs with validation and audit logging
+- [x] Add asset category CRUD APIs with validation and audit logging
+- [x] Add asset CRUD APIs with validation and audit logging
+- [x] Add document CRUD APIs with validation and audit logging
+- [x] Add paginated list endpoints with search and status filter
+- [x] Add frontend pages for vehicles, drivers, assets
+- [x] Add frontend asset categories management page
+- [x] Add sidebar navigation items permission-gated
+- [x] Add reusable components: DataTable, StatusBadge, PageHeader, etc.
+- [x] Verify Neon Prisma push still works
+- [x] Verify Neon seed still works
+- [x] Verify backend lint and build
+- [x] Verify web lint and build
 
 ## Do Not Start Yet
 
+- [ ] Phase 3: Asset Assignment and History
+- [ ] Phase 4: Trip / Transfer Workflow
+- [ ] Phase 5: Fuel and Expense Workflow
+- [ ] Phase 6: Maintenance and Repair
+- [ ] Phase 7: Finance and P&L
+- [ ] Phase 8: React Native Driver App
+- [ ] Phase 9: Reports, Notifications, Deployment
 - [ ] Tally/TDL integration
 - [ ] GPS hardware integration
 - [ ] Advanced route optimization
