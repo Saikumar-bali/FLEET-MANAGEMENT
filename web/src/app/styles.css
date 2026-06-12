@@ -89,6 +89,7 @@ button {
   top: 0;
   height: 100vh;
   z-index: 30;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -167,6 +168,28 @@ button {
   gap: 0.35rem;
 }
 
+nav.sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.2rem;
+  align-content: start;
+}
+
+nav.sidebar-nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+nav.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+nav.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .nav-item {
   display: grid;
   gap: 0.18rem;
@@ -201,6 +224,7 @@ button {
 
 .sidebar-footer {
   margin-top: auto;
+  flex: 0 0 auto;
 }
 
 .sidebar-profile {

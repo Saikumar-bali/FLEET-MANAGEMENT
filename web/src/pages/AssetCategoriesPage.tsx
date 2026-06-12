@@ -29,6 +29,8 @@ export function AssetCategoriesPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const selected = categories.find((c) => c.id === selectedId) ?? null;
+  const canCreate = auth.hasPermission('asset_create');
+  const canUpdate = auth.hasPermission('asset_update');
 
   useEffect(() => {
     const load = async () => {
@@ -59,6 +61,13 @@ export function AssetCategoriesPage() {
     setMessage(null);
   }, [selected]);
 
+  function startCreateMode() {
+    setSelectedId(null);
+    setForm(initialForm);
+    setError(null);
+    setMessage(null);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!auth.accessToken) return;
@@ -88,8 +97,6 @@ export function AssetCategoriesPage() {
   if (isLoading) return <LoadingState message="Loading categories..." />;
   if (error && categories.length === 0) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
-  const canEdit = auth.hasPermission('asset_update');
-
   return (
     <section className="form-page">
       <div className="section-header">
@@ -99,6 +106,13 @@ export function AssetCategoriesPage() {
             title="Asset Categories"
             description="Create and manage asset category configuration."
           />
+        </div>
+        <div className="action-panel">
+          {canCreate ? (
+            <button type="button" className="primary-button" onClick={startCreateMode}>
+              Create Category
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -111,6 +125,11 @@ export function AssetCategoriesPage() {
               <h3 className="table-toolbar-title">Available categories</h3>
               <p className="table-toolbar-copy">{categories.length} total categories</p>
             </div>
+            {canCreate ? (
+              <button type="button" className="secondary-button" onClick={startCreateMode}>
+                New Category
+              </button>
+            ) : null}
           </div>
 
           {categories.length === 0 ? (
@@ -170,14 +189,14 @@ export function AssetCategoriesPage() {
               {message ? <div className="success-banner">{message}</div> : null}
 
               <div className="button-row">
-                {canEdit ? (
-                  <button type="submit" className="primary-button" disabled={isSaving}>
-                    {isSaving ? 'Saving...' : selectedId ? 'Update Category' : 'Create Category'}
-                  </button>
-                ) : null}
-              </div>
-            </form>
-          </article>
+              {selectedId ? canUpdate : canCreate ? (
+                <button type="submit" className="primary-button" disabled={isSaving}>
+                  {isSaving ? 'Saving...' : selectedId ? 'Update Category' : 'Create Category'}
+                </button>
+              ) : null}
+            </div>
+          </form>
+        </article>
         </aside>
       </div>
     </section>

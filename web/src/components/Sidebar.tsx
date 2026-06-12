@@ -34,7 +34,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
           </div>
           <h1 className="sidebar-title">Hippofleet</h1>
-          <p className="sidebar-copy">Operations workspace for access, masters, and day-to-day controls.</p>
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
