@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.3 (Trip Workflow Local QA) is in progress. Phase 4 core workflow is completed locally and deployed to Vercel staging. Phase 4.3 focuses on making local QA trustworthy before deployment: safe E2E-only test data, all-role credential loading from backend/.env, role-based API and Playwright permission checks, proper cleanup, and suspended-driver test fix. Vercel deployment is deferred until Phase 4.3 is accepted. Phase 5 has not started.
+Phase 4.4 (Playwright-safe E2E data, expanded all-role credential coverage, E2E_REQUIRE_ALL_ROLES mode, role-based API/Playwright permission checks against RBAC seed, and no-deploy discipline) is in progress. Phase 4.3 is completed. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -24,7 +24,8 @@ Phase 4.3 (Trip Workflow Local QA) is in progress. Phase 4 core workflow is comp
 | Phase 4 | Trip / Transfer Workflow | Completed locally and staging-verified |
 | Phase 4.1 | Trip Workflow Hardening and Local QA | Completed locally |
 | Phase 4.2 | Trip Workflow Reliability and Safe Test Data | Completed locally |
-| Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | In Progress |
+| Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | Completed |
+| Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -653,6 +654,52 @@ Phase 4.3 (Trip Workflow Local QA) is in progress. Phase 4 core workflow is comp
 - `npm run web:lint`: pass
 - `npm run web:build`: pass
 - No Vercel deployment performed
+- No mobile files changed
+- No secrets committed
+
+### 2026-06-12 (Phase 4.4 — Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks)
+
+**Expanded credential loaders:**
+- Both `backend/scripts/test-helpers/credentials.ts` and `web/e2e/helpers/credentials.ts` now support all 11 role keys
+- Role keys: admin, super_admin, manager, supervisor, driver, assistant_driver, collector, mechanic, finance, viewer, ops_admin
+- Credential resolution: `E2E_<ROLE>_IDENTIFIER` → `<ROLE>_USERNAME` → `<ROLE>_EMAIL` → fallback; `E2E_<ROLE>_PASSWORD` → `<ROLE>_PASSWORD`
+- Added `requireAllRoles()` function reading `E2E_REQUIRE_ALL_ROLES=true`
+- Added `allRoleKeys` array for iteration
+
+**SKIP semantics:**
+- CheckResult status type is now `'PASS' | 'FAIL' | 'SKIP'`
+- Missing role credentials produce SKIP, not FAIL
+- `E2E_REQUIRE_ALL_ROLES=true` makes missing credentials fail instead
+- Summary shows passed/failed/skipped counts
+
+**Expanded role-based API checks:**
+- All 11 roles tested against `defaultRolePermissionMap` from `rbac.ts`
+- Each role tested for: GET /trips (trip_view), POST /trips (trip_create), POST /trips/:id/start (trip_start), POST /trips/:id/cancel (trip_cancel)
+- Permission-appropriate assertions: 403 for denied, success or 400 for allowed-but-invalid-state
+
+**Playwright API helper:**
+- Created `web/e2e/helpers/api.ts` with: `loginAsAdmin()`, `createE2EVehicle()`, `createE2EDriver()`, `createE2ETrip()`, `cancelTrip()`, `resetVehicleStatus()`, `resetDriverStatus()`, `setupE2ETestData()`, `cleanupE2ETestData()`
+- All records use TEST-E2E- prefixed names
+
+**Playwright trips.spec.ts rewritten:**
+- `beforeAll`: creates TEST-E2E vehicle + driver via API
+- `afterAll`: cleanup via API (cancel started trips, reset statuses)
+- Tests select TEST-E2E rows by vehicle number, never first row
+- Role-based UI checks for all 11 roles with RBAC-aware assertions
+
+**Vercel staging projects deleted:**
+- `fleet-management-web-staging` and `fleet-management-backend-staging` removed via `vercel project rm`
+- Only `web` and `backend` projects remain
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: all 11 role variables, E2E_REQUIRE_ALL_ROLES, SKIP semantics, TEST-E2E UI data
+- Updated `progress.md`: Phase 4.3 marked completed, Phase 4.4 in progress
+
+**Verification:**
+- `npm run backend:lint`: pending
+- `npm run backend:build`: pending
+- `npm run web:lint`: pending
+- `npm run web:build`: pending
 - No mobile files changed
 - No secrets committed
 

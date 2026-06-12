@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getAdminCredential, getApiBase, getCredential, RoleKey } from './test-helpers/credentials';
+import {
+  getAdminCredential,
+  getApiBase,
+  getCredential,
+  requireAllRoles,
+  allRoleKeys,
+  RoleKey,
+} from './test-helpers/credentials';
+
+type CheckStatus = 'PASS' | 'FAIL' | 'SKIP';
 
 type CheckResult = {
   name: string;
-  ok: boolean;
-  status?: number;
+  status: CheckStatus;
+  httpStatus?: number;
   detail?: string;
 };
 
@@ -22,8 +31,16 @@ async function requestJson<T>(
   }
 }
 
-function pushResult(results: CheckResult[], name: string, ok: boolean, status?: number, detail?: string) {
-  results.push({ name, ok, status, detail });
+function pass(results: CheckResult[], name: string, httpStatus?: number, detail?: string) {
+  results.push({ name, status: 'PASS', httpStatus, detail });
+}
+
+function fail(results: CheckResult[], name: string, httpStatus?: number, detail?: string) {
+  results.push({ name, status: 'FAIL', httpStatus, detail });
+}
+
+function skip(results: CheckResult[], name: string, detail?: string) {
+  results.push({ name, status: 'SKIP', detail });
 }
 
 function ts(): string {
@@ -47,7 +64,6 @@ async function cleanup(
     tripIds: string[];
     startedTripIds: string[];
   },
-  results: CheckResult[],
 ) {
   const authHeaders = { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' };
 
@@ -88,10 +104,59 @@ async function cleanup(
   }
 }
 
+// Role-permission matrix from rbac.ts defaultRolePermissionMap
+const expectedPermissions: Record<RoleKey, { canDo: string[]; cannotDo: string[] }> = {
+  super_admin: {
+    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+    cannotDo: [],
+  },
+  admin: {
+    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+    cannotDo: ['role_delete'],
+  },
+  manager: {
+    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel', 'vehicle_view', 'driver_view'],
+    cannotDo: ['user_create', 'user_delete', 'role_create', 'role_delete', 'permission_assign'],
+  },
+  supervisor: {
+    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel', 'vehicle_view', 'driver_view'],
+    cannotDo: ['user_view', 'user_create', 'role_view', 'permission_view'],
+  },
+  driver: {
+    canDo: ['trip_view', 'trip_start', 'trip_end'],
+    cannotDo: ['trip_create', 'trip_cancel', 'trip_update', 'vehicle_create', 'driver_create'],
+  },
+  assistant_driver: {
+    canDo: ['trip_view'],
+    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_update'],
+  },
+  collector: {
+    canDo: ['finance_view', 'report_view'],
+    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
+  },
+  mechanic: {
+    canDo: ['repair_view', 'repair_update', 'repair_close'],
+    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
+  },
+  finance: {
+    canDo: ['finance_view', 'finance_approve', 'fuel_view', 'expense_view', 'report_view', 'report_export'],
+    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
+  },
+  viewer: {
+    canDo: ['trip_view'],
+    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_update'],
+  },
+  ops_admin: {
+    canDo: [],
+    cannotDo: ['trip_view', 'trip_create', 'trip_start', 'trip_end', 'trip_cancel'],
+  },
+};
+
 async function main() {
   const apiBase = getApiBase();
   const { identifier: adminId, password: adminPass } = getAdminCredential();
   const results: CheckResult[] = [];
+  const requireAll = requireAllRoles();
 
   const created = {
     vehicleIds: [] as string[],
@@ -105,18 +170,31 @@ async function main() {
   try {
     // 1. Health
     const health = await requestJson<{ data?: { database?: string } }>(`${apiBase}/api/v1/health`);
-    pushResult(results, 'GET /health', health.ok && health.data?.data?.database === 'connected', health.status);
+    if (health.ok && health.data?.data?.database === 'connected') {
+      pass(results, 'GET /health', health.status);
+    } else {
+      fail(results, 'GET /health', health.status);
+    }
 
     // 2. Login
     adminToken = await login(apiBase, adminId, adminPass);
-    pushResult(results, 'POST /auth/login', !!adminToken);
-    if (!adminToken) { printSummary(results); process.exit(1); }
+    if (adminToken) {
+      pass(results, 'POST /auth/login');
+    } else {
+      fail(results, 'POST /auth/login');
+      printSummary(results);
+      process.exit(1);
+    }
 
     const authHeaders = { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' };
 
     // 3. Unauthorized returns 401
     const unauth = await requestJson(`${apiBase}/api/v1/trips`);
-    pushResult(results, 'GET /trips without token returns 401', !unauth.ok && unauth.status === 401, unauth.status);
+    if (!unauth.ok && unauth.status === 401) {
+      pass(results, 'GET /trips without token returns 401', unauth.status);
+    } else {
+      fail(results, 'GET /trips without token returns 401', unauth.status);
+    }
 
     // 4. Create TEST-E2E vehicle
     const vNum = `TEST-E2E-TRIP-VEH-${ts()}`;
@@ -125,9 +203,14 @@ async function main() {
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: vNum, vehicleType: 'TRUCK', fuelType: 'DIESEL' }) },
     );
     const vehicle = newV.data?.data;
-    pushResult(results, 'Create TEST-E2E vehicle', !!vehicle);
-    if (vehicle) created.vehicleIds.push(vehicle.id);
-    if (!vehicle) { printSummary(results); process.exit(1); }
+    if (vehicle) {
+      pass(results, 'Create TEST-E2E vehicle', newV.status);
+      created.vehicleIds.push(vehicle.id);
+    } else {
+      fail(results, 'Create TEST-E2E vehicle', newV.status);
+      printSummary(results);
+      process.exit(1);
+    }
 
     // 5. Create TEST-E2E driver
     const dName = `TEST-E2E-TRIP-DRV-${ts()}`;
@@ -138,9 +221,14 @@ async function main() {
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: dName, mobile: dMobile, licenseNumber: dLic }) },
     );
     const driver = newD.data?.data;
-    pushResult(results, 'Create TEST-E2E driver', !!driver);
-    if (driver) created.driverIds.push(driver.id);
-    if (!driver) { printSummary(results); process.exit(1); }
+    if (driver) {
+      pass(results, 'Create TEST-E2E driver', newD.status);
+      created.driverIds.push(driver.id);
+    } else {
+      fail(results, 'Create TEST-E2E driver', newD.status);
+      printSummary(results);
+      process.exit(1);
+    }
 
     // 6. Create trip
     const createRes = await requestJson<{ data?: { id: string; tripNumber: string; status: string } }>(
@@ -148,40 +236,69 @@ async function main() {
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'Depot', destinationName: 'Client A' }) },
     );
     const tripId = createRes.data?.data?.id;
-    pushResult(results, 'POST /trips (create)', createRes.ok && !!tripId, createRes.status);
-    if (tripId) created.tripIds.push(tripId);
-    if (!tripId) { printSummary(results); process.exit(1); }
+    if (createRes.ok && tripId) {
+      pass(results, 'POST /trips (create)', createRes.status);
+      created.tripIds.push(tripId);
+    } else {
+      fail(results, 'POST /trips (create)', createRes.status);
+      printSummary(results);
+      process.exit(1);
+    }
 
     // 7. GET /trips list
     const listRes = await requestJson<{ data?: { items?: unknown[] } }>(`${apiBase}/api/v1/trips`, { headers: authHeaders });
-    pushResult(results, 'GET /trips (list)', listRes.ok && Array.isArray(listRes.data?.data?.items), listRes.status);
+    if (listRes.ok && Array.isArray(listRes.data?.data?.items)) {
+      pass(results, 'GET /trips (list)', listRes.status);
+    } else {
+      fail(results, 'GET /trips (list)', listRes.status);
+    }
 
     // 8. GET /trips/:id
     const getRes = await requestJson<{ data?: { id: string; status: string } }>(`${apiBase}/api/v1/trips/${tripId}`, { headers: authHeaders });
-    pushResult(results, `GET /trips/${tripId}`, getRes.ok && getRes.data?.data?.status === 'DRAFT', getRes.status);
+    if (getRes.ok && getRes.data?.data?.status === 'DRAFT') {
+      pass(results, `GET /trips/${tripId}`, getRes.status);
+    } else {
+      fail(results, `GET /trips/${tripId}`, getRes.status);
+    }
 
     // 9. Schedule trip
     const schedRes = await requestJson<{ data?: { status: string } }>(
       `${apiBase}/api/v1/trips/${tripId}/schedule`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ plannedStartAt: new Date().toISOString() }) },
     );
-    pushResult(results, 'POST /trips/:id/schedule', schedRes.ok && schedRes.data?.data?.status === 'SCHEDULED', schedRes.status);
+    if (schedRes.ok && schedRes.data?.data?.status === 'SCHEDULED') {
+      pass(results, 'POST /trips/:id/schedule', schedRes.status);
+    } else {
+      fail(results, 'POST /trips/:id/schedule', schedRes.status);
+    }
 
     // 10. Start trip
     const startRes = await requestJson<{ data?: { status: string } }>(
       `${apiBase}/api/v1/trips/${tripId}/start`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 1000 }) },
     );
-    pushResult(results, 'POST /trips/:id/start', startRes.ok && startRes.data?.data?.status === 'STARTED', startRes.status);
-    if (startRes.ok) created.startedTripIds.push(tripId);
+    if (startRes.ok && startRes.data?.data?.status === 'STARTED') {
+      pass(results, 'POST /trips/:id/start', startRes.status);
+      created.startedTripIds.push(tripId);
+    } else {
+      fail(results, 'POST /trips/:id/start', startRes.status);
+    }
 
     // 11. Verify vehicle ON_TRIP
     const vAfterStart = await requestJson<{ data?: { status: string } }>(`${apiBase}/api/v1/vehicles/${vehicle.id}`, { headers: authHeaders });
-    pushResult(results, 'Vehicle status ON_TRIP after start', vAfterStart.ok && vAfterStart.data?.data?.status === 'ON_TRIP', vAfterStart.status);
+    if (vAfterStart.ok && vAfterStart.data?.data?.status === 'ON_TRIP') {
+      pass(results, 'Vehicle status ON_TRIP after start', vAfterStart.status);
+    } else {
+      fail(results, 'Vehicle status ON_TRIP after start', vAfterStart.status);
+    }
 
     // 12. Verify driver ON_TRIP
     const dAfterStart = await requestJson<{ data?: { status: string } }>(`${apiBase}/api/v1/drivers/${driver.id}`, { headers: authHeaders });
-    pushResult(results, 'Driver status ON_TRIP after start', dAfterStart.ok && dAfterStart.data?.data?.status === 'ON_TRIP', dAfterStart.status);
+    if (dAfterStart.ok && dAfterStart.data?.data?.status === 'ON_TRIP') {
+      pass(results, 'Driver status ON_TRIP after start', dAfterStart.status);
+    } else {
+      fail(results, 'Driver status ON_TRIP after start', dAfterStart.status);
+    }
 
     // 13. Second trip with same vehicle blocked
     const create2 = await requestJson<{ data?: { id: string } }>(
@@ -193,10 +310,14 @@ async function main() {
         `${apiBase}/api/v1/trips/${create2.data.data.id}/start`,
         { method: 'POST', headers: authHeaders, body: JSON.stringify({}) },
       );
-      pushResult(results, 'Second trip with same vehicle blocked (400)', !start2.ok && start2.status === 400, start2.status);
+      if (!start2.ok && start2.status === 400) {
+        pass(results, 'Second trip with same vehicle blocked (400)', start2.status);
+      } else {
+        fail(results, 'Second trip with same vehicle blocked (400)', start2.status);
+      }
       await requestJson(`${apiBase}/api/v1/trips/${create2.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
     } else {
-      pushResult(results, 'Second trip with same vehicle blocked (400)', false, undefined, 'Could not create second trip');
+      fail(results, 'Second trip with same vehicle blocked (400)', undefined, 'Could not create second trip');
     }
 
     // 14. Complete trip
@@ -204,16 +325,28 @@ async function main() {
       `${apiBase}/api/v1/trips/${tripId}/complete`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ endOdometer: 1200 }) },
     );
-    pushResult(results, 'POST /trips/:id/complete', compRes.ok && compRes.data?.data?.status === 'COMPLETED', compRes.status);
-    created.startedTripIds = created.startedTripIds.filter((id) => id !== tripId);
+    if (compRes.ok && compRes.data?.data?.status === 'COMPLETED') {
+      pass(results, 'POST /trips/:id/complete', compRes.status);
+      created.startedTripIds = created.startedTripIds.filter((id) => id !== tripId);
+    } else {
+      fail(results, 'POST /trips/:id/complete', compRes.status);
+    }
 
     // 15. Verify vehicle AVAILABLE
     const vAfterComp = await requestJson<{ data?: { status: string } }>(`${apiBase}/api/v1/vehicles/${vehicle.id}`, { headers: authHeaders });
-    pushResult(results, 'Vehicle status AVAILABLE after complete', vAfterComp.ok && vAfterComp.data?.data?.status === 'AVAILABLE', vAfterComp.status);
+    if (vAfterComp.ok && vAfterComp.data?.data?.status === 'AVAILABLE') {
+      pass(results, 'Vehicle status AVAILABLE after complete', vAfterComp.status);
+    } else {
+      fail(results, 'Vehicle status AVAILABLE after complete', vAfterComp.status);
+    }
 
     // 16. Verify driver AVAILABLE
     const dAfterComp = await requestJson<{ data?: { status: string } }>(`${apiBase}/api/v1/drivers/${driver.id}`, { headers: authHeaders });
-    pushResult(results, 'Driver status AVAILABLE after complete', dAfterComp.ok && dAfterComp.data?.data?.status === 'AVAILABLE', dAfterComp.status);
+    if (dAfterComp.ok && dAfterComp.data?.data?.status === 'AVAILABLE') {
+      pass(results, 'Driver status AVAILABLE after complete', dAfterComp.status);
+    } else {
+      fail(results, 'Driver status AVAILABLE after complete', dAfterComp.status);
+    }
 
     // 17. History records
     const histRes = await requestJson<{ data?: Array<{ action: string }> }>(
@@ -221,10 +354,13 @@ async function main() {
       { headers: authHeaders },
     );
     const actions = histRes.data?.data?.map((h) => h.action) ?? [];
-    pushResult(results, 'History contains CREATED', actions.includes('CREATED'));
-    pushResult(results, 'History contains SCHEDULED', actions.includes('SCHEDULED'));
-    pushResult(results, 'History contains STARTED', actions.includes('STARTED'));
-    pushResult(results, 'History contains COMPLETED', actions.includes('COMPLETED'));
+    for (const action of ['CREATED', 'SCHEDULED', 'STARTED', 'COMPLETED']) {
+      if (actions.includes(action)) {
+        pass(results, `History contains ${action}`);
+      } else {
+        fail(results, `History contains ${action}`);
+      }
+    }
 
     // 18. Create and cancel a trip
     const create3 = await requestJson<{ data?: { id: string } }>(
@@ -238,28 +374,44 @@ async function main() {
         `${apiBase}/api/v1/trips/${cancelId}/cancel`,
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ notes: 'Test cancel' }) },
       );
-      pushResult(results, 'POST /trips/:id/cancel', cancelRes.ok && cancelRes.data?.data?.status === 'CANCELLED', cancelRes.status);
+      if (cancelRes.ok && cancelRes.data?.data?.status === 'CANCELLED') {
+        pass(results, 'POST /trips/:id/cancel', cancelRes.status);
+      } else {
+        fail(results, 'POST /trips/:id/cancel', cancelRes.status);
+      }
 
       const cancelHist = await requestJson<{ data?: Array<{ action: string }> }>(
         `${apiBase}/api/v1/trips/${cancelId}/history`,
         { headers: authHeaders },
       );
-      pushResult(results, 'Cancelled trip history contains CANCELLED', (cancelHist.data?.data?.some((h) => h.action === 'CANCELLED') ?? false));
+      if (cancelHist.data?.data?.some((h) => h.action === 'CANCELLED')) {
+        pass(results, 'Cancelled trip history contains CANCELLED');
+      } else {
+        fail(results, 'Cancelled trip history contains CANCELLED');
+      }
     } else {
-      pushResult(results, 'POST /trips/:id/cancel', false, undefined, 'Could not create cancel test trip');
+      fail(results, 'POST /trips/:id/cancel', undefined, 'Could not create cancel test trip');
     }
 
     // 19. Invalid status query
     const badQuery = await requestJson(`${apiBase}/api/v1/trips?status=INVALID_STATUS`, { headers: authHeaders });
-    pushResult(results, 'Invalid status query returns 400/422', !badQuery.ok && (badQuery.status === 400 || badQuery.status === 422), badQuery.status);
+    if (!badQuery.ok && (badQuery.status === 400 || badQuery.status === 422)) {
+      pass(results, 'Invalid status query returns 400/422', badQuery.status);
+    } else {
+      fail(results, 'Invalid status query returns 400/422', badQuery.status);
+    }
 
     // 20. Invalid tripType query
     const badType = await requestJson(`${apiBase}/api/v1/trips?tripType=INVALID_TYPE`, { headers: authHeaders });
-    pushResult(results, 'Invalid tripType query returns 400/422', !badType.ok && (badType.status === 400 || badType.status === 422), badType.status);
+    if (!badType.ok && (badType.status === 400 || badType.status === 422)) {
+      pass(results, 'Invalid tripType query returns 400/422', badType.status);
+    } else {
+      fail(results, 'Invalid tripType query returns 400/422', badType.status);
+    }
 
-    // --- NEGATIVE CHECKS (always create fresh E2E records) ---
+    // --- NEGATIVE CHECKS ---
 
-    // 21. UNDER_MAINTENANCE vehicle → cannot start
+    // 21. UNDER_MAINTENANCE vehicle cannot start
     const maintVNum = `TEST-E2E-TRIP-MAINT-${ts()}`;
     const maintV = await requestJson<{ data?: { id: string } }>(
       `${apiBase}/api/v1/vehicles`,
@@ -281,16 +433,20 @@ async function main() {
           `${apiBase}/api/v1/trips/${maintTrip.data.data.id}/start`,
           { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 100 }) },
         );
-        pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', !startMaint.ok && startMaint.status === 400, startMaint.status);
+        if (!startMaint.ok && startMaint.status === 400) {
+          pass(results, 'UNDER_MAINTENANCE vehicle start blocked (400)', startMaint.status);
+        } else {
+          fail(results, 'UNDER_MAINTENANCE vehicle start blocked (400)', startMaint.status);
+        }
         await requestJson(`${apiBase}/api/v1/trips/${maintTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
       } else {
-        pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', false, undefined, 'Could not create trip with maintenance vehicle');
+        fail(results, 'UNDER_MAINTENANCE vehicle start blocked (400)', undefined, 'Could not create trip');
       }
     } else {
-      pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', false, undefined, 'Could not create maintenance vehicle');
+      fail(results, 'UNDER_MAINTENANCE vehicle start blocked (400)', undefined, 'Could not create vehicle');
     }
 
-    // 22. SUSPENDED driver → cannot start (uses PATCH /drivers/:id/status)
+    // 22. SUSPENDED driver cannot start
     const suspDName = `TEST-E2E-TRIP-SUSP-${ts()}`;
     const suspD = await requestJson<{ data?: { id: string } }>(
       `${apiBase}/api/v1/drivers`,
@@ -312,21 +468,29 @@ async function main() {
           `${apiBase}/api/v1/trips/${suspTrip.data.data.id}/start`,
           { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 100 }) },
         );
-        pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', !startSusp.ok && startSusp.status === 400, startSusp.status);
+        if (!startSusp.ok && startSusp.status === 400) {
+          pass(results, 'SUSPENDED driver start blocked (400)', startSusp.status);
+        } else {
+          fail(results, 'SUSPENDED driver start blocked (400)', startSusp.status);
+        }
         await requestJson(`${apiBase}/api/v1/trips/${suspTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
       } else {
-        pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', false, undefined, 'Could not create trip with suspended driver');
+        fail(results, 'SUSPENDED driver start blocked (400)', undefined, 'Could not create trip');
       }
     } else {
-      pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', false, undefined, 'Could not create suspended driver');
+      fail(results, 'SUSPENDED driver start blocked (400)', undefined, 'Could not create driver');
     }
 
-    // 23. driver === assistantDriver
+    // 23. driver === assistantDriver rejected
     const sameTrip = await requestJson(
       `${apiBase}/api/v1/trips`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, assistantDriverId: driver.id, originName: 'X', destinationName: 'Y' }) },
     );
-    pushResult(results, 'driver === assistantDriver rejected (400)', !sameTrip.ok && sameTrip.status === 400, sameTrip.status);
+    if (!sameTrip.ok && sameTrip.status === 400) {
+      pass(results, 'driver === assistantDriver rejected (400)', sameTrip.status);
+    } else {
+      fail(results, 'driver === assistantDriver rejected (400)', sameTrip.status);
+    }
 
     // 24. Negative startOdometer
     const negOdoTrip = await requestJson<{ data?: { id: string } }>(
@@ -339,10 +503,14 @@ async function main() {
         `${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/start`,
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: -100 }) },
       );
-      pushResult(results, 'Negative startOdometer rejected (400)', !negStart.ok && negStart.status === 400, negStart.status);
+      if (!negStart.ok && negStart.status === 400) {
+        pass(results, 'Negative startOdometer rejected (400)', negStart.status);
+      } else {
+        fail(results, 'Negative startOdometer rejected (400)', negStart.status);
+      }
       await requestJson(`${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
     } else {
-      pushResult(results, 'Negative startOdometer rejected (400)', false, undefined, 'Could not create odometer test trip');
+      fail(results, 'Negative startOdometer rejected (400)', undefined, 'Could not create trip');
     }
 
     // 25. endOdometer < startOdometer
@@ -359,101 +527,128 @@ async function main() {
         `${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/complete`,
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ endOdometer: 500 }) },
       );
-      pushResult(results, 'endOdometer < startOdometer rejected (400)', !failComplete.ok && failComplete.status === 400, failComplete.status);
+      if (!failComplete.ok && failComplete.status === 400) {
+        pass(results, 'endOdometer < startOdometer rejected (400)', failComplete.status);
+      } else {
+        fail(results, 'endOdometer < startOdometer rejected (400)', failComplete.status);
+      }
       await requestJson(`${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
       created.startedTripIds = created.startedTripIds.filter((id) => id !== odoFailTrip.data!.data!.id);
     } else {
-      pushResult(results, 'endOdometer < startOdometer rejected (400)', false, undefined, 'Could not create odometer test trip');
+      fail(results, 'endOdometer < startOdometer rejected (400)', undefined, 'Could not create trip');
     }
 
-    // --- ROLE-BASED PERMISSION CHECKS ---
+    // --- ROLE-BASED PERMISSION CHECKS (all 11 roles) ---
 
-    // 26. Viewer: can GET /trips (trip_view), cannot POST /trips (no trip_create)
-    const viewerCred = getCredential('viewer');
-    if (viewerCred) {
-      const viewerToken = await login(apiBase, viewerCred.identifier, viewerCred.password);
-      if (viewerToken) {
-        const vHeaders = { Authorization: `Bearer ${viewerToken}`, 'Content-Type': 'application/json' };
-        const vList = await requestJson(`${apiBase}/api/v1/trips`, { headers: vHeaders });
-        pushResult(results, 'Viewer can GET /trips (trip_view)', vList.ok, vList.status);
+    for (const roleKey of allRoleKeys) {
+      const expected = expectedPermissions[roleKey];
+      const roleCred = getCredential(roleKey);
 
-        const vCreate = await requestJson(
-          `${apiBase}/api/v1/trips`,
-          { method: 'POST', headers: vHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, originName: 'X', destinationName: 'Y' }) },
-        );
-        pushResult(results, 'Viewer cannot POST /trips (no trip_create)', !vCreate.ok && vCreate.status === 403, vCreate.status);
-
-        const vStart = await requestJson(
-          `${apiBase}/api/v1/trips/${tripId}/start`,
-          { method: 'POST', headers: vHeaders, body: JSON.stringify({}) },
-        );
-        pushResult(results, 'Viewer cannot POST /trips/:id/start (no trip_start)', !vStart.ok && vStart.status === 403, vStart.status);
-      } else {
-        pushResult(results, 'Viewer can GET /trips (trip_view)', false, undefined, 'Viewer login failed');
-        pushResult(results, 'Viewer cannot POST /trips (no trip_create)', false, undefined, 'Viewer login failed');
-        pushResult(results, 'Viewer cannot POST /trips/:id/start (no trip_start)', false, undefined, 'Viewer login failed');
+      if (!roleCred) {
+        const msg = `No ${roleKey} credentials in .env`;
+        if (requireAll) {
+          fail(results, `[${roleKey}] all permission checks`, undefined, msg);
+        } else {
+          skip(results, `[${roleKey}] all permission checks`, msg);
+        }
+        continue;
       }
-    } else {
-      pushResult(results, 'Viewer can GET /trips (trip_view)', false, undefined, 'No viewer credentials in .env');
-      pushResult(results, 'Viewer cannot POST /trips (no trip_create)', false, undefined, 'No viewer credentials in .env');
-      pushResult(results, 'Viewer cannot POST /trips/:id/start (no trip_start)', false, undefined, 'No viewer credentials in .env');
-    }
 
-    // 27. Driver: has trip_start/trip_end but not trip_create/trip_cancel
-    const driverCred = getCredential('driver');
-    if (driverCred) {
-      const driverToken = await login(apiBase, driverCred.identifier, driverCred.password);
-      if (driverToken) {
-        const drHeaders = { Authorization: `Bearer ${driverToken}`, 'Content-Type': 'application/json' };
-        const drCreate = await requestJson(
-          `${apiBase}/api/v1/trips`,
-          { method: 'POST', headers: drHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, originName: 'X', destinationName: 'Y' }) },
-        );
-        pushResult(results, 'Driver cannot POST /trips (no trip_create)', !drCreate.ok && drCreate.status === 403, drCreate.status);
-
-        const drCancel = await requestJson(
-          `${apiBase}/api/v1/trips/${tripId}/cancel`,
-          { method: 'POST', headers: drHeaders, body: JSON.stringify({}) },
-        );
-        pushResult(results, 'Driver cannot POST /trips/:id/cancel (no trip_cancel)', !drCancel.ok && drCancel.status === 403, drCancel.status);
-      } else {
-        pushResult(results, 'Driver cannot POST /trips (no trip_create)', false, undefined, 'Driver login failed');
-        pushResult(results, 'Driver cannot POST /trips/:id/cancel (no trip_cancel)', false, undefined, 'Driver login failed');
+      const roleToken = await login(apiBase, roleCred.identifier, roleCred.password);
+      if (!roleToken) {
+        fail(results, `[${roleKey}] login`, undefined, 'Login failed');
+        continue;
       }
-    } else {
-      pushResult(results, 'Driver cannot POST /trips (no trip_create)', false, undefined, 'No driver credentials in .env');
-      pushResult(results, 'Driver cannot POST /trips/:id/cancel (no trip_cancel)', false, undefined, 'No driver credentials in .env');
-    }
+      pass(results, `[${roleKey}] login`);
 
-    // 28. Manager: has all trip permissions
-    const managerCred = getCredential('manager');
-    if (managerCred) {
-      const managerToken = await login(apiBase, managerCred.identifier, managerCred.password);
-      if (managerToken) {
-        const mHeaders = { Authorization: `Bearer ${managerToken}`, 'Content-Type': 'application/json' };
-        const mList = await requestJson(`${apiBase}/api/v1/trips`, { headers: mHeaders });
-        pushResult(results, 'Manager can GET /trips (trip_view)', mList.ok, mList.status);
+      const rHeaders = { Authorization: `Bearer ${roleToken}`, 'Content-Type': 'application/json' };
 
-        const mCreate = await requestJson(
-          `${apiBase}/api/v1/trips`,
-          { method: 'POST', headers: mHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'X', destinationName: 'Y' }) },
-        );
-        pushResult(results, 'Manager can POST /trips (trip_create)', mCreate.ok && !!mCreate.data?.data?.id, mCreate.status);
-        if (mCreate.data?.data?.id) {
-          created.tripIds.push(mCreate.data.data.id);
+      // Test trip_view: GET /trips
+      const canViewTrips = expected.canDo.includes('trip_view');
+      const viewRes = await requestJson(`${apiBase}/api/v1/trips`, { headers: rHeaders });
+      if (canViewTrips) {
+        if (viewRes.ok) {
+          pass(results, `[${roleKey}] can GET /trips (trip_view)`, viewRes.status);
+        } else {
+          fail(results, `[${roleKey}] can GET /trips (trip_view)`, viewRes.status);
         }
       } else {
-        pushResult(results, 'Manager can GET /trips (trip_view)', false, undefined, 'Manager login failed');
-        pushResult(results, 'Manager can POST /trips (trip_create)', false, undefined, 'Manager login failed');
+        if (!viewRes.ok && viewRes.status === 403) {
+          pass(results, `[${roleKey}] cannot GET /trips (no trip_view)`, viewRes.status);
+        } else {
+          fail(results, `[${roleKey}] cannot GET /trips (no trip_view)`, viewRes.status);
+        }
       }
-    } else {
-      pushResult(results, 'Manager can GET /trips (trip_view)', false, undefined, 'No manager credentials in .env');
-      pushResult(results, 'Manager can POST /trips (trip_create)', false, undefined, 'No manager credentials in .env');
+
+      // Test trip_create: POST /trips
+      const canCreateTrip = expected.canDo.includes('trip_create');
+      const createTripRes = await requestJson<{ data?: { id: string } }>(
+        `${apiBase}/api/v1/trips`,
+        { method: 'POST', headers: rHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, originName: 'X', destinationName: 'Y' }) },
+      );
+      if (canCreateTrip) {
+        if (createTripRes.ok && createTripRes.data?.data?.id) {
+          pass(results, `[${roleKey}] can POST /trips (trip_create)`, createTripRes.status);
+          created.tripIds.push(createTripRes.data.data.id);
+        } else {
+          fail(results, `[${roleKey}] can POST /trips (trip_create)`, createTripRes.status);
+        }
+      } else {
+        if (!createTripRes.ok && createTripRes.status === 403) {
+          pass(results, `[${roleKey}] cannot POST /trips (no trip_create)`, createTripRes.status);
+        } else {
+          fail(results, `[${roleKey}] cannot POST /trips (no trip_create)`, createTripRes.status);
+        }
+      }
+
+      // Test trip_start: POST /trips/:id/start
+      const canStartTrip = expected.canDo.includes('trip_start');
+      const startTripRes = await requestJson(
+        `${apiBase}/api/v1/trips/${tripId}/start`,
+        { method: 'POST', headers: rHeaders, body: JSON.stringify({ startOdometer: 99999 }) },
+      );
+      if (canStartTrip) {
+        if (!startTripRes.ok && startTripRes.status === 400) {
+          pass(results, `[${roleKey}] can POST /trips/:id/start (trip_start, rejected=400 OK)`, startTripRes.status);
+        } else if (startTripRes.ok) {
+          pass(results, `[${roleKey}] can POST /trips/:id/start (trip_start)`, startTripRes.status);
+        } else {
+          fail(results, `[${roleKey}] can POST /trips/:id/start (trip_start)`, startTripRes.status);
+        }
+      } else {
+        if (!startTripRes.ok && startTripRes.status === 403) {
+          pass(results, `[${roleKey}] cannot POST /trips/:id/start (no trip_start)`, startTripRes.status);
+        } else {
+          fail(results, `[${roleKey}] cannot POST /trips/:id/start (no trip_start)`, startTripRes.status);
+        }
+      }
+
+      // Test trip_cancel: POST /trips/:id/cancel
+      const canCancelTrip = expected.canDo.includes('trip_cancel');
+      const cancelTripRes = await requestJson(
+        `${apiBase}/api/v1/trips/${tripId}/cancel`,
+        { method: 'POST', headers: rHeaders, body: JSON.stringify({ notes: 'role test' }) },
+      );
+      if (canCancelTrip) {
+        if (!cancelTripRes.ok && (cancelTripRes.status === 400 || cancelTripRes.status === 409)) {
+          pass(results, `[${roleKey}] can POST /trips/:id/cancel (trip_cancel, rejected=${cancelTripRes.status} OK)`, cancelTripRes.status);
+        } else if (cancelTripRes.ok) {
+          pass(results, `[${roleKey}] can POST /trips/:id/cancel (trip_cancel)`, cancelTripRes.status);
+        } else {
+          fail(results, `[${roleKey}] can POST /trips/:id/cancel (trip_cancel)`, cancelTripRes.status);
+        }
+      } else {
+        if (!cancelTripRes.ok && cancelTripRes.status === 403) {
+          pass(results, `[${roleKey}] cannot POST /trips/:id/cancel (no trip_cancel)`, cancelTripRes.status);
+        } else {
+          fail(results, `[${roleKey}] cannot POST /trips/:id/cancel (no trip_cancel)`, cancelTripRes.status);
+        }
+      }
     }
 
   } finally {
     if (adminToken) {
-      await cleanup(apiBase, adminToken, created, results);
+      await cleanup(apiBase, adminToken, created);
     }
   }
 
@@ -463,22 +658,24 @@ async function main() {
 
 function printSummary(results: CheckResult[]): number {
   console.log('\nTrip workflow test summary');
-  console.log('─'.repeat(60));
+  console.log('─'.repeat(70));
   for (const r of results) {
-    const statusText = r.status ? ` (${r.status})` : '';
+    const statusText = r.httpStatus ? ` (${r.httpStatus})` : '';
     const detailText = r.detail ? ` - ${r.detail}` : '';
-    console.log(`${r.ok ? 'PASS' : 'FAIL'} ${r.name}${statusText}${detailText}`);
+    const icon = r.status === 'PASS' ? 'PASS' : r.status === 'SKIP' ? 'SKIP' : 'FAIL';
+    console.log(`${icon} ${r.name}${statusText}${detailText}`);
   }
-  const failed = results.filter((r) => !r.ok).length;
-  const passed = results.length - failed;
-  console.log('─'.repeat(60));
-  console.log(`Summary: ${passed} passed, ${failed} failed`);
+  const passed = results.filter((r) => r.status === 'PASS').length;
+  const failed = results.filter((r) => r.status === 'FAIL').length;
+  const skipped = results.filter((r) => r.status === 'SKIP').length;
+  console.log('─'.repeat(70));
+  console.log(`Summary: ${passed} passed, ${failed} failed, ${skipped} skipped`);
   return failed > 0 ? 1 : 0;
 }
 
 void main().catch((error) => {
   console.log('Trip workflow test summary');
   console.log(`FAIL setup - ${error instanceof Error ? error.message : 'unknown error'}`);
-  console.log('Summary: 0 passed, 1 failed');
+  console.log('Summary: 0 passed, 1 failed, 0 skipped');
   process.exit(1);
 });
