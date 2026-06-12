@@ -9,31 +9,32 @@ DLL, Windows can reject the rename with `EPERM: operation not permitted`.
 ## Safe Fix Order
 
 1. Stop the backend dev server.
-2. Stop all Node processes only if necessary:
+2. Check for repo-local Node or nodemon processes that still point into this workspace and stop those first.
+3. Stop all Node processes only if necessary:
 
    ```powershell
    taskkill /F /IM node.exe
    ```
 
-3. If the lock remains, delete only the generated Prisma client cache:
+4. If the lock remains, delete only the generated Prisma client cache:
 
    ```powershell
    Remove-Item -Recurse -Force backend/node_modules/.prisma/client
    ```
 
-4. Reinstall dependencies only if the generated client or dependencies are damaged:
+5. Reinstall dependencies only if the generated client or dependencies are damaged:
 
    ```powershell
    npm install
    ```
 
-5. Generate the Prisma client:
+6. Generate the Prisma client:
 
    ```powershell
    npm --prefix backend run prisma:generate
    ```
 
-6. Run the complete backend build:
+7. Run the complete backend build:
 
    ```powershell
    npm run backend:build

@@ -875,12 +875,15 @@ Phase 4.9 (backend build fix, honest local QA rerun, and branch/PR discipline) i
 - Kept the backend build command unchanged as `prisma generate && tsc`.
 - Added Windows Prisma build troubleshooting documentation with the safe cleanup order.
 - Fixed local backend dev startup by adding `--files` to `ts-node`, allowing the existing Express request type augmentation to load.
-- `npm run backend:lint`: PASS (exit 0)
-- `npm run backend:build`: PASS (exit 0; fresh Prisma generation and TypeScript build)
-- `npm run web:lint`: PASS (exit 0)
-- `npm run web:build`: PASS (exit 0)
-- Backend API test: 79 passed, 0 failed, 0 skipped (exit 0)
-- Playwright: 31 passed, 0 failed, 0 skipped (exit 0)
+- Re-ran Phase 4.9 locally from the required branch against base commit `de3c77e2bfc49b0a367e0d207d651917130ea3ab`.
+- Fresh verification rerun results:
+  - `npm --prefix backend run prisma:generate`: PASS (exit 0)
+  - `npm run backend:lint`: PASS (exit 0)
+  - `npm run backend:build`: PASS (exit 0; fresh Prisma generation and TypeScript build)
+  - `npm run web:lint`: PASS (exit 0)
+  - `npm run web:build`: PASS (exit 0)
+  - `npm --prefix backend run test:trips`: PASS (79 passed, 0 failed, 0 skipped; exit 0)
+  - `npm --prefix web run test:e2e`: PASS (31 passed, 0 failed, 0 skipped; exit 0)
 - All ten seeded roles covered; `E2E_REQUIRE_ALL_ROLES=false`.
 - No Vercel deployment performed.
 - No mobile files changed.
