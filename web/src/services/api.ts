@@ -13,6 +13,8 @@ import type {
   PaginatedResponse,
   PermissionRecord,
   RoleRecord,
+  TripHistoryRecord,
+  TripRecord,
   UserRecord,
   VehicleRecord,
 } from '../types/auth';
@@ -505,4 +507,132 @@ export function deleteDocument(token: string, documentId: string) {
     method: 'DELETE',
     token,
   });
+}
+
+// Trips
+export function getTrips(
+  token: string,
+  params?: {
+    search?: string;
+    status?: string;
+    tripType?: string;
+    vehicleId?: string;
+    driverId?: string;
+    page?: number;
+    limit?: number;
+  },
+) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.tripType) query.set('tripType', params.tripType);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<TripRecord>>(`/trips${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function createTrip(
+  token: string,
+  payload: {
+    tripType: string;
+    vehicleId: string;
+    driverId?: string;
+    assistantDriverId?: string;
+    originName: string;
+    originAddress?: string;
+    destinationName: string;
+    destinationAddress?: string;
+    plannedStartAt?: string;
+    plannedEndAt?: string;
+    purpose?: string;
+    notes?: string;
+  },
+) {
+  return request<TripRecord>('/trips', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function getTrip(token: string, tripId: string) {
+  return request<TripRecord>(`/trips/${tripId}`, { token });
+}
+
+export function updateTrip(token: string, tripId: string, payload: Partial<TripRecord>) {
+  return request<TripRecord>(`/trips/${tripId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function scheduleTrip(
+  token: string,
+  tripId: string,
+  payload: {
+    plannedStartAt?: string;
+    plannedEndAt?: string;
+    driverId?: string;
+    assistantDriverId?: string;
+    notes?: string;
+  },
+) {
+  return request<TripRecord>(`/trips/${tripId}/schedule`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function startTrip(
+  token: string,
+  tripId: string,
+  payload: {
+    startOdometer?: number;
+    notes?: string;
+  },
+) {
+  return request<TripRecord>(`/trips/${tripId}/start`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function completeTrip(
+  token: string,
+  tripId: string,
+  payload: {
+    endOdometer?: number;
+    distanceKm?: number;
+    notes?: string;
+  },
+) {
+  return request<TripRecord>(`/trips/${tripId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function cancelTrip(
+  token: string,
+  tripId: string,
+  payload: {
+    notes?: string;
+  },
+) {
+  return request<TripRecord>(`/trips/${tripId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function getTripHistory(token: string, tripId: string) {
+  return request<TripHistoryRecord[]>(`/trips/${tripId}/history`, { token });
 }

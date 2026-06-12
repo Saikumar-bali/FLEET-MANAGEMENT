@@ -55,6 +55,15 @@ export const navigationItems: NavigationItem[] = [
     pageDescription: 'Asset category configuration',
   },
   {
+    label: 'Trips',
+    path: '/trips',
+    description: 'Manage trips and transfers',
+    permissionKeys: ['trip_view'],
+    section: 'Operations',
+    pageTitle: 'Trips',
+    pageDescription: 'Trip and transfer workflow',
+  },
+  {
     label: 'Roles',
     path: '/roles',
     description: 'Roles and permission assignments',

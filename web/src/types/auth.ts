@@ -198,6 +198,49 @@ export type DocumentRecord = {
   updatedAt: string;
 };
 
+export type TripRecord = {
+  id: string;
+  tripNumber: string;
+  tripType: 'TRANSFER' | 'DELIVERY' | 'PICKUP' | 'SERVICE' | 'INTERNAL';
+  status: 'DRAFT' | 'SCHEDULED' | 'STARTED' | 'COMPLETED' | 'CANCELLED';
+  vehicleId: string;
+  driverId: string | null;
+  assistantDriverId: string | null;
+  originName: string;
+  originAddress: string | null;
+  destinationName: string;
+  destinationAddress: string | null;
+  plannedStartAt: string | null;
+  actualStartAt: string | null;
+  plannedEndAt: string | null;
+  actualEndAt: string | null;
+  startOdometer: number | null;
+  endOdometer: number | null;
+  distanceKm: number | null;
+  purpose: string | null;
+  notes: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string; status: string };
+  driver: { id: string; name: string; mobile: string; status: string } | null;
+  assistantDriver: { id: string; name: string; mobile: string; status: string } | null;
+  createdBy: { id: string; name: string; email: string; username: string | null } | null;
+};
+
+export type TripHistoryRecord = {
+  id: string;
+  tripId: string;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  remarks: string | null;
+  metadata: Record<string, unknown> | null;
+  createdById: string | null;
+  createdAt: string;
+  createdBy: { id: string; name: string; email: string; username: string | null } | null;
+};
+
 export type PaginatedResponse<T> = {
   items: T[];
   pagination: {

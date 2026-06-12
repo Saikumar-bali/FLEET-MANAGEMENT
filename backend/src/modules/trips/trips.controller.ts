@@ -1,0 +1,124 @@
+import { Request, Response } from 'express';
+import { sendSuccess } from '../../utils/response';
+import { createAuditLog } from '../audit/audit.service';
+import {
+  cancelTrip,
+  completeTrip,
+  createTrip,
+  getTripHistory,
+  getTripById,
+  listTrips,
+  scheduleTrip,
+  startTrip,
+  updateTrip,
+} from './trips.service';
+
+export async function listTripsController(req: Request, res: Response) {
+  const result = await listTrips({
+    search: req.query.search as string | undefined,
+    status: req.query.status as string | undefined,
+    tripType: req.query.tripType as string | undefined,
+    vehicleId: req.query.vehicleId as string | undefined,
+    driverId: req.query.driverId as string | undefined,
+    page: Number(req.query.page) || 1,
+    limit: Number(req.query.limit) || 20,
+  });
+  return sendSuccess(res, result);
+}
+
+export async function getTripController(req: Request, res: Response) {
+  const trip = await getTripById(String(req.params.id));
+  return sendSuccess(res, trip);
+}
+
+export async function createTripController(req: Request, res: Response) {
+  const trip = await createTrip({
+    ...req.body,
+    createdById: req.authUser?.id,
+  });
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.create',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber, tripType: trip.tripType },
+  });
+
+  return sendSuccess(res, trip, 'Trip created successfully', 201);
+}
+
+export async function updateTripController(req: Request, res: Response) {
+  const trip = await updateTrip(String(req.params.id), req.body, req.authUser?.id);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.update',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber },
+  });
+
+  return sendSuccess(res, trip, 'Trip updated successfully');
+}
+
+export async function scheduleTripController(req: Request, res: Response) {
+  const trip = await scheduleTrip(String(req.params.id), req.body, req.authUser?.id);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.schedule',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber },
+  });
+
+  return sendSuccess(res, trip, 'Trip scheduled successfully');
+}
+
+export async function startTripController(req: Request, res: Response) {
+  const trip = await startTrip(String(req.params.id), req.body, req.authUser?.id);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.start',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber, startOdometer: req.body.startOdometer },
+  });
+
+  return sendSuccess(res, trip, 'Trip started successfully');
+}
+
+export async function completeTripController(req: Request, res: Response) {
+  const trip = await completeTrip(String(req.params.id), req.body, req.authUser?.id);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.complete',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber, endOdometer: req.body.endOdometer, distanceKm: req.body.distanceKm },
+  });
+
+  return sendSuccess(res, trip, 'Trip completed successfully');
+}
+
+export async function cancelTripController(req: Request, res: Response) {
+  const trip = await cancelTrip(String(req.params.id), req.body, req.authUser?.id);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'trip.cancel',
+    entityType: 'trip',
+    entityId: trip.id,
+    metadata: { tripNumber: trip.tripNumber },
+  });
+
+  return sendSuccess(res, trip, 'Trip cancelled successfully');
+}
+
+export async function getTripHistoryController(req: Request, res: Response) {
+  const history = await getTripHistory(String(req.params.id));
+  return sendSuccess(res, history);
+}

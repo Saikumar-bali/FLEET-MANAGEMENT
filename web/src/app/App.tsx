@@ -12,6 +12,8 @@ import { DriverDetailPage } from '../pages/DriverDetailPage';
 import { AssetsPage } from '../pages/AssetsPage';
 import { AssetDetailPage } from '../pages/AssetDetailPage';
 import { AssetCategoriesPage } from '../pages/AssetCategoriesPage';
+import { TripsPage } from '../pages/TripsPage';
+import { TripDetailPage } from '../pages/TripDetailPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 
 function App() {
@@ -35,6 +37,10 @@ function App() {
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/assets/:id" element={<AssetDetailPage />} />
                 <Route path="/asset-categories" element={<AssetCategoriesPage />} />
+              </Route>
+              <Route element={<ProtectedRoute requiredPermissions={['trip_view']} />}>
+                <Route path="/trips" element={<TripsPage />} />
+                <Route path="/trips/:id" element={<TripDetailPage />} />
               </Route>
               <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                 <Route path="/roles" element={<RolesPage />} />

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 3 is completed locally and verified against Neon. Asset assignment, return, transfer, damaged/lost handling, and asset history are now working on top of the existing Phase 2.2 staging-ready baseline. Phase 4 has not started.
+Phase 4 (Trip / Transfer Workflow) is completed locally and verified against Neon. Trip CRUD, lifecycle workflow (draft → scheduled → started → completed/cancelled), vehicle/driver status management, trip history, and frontend trip pages are now working. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -21,7 +21,7 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 | Phase 3.2 | Final UI Quality Gate and Safety Cleanup | Completed locally and verified |
 | Phase 3.3 | Final Permission Matrix and UI Acceptance Patch | Completed locally and verified |
 | Phase 3.4 | Small UI Correctness Patch | Completed locally and verified |
-| Phase 4 | Trip / Transfer Workflow | Not Started |
+| Phase 4 | Trip / Transfer Workflow | Completed locally and verified against Neon |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -408,6 +408,66 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 - No mobile files changed.
 - No secrets committed.
 
+### 2026-06-12 (Phase 4 - Trip / Transfer Workflow)
+
+**Prisma schema:**
+- Added `TripStatus` enum: DRAFT, SCHEDULED, STARTED, COMPLETED, CANCELLED
+- Added `TripType` enum: TRANSFER, DELIVERY, PICKUP, SERVICE, INTERNAL
+- Added `TripHistoryAction` enum: CREATED, UPDATED, SCHEDULED, STARTED, COMPLETED, CANCELLED, VEHICLE_CHANGED, DRIVER_CHANGED
+- Added `Trip` model with vehicle, driver, assistant driver, route, timing, odometer, and notes fields
+- Added `TripHistory` model with action, from/to status, remarks, and metadata
+- Added relations: Trip → Vehicle, Trip → Driver, Trip → User (createdBy), TripHistory → Trip, TripHistory → User
+- Added indexes on vehicle+status, driver+status, and status for efficient conflict queries
+
+**Backend trips module:**
+- Created `trips.validators.ts` with Zod schemas for create, update, schedule, start, complete, cancel, and list query validation
+- Created `trips.service.ts` with full lifecycle logic:
+  - `listTrips` with search, status, tripType, vehicleId, driverId filters and pagination
+  - `getTripById` with vehicle, driver, assistant driver, and created-by includes
+  - `createTrip` with auto-generated trip number, vehicle/driver validation, and CREATED history
+  - `updateTrip` with completed/cancelled trip protection, started trip route lock, and VEHICLE_CHANGED/DRIVER_CHANGED history
+  - `scheduleTrip` for DRAFT → SCHEDULED with driver assignment
+  - `startTrip` with vehicle/driver conflict check (no double-started), ON_TRIP status for vehicle/driver, and STARTED history
+  - `completeTrip` with odometer validation, distance calculation, AVAILABLE status release, and COMPLETED history
+  - `cancelTrip` with safe vehicle/driver release for STARTED trips and CANCELLED history
+- Created `trips.controller.ts` with audit logging for create, update, schedule, start, complete, cancel
+- Created `trips.routes.ts` with permission middleware: trip_view, trip_create, trip_update, trip_start, trip_end, trip_cancel
+
+**Permissions:**
+- Trip permissions already seeded in `rbac.ts` (trip_view, trip_create, trip_update, trip_start, trip_end, trip_cancel)
+- super_admin/admin: all trip permissions
+- manager/supervisor: all trip permissions
+- driver: trip_view, trip_start, trip_end
+- viewer: trip_view only
+
+**Frontend:**
+- Added `TripRecord` and `TripHistoryRecord` types to `types/auth.ts`
+- Added trip API functions to `services/api.ts`: getTrips, createTrip, getTrip, updateTrip, scheduleTrip, startTrip, completeTrip, cancelTrip, getTripHistory
+- Added Trips navigation item under Operations section, gated by `trip_view`
+- Added `/trips` and `/trips/:id` routes with `trip_view` permission gate
+- Created `TripsPage` with table (trip number, type, status, vehicle, driver, route, dates), search, status filter, trip type filter, Create Trip button, and pagination
+- Created `TripDetailPage` with tabs (Overview, Route, Assignment, Odometer, History) and lifecycle actions (Schedule, Start, Complete, Cancel) with confirmation dialogs
+
+**Lifecycle rules enforced:**
+- DRAFT/SCHEDULED: vehicle and driver remain AVAILABLE until started
+- Starting: sets STARTED, actualStartAt, ON_TRIP for vehicle and driver, conflict check blocks double-started
+- Completing: sets COMPLETED, actualEndAt, endOdometer, distanceKm, AVAILABLE for vehicle and driver
+- Cancelling from STARTED: safely releases vehicle and driver back to AVAILABLE
+- Completed trips: only notes can be edited
+- Cancelled trips: cannot be started or edited
+- All lifecycle actions write TripHistory
+
+**Verification proof:**
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass (tsc compiles cleanly; prisma generate has Windows DLL EPERM issue, not code-related)
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- `npm run prisma:db:push`: pass against Neon, schema synced
+- `npm run prisma:seed`: pass against Neon
+- Trip permissions confirmed seeded via rbac.ts defaultRolePermissionMap
+- No mobile files changed
+- No secrets committed
+
 ## Next Step
 
-Phase 4 Trip / Transfer Workflow is the exact next recommended phase. It remains blocked until explicitly approved for start.
+Phase 5 Fuel and Expense Workflow is the next recommended phase.

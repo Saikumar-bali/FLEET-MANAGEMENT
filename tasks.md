@@ -2,7 +2,7 @@
 
 ## Active Phase
 
-Phase 2: Vehicle, Driver, Asset Masters
+Phase 5: Fuel and Expense Workflow
 
 ## Immediate Tasks
 
@@ -42,8 +42,8 @@ Phase 2: Vehicle, Driver, Asset Masters
 
 ## Do Not Start Yet
 
-- [ ] Phase 3: Asset Assignment and History
-- [ ] Phase 4: Trip / Transfer Workflow
+- [x] Phase 3: Asset Assignment and History
+- [x] Phase 4: Trip / Transfer Workflow
 - [ ] Phase 5: Fuel and Expense Workflow
 - [ ] Phase 6: Maintenance and Repair
 - [ ] Phase 7: Finance and P&L

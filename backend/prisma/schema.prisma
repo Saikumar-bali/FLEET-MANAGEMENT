@@ -36,6 +36,8 @@ model User {
   auditLogs     AuditLog[]
   assetAssignmentsAssigned AssetAssignment[] @relation("AssetAssignmentAssignedBy")
   assetHistoriesCreated    AssetHistory[]    @relation("AssetHistoryCreatedBy")
+  tripsCreated             Trip[]            @relation("TripCreatedBy")
+  tripHistoriesCreated     TripHistory[]     @relation("TripHistoryCreatedBy")
 
   @@map("users")
 }
@@ -151,6 +153,33 @@ enum AssetHistoryAction {
   RETIRED
 }
 
+enum TripStatus {
+  DRAFT
+  SCHEDULED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum TripType {
+  TRANSFER
+  DELIVERY
+  PICKUP
+  SERVICE
+  INTERNAL
+}
+
+enum TripHistoryAction {
+  CREATED
+  UPDATED
+  SCHEDULED
+  STARTED
+  COMPLETED
+  CANCELLED
+  VEHICLE_CHANGED
+  DRIVER_CHANGED
+}
+
 enum DocumentEntityType {
   VEHICLE
   DRIVER
@@ -178,6 +207,7 @@ model Vehicle {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   currentDriver   Driver?       @relation(fields: [currentDriverId], references: [id])
+  trips           Trip[]
 
   @@map("vehicles")
 }
@@ -196,6 +226,8 @@ model Driver {
   createdAt         DateTime     @default(now()) @map("created_at")
   updatedAt         DateTime     @updatedAt @map("updated_at")
   vehicles          Vehicle[]
+  tripsAsDriver     Trip[]
+  tripsAsAssistant  Trip[]       @relation("TripAssistantDriver")
 
   @@map("drivers")
 }
@@ -268,6 +300,59 @@ model AssetHistory {
 
   @@index([assetId, createdAt])
   @@map("asset_history")
+}
+
+model Trip {
+  id                String      @id @default(cuid())
+  tripNumber        String      @unique @map("trip_number")
+  tripType          TripType    @map("trip_type")
+  status            TripStatus  @default(DRAFT)
+  vehicleId         String      @map("vehicle_id")
+  driverId          String?     @map("driver_id")
+  assistantDriverId String?     @map("assistant_driver_id")
+  originName        String      @map("origin_name")
+  originAddress     String?     @map("origin_address")
+  destinationName   String      @map("destination_name")
+  destinationAddress String?   @map("destination_address")
+  plannedStartAt    DateTime?   @map("planned_start_at")
+  actualStartAt     DateTime?   @map("actual_start_at")
+  plannedEndAt      DateTime?   @map("planned_end_at")
+  actualEndAt       DateTime?   @map("actual_end_at")
+  startOdometer     Int?        @map("start_odometer")
+  endOdometer       Int?        @map("end_odometer")
+  distanceKm        Int?        @map("distance_km")
+  purpose           String?
+  notes             String?
+  createdById       String?     @map("created_by_id")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  vehicle           Vehicle     @relation(fields: [vehicleId], references: [id])
+  driver            Driver?     @relation(fields: [driverId], references: [id])
+  assistantDriver   Driver?     @relation("TripAssistantDriver", fields: [assistantDriverId], references: [id])
+  createdBy         User?       @relation("TripCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  history           TripHistory[]
+
+  @@index([vehicleId, status])
+  @@index([driverId, status])
+  @@index([status])
+  @@map("trips")
+}
+
+model TripHistory {
+  id          String           @id @default(cuid())
+  tripId      String           @map("trip_id")
+  action      TripHistoryAction
+  fromStatus  TripStatus?      @map("from_status")
+  toStatus    TripStatus?      @map("to_status")
+  remarks     String?
+  metadata    Json?
+  createdById String?          @map("created_by_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  trip        Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  createdBy   User?            @relation("TripHistoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tripId, createdAt])
+  @@map("trip_history")
 }
 
 model Document {
