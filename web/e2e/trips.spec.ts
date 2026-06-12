@@ -10,7 +10,7 @@ import {
 } from './helpers/api';
 import { getTripPermissions, seededRoleKeys } from './helpers/rbac';
 
-test.describe('Phase 4.7 Trip workflow tests', () => {
+test.describe('Phase 4.8 Trip workflow tests', () => {
   test('Admin: self-contained lifecycle — create, schedule, start, complete, history', async ({ page }) => {
     let e2eData: E2ETestData | null = null;
 

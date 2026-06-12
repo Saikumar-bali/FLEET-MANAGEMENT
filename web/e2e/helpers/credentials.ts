@@ -91,7 +91,7 @@ export function getAdminCredential(): { identifier: string; password: string } {
 }
 
 export function getApiBase(): string {
-  const value = process.env.E2E_API_BASE_URL?.trim() || process.env.API_BASE_URL?.trim() || 'http://127.0.0.1:4000';
+  const value = process.env.E2E_API_BASE_URL?.trim() || process.env.API_BASE_URL?.trim() || 'http://localhost:4000';
   return value.replace(/\/$/, '');
 }
 

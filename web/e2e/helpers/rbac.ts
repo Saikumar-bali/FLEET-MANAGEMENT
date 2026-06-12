@@ -12,7 +12,9 @@ const rbacPath = path.resolve(__dirname, '../../../backend/dist/src/constants/rb
 
 if (!fs.existsSync(rbacPath)) {
   throw new Error(
-    'Compiled backend RBAC file not found. Run "npm run backend:build" from repo root before Playwright.',
+    'Compiled backend RBAC file not found at: ' + rbacPath + '\n' +
+    'Run "npm run backend:build" from repo root before Playwright.\n' +
+    'Playwright imports compiled RBAC source — backend build is a prerequisite.',
   );
 }
 

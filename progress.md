@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.7 (honest local QA evidence gate, self-contained Playwright lifecycle, unified API base URL) is in progress. Phase 4.5 is completed. Phase 5 has not started.
+Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in progress. Phase 4.7 is completed. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -28,7 +28,8 @@ Phase 4.7 (honest local QA evidence gate, self-contained Playwright lifecycle, u
 | Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | Completed |
 | Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
 | Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | Completed |
-| Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | In Progress |
+| Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
+| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -828,6 +829,44 @@ Phase 4.7 (honest local QA evidence gate, self-contained Playwright lifecycle, u
 - No mobile files changed
 - No secrets committed
 
+### 2026-06-12 (Phase 4.8 — Evidence-Backed Local QA Gate, Honest Reporting Enforcement)
+
+**Playwright lifecycle test — fully self-contained:**
+- `web/e2e/trips.spec.ts` updated: assert `tripNumber` is truthy (backend generates `TR-{timestamp}-{random}`, not TEST-E2E prefixed)
+- Assert page title contains exact trip number
+- Every button checked with `await expect(locator).toBeVisible()` before clicking — if missing, test FAILS
+- Creates own vehicle, driver, trip in try block; cleans up in finally block
+
+**API base URL unified:**
+- `web/e2e/helpers/credentials.ts`: default changed to `http://localhost:4000` (consistent with docs)
+- Both `E2E_API_BASE_URL` and `API_BASE_URL` supported
+
+**RBAC helper failure enforcement:**
+- `web/e2e/helpers/rbac.ts`: enhanced error message includes file path, required command, and prerequisite note
+
+**Role coverage source verified:**
+- `web/e2e/trips.spec.ts` uses `seededRoleKeys` from `rbac.ts` — no hardcoded `allRoleKeys` list
+- `web/e2e/helpers/credentials.ts` has no `allRoleKeys` — role iteration comes from RBAC source
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: Phase 4.8 title, strict command runner guidance, required local order, prisma generate honesty rule
+- Updated `progress.md`: Phase 4.7 marked completed, Phase 4.8 in progress
+- Created `docs/PHASE_4_8_LOCAL_QA_EVIDENCE.md` — honest QA evidence with actual command results
+- Created `docs/ai-runs/2026-06-12_phase-4-8-local-qa-evidence.md` — CLI-AI run record
+
+**Verification (2026-06-12 17:41 UTC):**
+- `npm run backend:lint`: PASS (exit 0)
+- `npm run backend:build`: FAIL (exit 1 — `prisma generate` EPERM on Windows)
+- `npm run web:lint`: PASS (exit 0)
+- `npm run web:build`: PASS (exit 0, 64 modules, built in 2.05s)
+- Backend API test (`npm run test:trips`): 79 passed, 0 failed, 0 skipped (exit 0)
+- Playwright trips test: 27 passed, 0 failed (exit 0)
+- Playwright ui-regression test: 4 passed, 0 failed (exit 0)
+- No Vercel deployment performed
+- No mobile files changed
+- No secrets committed
+- Phase 4 remains blocked (backend build fails)
+
 ## Next Step
 
-Phase 5 Fuel and Expense Workflow is the next recommended phase. Phase 4 remains blocked until local QA evidence is accepted.
+Phase 4 Deployment Gate is next only after Phase 4.8 local QA evidence is reviewed and accepted. Phase 5 has not started.

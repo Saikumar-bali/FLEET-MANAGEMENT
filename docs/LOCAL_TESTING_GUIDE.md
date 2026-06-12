@@ -1,4 +1,4 @@
-# Local Testing Guide — Phase 4.7
+# Local Testing Guide — Phase 4.8
 
 ## Prerequisites
 
@@ -79,8 +79,26 @@ npm run test:trips
 
 ```bash
 cd web
+$env:API_BASE_URL="http://localhost:4000"
 npm run test:e2e
 ```
+
+## Required Local Execution Order
+
+CLI-AI must not mark completion based on assumptions. Every command must actually be run and exit 0.
+
+1. `npm run backend:lint`
+2. `npm run backend:build` (includes `prisma generate && tsc`)
+3. `npm run web:lint`
+4. `npm run web:build`
+5. Start backend locally (`cd backend && npm run dev`)
+6. `npm --prefix backend run test:trips`
+7. Start web locally (`cd web && npm run dev`)
+8. `npm --prefix web run test:e2e`
+
+**Backend build is required before Playwright.** Playwright imports compiled RBAC from `backend/dist/src/constants/rbac.js`. If `npm run backend:build` fails, Playwright will fail with a clear error.
+
+If any command is NOT RUN or FAIL, Phase 4 remains blocked.
 
 ## What the API Test Covers (25+ core + 10 role suites)
 
@@ -141,9 +159,12 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 ## What the Playwright Test Covers
 
 - **Self-contained admin lifecycle**: creates TEST-E2E vehicle/driver/trip in try block, cleans up in finally block
+- **Asserts tripNumber starts with TEST-E2E**: `expect(trip.tripNumber).toMatch(/^TEST-E2E/)`
+- **Asserts page title contains exact trip number**: `expect(page.locator('.page-header-title')).toContainText(trip.tripNumber)`
 - Login as admin
 - /trips page loads with Create Trip button
 - Full lifecycle: schedule → start → complete via UI
+- **Strict button assertions**: every button is checked with `await expect(locator).toBeVisible()` before clicking
 - History tab shows CREATED, SCHEDULED, STARTED, COMPLETED
 - No horizontal overflow at 1366x768
 - Low-density layout (13px root font)
@@ -162,7 +183,7 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Vehicle/driver/trip created via API inside each test's try block
 - Playwright never selects first option, first row, or real records
 - Navigation uses stored trip ID directly
-- Cleanup in finally block: cancel started trips, delete created records
+- Cleanup in finally block: cancel started trips, reset vehicles/drivers
 
 ## Important Notes
 
@@ -180,6 +201,10 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Playwright loads `rbac.ts` via compiled `dist/src/constants/rbac.js` at runtime.
 - No credential values are written in docs or printed during tests.
 - **Backend build is required before Playwright** — `web/e2e/helpers/rbac.ts` throws a clear error if `backend/dist/src/constants/rbac.js` is missing. Run `npm run backend:build` first.
-- **CLI-AI must not mark completion based on assumptions** — must actually run all 6 commands and report actual results.
-- **Required local execution order**: `backend:lint` → `backend:build` → `web:lint` → `web:build` → `test:trips` → `test:e2e` (all 6 must run and pass).
-- **API base URL**: both `E2E_API_BASE_URL` and `API_BASE_URL` are supported; default is `http://127.0.0.1:4000`.
+- **CLI-AI must not mark completion based on assumptions** — must actually run all commands and report actual results.
+- **Required local execution order**: `backend:lint` → `backend:build` → `web:lint` → `web:build` → start backend → `test:trips` → start web → `test:e2e` (all must run and pass).
+- **API base URL**: both `E2E_API_BASE_URL` and `API_BASE_URL` are supported; default is `http://localhost:4000`.
+- **If prisma generate fails during backend build, backend build is FAIL.** Do not call it pass because tsc passed.
+- **If any command is NOT RUN or FAIL, Phase 4 remains blocked.**
+- **Wrong credentials are FAIL.** Missing optional role credentials are SKIP unless `E2E_REQUIRE_ALL_ROLES=true`.
+- **Vercel deploy happens only after local QA is accepted.**
