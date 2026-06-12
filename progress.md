@@ -23,6 +23,7 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
 | Phase 3.4 | Small UI Correctness Patch | Completed locally and verified |
 | Phase 4 | Trip / Transfer Workflow | Completed locally and staging-verified |
 | Phase 4.1 | Trip Workflow Hardening and Local QA | Completed locally |
+| Phase 4.2 | Trip Workflow Reliability and Safe Test Data | Completed locally |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -563,6 +564,46 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
 **Verification proof:**
 - `npm run backend:lint`: pass
 - `npm run web:lint`: pass
+- No mobile files changed
+- No secrets committed
+
+### 2026-06-12 (Phase 4.2 — Trip Workflow Reliability and Safe Test Data)
+
+**API test reliability:**
+- Added dotenv loading to `trip-workflow-test.ts` from `backend/.env`
+- Credential resolution uses fallback chain: `E2E_ADMIN_IDENTIFIER` → `ADMIN_USERNAME` → `ADMIN_EMAIL`; `E2E_ADMIN_PASSWORD` → `ADMIN_PASSWORD`
+- `printSummary` now returns exit code (0 = all pass, 1 = any fail)
+- `main()` calls `process.exit(exitCode)` so failing tests produce non-zero exit code
+
+**Safe test data:**
+- Vehicle/driver selection prefers `TEST-E2E-` prefixed records before falling back to any AVAILABLE
+- New vehicle/driver created with `TEST-E2E-VEH-` and `TEST-E2E-DRV-` prefixes
+
+**Negative API checks (5 new):**
+- Start trip with UNDER_MAINTENANCE vehicle returns 400
+- Start trip with SUSPENDED driver returns 400
+- driver === assistantDriver returns 400
+- Negative startOdometer returns 400
+- endOdometer < startOdometer returns 400
+
+**Playwright credential hardening:**
+- Removed hardcoded `'admin'` / `'admin@123'` fallbacks from `trips.spec.ts` and `ui-regression.spec.ts`
+- Both test files load `backend/.env` via dotenv and use the same fallback chain as API test
+- Missing credentials throw a clear error instead of silently using wrong values
+
+**TripDetail dropdown fix:**
+- Vehicle dropdown includes the currently assigned vehicle even if not AVAILABLE (e.g., ON_TRIP)
+- Driver/assistant driver dropdowns include currently assigned drivers even if not AVAILABLE
+- Prevents dropdown from appearing empty when viewing an active trip
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: removed hardcoded credentials, updated test coverage list, added exit code note
+
+**Verification proof:**
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
 - No mobile files changed
 - No secrets committed
 

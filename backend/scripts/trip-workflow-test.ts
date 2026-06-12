@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+
 type CheckResult = {
   name: string;
   ok: boolean;
@@ -9,6 +15,19 @@ function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
+}
+
+function resolveCredential(): { identifier: string; password: string } {
+  const identifier = process.env.E2E_ADMIN_IDENTIFIER
+    || process.env.ADMIN_USERNAME
+    || process.env.ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (!identifier || !password) {
+    throw new Error(
+      'No credentials found. Set E2E_ADMIN_IDENTIFIER + E2E_ADMIN_PASSWORD in backend/.env',
+    );
+  }
+  return { identifier, password };
 }
 
 async function requestJson<T>(
@@ -31,8 +50,7 @@ function pushResult(results: CheckResult[], name: string, ok: boolean, status?: 
 
 async function main() {
   const apiBase = requiredEnv('API_BASE_URL').replace(/\/$/, '');
-  const adminId = requiredEnv('E2E_ADMIN_IDENTIFIER');
-  const adminPass = requiredEnv('E2E_ADMIN_PASSWORD');
+  const { identifier: adminId, password: adminPass } = resolveCredential();
   const results: CheckResult[] = [];
 
   // 1. Health
@@ -54,32 +72,36 @@ async function main() {
   const unauth = await requestJson(`${apiBase}/api/v1/trips`);
   pushResult(results, 'GET /trips without token returns 401', !unauth.ok && unauth.status === 401, unauth.status);
 
-  // 4. Create or find test vehicle
+  // 4. Create or find test vehicle (prefer TEST-E2E- prefixed)
   const vList = await requestJson<{ data?: { items?: Array<{ id: string; vehicleNumber: string; status: string }> } }>(
     `${apiBase}/api/v1/vehicles?limit=100`,
     { headers: authHeaders },
   );
-  let vehicle = vList.data?.data?.items?.find((v) => v.status === 'AVAILABLE');
+  let vehicle = vList.data?.data?.items?.find((v) => v.vehicleNumber.startsWith('TEST-E2E-') && v.status === 'AVAILABLE')
+    || vList.data?.data?.items?.find((v) => v.status === 'AVAILABLE');
   if (!vehicle) {
+    const testVNum = `TEST-E2E-VEH-${Date.now()}`;
     const newV = await requestJson<{ data?: { id: string; vehicleNumber: string } }>(
       `${apiBase}/api/v1/vehicles`,
-      { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: `TEST-TRIP-${Date.now()}`, vehicleType: 'TRUCK', fuelType: 'DIESEL' }) },
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: testVNum, vehicleType: 'TRUCK', fuelType: 'DIESEL' }) },
     );
     vehicle = newV.data?.data ? { ...newV.data.data, status: 'AVAILABLE' } : undefined;
   }
   pushResult(results, 'Get/create test vehicle', !!vehicle);
   if (!vehicle) { printSummary(results); process.exit(1); }
 
-  // 5. Create or find test driver
+  // 5. Create or find test driver (prefer TEST-E2E- prefixed)
   const dList = await requestJson<{ data?: { items?: Array<{ id: string; name: string; status: string }> } }>(
     `${apiBase}/api/v1/drivers?limit=100`,
     { headers: authHeaders },
   );
-  let driver = dList.data?.data?.items?.find((d) => d.status === 'AVAILABLE');
+  let driver = dList.data?.data?.items?.find((d) => d.name.startsWith('TEST-E2E-') && d.status === 'AVAILABLE')
+    || dList.data?.data?.items?.find((d) => d.status === 'AVAILABLE');
   if (!driver) {
+    const testDName = `TEST-E2E-DRV-${Date.now()}`;
     const newD = await requestJson<{ data?: { id: string; name: string } }>(
       `${apiBase}/api/v1/drivers`,
-      { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: `Test Driver ${Date.now()}`, mobile: `9${Date.now().toString().slice(-9)}`, licenseNumber: `DL-${Date.now()}` }) },
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: testDName, mobile: `9${Date.now().toString().slice(-9)}`, licenseNumber: `DL-${Date.now()}` }) },
     );
     driver = newD.data?.data ? { ...newD.data.data, status: 'AVAILABLE' } : undefined;
   }
@@ -198,10 +220,103 @@ async function main() {
   const badType = await requestJson(`${apiBase}/api/v1/trips?tripType=INVALID_TYPE`, { headers: authHeaders });
   pushResult(results, 'Invalid tripType query returns 400/422', !badType.ok && (badType.status === 400 || badType.status === 422), badType.status);
 
-  printSummary(results);
+  // 21. Negative: start trip with UNDER_MAINTENANCE vehicle → 400
+  const maintV = await requestJson<{ data?: { id: string } }>(
+    `${apiBase}/api/v1/vehicles`,
+    { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: `TEST-E2E-MAINT-${Date.now()}`, vehicleType: 'TRUCK', fuelType: 'DIESEL', status: 'UNDER_MAINTENANCE' }) },
+  );
+  const maintVehicleId = maintV.data?.data?.id;
+  if (maintVehicleId) {
+    const startMaint = await requestJson(
+      `${apiBase}/api/v1/trips`,
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: maintVehicleId, driverId: driver.id, originName: 'X', destinationName: 'Y' }) },
+    );
+    if (startMaint.ok && startMaint.data?.data?.id) {
+      const startMaintTrip = await requestJson(
+        `${apiBase}/api/v1/trips/${startMaint.data.data.id}/start`,
+        { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 100 }) },
+      );
+      pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', !startMaintTrip.ok && startMaintTrip.status === 400, startMaintTrip.status);
+      await requestJson(`${apiBase}/api/v1/trips/${startMaint.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
+    } else {
+      pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', false, undefined, 'Could not create trip with maintenance vehicle');
+    }
+  } else {
+    pushResult(results, 'Start trip with UNDER_MAINTENANCE vehicle blocked (400)', false, undefined, 'Could not create maintenance vehicle');
+  }
+
+  // 22. Negative: start trip with SUSPENDED driver → 400
+  const suspD = await requestJson<{ data?: { id: string } }>(
+    `${apiBase}/api/v1/drivers`,
+    { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: `TEST-E2E-SUSP-${Date.now()}`, mobile: `8${Date.now().toString().slice(-9)}`, licenseNumber: `DL-S-${Date.now()}` }) },
+  );
+  const suspDriverId = suspD.data?.data?.id;
+  if (suspDriverId) {
+    await requestJson(`${apiBase}/api/v1/drivers/${suspDriverId}/suspend`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ reason: 'Test suspension' }) });
+    const startSusp = await requestJson(
+      `${apiBase}/api/v1/trips`,
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: suspDriverId, originName: 'X', destinationName: 'Y' }) },
+    );
+    if (startSusp.ok && startSusp.data?.data?.id) {
+      const startSuspTrip = await requestJson(
+        `${apiBase}/api/v1/trips/${startSusp.data.data.id}/start`,
+        { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 100 }) },
+      );
+      pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', !startSuspTrip.ok && startSuspTrip.status === 400, startSuspTrip.status);
+      await requestJson(`${apiBase}/api/v1/trips/${startSusp.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
+    } else {
+      pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', false, undefined, 'Could not create trip with suspended driver');
+    }
+  } else {
+    pushResult(results, 'Start trip with SUSPENDED driver blocked (400)', false, undefined, 'Could not create suspended driver');
+  }
+
+  // 23. Negative: driver === assistantDriver → 400
+  const sameDriverTrip = await requestJson(
+    `${apiBase}/api/v1/trips`,
+    { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, assistantDriverId: driver.id, originName: 'X', destinationName: 'Y' }) },
+  );
+  pushResult(results, 'driver === assistantDriver rejected (400)', !sameDriverTrip.ok && sameDriverTrip.status === 400, sameDriverTrip.status);
+
+  // 24. Negative: start odometer < 0 → 400
+  const negOdoTrip = await requestJson<{ data?: { id: string } }>(
+    `${apiBase}/api/v1/trips`,
+    { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'X', destinationName: 'Y' }) },
+  );
+  if (negOdoTrip.ok && negOdoTrip.data?.data?.id) {
+    const negStart = await requestJson(
+      `${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/start`,
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: -100 }) },
+    );
+    pushResult(results, 'Negative startOdometer rejected (400)', !negStart.ok && negStart.status === 400, negStart.status);
+    await requestJson(`${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
+  } else {
+    pushResult(results, 'Negative startOdometer rejected (400)', false, undefined, 'Could not create odometer test trip');
+  }
+
+  // 25. Negative: endOdometer < startOdometer → 400
+  const odoFailTrip = await requestJson<{ data?: { id: string } }>(
+    `${apiBase}/api/v1/trips`,
+    { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'X', destinationName: 'Y' }) },
+  );
+  if (odoFailTrip.ok && odoFailTrip.data?.data?.id) {
+    await requestJson(`${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/schedule`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ plannedStartAt: new Date().toISOString() }) });
+    await requestJson(`${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/start`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 1000 }) });
+    const failComplete = await requestJson(
+      `${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/complete`,
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ endOdometer: 500 }) },
+    );
+    pushResult(results, 'endOdometer < startOdometer rejected (400)', !failComplete.ok && failComplete.status === 400, failComplete.status);
+    await requestJson(`${apiBase}/api/v1/trips/${odoFailTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
+  } else {
+    pushResult(results, 'endOdometer < startOdometer rejected (400)', false, undefined, 'Could not create odometer test trip');
+  }
+
+  const exitCode = printSummary(results);
+  process.exit(exitCode);
 }
 
-function printSummary(results: CheckResult[]) {
+function printSummary(results: CheckResult[]): number {
   console.log('\nTrip workflow test summary');
   console.log('─'.repeat(60));
   for (const r of results) {
@@ -213,6 +328,7 @@ function printSummary(results: CheckResult[]) {
   const passed = results.length - failed;
   console.log('─'.repeat(60));
   console.log(`Summary: ${passed} passed, ${failed} failed`);
+  return failed > 0 ? 1 : 0;
 }
 
 void main().catch((error) => {

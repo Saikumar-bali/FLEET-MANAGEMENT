@@ -146,14 +146,27 @@ export function TripDetailPage() {
           getVehicles(auth.accessToken, { status: 'AVAILABLE', limit: 100 }),
           getDrivers(auth.accessToken, { status: 'AVAILABLE', limit: 100 }),
         ]);
-        setVehicles(vRes.data.items);
-        setDrivers(dRes.data.items);
+        let vItems = vRes.data.items;
+        let dItems = dRes.data.items;
+
+        if (trip?.vehicle && !vItems.some((v) => v.id === trip.vehicle.id)) {
+          vItems = [{ ...trip.vehicle, brand: null, model: null, year: null, fuelType: '', chassisNumber: null, engineNumber: null, rcNumber: null, insuranceExpiry: null, fitnessExpiry: null, pollutionExpiry: null, permitExpiry: null, currentOdometer: 0, currentDriverId: null, currentDriver: null, createdAt: '', updatedAt: '' } as VehicleRecord, ...vItems];
+        }
+        if (trip?.driver && !dItems.some((d) => d.id === trip.driver!.id)) {
+          dItems = [{ ...trip.driver, alternateMobile: null, licenseNumber: '', licenseExpiry: null, address: null, emergencyContact: null, experienceYears: null, createdAt: '', updatedAt: '' } as DriverRecord, ...dItems];
+        }
+        if (trip?.assistantDriver && !dItems.some((d) => d.id === trip.assistantDriver!.id)) {
+          dItems = [{ ...trip.assistantDriver, alternateMobile: null, licenseNumber: '', licenseExpiry: null, address: null, emergencyContact: null, experienceYears: null, createdAt: '', updatedAt: '' } as DriverRecord, ...dItems];
+        }
+
+        setVehicles(vItems);
+        setDrivers(dItems);
       } catch {
         // Dropdowns are non-critical
       }
     };
     void loadDropdowns();
-  }, [auth.accessToken]);
+  }, [auth.accessToken, trip?.vehicle, trip?.driver, trip?.assistantDriver]);
 
   useEffect(() => {
     if (activeSection === 'history' && trip && !isNew) {

@@ -1,10 +1,21 @@
-# Local Testing Guide — Phase 4.1
+# Local Testing Guide — Phase 4.2
 
 ## Prerequisites
 
 - Node.js 18+ installed
 - PostgreSQL database configured in `backend/.env`
 - All dependencies installed (`npm install` in root, backend, and web)
+
+## Credentials
+
+All tests read credentials from `backend/.env`. Required variables:
+
+```
+E2E_ADMIN_IDENTIFIER=admin
+E2E_ADMIN_PASSWORD=admin@123
+```
+
+Or fallback chain: `ADMIN_USERNAME` → `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 ## Terminal Setup
 
@@ -31,8 +42,6 @@ Web runs on `http://localhost:5173` and proxies `/api` to `localhost:4000`.
 ```bash
 cd backend
 $env:API_BASE_URL="http://localhost:4000"
-$env:E2E_ADMIN_IDENTIFIER="admin"
-$env:E2E_ADMIN_PASSWORD="admin@123"
 npm run test:trips
 ```
 
@@ -40,12 +49,10 @@ npm run test:trips
 
 ```bash
 cd web
-$env:E2E_ADMIN_IDENTIFIER="admin"
-$env:E2E_ADMIN_PASSWORD="admin@123"
 npm run test:e2e
 ```
 
-## What the API Test Covers
+## What the API Test Covers (25 checks)
 
 - Health check
 - Admin login
@@ -66,6 +73,12 @@ npm run test:e2e
 - Cancelled trip history exists
 - Invalid status query returns 400
 - Invalid tripType query returns 400
+- Start trip with UNDER_MAINTENANCE vehicle blocked (400)
+- Start trip with SUSPENDED driver blocked (400)
+- driver === assistantDriver rejected (400)
+- Negative startOdometer rejected (400)
+- endOdometer < startOdometer rejected (400)
+- Exit code: 0 = all pass, 1 = any fail
 
 ## What the Playwright Test Covers
 
@@ -85,3 +98,4 @@ npm run test:e2e
 - Deploy to Vercel only after local API + Playwright tests pass and phase is reviewed.
 - Do not commit secrets or environment files.
 - Do not modify mobile app files.
+- Failing tests must exit with non-zero code.

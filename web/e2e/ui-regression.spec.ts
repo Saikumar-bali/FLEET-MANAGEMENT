@@ -1,12 +1,25 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-const ADMIN_ID = process.env.E2E_ADMIN_IDENTIFIER || 'admin';
-const ADMIN_PASS = process.env.E2E_ADMIN_PASSWORD || 'admin@123';
+dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
+
+function resolveCredential(): { identifier: string; password: string } {
+  const identifier = process.env.E2E_ADMIN_IDENTIFIER
+    || process.env.ADMIN_USERNAME
+    || process.env.ADMIN_EMAIL;
+  const password = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (!identifier || !password) {
+    throw new Error('No credentials found. Set E2E_ADMIN_IDENTIFIER + E2E_ADMIN_PASSWORD in backend/.env');
+  }
+  return { identifier, password };
+}
 
 async function loginAsAdmin(page: import('@playwright/test').Page) {
+  const { identifier, password } = resolveCredential();
   await page.goto('/login');
-  await page.fill('input[type="text"]', ADMIN_ID);
-  await page.fill('input[type="password"]', ADMIN_PASS);
+  await page.fill('input[type="text"]', identifier);
+  await page.fill('input[type="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForURL('/');
 }
