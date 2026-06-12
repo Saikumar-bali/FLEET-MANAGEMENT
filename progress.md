@@ -778,10 +778,13 @@ Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is
 - Updated `progress.md`: Phase 4.5 marked completed, Phase 4.6 in progress
 
 **Verification:**
-- `npm run backend:lint`: pending
-- `npm run backend:build`: pending
-- `npm run web:lint`: pending
-- `npm run web:build`: pending
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass (tsc compiles cleanly; prisma generate has Windows DLL EPERM issue, not code-related)
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- Backend API test: 79 passed, 0 failed, 0 skipped
+- Playwright trips test: 28 passed, 0 failed
+- Playwright ui-regression test: 4 passed, 0 failed
 - No Vercel deployment performed
 - No mobile files changed
 - No secrets committed
