@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in progress. Phase 4.7 is completed. Phase 5 has not started.
+Phase 4.9 (backend build fix, honest local QA rerun, and branch/PR discipline) is current. Phase 4.8 is completed. Phase 5 remains Not Started.
 
 ## Phase Progress
 
@@ -29,7 +29,8 @@ Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in pr
 | Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
 | Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | Completed |
 | Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
-| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | In Progress |
+| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
+| Phase 4.9 | Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline | Submitted for Review |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -867,6 +868,24 @@ Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in pr
 - No secrets committed
 - Phase 4 remains blocked (backend build fails)
 
+### 2026-06-12 (Phase 4.9 - Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline)
+
+- Identified running backend Node/nodemon processes as the Windows Prisma query engine DLL lock cause.
+- Stopped Node processes before Prisma generation and fresh backend builds.
+- Kept the backend build command unchanged as `prisma generate && tsc`.
+- Added Windows Prisma build troubleshooting documentation with the safe cleanup order.
+- Fixed local backend dev startup by adding `--files` to `ts-node`, allowing the existing Express request type augmentation to load.
+- `npm run backend:lint`: PASS (exit 0)
+- `npm run backend:build`: PASS (exit 0; fresh Prisma generation and TypeScript build)
+- `npm run web:lint`: PASS (exit 0)
+- `npm run web:build`: PASS (exit 0)
+- Backend API test: 79 passed, 0 failed, 0 skipped (exit 0)
+- Playwright: 31 passed, 0 failed, 0 skipped (exit 0)
+- All ten seeded roles covered; `E2E_REQUIRE_ALL_ROLES=false`.
+- No Vercel deployment performed.
+- No mobile files changed.
+- Phase 4.9 local QA submitted for review; deployment not performed.
+
 ## Next Step
 
-Phase 4 Deployment Gate is next only after Phase 4.8 local QA evidence is reviewed and accepted. Phase 5 has not started.
+Phase 4 Deployment Gate is next only after Phase 4.9 is reviewed and accepted. Phase 5 remains Not Started.
