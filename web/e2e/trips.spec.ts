@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getAdminCredential, getCredential, loginAsRole, RoleKey } from './helpers/credentials';
+import { getCredential, loginAsRole, RoleKey, allRoleKeys } from './helpers/credentials';
 import {
   loginAsAdmin,
   createE2EVehicle,
@@ -36,7 +36,21 @@ test.afterAll(async () => {
   }
 });
 
-test.describe('Phase 4.4 Trip workflow tests', () => {
+// RBAC from backend/src/constants/rbac.ts defaultRolePermissionMap
+const tripPermissions: Record<string, string[]> = {
+  admin: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+  super_admin: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+  manager: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+  supervisor: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
+  driver: ['trip_view', 'trip_start', 'trip_end'],
+  assistant_driver: ['trip_view'],
+  collector: [],
+  mechanic: [],
+  finance: [],
+  viewer: ['trip_view'],
+};
+
+test.describe('Phase 4.5 Trip workflow tests', () => {
   test('Login as admin', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
@@ -49,57 +63,41 @@ test.describe('Phase 4.4 Trip workflow tests', () => {
     await expect(page.locator('button:has-text("Create Trip")').first()).toBeVisible();
   });
 
-  test('Admin: create trip from /trips/new using TEST-E2E data', async ({ page }) => {
+  test('Admin: create trip via API and navigate by ID', async ({ page }) => {
     await loginAsRole(page, 'admin');
-    await page.goto('/trips/new');
-    await page.waitForSelector('#trip-form');
 
-    const vehicleSelect = page.locator('#trip-form select').nth(1);
-    if (await vehicleSelect.isVisible()) {
-      const options = await vehicleSelect.locator('option').allTextContents();
-      const e2eOption = options.findIndex((o) => o.includes(testState.e2eData?.vehicleNumber ?? ''));
-      if (e2eOption > 0) {
-        await vehicleSelect.selectOption({ index: e2eOption });
-      } else if (options.length > 1) {
-        await vehicleSelect.selectOption({ index: 1 });
-      }
-    }
+    const trip = await createE2ETrip(
+      testState.adminToken,
+      testState.e2eData!.vehicleId,
+      testState.e2eData!.driverId,
+    );
+    testState.e2eData!.tripId = trip.id;
+    testState.e2eData!.tripNumber = trip.tripNumber;
 
-    await page.locator('label:has-text("Origin Name") input').fill('Test Origin');
-    await page.locator('label:has-text("Destination Name") input').fill('Test Destination');
-
-    await page.click('button:has-text("Create Trip")');
-    await page.waitForURL(/\/trips\/[^/]+$/, { timeout: 10000 });
-    await expect(page.locator('.page-header-title')).toBeVisible();
-
-    const url = page.url();
-    const tripId = url.split('/trips/')[1];
-    if (tripId && testState.e2eData) {
-      testState.e2eData.tripId = tripId;
-    }
+    await page.goto(`/trips/${trip.id}`);
+    await page.waitForSelector('.page-header-title');
+    await expect(page.locator('.page-header-title')).toContainText(trip.tripNumber);
   });
 
-  test('Admin: schedule and start trip from detail page', async ({ page }) => {
+  test('Admin: full lifecycle schedule → start → complete', async ({ page }) => {
     await loginAsRole(page, 'admin');
+    const tripId = testState.e2eData!.tripId;
+    expect(tripId).toBeTruthy();
 
-    await page.goto('/trips');
-    await page.waitForSelector('.data-table');
+    // Navigate directly to trip by ID
+    await page.goto(`/trips/${tripId}`);
+    await page.waitForSelector('.page-header-title');
 
-    let targetRow = page.locator('.data-table tbody tr', { hasText: testState.e2eData?.vehicleNumber ?? '' }).first();
-    if (!(await targetRow.isVisible().catch(() => false))) {
-      targetRow = page.locator('.data-table tbody tr').first();
-    }
-    await targetRow.waitFor({ state: 'visible', timeout: 5000 });
-    await targetRow.click();
-    await page.waitForURL(/\/trips\//);
-
+    // Schedule
     const scheduleBtn = page.locator('button:has-text("Schedule")');
     if (await scheduleBtn.isVisible()) {
       await scheduleBtn.click();
       await page.click('button:has-text("Yes, Confirm")');
       await page.waitForTimeout(1000);
+      await expect(page.locator('.status-badge')).toContainText(/Scheduled/i);
     }
 
+    // Start
     const startBtn = page.locator('button:has-text("Start Trip")');
     if (await startBtn.isVisible()) {
       await startBtn.click();
@@ -107,30 +105,30 @@ test.describe('Phase 4.4 Trip workflow tests', () => {
       await page.waitForTimeout(1000);
       await expect(page.locator('.status-badge')).toContainText(/Started|ON_TRIP/i);
     }
-  });
 
-  test('Admin: history tab shows lifecycle records', async ({ page }) => {
-    await loginAsRole(page, 'admin');
-
-    await page.goto('/trips');
-    await page.waitForSelector('.data-table');
-
-    let targetRow = page.locator('.data-table tbody tr', { hasText: testState.e2eData?.vehicleNumber ?? '' }).first();
-    if (!(await targetRow.isVisible().catch(() => false))) {
-      targetRow = page.locator('.data-table tbody tr').first();
+    // Complete
+    const completeBtn = page.locator('button:has-text("Complete Trip")');
+    if (await completeBtn.isVisible()) {
+      await completeBtn.click();
+      await page.click('button:has-text("Yes, Confirm")');
+      await page.waitForTimeout(1000);
+      await expect(page.locator('.status-badge')).toContainText(/Completed/i);
     }
-    await targetRow.waitFor({ state: 'visible', timeout: 5000 });
-    await targetRow.click();
-    await page.waitForURL(/\/trips\//);
 
+    // History tab shows lifecycle records
     await page.click('button:has-text("History")');
     await page.waitForTimeout(1000);
-
     const historyTable = page.locator('.data-table');
-    if (await historyTable.isVisible()) {
-      const rows = await page.locator('.data-table tbody tr').count();
-      expect(rows).toBeGreaterThan(0);
-    }
+    await expect(historyTable).toBeVisible();
+    const rows = await page.locator('.data-table tbody tr').count();
+    expect(rows).toBeGreaterThan(0);
+
+    // Verify all expected actions present
+    const historyText = await page.locator('.data-table').textContent();
+    expect(historyText).toContain('CREATED');
+    expect(historyText).toContain('SCHEDULED');
+    expect(historyText).toContain('STARTED');
+    expect(historyText).toContain('COMPLETED');
   });
 
   test('No horizontal overflow at 1366x768', async ({ page }) => {
@@ -170,46 +168,84 @@ test.describe('Phase 4.4 Trip workflow tests', () => {
     await expect(page.locator('button:has-text("Create user")').first()).toBeVisible();
   });
 
-  // Role-based UI permission tests (all roles, skip if no credentials)
+  // Role-based UI permission tests using exact RBAC from constants
+  // Roles not in roleDefinitions are excluded; missing credentials produce visible SKIP
 
-  const allRoles: RoleKey[] = [
-    'admin', 'super_admin', 'manager', 'supervisor',
-    'driver', 'assistant_driver', 'collector', 'mechanic',
-    'finance', 'viewer', 'ops_admin',
-  ];
+  for (const roleKey of allRoleKeys) {
+    const perms = tripPermissions[roleKey] ?? [];
+    const canViewTrips = perms.includes('trip_view');
+    const canCreateTrip = perms.includes('trip_create');
 
-  for (const roleKey of allRoles) {
-    const cred = getCredential(roleKey);
-    if (!cred) continue;
-
-    test(`${roleKey}: trips page loads correctly`, async ({ page }) => {
-      const loggedIn = await loginAsRole(page, roleKey);
-      if (!loggedIn) {
-        test.skip();
-        return;
-      }
-      await page.goto('/trips');
-      await page.waitForSelector('.page-header');
-      await expect(page.locator('.page-header-title')).toContainText('Trips');
-    });
-
-    if (roleKey !== 'admin' && roleKey !== 'super_admin') {
-      test(`${roleKey}: Create Trip button visibility matches RBAC`, async ({ page }) => {
+    if (canViewTrips) {
+      test(`${roleKey}: can view /trips page`, async ({ page }) => {
+        const cred = getCredential(roleKey);
+        if (!cred) {
+          test.skip(true, `No ${roleKey} credentials in .env`);
+          return;
+        }
         const loggedIn = await loginAsRole(page, roleKey);
         if (!loggedIn) {
-          test.skip();
+          test.skip(true, `Login failed for ${roleKey}`);
           return;
         }
         await page.goto('/trips');
         await page.waitForSelector('.page-header');
-
-        const canCreate = ['manager', 'supervisor'].includes(roleKey);
-        const createBtn = page.locator('button:has-text("Create Trip")');
-        if (canCreate) {
-          await expect(createBtn.first()).toBeVisible();
-        } else {
-          await expect(createBtn).toHaveCount(0);
+        await expect(page.locator('.page-header-title')).toContainText('Trips');
+      });
+    } else {
+      test(`${roleKey}: cannot view /trips (no trip_view)`, async ({ page }) => {
+        const cred = getCredential(roleKey);
+        if (!cred) {
+          test.skip(true, `No ${roleKey} credentials in .env`);
+          return;
         }
+        const loggedIn = await loginAsRole(page, roleKey);
+        if (!loggedIn) {
+          test.skip(true, `Login failed for ${roleKey}`);
+          return;
+        }
+        await page.goto('/trips');
+        await page.waitForTimeout(2000);
+        const url = page.url();
+        const isDenied = url.includes('/login') || url.includes('/access-denied')
+          || (await page.locator('.error-state, .access-denied, [class*="denied"]').count()) > 0
+          || (await page.locator('text=Access Denied').count()) > 0
+          || (await page.locator('text=Unauthorized').count()) > 0;
+        expect(isDenied).toBeTruthy();
+      });
+    }
+
+    if (canCreateTrip) {
+      test(`${roleKey}: Create Trip button visible`, async ({ page }) => {
+        const cred = getCredential(roleKey);
+        if (!cred) {
+          test.skip(true, `No ${roleKey} credentials in .env`);
+          return;
+        }
+        const loggedIn = await loginAsRole(page, roleKey);
+        if (!loggedIn) {
+          test.skip(true, `Login failed for ${roleKey}`);
+          return;
+        }
+        await page.goto('/trips');
+        await page.waitForSelector('.page-header');
+        await expect(page.locator('button:has-text("Create Trip")').first()).toBeVisible();
+      });
+    } else {
+      test(`${roleKey}: Create Trip button not visible`, async ({ page }) => {
+        const cred = getCredential(roleKey);
+        if (!cred) {
+          test.skip(true, `No ${roleKey} credentials in .env`);
+          return;
+        }
+        const loggedIn = await loginAsRole(page, roleKey);
+        if (!loggedIn) {
+          test.skip(true, `Login failed for ${roleKey}`);
+          return;
+        }
+        await page.goto('/trips');
+        await page.waitForSelector('.page-header');
+        await expect(page.locator('button:has-text("Create Trip")')).toHaveCount(0);
       });
     }
   }

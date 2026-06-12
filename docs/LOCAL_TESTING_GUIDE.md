@@ -1,4 +1,4 @@
-# Local Testing Guide — Phase 4.4
+# Local Testing Guide — Phase 4.5
 
 ## Prerequisites
 
@@ -17,7 +17,20 @@ All tests read credentials from `backend/.env`. Never print, commit, or share cr
 
 ### Optional (for role-based permission checks)
 
-All 11 roles are supported. Set any subset; missing roles are skipped unless `E2E_REQUIRE_ALL_ROLES=true`.
+Seeded roles match `backend/src/constants/rbac.ts` exactly:
+
+- super_admin
+- admin
+- manager
+- supervisor
+- driver
+- assistant_driver
+- collector
+- mechanic
+- finance
+- viewer
+
+Set any subset; missing roles produce visible SKIP tests unless `E2E_REQUIRE_ALL_ROLES=true`.
 
 - `E2E_ADMIN_IDENTIFIER` / `E2E_ADMIN_PASSWORD` — already required above
 - `E2E_SUPER_ADMIN_IDENTIFIER` / `E2E_SUPER_ADMIN_PASSWORD`
@@ -29,7 +42,6 @@ All 11 roles are supported. Set any subset; missing roles are skipped unless `E2
 - `E2E_MECHANIC_IDENTIFIER` / `E2E_MECHANIC_PASSWORD`
 - `E2E_FINANCE_IDENTIFIER` / `E2E_FINANCE_PASSWORD` or `FINANCE_USERNAME` / `FINANCE_PASSWORD`
 - `E2E_VIEWER_IDENTIFIER` / `E2E_VIEWER_PASSWORD` or `VIEWER_USERNAME` / `VIEWER_PASSWORD`
-- `E2E_OPS_ADMIN_IDENTIFIER` / `E2E_OPS_ADMIN_PASSWORD`
 
 ### Require all roles
 
@@ -70,7 +82,7 @@ cd web
 npm run test:e2e
 ```
 
-## What the API Test Covers (25+ core + 11 role suites)
+## What the API Test Covers (25+ core + 10 role suites)
 
 ### Core workflow
 - Health check
@@ -100,19 +112,18 @@ npm run test:e2e
 - Negative startOdometer rejected (400)
 - endOdometer < startOdometer rejected (400)
 
-### Role-based permission checks (all 11 roles)
-For each role, tests against `defaultRolePermissionMap` from `rbac.ts`:
+### Role-based permission checks (10 seeded roles)
+Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - **super_admin**: all trip permissions
-- **admin**: all except role_delete
-- **manager**: all trip + vehicle + driver permissions
-- **supervisor**: trip + vehicle + driver + asset permissions
-- **driver**: trip_view, trip_start, trip_end only
+- **admin**: all trip permissions
+- **manager**: all trip permissions
+- **supervisor**: all trip permissions
+- **driver**: trip_view, trip_start, trip_end
 - **assistant_driver**: trip_view only
-- **collector**: finance_view, report_view only (no trip access)
-- **mechanic**: repair_view, repair_update, repair_close only (no trip access)
-- **finance**: finance/fuel/expense/report view + approve (no trip access)
-- **viewer**: view-only permissions
-- **ops_admin**: empty permissions (no access)
+- **collector**: no trip permissions
+- **mechanic**: no trip permissions
+- **finance**: no trip permissions
+- **viewer**: trip_view only
 
 ### SKIP semantics
 - Missing role credentials produce SKIP, not FAIL
@@ -128,19 +139,24 @@ For each role, tests against `defaultRolePermissionMap` from `rbac.ts`:
 
 - Login as admin
 - /trips page loads with Create Trip button
-- Create trip from /trips/new using TEST-E2E vehicle/driver via API
-- Schedule and start trip from detail page (selects TEST-E2E row, not first row)
-- History tab shows lifecycle records
+- Create trip via API, navigate directly by trip ID (no first-row fallback)
+- Full lifecycle: schedule → start → complete via UI
+- History tab shows CREATED, SCHEDULED, STARTED, COMPLETED
 - No horizontal overflow at 1366x768
 - Low-density layout (13px root font)
 - Roles page still works
 - Users page Create User button visible
-- Role-based UI checks for all 11 roles (skip if no credentials):
-  - trips page loads correctly
-  - Create Trip button visibility matches RBAC
+- Role-based UI checks for all 10 seeded roles using exact RBAC:
+  - Roles with trip_view can see /trips page
+  - Roles without trip_view get access denied
+  - Roles with trip_create see Create Trip button
+  - Roles without trip_create do not see Create Trip button
+- Missing optional role credentials produce visible SKIP tests
 
-### TEST-E2E UI data
-- Vehicle/driver created via API before tests (never selects first row)
+### TEST-E2E safety
+- Vehicle/driver/trip created via API before tests
+- Playwright never selects first option, first row, or real records
+- Navigation uses stored trip ID directly
 - Cleanup in afterAll: cancel started trips, reset vehicles/drivers
 
 ## Important Notes
@@ -152,6 +168,7 @@ For each role, tests against `defaultRolePermissionMap` from `rbac.ts`:
 - Failing tests must exit with non-zero code.
 - All test data uses `TEST-E2E-` prefixed records only.
 - No real vehicle/driver records are used or deleted.
-- Playwright creates TEST-E2E records via API; never selects first available row.
+- Playwright fails if TEST-E2E record is missing (no fallbacks).
 - Shared credential helpers duplicated in backend/web because they run in different processes.
-- Vercel staging projects `fleet-management-web-staging` and `fleet-management-backend-staging` have been deleted; only `web` and `backend` projects remain.
+- Seeded roles are exactly the roles from `backend/src/constants/rbac.ts`.
+- No credential values are written in docs or printed during tests.

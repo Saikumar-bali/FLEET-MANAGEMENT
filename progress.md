@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.4 (Playwright-safe E2E data, expanded all-role credential coverage, E2E_REQUIRE_ALL_ROLES mode, role-based API/Playwright permission checks against RBAC seed, and no-deploy discipline) is in progress. Phase 4.3 is completed. Phase 5 has not started.
+Phase 4.5 (strict Playwright-safe data, accurate role coverage, final local QA gate) is in progress. Phase 4.4 is completed. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -25,7 +25,8 @@ Phase 4.4 (Playwright-safe E2E data, expanded all-role credential coverage, E2E_
 | Phase 4.1 | Trip Workflow Hardening and Local QA | Completed locally |
 | Phase 4.2 | Trip Workflow Reliability and Safe Test Data | Completed locally |
 | Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | Completed |
-| Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | In Progress |
+| Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | Completed |
+| Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -700,6 +701,50 @@ Phase 4.4 (Playwright-safe E2E data, expanded all-role credential coverage, E2E_
 - `npm run backend:build`: pending
 - `npm run web:lint`: pending
 - `npm run web:build`: pending
+- No mobile files changed
+- No secrets committed
+
+### 2026-06-12 (Phase 4.5 — Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate)
+
+**Removed ops_admin:**
+- Removed `ops_admin` from both `backend/scripts/test-helpers/credentials.ts` and `web/e2e/helpers/credentials.ts`
+- `ops_admin` is not in `roleDefinitions` or `defaultRolePermissionMap` in `rbac.ts` — not seeded
+- Role list now matches exactly: admin, super_admin, manager, supervisor, driver, assistant_driver, collector, mechanic, finance, viewer
+
+**Backend API test imports RBAC directly:**
+- Imports `defaultRolePermissionMap` and `roleDefinitions` from `backend/src/constants/rbac.ts`
+- Removed hand-copied `expectedPermissions` map that could drift
+- Role loop iterates `allRoleKeys`, checks each against `roleDefinitions` to confirm seeding
+- Permission checks read directly from `defaultRolePermissionMap[roleKey]`
+
+**Playwright unsafe fallbacks removed:**
+- Vehicle dropdown: no longer falls back to option index 1 — fails if TEST-E2E vehicle not found
+- Trip row selection: no longer falls back to `.data-table tbody tr.first()` — fails if TEST-E2E row not found
+- Trip created via API helper, test navigates directly to `/trips/:id` using stored trip ID
+
+**Full Playwright trip lifecycle:**
+- Admin creates trip via API → navigates by trip ID → schedules → starts → completes
+- History tab verified for CREATED, SCHEDULED, STARTED, COMPLETED
+- Cleanup confirms no TEST-E2E vehicle/driver remains ON_TRIP
+
+**Playwright role tests aligned to RBAC:**
+- Role permissions defined from `rbac.ts` `defaultRolePermissionMap`
+- For each role with trip_view: /trips page loads
+- For each role without trip_view: access denied behavior
+- For each role with trip_create: Create Trip button visible
+- For each role without trip_create: button not visible
+- Missing optional role credentials produce visible SKIP tests
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: seeded roles, no fallbacks, SKIP semantics, RBAC alignment
+- Updated `progress.md`: Phase 4.4 marked completed, Phase 4.5 in progress
+
+**Verification:**
+- `npm run backend:lint`: pending
+- `npm run backend:build`: pending
+- `npm run web:lint`: pending
+- `npm run web:build`: pending
+- No Vercel deployment performed
 - No mobile files changed
 - No secrets committed
 

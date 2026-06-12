@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { defaultRolePermissionMap, roleDefinitions } from '../src/constants/rbac';
 import {
   getAdminCredential,
   getApiBase,
@@ -103,54 +104,6 @@ async function cleanup(
     } catch { /* best effort */ }
   }
 }
-
-// Role-permission matrix from rbac.ts defaultRolePermissionMap
-const expectedPermissions: Record<RoleKey, { canDo: string[]; cannotDo: string[] }> = {
-  super_admin: {
-    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-    cannotDo: [],
-  },
-  admin: {
-    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-    cannotDo: ['role_delete'],
-  },
-  manager: {
-    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel', 'vehicle_view', 'driver_view'],
-    cannotDo: ['user_create', 'user_delete', 'role_create', 'role_delete', 'permission_assign'],
-  },
-  supervisor: {
-    canDo: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel', 'vehicle_view', 'driver_view'],
-    cannotDo: ['user_view', 'user_create', 'role_view', 'permission_view'],
-  },
-  driver: {
-    canDo: ['trip_view', 'trip_start', 'trip_end'],
-    cannotDo: ['trip_create', 'trip_cancel', 'trip_update', 'vehicle_create', 'driver_create'],
-  },
-  assistant_driver: {
-    canDo: ['trip_view'],
-    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_update'],
-  },
-  collector: {
-    canDo: ['finance_view', 'report_view'],
-    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
-  },
-  mechanic: {
-    canDo: ['repair_view', 'repair_update', 'repair_close'],
-    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
-  },
-  finance: {
-    canDo: ['finance_view', 'finance_approve', 'fuel_view', 'expense_view', 'report_view', 'report_export'],
-    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_view'],
-  },
-  viewer: {
-    canDo: ['trip_view'],
-    cannotDo: ['trip_create', 'trip_start', 'trip_end', 'trip_cancel', 'trip_update'],
-  },
-  ops_admin: {
-    canDo: [],
-    cannotDo: ['trip_view', 'trip_create', 'trip_start', 'trip_end', 'trip_cancel'],
-  },
-};
 
 async function main() {
   const apiBase = getApiBase();
@@ -538,10 +491,17 @@ async function main() {
       fail(results, 'endOdometer < startOdometer rejected (400)', undefined, 'Could not create trip');
     }
 
-    // --- ROLE-BASED PERMISSION CHECKS (all 11 roles) ---
+    // --- ROLE-BASED PERMISSION CHECKS (imported from rbac.ts defaultRolePermissionMap) ---
+
+    const seededRoleKeys = roleDefinitions.map((r) => r.key);
 
     for (const roleKey of allRoleKeys) {
-      const expected = expectedPermissions[roleKey];
+      if (!seededRoleKeys.includes(roleKey)) {
+        skip(results, `[${roleKey}] all permission checks`, 'Role not in roleDefinitions (not seeded)');
+        continue;
+      }
+
+      const rolePerms = defaultRolePermissionMap[roleKey] ?? [];
       const roleCred = getCredential(roleKey);
 
       if (!roleCred) {
@@ -564,7 +524,7 @@ async function main() {
       const rHeaders = { Authorization: `Bearer ${roleToken}`, 'Content-Type': 'application/json' };
 
       // Test trip_view: GET /trips
-      const canViewTrips = expected.canDo.includes('trip_view');
+      const canViewTrips = rolePerms.includes('trip_view');
       const viewRes = await requestJson(`${apiBase}/api/v1/trips`, { headers: rHeaders });
       if (canViewTrips) {
         if (viewRes.ok) {
@@ -581,7 +541,7 @@ async function main() {
       }
 
       // Test trip_create: POST /trips
-      const canCreateTrip = expected.canDo.includes('trip_create');
+      const canCreateTrip = rolePerms.includes('trip_create');
       const createTripRes = await requestJson<{ data?: { id: string } }>(
         `${apiBase}/api/v1/trips`,
         { method: 'POST', headers: rHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, originName: 'X', destinationName: 'Y' }) },
@@ -602,7 +562,7 @@ async function main() {
       }
 
       // Test trip_start: POST /trips/:id/start
-      const canStartTrip = expected.canDo.includes('trip_start');
+      const canStartTrip = rolePerms.includes('trip_start');
       const startTripRes = await requestJson(
         `${apiBase}/api/v1/trips/${tripId}/start`,
         { method: 'POST', headers: rHeaders, body: JSON.stringify({ startOdometer: 99999 }) },
@@ -624,7 +584,7 @@ async function main() {
       }
 
       // Test trip_cancel: POST /trips/:id/cancel
-      const canCancelTrip = expected.canDo.includes('trip_cancel');
+      const canCancelTrip = rolePerms.includes('trip_cancel');
       const cancelTripRes = await requestJson(
         `${apiBase}/api/v1/trips/${tripId}/cancel`,
         { method: 'POST', headers: rHeaders, body: JSON.stringify({ notes: 'role test' }) },

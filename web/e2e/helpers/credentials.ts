@@ -13,8 +13,7 @@ export type RoleKey =
   | 'collector'
   | 'mechanic'
   | 'finance'
-  | 'viewer'
-  | 'ops_admin';
+  | 'viewer';
 
 type Credential = { identifier: string; password: string } | null;
 
@@ -58,10 +57,6 @@ const roleEnvMap: Record<RoleKey, { identifiers: string[]; passwords: string[] }
   viewer: {
     identifiers: ['E2E_VIEWER_IDENTIFIER', 'VIEWER_USERNAME', 'VIEWER_EMAIL'],
     passwords: ['E2E_VIEWER_PASSWORD', 'VIEWER_PASSWORD'],
-  },
-  ops_admin: {
-    identifiers: ['E2E_OPS_ADMIN_IDENTIFIER', 'OPS_ADMIN_USERNAME', 'OPS_ADMIN_EMAIL'],
-    passwords: ['E2E_OPS_ADMIN_PASSWORD', 'OPS_ADMIN_PASSWORD'],
   },
 };
 
@@ -111,7 +106,6 @@ export const allRoleKeys: RoleKey[] = [
   'mechanic',
   'finance',
   'viewer',
-  'ops_admin',
 ];
 
 export async function loginAsRole(
