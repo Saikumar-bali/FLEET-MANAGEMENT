@@ -1,4 +1,4 @@
-# Local Testing Guide — Phase 4.5
+# Local Testing Guide — Phase 4.6
 
 ## Prerequisites
 
@@ -84,6 +84,8 @@ npm run test:e2e
 
 ## What the API Test Covers (25+ core + 10 role suites)
 
+Role permissions are imported directly from `defaultRolePermissionMap` in `backend/src/constants/rbac.ts`. No hand-copied maps.
+
 ### Core workflow
 - Health check
 - Admin login
@@ -125,9 +127,10 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - **finance**: no trip permissions
 - **viewer**: trip_view only
 
-### SKIP semantics
-- Missing role credentials produce SKIP, not FAIL
-- `E2E_REQUIRE_ALL_ROLES=true` makes missing credentials fail instead
+### Credential semantics
+- Wrong credentials (login fails): FAIL
+- Missing optional role credentials: SKIP
+- `E2E_REQUIRE_ALL_ROLES=true`: missing credentials produce FAIL instead of SKIP
 
 ### Cleanup
 - All TEST-E2E vehicles reset to AVAILABLE
@@ -147,11 +150,13 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Roles page still works
 - Users page Create User button visible
 - Role-based UI checks for all 10 seeded roles using exact RBAC:
+  - Role permissions derived from `defaultRolePermissionMap` in `rbac.ts` (no hardcoded map)
   - Roles with trip_view can see /trips page
   - Roles without trip_view get access denied
   - Roles with trip_create see Create Trip button
   - Roles without trip_create do not see Create Trip button
-- Missing optional role credentials produce visible SKIP tests
+- Wrong credentials = FAIL (not SKIP)
+- Missing optional role credentials = SKIP (unless `E2E_REQUIRE_ALL_ROLES=true`)
 
 ### TEST-E2E safety
 - Vehicle/driver/trip created via API before tests
@@ -171,4 +176,6 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Playwright fails if TEST-E2E record is missing (no fallbacks).
 - Shared credential helpers duplicated in backend/web because they run in different processes.
 - Seeded roles are exactly the roles from `backend/src/constants/rbac.ts`.
+- Role permissions are derived from `defaultRolePermissionMap` in `rbac.ts` — no hardcoded maps in tests.
+- Playwright loads `rbac.ts` via compiled `dist/src/constants/rbac.js` at runtime.
 - No credential values are written in docs or printed during tests.

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.5 (strict Playwright-safe data, accurate role coverage, final local QA gate) is in progress. Phase 4.4 is completed. Phase 5 has not started.
+Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is in progress. Phase 4.5 is completed. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -26,7 +26,8 @@ Phase 4.5 (strict Playwright-safe data, accurate role coverage, final local QA g
 | Phase 4.2 | Trip Workflow Reliability and Safe Test Data | Completed locally |
 | Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | Completed |
 | Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | Completed |
-| Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | In Progress |
+| Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
+| Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -738,6 +739,43 @@ Phase 4.5 (strict Playwright-safe data, accurate role coverage, final local QA g
 **Documentation:**
 - Updated `docs/LOCAL_TESTING_GUIDE.md`: seeded roles, no fallbacks, SKIP semantics, RBAC alignment
 - Updated `progress.md`: Phase 4.4 marked completed, Phase 4.5 in progress
+
+**Verification:**
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- No Vercel deployment performed
+- No mobile files changed
+- No secrets committed
+
+### 2026-06-12 (Phase 4.6 — Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate)
+
+**Playwright RBAC source from rbac.ts:**
+- Created `web/e2e/helpers/rbac.ts` — loads compiled `backend/dist/src/constants/rbac.js` at runtime
+- Exports `defaultRolePermissionMap`, `roleDefinitions`, `seededRoleKeys`, `getTripPermissions()`
+- No hardcoded permission maps in Playwright tests — all derived from rbac.ts source
+
+**Playwright trips.spec.ts rewritten:**
+- Removed hardcoded `tripPermissions` record (was duplicating rbac.ts data)
+- Role tests import `getTripPermissions()` from `./helpers/rbac`
+- Wrong credentials (login fails): throws Error → FAIL
+- Missing optional credentials: `test.skip()` → SKIP
+- `E2E_REQUIRE_ALL_ROLES=true`: missing credentials throw → FAIL
+- TEST-E2E trip number assertion: `expect(trip.tripNumber).toMatch(/^TEST-E2E/)`
+- Admin lifecycle test self-contained: creates vehicle/driver in beforeAll, creates trip per test, navigates by ID
+
+**Backend API test verified:**
+- Already imports `defaultRolePermissionMap` and `roleDefinitions` from `rbac.ts`
+- PASS/FAIL/SKIP semantics correct
+- `printSummary` returns exit code; `main()` calls `process.exit(exitCode)`
+- Missing credentials: SKIP (or FAIL if `requireAllRoles()`)
+- Bad login: FAIL
+- No changes needed
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: Phase 4.6 title, RBAC source note, credential semantics, wrong-credential=FAIL
+- Updated `progress.md`: Phase 4.5 marked completed, Phase 4.6 in progress
 
 **Verification:**
 - `npm run backend:lint`: pending

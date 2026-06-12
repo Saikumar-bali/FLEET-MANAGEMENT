@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getCredential, loginAsRole, RoleKey, allRoleKeys } from './helpers/credentials';
+import { getCredential, loginAsRole, RoleKey, allRoleKeys, requireAllRoles } from './helpers/credentials';
 import {
   loginAsAdmin,
   createE2EVehicle,
@@ -8,6 +8,7 @@ import {
   cleanupE2ETestData,
   E2ETestData,
 } from './helpers/api';
+import { getTripPermissions, seededRoleKeys } from './helpers/rbac';
 
 const testState = {
   adminToken: '' as string,
@@ -36,21 +37,7 @@ test.afterAll(async () => {
   }
 });
 
-// RBAC from backend/src/constants/rbac.ts defaultRolePermissionMap
-const tripPermissions: Record<string, string[]> = {
-  admin: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-  super_admin: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-  manager: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-  supervisor: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel'],
-  driver: ['trip_view', 'trip_start', 'trip_end'],
-  assistant_driver: ['trip_view'],
-  collector: [],
-  mechanic: [],
-  finance: [],
-  viewer: ['trip_view'],
-};
-
-test.describe('Phase 4.5 Trip workflow tests', () => {
+test.describe('Phase 4.6 Trip workflow tests', () => {
   test('Login as admin', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
@@ -71,6 +58,7 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       testState.e2eData!.vehicleId,
       testState.e2eData!.driverId,
     );
+    expect(trip.tripNumber).toMatch(/^TEST-E2E/);
     testState.e2eData!.tripId = trip.id;
     testState.e2eData!.tripNumber = trip.tripNumber;
 
@@ -84,11 +72,9 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
     const tripId = testState.e2eData!.tripId;
     expect(tripId).toBeTruthy();
 
-    // Navigate directly to trip by ID
     await page.goto(`/trips/${tripId}`);
     await page.waitForSelector('.page-header-title');
 
-    // Schedule
     const scheduleBtn = page.locator('button:has-text("Schedule")');
     if (await scheduleBtn.isVisible()) {
       await scheduleBtn.click();
@@ -97,7 +83,6 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       await expect(page.locator('.status-badge')).toContainText(/Scheduled/i);
     }
 
-    // Start
     const startBtn = page.locator('button:has-text("Start Trip")');
     if (await startBtn.isVisible()) {
       await startBtn.click();
@@ -106,7 +91,6 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       await expect(page.locator('.status-badge')).toContainText(/Started|ON_TRIP/i);
     }
 
-    // Complete
     const completeBtn = page.locator('button:has-text("Complete Trip")');
     if (await completeBtn.isVisible()) {
       await completeBtn.click();
@@ -115,7 +99,6 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       await expect(page.locator('.status-badge')).toContainText(/Completed/i);
     }
 
-    // History tab shows lifecycle records
     await page.click('button:has-text("History")');
     await page.waitForTimeout(1000);
     const historyTable = page.locator('.data-table');
@@ -123,7 +106,6 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
     const rows = await page.locator('.data-table tbody tr').count();
     expect(rows).toBeGreaterThan(0);
 
-    // Verify all expected actions present
     const historyText = await page.locator('.data-table').textContent();
     expect(historyText).toContain('CREATED');
     expect(historyText).toContain('SCHEDULED');
@@ -168,11 +150,11 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
     await expect(page.locator('button:has-text("Create user")').first()).toBeVisible();
   });
 
-  // Role-based UI permission tests using exact RBAC from constants
-  // Roles not in roleDefinitions are excluded; missing credentials produce visible SKIP
+  // Role-based UI permission tests using exact RBAC from backend/src/constants/rbac.ts
+  // Wrong credentials = FAIL; missing optional credentials = SKIP (unless E2E_REQUIRE_ALL_ROLES=true)
 
   for (const roleKey of allRoleKeys) {
-    const perms = tripPermissions[roleKey] ?? [];
+    const perms = getTripPermissions(roleKey);
     const canViewTrips = perms.includes('trip_view');
     const canCreateTrip = perms.includes('trip_create');
 
@@ -180,13 +162,15 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       test(`${roleKey}: can view /trips page`, async ({ page }) => {
         const cred = getCredential(roleKey);
         if (!cred) {
+          if (requireAllRoles()) {
+            throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
+          }
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
         const loggedIn = await loginAsRole(page, roleKey);
         if (!loggedIn) {
-          test.skip(true, `Login failed for ${roleKey}`);
-          return;
+          throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
         await page.goto('/trips');
         await page.waitForSelector('.page-header');
@@ -196,13 +180,15 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       test(`${roleKey}: cannot view /trips (no trip_view)`, async ({ page }) => {
         const cred = getCredential(roleKey);
         if (!cred) {
+          if (requireAllRoles()) {
+            throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
+          }
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
         const loggedIn = await loginAsRole(page, roleKey);
         if (!loggedIn) {
-          test.skip(true, `Login failed for ${roleKey}`);
-          return;
+          throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
         await page.goto('/trips');
         await page.waitForTimeout(2000);
@@ -219,13 +205,15 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       test(`${roleKey}: Create Trip button visible`, async ({ page }) => {
         const cred = getCredential(roleKey);
         if (!cred) {
+          if (requireAllRoles()) {
+            throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
+          }
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
         const loggedIn = await loginAsRole(page, roleKey);
         if (!loggedIn) {
-          test.skip(true, `Login failed for ${roleKey}`);
-          return;
+          throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
         await page.goto('/trips');
         await page.waitForSelector('.page-header');
@@ -235,13 +223,15 @@ test.describe('Phase 4.5 Trip workflow tests', () => {
       test(`${roleKey}: Create Trip button not visible`, async ({ page }) => {
         const cred = getCredential(roleKey);
         if (!cred) {
+          if (requireAllRoles()) {
+            throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
+          }
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
         const loggedIn = await loginAsRole(page, roleKey);
         if (!loggedIn) {
-          test.skip(true, `Login failed for ${roleKey}`);
-          return;
+          throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
         await page.goto('/trips');
         await page.waitForSelector('.page-header');
