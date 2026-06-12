@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 (Trip / Transfer Workflow) is completed locally and verified against Neon. Trip CRUD, lifecycle workflow (draft → scheduled → started → completed/cancelled), vehicle/driver status management, trip history, and frontend trip pages are now working. Phase 5 has not started.
+Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel staging. Trip CRUD, lifecycle workflow (draft → scheduled → started → completed/cancelled), vehicle/driver status management, trip history, and frontend trip pages are all working on staging. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -21,7 +21,7 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and verified against Neo
 | Phase 3.2 | Final UI Quality Gate and Safety Cleanup | Completed locally and verified |
 | Phase 3.3 | Final Permission Matrix and UI Acceptance Patch | Completed locally and verified |
 | Phase 3.4 | Small UI Correctness Patch | Completed locally and verified |
-| Phase 4 | Trip / Transfer Workflow | Completed locally and verified against Neon |
+| Phase 4 | Trip / Transfer Workflow | Completed locally and staging-verified |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -467,6 +467,30 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and verified against Neo
 - Trip permissions confirmed seeded via rbac.ts defaultRolePermissionMap
 - No mobile files changed
 - No secrets committed
+
+### 2026-06-12 (Phase 4 — Staging Deployment Verification)
+
+- Backend deployed to Vercel: `https://fleet-management-backend-staging.vercel.app`
+- Web deployed to Vercel: `https://fleet-management-web-staging.vercel.app`
+- `VITE_API_URL` set to `https://fleet-management-backend-staging.vercel.app` on web project
+- Web redeployed with correct production env var
+- Backend health on Vercel: `database: connected`
+- All staging pages verified:
+  - Dashboard: PASS
+  - Vehicles: PASS
+  - Drivers: PASS
+  - Assets: PASS
+  - Asset Categories: PASS
+  - Roles: PASS
+  - Trips: PASS (Create Trip button visible, permission-gated)
+- Staging E2E trip lifecycle:
+  - Login: PASS
+  - GET /trips: PASS (200)
+  - POST /trips (create): PASS (201)
+  - POST /trips/:id/start: PASS (STARTED)
+  - POST /trips/:id/complete: PASS (COMPLETED, 200km)
+  - GET /trips/:id/history: PASS (3 entries)
+- Phase 4 Trip / Transfer Workflow fully completed and staging-verified
 
 ## Next Step
 
