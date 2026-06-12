@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const rbacPath = path.resolve(__dirname, '../../../backend/dist/src/constants/rbac.js');
 // eslint-disable-next-line @typescript-eslint/no-var-requires

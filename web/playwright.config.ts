@@ -5,7 +5,7 @@ export default defineConfig({
   timeout: 30000,
   retries: 1,
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:5173',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
     screenshot: 'only-on-failure',
   },
   webServer: [

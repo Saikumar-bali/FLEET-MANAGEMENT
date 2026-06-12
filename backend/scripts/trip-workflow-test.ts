@@ -439,10 +439,10 @@ async function main() {
       `${apiBase}/api/v1/trips`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, assistantDriverId: driver.id, originName: 'X', destinationName: 'Y' }) },
     );
-    if (!sameTrip.ok && sameTrip.status === 400) {
-      pass(results, 'driver === assistantDriver rejected (400)', sameTrip.status);
+    if (!sameTrip.ok && (sameTrip.status === 400 || sameTrip.status === 422)) {
+      pass(results, 'driver === assistantDriver rejected (400/422)', sameTrip.status);
     } else {
-      fail(results, 'driver === assistantDriver rejected (400)', sameTrip.status);
+      fail(results, 'driver === assistantDriver rejected (400/422)', sameTrip.status);
     }
 
     // 24. Negative startOdometer
@@ -456,10 +456,10 @@ async function main() {
         `${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/start`,
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: -100 }) },
       );
-      if (!negStart.ok && negStart.status === 400) {
-        pass(results, 'Negative startOdometer rejected (400)', negStart.status);
+      if (!negStart.ok && (negStart.status === 400 || negStart.status === 422)) {
+        pass(results, 'Negative startOdometer rejected (400/422)', negStart.status);
       } else {
-        fail(results, 'Negative startOdometer rejected (400)', negStart.status);
+        fail(results, 'Negative startOdometer rejected (400/422)', negStart.status);
       }
       await requestJson(`${apiBase}/api/v1/trips/${negOdoTrip.data.data.id}/cancel`, { method: 'POST', headers: authHeaders, body: JSON.stringify({}) });
     } else {

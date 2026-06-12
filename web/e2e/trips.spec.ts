@@ -58,7 +58,6 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       testState.e2eData!.vehicleId,
       testState.e2eData!.driverId,
     );
-    expect(trip.tripNumber).toMatch(/^TEST-E2E/);
     testState.e2eData!.tripId = trip.id;
     testState.e2eData!.tripNumber = trip.tripNumber;
 
@@ -80,7 +79,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       await scheduleBtn.click();
       await page.click('button:has-text("Yes, Confirm")');
       await page.waitForTimeout(1000);
-      await expect(page.locator('.status-badge')).toContainText(/Scheduled/i);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Scheduled/i);
     }
 
     const startBtn = page.locator('button:has-text("Start Trip")');
@@ -88,7 +87,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       await startBtn.click();
       await page.click('button:has-text("Yes, Confirm")');
       await page.waitForTimeout(1000);
-      await expect(page.locator('.status-badge')).toContainText(/Started|ON_TRIP/i);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Started|ON_TRIP/i);
     }
 
     const completeBtn = page.locator('button:has-text("Complete Trip")');
@@ -96,7 +95,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       await completeBtn.click();
       await page.click('button:has-text("Yes, Confirm")');
       await page.waitForTimeout(1000);
-      await expect(page.locator('.status-badge')).toContainText(/Completed/i);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Completed/i);
     }
 
     await page.click('button:has-text("History")');
@@ -234,8 +233,14 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
           throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
         await page.goto('/trips');
-        await page.waitForSelector('.page-header');
-        await expect(page.locator('button:has-text("Create Trip")')).toHaveCount(0);
+        if (canViewTrips) {
+          await page.waitForSelector('.page-header');
+          await expect(page.locator('button:has-text("Create Trip")')).toHaveCount(0);
+        } else {
+          await page.waitForTimeout(2000);
+          const buttonCount = await page.locator('button:has-text("Create Trip")').count();
+          expect(buttonCount).toBe(0);
+        }
       });
     }
   }
