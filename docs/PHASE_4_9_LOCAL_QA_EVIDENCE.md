@@ -28,10 +28,12 @@ No credential values were printed.
 
 ## Windows Prisma Lock Resolution
 
-Running backend Node/nodemon processes were holding the generated Prisma query engine
-DLL. All Node processes were stopped before generation. The generated client cache did
-not need to be deleted, dependencies did not need to be reinstalled, and the backend
-build script was not changed.
+No repo-local Node or nodemon processes were still running when the fresh build rerun
+started, so the Prisma DLL was not locked during this pass. The safe recovery path is
+still documented because earlier Phase 4.8 evidence showed the Windows lock failure.
+During this Phase 4.9 rerun, the generated client cache did not need to be deleted,
+dependencies did not need to be reinstalled, and the backend build script was not
+changed.
 
 `npm --prefix backend run prisma:generate` then passed, followed by a fresh successful
 `npm run backend:build`.
@@ -45,13 +47,18 @@ build script was not changed.
 | `npm run backend:build` | PASS | 0 | Fresh `prisma generate && tsc` completed successfully. |
 | `npm run web:lint` | PASS | 0 | TypeScript no-emit check passed. |
 | `npm run web:build` | PASS | 0 | TypeScript and Vite build passed; 64 modules transformed. |
-| `npm run dev` from `backend` | PASS | 0 startup gate | Backend became ready at `http://localhost:4000`. |
 | `$env:API_BASE_URL="http://localhost:4000"; npm --prefix backend run test:trips` | PASS | 0 | 79 passed, 0 failed, 0 skipped. |
-| `npm run dev` from `web` | PASS | 0 startup gate | Web became ready at `http://localhost:5173`. |
 | `$env:API_BASE_URL="http://localhost:4000"; npm --prefix web run test:e2e` | PASS | 0 | 31 passed, 0 failed, 0 skipped. |
 
 The four required lint/build commands were rerun after the local dev-command fix and
 the results above are the final results.
+
+## Local Runtime Startup Checks
+
+| Command | Status | Exit code | Safe summary |
+|---|---:|---:|---|
+| `cd backend && npm run dev` | PASS | n/a | Background process started and `GET /api/v1/health` returned HTTP 200 on `http://localhost:4000`. |
+| `cd web && npm run dev` | PASS | n/a | Background process started and `GET /` returned HTTP 200 on `http://localhost:5173`. |
 
 ## Results
 
