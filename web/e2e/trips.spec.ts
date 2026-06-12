@@ -1,44 +1,22 @@
 import { test, expect } from '@playwright/test';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { getAdminCredential, getCredential, loginAsRole } from './helpers/credentials';
 
-dotenv.config({ path: path.resolve(__dirname, '../../backend/.env') });
-
-function resolveCredential(): { identifier: string; password: string } {
-  const identifier = process.env.E2E_ADMIN_IDENTIFIER
-    || process.env.ADMIN_USERNAME
-    || process.env.ADMIN_EMAIL;
-  const password = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-  if (!identifier || !password) {
-    throw new Error('No credentials found. Set E2E_ADMIN_IDENTIFIER + E2E_ADMIN_PASSWORD in backend/.env');
-  }
-  return { identifier, password };
-}
-
-async function loginAsAdmin(page: import('@playwright/test').Page) {
-  const { identifier, password } = resolveCredential();
-  await page.goto('/login');
-  await page.fill('input[type="text"]', identifier);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL('/');
-}
-
-test.describe('Phase 4.1 Trip workflow tests', () => {
+test.describe('Phase 4.3 Trip workflow tests', () => {
   test('Login as admin', async ({ page }) => {
-    await loginAsAdmin(page);
+    const cred = getAdminCredential();
+    await loginAsRole(page, 'admin');
     await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
   });
 
-  test('Open /trips and confirm Create Trip button visible', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('Admin: Create Trip button visible on /trips', async ({ page }) => {
+    await loginAsRole(page, 'admin');
     await page.goto('/trips');
     await page.waitForSelector('.page-header');
     await expect(page.locator('button:has-text("Create Trip")').first()).toBeVisible();
   });
 
-  test('Open /trips/new, create a trip, land on /trips/:id', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('Admin: create trip from /trips/new', async ({ page }) => {
+    await loginAsRole(page, 'admin');
 
     await page.goto('/trips/new');
     await page.waitForSelector('#trip-form');
@@ -59,8 +37,8 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
     await expect(page.locator('.page-header-title')).toBeVisible();
   });
 
-  test('Schedule and start trip from detail page', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('Admin: schedule and start trip from detail page', async ({ page }) => {
+    await loginAsRole(page, 'admin');
 
     await page.goto('/trips');
     await page.waitForSelector('.data-table');
@@ -85,8 +63,8 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
     }
   });
 
-  test('History tab shows lifecycle records', async ({ page }) => {
-    await loginAsAdmin(page);
+  test('Admin: history tab shows lifecycle records', async ({ page }) => {
+    await loginAsRole(page, 'admin');
 
     await page.goto('/trips');
     await page.waitForSelector('.data-table');
@@ -107,7 +85,7 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
 
   test('No horizontal overflow at 1366x768', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await loginAsAdmin(page);
+    await loginAsRole(page, 'admin');
     await page.goto('/trips');
 
     const overflow = await page.evaluate(() => {
@@ -117,7 +95,7 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
   });
 
   test('Trip UI uses low-density layout', async ({ page }) => {
-    await loginAsAdmin(page);
+    await loginAsRole(page, 'admin');
     await page.goto('/trips');
 
     const fontSize = await page.evaluate(() => {
@@ -128,7 +106,7 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
 
   test('Roles page still works', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
-    await loginAsAdmin(page);
+    await loginAsRole(page, 'admin');
     await page.goto('/roles');
     await page.waitForSelector('#permission-matrix');
     await expect(page.locator('#permission-matrix .data-table')).toBeVisible();
@@ -136,9 +114,33 @@ test.describe('Phase 4.1 Trip workflow tests', () => {
   });
 
   test('Users page Create User button still visible', async ({ page }) => {
-    await loginAsAdmin(page);
+    await loginAsRole(page, 'admin');
     await page.goto('/users');
     await page.waitForSelector('.data-table');
     await expect(page.locator('button:has-text("Create user")').first()).toBeVisible();
   });
+
+  // Role-based permission tests (only run if credentials exist)
+
+  const viewerCred = getCredential('viewer');
+  const driverCred = getCredential('driver');
+
+  if (viewerCred) {
+    test('Viewer: can see /trips but not Create Trip button', async ({ page }) => {
+      await loginAsRole(page, 'viewer');
+      await page.goto('/trips');
+      await page.waitForSelector('.page-header');
+      await expect(page.locator('.page-header-title')).toContainText('Trips');
+      await expect(page.locator('button:has-text("Create Trip")')).toHaveCount(0);
+    });
+  }
+
+  if (driverCred) {
+    test('Driver: cannot see Create Trip button', async ({ page }) => {
+      await loginAsRole(page, 'driver');
+      await page.goto('/trips');
+      await page.waitForSelector('.page-header');
+      await expect(page.locator('button:has-text("Create Trip")')).toHaveCount(0);
+    });
+  }
 });

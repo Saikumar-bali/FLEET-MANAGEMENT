@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel staging. Trip CRUD, lifecycle workflow (draft → scheduled → started → completed/cancelled), vehicle/driver status management, trip history, and frontend trip pages are all working on staging. Phase 5 has not started.
+Phase 4.3 (Trip Workflow Local QA) is in progress. Phase 4 core workflow is completed locally and deployed to Vercel staging. Phase 4.3 focuses on making local QA trustworthy before deployment: safe E2E-only test data, all-role credential loading from backend/.env, role-based API and Playwright permission checks, proper cleanup, and suspended-driver test fix. Vercel deployment is deferred until Phase 4.3 is accepted. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -24,6 +24,7 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
 | Phase 4 | Trip / Transfer Workflow | Completed locally and staging-verified |
 | Phase 4.1 | Trip Workflow Hardening and Local QA | Completed locally |
 | Phase 4.2 | Trip Workflow Reliability and Safe Test Data | Completed locally |
+| Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -604,6 +605,54 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
 - `npm run backend:build`: pass
 - `npm run web:lint`: pass
 - `npm run web:build`: pass
+- No mobile files changed
+- No secrets committed
+
+### 2026-06-12 (Phase 4.3 — Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks)
+
+**Shared credential loaders:**
+- Created `backend/scripts/test-helpers/credentials.ts` with `getCredential(roleKey)`, `getAdminCredential()`, `getApiBase()`
+- Created `web/e2e/helpers/credentials.ts` with `getCredential(roleKey)`, `getAdminCredential()`, `loginAsRole(page, roleKey)`
+- Both load `backend/.env` via dotenv
+- Credential resolution: `E2E_<ROLE>_IDENTIFIER` → `<ROLE>_USERNAME` → fallback chain
+- Missing admin credentials fail fast; missing optional role credentials skip tests gracefully
+- No passwords are ever printed
+
+**100% safe E2E test data:**
+- API test always creates fresh TEST-E2E-TRIP-VEH-<timestamp> vehicles
+- API test always creates fresh TEST-E2E-TRIP-DRV-<timestamp> drivers
+- Never selects existing real vehicle/driver records
+- Negative test records also use TEST-E2E prefixes
+
+**Cleanup/finally recovery:**
+- All created vehicle IDs, driver IDs, and trip IDs tracked
+- try/finally block ensures cleanup runs even on failure
+- STARTED trips cancelled during cleanup
+- All TEST-E2E vehicles reset to AVAILABLE
+- All TEST-E2E drivers reset to AVAILABLE
+- Cleanup failures reported but do not mask test failures
+
+**Suspended-driver test fix:**
+- Replaced non-existent `POST /api/v1/drivers/:id/suspend` with correct `PATCH /api/v1/drivers/:id/status`
+- Payload: `{ "status": "SUSPENDED" }`
+
+**Role-based API permission checks (3 new):**
+- Viewer: can GET /trips (trip_view), cannot POST /trips (403), cannot start (403)
+- Driver: cannot create trips (403), cannot cancel trips (403)
+- Manager: can list and create trips (all trip permissions seeded)
+
+**Role-based Playwright checks (2 new):**
+- Viewer cannot see Create Trip button (if viewer credentials exist)
+- Driver cannot see Create Trip button (if driver credentials exist)
+
+**Documentation:**
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: removed credential values, added role credential variable names, added cleanup and safety notes
+
+**Verification:**
+- `npm run backend:lint`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- No Vercel deployment performed
 - No mobile files changed
 - No secrets committed
 

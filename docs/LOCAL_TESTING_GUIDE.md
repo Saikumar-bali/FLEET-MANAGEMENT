@@ -1,4 +1,4 @@
-# Local Testing Guide — Phase 4.2
+# Local Testing Guide — Phase 4.3
 
 ## Prerequisites
 
@@ -8,14 +8,22 @@
 
 ## Credentials
 
-All tests read credentials from `backend/.env`. Required variables:
+All tests read credentials from `backend/.env`. Never print, commit, or share credential values.
 
-```
-E2E_ADMIN_IDENTIFIER=admin
-E2E_ADMIN_PASSWORD=admin@123
-```
+### Required
 
-Or fallback chain: `ADMIN_USERNAME` → `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+- `E2E_ADMIN_IDENTIFIER` or `ADMIN_USERNAME` or `ADMIN_EMAIL`
+- `E2E_ADMIN_PASSWORD` or `ADMIN_PASSWORD`
+
+### Optional (for role-based permission checks)
+
+- `E2E_VIEWER_IDENTIFIER` / `E2E_VIEWER_PASSWORD` or `VIEWER_USERNAME` / `VIEWER_PASSWORD`
+- `E2E_DRIVER_IDENTIFIER` / `E2E_DRIVER_PASSWORD` or `DRIVER_USERNAME` / `DRIVER_PASSWORD`
+- `E2E_MANAGER_IDENTIFIER` / `E2E_MANAGER_PASSWORD` or `MANAGER_USERNAME` / `MANAGER_PASSWORD`
+- `E2E_SUPERVISOR_IDENTIFIER` / `E2E_SUPERVISOR_PASSWORD` or `SUPERVISOR_USERNAME` / `SUPERVISOR_PASSWORD`
+- `E2E_FINANCE_IDENTIFIER` / `E2E_FINANCE_PASSWORD` or `FINANCE_USERNAME` / `FINANCE_PASSWORD`
+
+If optional role credentials are absent, those role tests are skipped with a clear message.
 
 ## Terminal Setup
 
@@ -52,12 +60,13 @@ cd web
 npm run test:e2e
 ```
 
-## What the API Test Covers (25 checks)
+## What the API Test Covers (28+ checks)
 
+### Core workflow
 - Health check
 - Admin login
 - Unauthorized request returns 401
-- Create trip with vehicle and driver
+- Create trip with TEST-E2E vehicle and driver
 - List trips
 - Get trip by ID
 - Schedule trip (DRAFT → SCHEDULED)
@@ -73,12 +82,24 @@ npm run test:e2e
 - Cancelled trip history exists
 - Invalid status query returns 400
 - Invalid tripType query returns 400
+
+### Negative checks
 - Start trip with UNDER_MAINTENANCE vehicle blocked (400)
 - Start trip with SUSPENDED driver blocked (400)
 - driver === assistantDriver rejected (400)
 - Negative startOdometer rejected (400)
 - endOdometer < startOdometer rejected (400)
-- Exit code: 0 = all pass, 1 = any fail
+
+### Role-based permission checks
+- Viewer can GET /trips, cannot POST /trips or start
+- Driver cannot create or cancel trips
+- Manager can create and list trips
+
+### Cleanup
+- All TEST-E2E vehicles reset to AVAILABLE
+- All TEST-E2E drivers reset to AVAILABLE
+- All started TEST-E2E trips cancelled
+- Cleanup runs in finally block even on failure
 
 ## What the Playwright Test Covers
 
@@ -91,11 +112,15 @@ npm run test:e2e
 - Low-density layout (13px root font)
 - Roles page still works
 - Users page Create User button visible
+- Viewer cannot see Create Trip button (if viewer credentials exist)
+- Driver cannot see Create Trip button (if driver credentials exist)
 
 ## Important Notes
 
 - **Do not deploy to Vercel during phase implementation.**
 - Deploy to Vercel only after local API + Playwright tests pass and phase is reviewed.
-- Do not commit secrets or environment files.
+- Do not commit `backend/.env` or any secrets.
 - Do not modify mobile app files.
 - Failing tests must exit with non-zero code.
+- All test data uses `TEST-E2E-` prefixed records only.
+- No real vehicle/driver records are used or deleted.
