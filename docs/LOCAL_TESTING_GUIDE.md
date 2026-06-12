@@ -1,4 +1,4 @@
-# Local Testing Guide — Phase 4.6
+# Local Testing Guide — Phase 4.7
 
 ## Prerequisites
 
@@ -140,9 +140,9 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 
 ## What the Playwright Test Covers
 
+- **Self-contained admin lifecycle**: creates TEST-E2E vehicle/driver/trip in try block, cleans up in finally block
 - Login as admin
 - /trips page loads with Create Trip button
-- Create trip via API, navigate directly by trip ID (no first-row fallback)
 - Full lifecycle: schedule → start → complete via UI
 - History tab shows CREATED, SCHEDULED, STARTED, COMPLETED
 - No horizontal overflow at 1366x768
@@ -150,7 +150,7 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Roles page still works
 - Users page Create User button visible
 - Role-based UI checks for all 10 seeded roles using exact RBAC:
-  - Role permissions derived from `defaultRolePermissionMap` in `rbac.ts` (no hardcoded map)
+  - Role permissions derived from `seededRoleKeys` in `rbac.ts` (no hardcoded list)
   - Roles with trip_view can see /trips page
   - Roles without trip_view get access denied
   - Roles with trip_create see Create Trip button
@@ -159,10 +159,10 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Missing optional role credentials = SKIP (unless `E2E_REQUIRE_ALL_ROLES=true`)
 
 ### TEST-E2E safety
-- Vehicle/driver/trip created via API before tests
+- Vehicle/driver/trip created via API inside each test's try block
 - Playwright never selects first option, first row, or real records
 - Navigation uses stored trip ID directly
-- Cleanup in afterAll: cancel started trips, reset vehicles/drivers
+- Cleanup in finally block: cancel started trips, delete created records
 
 ## Important Notes
 
@@ -179,3 +179,7 @@ Role permissions imported directly from `defaultRolePermissionMap` in `rbac.ts`:
 - Role permissions are derived from `defaultRolePermissionMap` in `rbac.ts` — no hardcoded maps in tests.
 - Playwright loads `rbac.ts` via compiled `dist/src/constants/rbac.js` at runtime.
 - No credential values are written in docs or printed during tests.
+- **Backend build is required before Playwright** — `web/e2e/helpers/rbac.ts` throws a clear error if `backend/dist/src/constants/rbac.js` is missing. Run `npm run backend:build` first.
+- **CLI-AI must not mark completion based on assumptions** — must actually run all 6 commands and report actual results.
+- **Required local execution order**: `backend:lint` → `backend:build` → `web:lint` → `web:build` → `test:trips` → `test:e2e` (all 6 must run and pass).
+- **API base URL**: both `E2E_API_BASE_URL` and `API_BASE_URL` are supported; default is `http://127.0.0.1:4000`.

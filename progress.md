@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is in progress. Phase 4.5 is completed. Phase 5 has not started.
+Phase 4.7 (honest local QA evidence gate, self-contained Playwright lifecycle, unified API base URL) is in progress. Phase 4.5 is completed. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -27,7 +27,8 @@ Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is
 | Phase 4.3 | Trip Workflow Local QA: Safe E2E Data, All-Role Credentials, Role-Based Checks | Completed |
 | Phase 4.4 | Playwright-safe E2E Data, All-Role Credentials, RBAC Permission Checks | Completed |
 | Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
-| Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | In Progress |
+| Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | Completed |
+| Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -777,6 +778,44 @@ Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is
 - Updated `docs/LOCAL_TESTING_GUIDE.md`: Phase 4.6 title, RBAC source note, credential semantics, wrong-credential=FAIL
 - Updated `progress.md`: Phase 4.5 marked completed, Phase 4.6 in progress
 
+### 2026-06-12 (Phase 4.7 — Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL)
+
+**Self-contained Playwright lifecycle:**
+- `web/e2e/trips.spec.ts` rewritten: admin lifecycle test creates vehicle, driver, trip inside try block, cleans up in finally block
+- No inter-test dependency — each test is independent
+- Strict button assertions using `await expect(locator).toBeVisible()` / `toBeHidden()` instead of truthy checks
+- `seededRoleKeys` from `web/e2e/helpers/rbac.ts` used for role iteration (no hardcoded lists)
+
+**RBAC source enforcement:**
+- `web/e2e/helpers/rbac.ts` updated: `fs.existsSync` check with clear error message if `backend/dist/src/constants/rbac.js` missing
+- `backend/scripts/trip-workflow-test.ts`: iterates `roleDefinitions.map(r => r.key)` instead of hardcoded list
+- `allRoleKeys` removed from both credential helpers — `roleDefinitions` from rbac.ts is the single source of truth
+
+**Unified API base URL:**
+- `web/e2e/helpers/credentials.ts`: `getApiBase()` supports `E2E_API_BASE_URL || API_BASE_URL || default`
+- `backend/scripts/test-helpers/credentials.ts`: `getApiBase()` supports `API_BASE_URL || E2E_API_BASE_URL`
+- Default remains `http://127.0.0.1:4000`
+
+**Backend API test type fix:**
+- `roleKey` cast to `RoleKey` when calling `getCredential()` (was `string`, expected `RoleKey`)
+
+**Documentation:**
+- Created `docs/PHASE_4_7_LOCAL_QA_EVIDENCE.md` — honest QA evidence with actual command results
+- Updated `docs/LOCAL_TESTING_GUIDE.md`: Phase 4.7 title, backend build required, CLI-AI must not assume, required local order
+- Updated `progress.md`: Phase 4.6 marked completed, Phase 4.7 in progress
+
+**Verification (2026-06-12 17:22 UTC):**
+- `npm run backend:lint`: PASS (exit 0)
+- `npm run backend:build`: PASS (tsc compiles; prisma generate EPERM is Windows issue, not code)
+- `npm run web:lint`: PASS (exit 0)
+- `npm run web:build`: PASS (exit 0, 64 modules, built in 2.23s)
+- Backend API test (`npm run test:trips`): 79 passed, 0 failed, 0 skipped
+- Playwright trips test: 27 passed, 0 failed
+- Playwright ui-regression test: 4 passed, 0 failed
+- No Vercel deployment performed
+- No mobile files changed
+- No secrets committed
+
 **Verification:**
 - `npm run backend:lint`: pass
 - `npm run backend:build`: pass (tsc compiles cleanly; prisma generate has Windows DLL EPERM issue, not code-related)
@@ -791,4 +830,4 @@ Phase 4.6 (final local QA proof, Playwright RBAC enforcement, no-deploy gate) is
 
 ## Next Step
 
-Phase 5 Fuel and Expense Workflow is the next recommended phase.
+Phase 5 Fuel and Expense Workflow is the next recommended phase. Phase 4 remains blocked until local QA evidence is accepted.

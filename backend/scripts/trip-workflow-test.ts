@@ -5,7 +5,6 @@ import {
   getApiBase,
   getCredential,
   requireAllRoles,
-  allRoleKeys,
   RoleKey,
 } from './test-helpers/credentials';
 
@@ -495,14 +494,14 @@ async function main() {
 
     const seededRoleKeys = roleDefinitions.map((r) => r.key);
 
-    for (const roleKey of allRoleKeys) {
+    for (const roleKey of seededRoleKeys) {
       if (!seededRoleKeys.includes(roleKey)) {
         skip(results, `[${roleKey}] all permission checks`, 'Role not in roleDefinitions (not seeded)');
         continue;
       }
 
       const rolePerms = defaultRolePermissionMap[roleKey] ?? [];
-      const roleCred = getCredential(roleKey);
+      const roleCred = getCredential(roleKey as RoleKey);
 
       if (!roleCred) {
         const msg = `No ${roleKey} credentials in .env`;

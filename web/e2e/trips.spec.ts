@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getCredential, loginAsRole, RoleKey, allRoleKeys, requireAllRoles } from './helpers/credentials';
+import { getCredential, loginAsRole, requireAllRoles } from './helpers/credentials';
 import {
   loginAsAdmin,
   createE2EVehicle,
@@ -10,34 +10,72 @@ import {
 } from './helpers/api';
 import { getTripPermissions, seededRoleKeys } from './helpers/rbac';
 
-const testState = {
-  adminToken: '' as string,
-  e2eData: null as E2ETestData | null,
-};
+test.describe('Phase 4.7 Trip workflow tests', () => {
+  test('Admin: self-contained lifecycle — create, schedule, start, complete, history', async ({ page }) => {
+    let e2eData: E2ETestData | null = null;
 
-test.beforeAll(async () => {
-  testState.adminToken = await loginAsAdmin();
-  testState.e2eData = {
-    vehicleId: '',
-    vehicleNumber: '',
-    driverId: '',
-    driverName: '',
-  };
-  const vehicle = await createE2EVehicle(testState.adminToken);
-  const driver = await createE2EDriver(testState.adminToken);
-  testState.e2eData.vehicleId = vehicle.id;
-  testState.e2eData.vehicleNumber = vehicle.vehicleNumber;
-  testState.e2eData.driverId = driver.id;
-  testState.e2eData.driverName = driver.name;
-});
+    try {
+      const adminToken = await loginAsAdmin();
 
-test.afterAll(async () => {
-  if (testState.adminToken && testState.e2eData) {
-    await cleanupE2ETestData(testState.adminToken, testState.e2eData);
-  }
-});
+      const vehicle = await createE2EVehicle(adminToken);
+      const driver = await createE2EDriver(adminToken);
+      e2eData = {
+        vehicleId: vehicle.id,
+        vehicleNumber: vehicle.vehicleNumber,
+        driverId: driver.id,
+        driverName: driver.name,
+      };
 
-test.describe('Phase 4.6 Trip workflow tests', () => {
+      const trip = await createE2ETrip(adminToken, vehicle.id, driver.id);
+      expect(trip.tripNumber).toBeTruthy();
+
+      await loginAsRole(page, 'admin');
+      await page.goto(`/trips/${trip.id}`);
+      await page.waitForSelector('.page-header-title');
+      await expect(page.locator('.page-header-title')).toContainText(trip.tripNumber);
+
+      const scheduleBtn = page.locator('button:has-text("Schedule")');
+      await expect(scheduleBtn).toBeVisible({ timeout: 5000 });
+      await scheduleBtn.click();
+      await page.click('button:has-text("Yes, Confirm")');
+      await page.waitForTimeout(1000);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Scheduled/i);
+
+      const startBtn = page.locator('button:has-text("Start Trip")');
+      await expect(startBtn).toBeVisible({ timeout: 5000 });
+      await startBtn.click();
+      await page.click('button:has-text("Yes, Confirm")');
+      await page.waitForTimeout(1000);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Started|ON_TRIP/i);
+
+      const completeBtn = page.locator('button:has-text("Complete Trip")');
+      await expect(completeBtn).toBeVisible({ timeout: 5000 });
+      await completeBtn.click();
+      await page.click('button:has-text("Yes, Confirm")');
+      await page.waitForTimeout(1000);
+      await expect(page.locator('.action-panel .status-badge')).toContainText(/Completed/i);
+
+      await page.click('button:has-text("History")');
+      await page.waitForTimeout(1000);
+      await expect(page.locator('.data-table')).toBeVisible();
+      const rows = await page.locator('.data-table tbody tr').count();
+      expect(rows).toBeGreaterThan(0);
+
+      const historyText = await page.locator('.data-table').textContent();
+      expect(historyText).toContain('CREATED');
+      expect(historyText).toContain('SCHEDULED');
+      expect(historyText).toContain('STARTED');
+      expect(historyText).toContain('COMPLETED');
+    } finally {
+      if (e2eData) {
+        try {
+          const adminToken = await loginAsAdmin();
+          await cleanupE2ETestData(adminToken, e2eData);
+        } catch { /* best effort */ }
+      }
+    }
+  });
+
   test('Login as admin', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
@@ -48,68 +86,6 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
     await page.goto('/trips');
     await page.waitForSelector('.page-header');
     await expect(page.locator('button:has-text("Create Trip")').first()).toBeVisible();
-  });
-
-  test('Admin: create trip via API and navigate by ID', async ({ page }) => {
-    await loginAsRole(page, 'admin');
-
-    const trip = await createE2ETrip(
-      testState.adminToken,
-      testState.e2eData!.vehicleId,
-      testState.e2eData!.driverId,
-    );
-    testState.e2eData!.tripId = trip.id;
-    testState.e2eData!.tripNumber = trip.tripNumber;
-
-    await page.goto(`/trips/${trip.id}`);
-    await page.waitForSelector('.page-header-title');
-    await expect(page.locator('.page-header-title')).toContainText(trip.tripNumber);
-  });
-
-  test('Admin: full lifecycle schedule → start → complete', async ({ page }) => {
-    await loginAsRole(page, 'admin');
-    const tripId = testState.e2eData!.tripId;
-    expect(tripId).toBeTruthy();
-
-    await page.goto(`/trips/${tripId}`);
-    await page.waitForSelector('.page-header-title');
-
-    const scheduleBtn = page.locator('button:has-text("Schedule")');
-    if (await scheduleBtn.isVisible()) {
-      await scheduleBtn.click();
-      await page.click('button:has-text("Yes, Confirm")');
-      await page.waitForTimeout(1000);
-      await expect(page.locator('.action-panel .status-badge')).toContainText(/Scheduled/i);
-    }
-
-    const startBtn = page.locator('button:has-text("Start Trip")');
-    if (await startBtn.isVisible()) {
-      await startBtn.click();
-      await page.click('button:has-text("Yes, Confirm")');
-      await page.waitForTimeout(1000);
-      await expect(page.locator('.action-panel .status-badge')).toContainText(/Started|ON_TRIP/i);
-    }
-
-    const completeBtn = page.locator('button:has-text("Complete Trip")');
-    if (await completeBtn.isVisible()) {
-      await completeBtn.click();
-      await page.click('button:has-text("Yes, Confirm")');
-      await page.waitForTimeout(1000);
-      await expect(page.locator('.action-panel .status-badge')).toContainText(/Completed/i);
-    }
-
-    await page.click('button:has-text("History")');
-    await page.waitForTimeout(1000);
-    const historyTable = page.locator('.data-table');
-    await expect(historyTable).toBeVisible();
-    const rows = await page.locator('.data-table tbody tr').count();
-    expect(rows).toBeGreaterThan(0);
-
-    const historyText = await page.locator('.data-table').textContent();
-    expect(historyText).toContain('CREATED');
-    expect(historyText).toContain('SCHEDULED');
-    expect(historyText).toContain('STARTED');
-    expect(historyText).toContain('COMPLETED');
   });
 
   test('No horizontal overflow at 1366x768', async ({ page }) => {
@@ -149,17 +125,14 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
     await expect(page.locator('button:has-text("Create user")').first()).toBeVisible();
   });
 
-  // Role-based UI permission tests using exact RBAC from backend/src/constants/rbac.ts
-  // Wrong credentials = FAIL; missing optional credentials = SKIP (unless E2E_REQUIRE_ALL_ROLES=true)
-
-  for (const roleKey of allRoleKeys) {
+  for (const roleKey of seededRoleKeys) {
     const perms = getTripPermissions(roleKey);
     const canViewTrips = perms.includes('trip_view');
     const canCreateTrip = perms.includes('trip_create');
 
     if (canViewTrips) {
       test(`${roleKey}: can view /trips page`, async ({ page }) => {
-        const cred = getCredential(roleKey);
+        const cred = getCredential(roleKey as 'admin');
         if (!cred) {
           if (requireAllRoles()) {
             throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
@@ -167,7 +140,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
-        const loggedIn = await loginAsRole(page, roleKey);
+        const loggedIn = await loginAsRole(page, roleKey as 'admin');
         if (!loggedIn) {
           throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
@@ -177,7 +150,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       });
     } else {
       test(`${roleKey}: cannot view /trips (no trip_view)`, async ({ page }) => {
-        const cred = getCredential(roleKey);
+        const cred = getCredential(roleKey as 'admin');
         if (!cred) {
           if (requireAllRoles()) {
             throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
@@ -185,7 +158,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
-        const loggedIn = await loginAsRole(page, roleKey);
+        const loggedIn = await loginAsRole(page, roleKey as 'admin');
         if (!loggedIn) {
           throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
@@ -202,7 +175,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
 
     if (canCreateTrip) {
       test(`${roleKey}: Create Trip button visible`, async ({ page }) => {
-        const cred = getCredential(roleKey);
+        const cred = getCredential(roleKey as 'admin');
         if (!cred) {
           if (requireAllRoles()) {
             throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
@@ -210,7 +183,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
-        const loggedIn = await loginAsRole(page, roleKey);
+        const loggedIn = await loginAsRole(page, roleKey as 'admin');
         if (!loggedIn) {
           throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }
@@ -220,7 +193,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
       });
     } else {
       test(`${roleKey}: Create Trip button not visible`, async ({ page }) => {
-        const cred = getCredential(roleKey);
+        const cred = getCredential(roleKey as 'admin');
         if (!cred) {
           if (requireAllRoles()) {
             throw new Error(`No ${roleKey} credentials in .env (E2E_REQUIRE_ALL_ROLES=true)`);
@@ -228,7 +201,7 @@ test.describe('Phase 4.6 Trip workflow tests', () => {
           test.skip(true, `No ${roleKey} credentials in .env`);
           return;
         }
-        const loggedIn = await loginAsRole(page, roleKey);
+        const loggedIn = await loginAsRole(page, roleKey as 'admin');
         if (!loggedIn) {
           throw new Error(`Login failed for ${roleKey} with provided credentials`);
         }

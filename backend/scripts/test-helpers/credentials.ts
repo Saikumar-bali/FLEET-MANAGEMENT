@@ -87,24 +87,11 @@ export function getAdminCredential(): { identifier: string; password: string } {
 }
 
 export function getApiBase(): string {
-  const value = process.env.API_BASE_URL?.trim();
-  if (!value) throw new Error('API_BASE_URL is required');
+  const value = process.env.API_BASE_URL?.trim() || process.env.E2E_API_BASE_URL?.trim();
+  if (!value) throw new Error('API_BASE_URL or E2E_API_BASE_URL is required');
   return value.replace(/\/$/, '');
 }
 
 export function requireAllRoles(): boolean {
   return process.env.E2E_REQUIRE_ALL_ROLES === 'true';
 }
-
-export const allRoleKeys: RoleKey[] = [
-  'admin',
-  'super_admin',
-  'manager',
-  'supervisor',
-  'driver',
-  'assistant_driver',
-  'collector',
-  'mechanic',
-  'finance',
-  'viewer',
-];
