@@ -305,14 +305,17 @@ export function TripDetailPage() {
   if (isLoading) return <LoadingState message="Loading trip..." />;
   if (error && !trip && !isNew) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
-  const canEdit = auth.hasPermission('trip_update') || auth.hasPermission('trip_create');
-  const canStart = auth.hasPermission('trip_start') || auth.hasPermission('trip_create');
-  const canEnd = auth.hasPermission('trip_end') || auth.hasPermission('trip_create');
-  const canCancel = auth.hasPermission('trip_cancel') || auth.hasPermission('trip_create');
+  const canEdit = isNew
+    ? auth.hasPermission('trip_create')
+    : auth.hasPermission('trip_update');
+  const canSchedule = isNew ? false : auth.hasPermission('trip_update');
+  const canStart = isNew ? false : auth.hasPermission('trip_start');
+  const canEnd = isNew ? false : auth.hasPermission('trip_end');
+  const canCancel = isNew ? false : auth.hasPermission('trip_cancel');
 
   const status = trip?.status ?? 'DRAFT';
   const isEditable = status === 'DRAFT' || status === 'SCHEDULED';
-  const canSchedule = isEditable && canEdit && status === 'DRAFT';
+  const canScheduleTrip = isEditable && canSchedule && status === 'DRAFT';
   const canStartTrip = (status === 'DRAFT' || status === 'SCHEDULED') && canStart;
   const canCompleteTrip = status === 'STARTED' && canEnd;
   const canCancelTrip = status !== 'COMPLETED' && status !== 'CANCELLED' && canCancel;
@@ -321,7 +324,7 @@ export function TripDetailPage() {
     <section className="form-page-full">
       <div className="section-header">
         <div>
-          <a href="/trips" className="eyebrow" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.25rem' }}>Back to Trips</a>
+          <a href="/trips" className="eyebrow trip-back-link">Back to Trips</a>
           <PageHeader
             title={isNew ? 'Create Trip' : trip ? trip.tripNumber : 'Trip'}
             description={isNew ? 'Create a new trip or transfer' : undefined}
@@ -330,7 +333,7 @@ export function TripDetailPage() {
         <div className="action-panel">
           {!isNew && trip ? <StatusBadge status={trip.status} /> : null}
 
-          {canSchedule && !isNew && (
+          {canScheduleTrip && !isNew && (
             <button
               type="button"
               className="secondary-button"
@@ -402,13 +405,13 @@ export function TripDetailPage() {
 
       {showConfirm && (
         <div className="modal-backdrop" onClick={() => setShowConfirm(null)}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()} style={{ width: 'min(100%, 420px)' }}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Confirm {statusLabels[showConfirm.charAt(0).toUpperCase() + showConfirm.slice(1)] ?? showConfirm}</h3>
               <button type="button" className="ghost-button" onClick={() => setShowConfirm(null)}>Cancel</button>
             </div>
             <div className="modal-body">
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.84rem' }}>
+              <p className="trip-confirm-text">
                 {showConfirm === 'start' && 'This will mark the vehicle and driver as ON_TRIP. Continue?'}
                 {showConfirm === 'complete' && 'This will release the vehicle and driver back to AVAILABLE. Continue?'}
                 {showConfirm === 'cancel' && 'This will cancel the trip. If started, the vehicle and driver will be released. Continue?'}
@@ -438,7 +441,7 @@ export function TripDetailPage() {
       <form id="trip-form" className="form-main" onSubmit={handleSubmit}>
         {(isNew || activeSection === 'overview') && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Trip Overview</h4>
+            <h4 className="trip-section-heading">Trip Overview</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Trip Type *</span>
@@ -496,7 +499,7 @@ export function TripDetailPage() {
 
         {!isNew && activeSection === 'route' && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Route Details</h4>
+            <h4 className="trip-section-heading">Route Details</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Origin Name *</span>
@@ -574,7 +577,7 @@ export function TripDetailPage() {
 
         {!isNew && activeSection === 'assignment' && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Driver Assignment</h4>
+            <h4 className="trip-section-heading">Driver Assignment</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Driver</span>
@@ -604,7 +607,7 @@ export function TripDetailPage() {
               </label>
             </div>
             {trip?.driver && (
-              <div className="form-two-column" style={{ marginTop: '0.5rem' }}>
+              <div className="form-two-column trip-assignment-status-row">
                 <div>
                   <p className="detail-label">Current Driver Status</p>
                   <StatusBadge status={trip.driver.status} />
@@ -622,7 +625,7 @@ export function TripDetailPage() {
 
         {!isNew && activeSection === 'odometer' && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Odometer & Distance</h4>
+            <h4 className="trip-section-heading">Odometer & Distance</h4>
             <div className="form-three-column">
               <label>
                 <span className="field-label">Start Odometer (km)</span>
@@ -663,7 +666,7 @@ export function TripDetailPage() {
 
         {!isNew && activeSection === 'history' && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Trip History</h4>
+            <h4 className="trip-section-heading">Trip History</h4>
             {historyLoading ? (
               <p className="helper-text">Loading history...</p>
             ) : history.length === 0 ? (
@@ -701,7 +704,7 @@ export function TripDetailPage() {
 
         {isNew && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Route</h4>
+            <h4 className="trip-section-heading">Route</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Origin Name *</span>
@@ -759,7 +762,7 @@ export function TripDetailPage() {
 
         {isNew && (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Driver Assignment (Optional)</h4>
+            <h4 className="trip-section-heading">Driver Assignment (Optional)</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Driver</span>

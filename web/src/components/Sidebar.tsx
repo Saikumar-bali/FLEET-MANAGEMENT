@@ -29,11 +29,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-header">
           <div className="sidebar-brand-row">
             <div className="sidebar-brand-mark">HF</div>
+            <h1 className="sidebar-title">Hippofleet</h1>
             <button type="button" className="sidebar-close-button" onClick={onClose}>
               Close
             </button>
           </div>
-          <h1 className="sidebar-title">Hippofleet</h1>
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">

@@ -22,6 +22,7 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
 | Phase 3.3 | Final Permission Matrix and UI Acceptance Patch | Completed locally and verified |
 | Phase 3.4 | Small UI Correctness Patch | Completed locally and verified |
 | Phase 4 | Trip / Transfer Workflow | Completed locally and staging-verified |
+| Phase 4.1 | Trip Workflow Hardening and Local QA | Completed locally |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -491,6 +492,79 @@ Phase 4 (Trip / Transfer Workflow) is completed locally and deployed to Vercel s
   - POST /trips/:id/complete: PASS (COMPLETED, 200km)
   - GET /trips/:id/history: PASS (3 entries)
 - Phase 4 Trip / Transfer Workflow fully completed and staging-verified
+
+### 2026-06-12 (Phase 4.1 — Trip Workflow Hardening and Local QA)
+
+**Backend permission tightening:**
+- PATCH /api/v1/trips/:id now requires `trip_update` only (removed `trip_create` fallback)
+- POST /api/v1/trips/:id/schedule now requires `trip_update` only
+- POST /api/v1/trips/:id/start now requires `trip_start` only
+- POST /api/v1/trips/:id/complete now requires `trip_end` only
+- POST /api/v1/trips/:id/cancel now requires `trip_cancel` only
+- `trip_create` no longer allows performing any lifecycle actions
+
+**Frontend permission tightening:**
+- `canEdit` uses `trip_update` for existing trips, `trip_create` for new trips only
+- Schedule button requires `trip_update`
+- Start button requires `trip_start`
+- Complete button requires `trip_end`
+- Cancel button requires `trip_cancel`
+- `trip_create` no longer unlocks start/complete/cancel buttons
+
+**Atomic lifecycle transactions:**
+- `createTrip`: trip + history written in single `$transaction`
+- `updateTrip`: vehicle/driver changed history written atomically with trip update
+- `scheduleTrip`: trip status + history written in single `$transaction`
+- `startTrip`: trip + vehicle ON_TRIP + driver ON_TRIP + history in single `$transaction`
+- `completeTrip`: trip + vehicle AVAILABLE + driver AVAILABLE + history in single `$transaction`
+- `cancelTrip`: trip + vehicle release (if started) + driver release (if started) + history in single `$transaction`
+- If any step fails, no partial state is saved
+
+**Vehicle/driver validation before start:**
+- Vehicle must exist and status must be AVAILABLE
+- Driver must exist and status must be AVAILABLE (if assigned)
+- Assistant driver must exist and status must be AVAILABLE (if assigned)
+- driverId and assistantDriverId cannot be the same person
+- Vehicle cannot be on another STARTED trip
+- Driver cannot be on another STARTED trip
+- Assistant driver cannot be on another STARTED trip
+- Clean 400 errors for all invalid operational states
+
+**Schedule validation:**
+- plannedEndAt cannot be before plannedStartAt (both in create and schedule)
+- Driver and assistant driver cannot be the same person
+
+**Query validation:**
+- status must be valid enum (DRAFT/SCHEDULED/STARTED/COMPLETED/CANCELLED) if provided
+- tripType must be valid enum (TRANSFER/DELIVERY/PICKUP/SERVICE/INTERNAL) if provided
+- Invalid values return clean 400 instead of Prisma errors
+
+**Backend API test script:**
+- Created `backend/scripts/trip-workflow-test.ts` with 20+ test cases
+- Tests health, login, unauthorized, CRUD, lifecycle, vehicle/driver status, conflict blocking, history, cancel, and query validation
+- Added `test:trips` script to backend package.json
+
+**Playwright UI tests:**
+- Created `web/e2e/trips.spec.ts` with 8 test cases
+- Tests login, trips page, create trip, schedule/start, history, overflow, low-density layout, roles page, users page
+
+**Inline style cleanup:**
+- TripsPage: replaced inline styles with CSS classes (trips-filter-card, trips-filter-row, trips-search-input, trips-filter-select, trip-route-text)
+- TripDetailPage: replaced inline styles with CSS classes (trip-back-link, trip-confirm-text, trip-section-heading, trip-assignment-status-row)
+- Added CSS classes to `styles.css`
+
+**Documentation:**
+- Created `docs/LOCAL_TESTING_GUIDE.md` with terminal setup, test commands, and coverage details
+
+**Vercel deployment intentionally deferred:**
+- No Vercel deployment was performed during this phase
+- Deploy only after local API + Playwright tests pass and phase is reviewed
+
+**Verification proof:**
+- `npm run backend:lint`: pass
+- `npm run web:lint`: pass
+- No mobile files changed
+- No secrets committed
 
 ## Next Step
 

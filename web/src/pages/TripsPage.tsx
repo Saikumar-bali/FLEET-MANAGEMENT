@@ -93,7 +93,7 @@ export function TripsPage() {
       key: 'route',
       header: 'Route',
       render: (t: TripRecord) => (
-        <span style={{ fontSize: '0.78rem' }}>
+        <span className="trip-route-text">
           {t.originName} → {t.destinationName}
         </span>
       ),
@@ -136,18 +136,18 @@ export function TripsPage() {
         }
       />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="card trips-filter-card">
+        <div className="trips-filter-row">
           <input
+            className="trips-search-input"
             placeholder="Search trips..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            style={{ flex: 1, minWidth: '200px' }}
           />
           <select
+            className="trips-filter-select"
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ width: 'auto', minWidth: '150px' }}
           >
             <option value="">All statuses</option>
             <option value="DRAFT">Draft</option>
@@ -157,9 +157,9 @@ export function TripsPage() {
             <option value="CANCELLED">Cancelled</option>
           </select>
           <select
+            className="trips-filter-select"
             value={tripTypeFilter}
             onChange={(e) => { setTripTypeFilter(e.target.value); setPage(1); }}
-            style={{ width: 'auto', minWidth: '150px' }}
           >
             <option value="">All types</option>
             <option value="TRANSFER">Transfer</option>

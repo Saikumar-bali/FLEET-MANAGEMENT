@@ -1,4 +1,4 @@
-import { Prisma, TripStatus, TripHistoryAction } from '@prisma/client';
+import { Prisma, TripStatus, TripType, TripHistoryAction } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 
@@ -117,7 +117,7 @@ export async function listTrips(query: {
   }
 
   if (query.tripType) {
-    where.tripType = query.tripType as any;
+    where.tripType = query.tripType as TripType;
   }
 
   if (query.vehicleId) {
@@ -189,6 +189,10 @@ export async function createTrip(input: {
     await validateDriverExists(input.assistantDriverId);
   }
 
+  if (input.driverId && input.assistantDriverId && input.driverId === input.assistantDriverId) {
+    throw new AppError('Driver and assistant driver cannot be the same person', 400);
+  }
+
   const tripNumber = input.tripNumber || generateTripNumber();
 
   const existingNumber = await prisma.trip.findUnique({
@@ -199,30 +203,41 @@ export async function createTrip(input: {
     throw new AppError('Trip number already exists', 400);
   }
 
-  const trip = await prisma.trip.create({
-    data: {
-      tripNumber,
-      tripType: input.tripType as any,
-      status: 'DRAFT',
-      vehicleId: input.vehicleId,
-      driverId: input.driverId || null,
-      assistantDriverId: input.assistantDriverId || null,
-      originName: input.originName,
-      originAddress: input.originAddress || null,
-      destinationName: input.destinationName,
-      destinationAddress: input.destinationAddress || null,
-      plannedStartAt: input.plannedStartAt ? new Date(input.plannedStartAt) : null,
-      plannedEndAt: input.plannedEndAt ? new Date(input.plannedEndAt) : null,
-      purpose: input.purpose || null,
-      notes: input.notes || null,
-      createdById: input.createdById || null,
-    },
-    include: tripInclude,
-  });
+  const trip = await prisma.$transaction(async (tx) => {
+    const created = await tx.trip.create({
+      data: {
+        tripNumber,
+        tripType: input.tripType as any,
+        status: 'DRAFT',
+        vehicleId: input.vehicleId,
+        driverId: input.driverId || null,
+        assistantDriverId: input.assistantDriverId || null,
+        originName: input.originName,
+        originAddress: input.originAddress || null,
+        destinationName: input.destinationName,
+        destinationAddress: input.destinationAddress || null,
+        plannedStartAt: input.plannedStartAt ? new Date(input.plannedStartAt) : null,
+        plannedEndAt: input.plannedEndAt ? new Date(input.plannedEndAt) : null,
+        purpose: input.purpose || null,
+        notes: input.notes || null,
+        createdById: input.createdById || null,
+      },
+      include: tripInclude,
+    });
 
-  await writeTripHistory(trip.id, 'CREATED', input.createdById, null, 'DRAFT', 'Trip created', {
-    tripNumber: trip.tripNumber,
-    vehicleId: trip.vehicleId,
+    await tx.tripHistory.create({
+      data: {
+        tripId: created.id,
+        action: 'CREATED',
+        fromStatus: null,
+        toStatus: 'DRAFT',
+        remarks: 'Trip created',
+        metadata: { tripNumber: created.tripNumber, vehicleId: created.vehicleId } as any,
+        createdById: input.createdById || null,
+      },
+    });
+
+    return created;
   });
 
   return trip;
@@ -290,6 +305,10 @@ export async function updateTrip(
 
   if (input.assistantDriverId) {
     await validateDriverExists(input.assistantDriverId);
+  }
+
+  if (input.driverId && input.assistantDriverId && input.driverId === input.assistantDriverId) {
+    throw new AppError('Driver and assistant driver cannot be the same person', 400);
   }
 
   const historyActions: Promise<unknown>[] = [];
@@ -373,20 +392,47 @@ export async function scheduleTrip(
     await validateDriverExists(input.assistantDriverId);
   }
 
-  const updated = await prisma.trip.update({
-    where: { id: tripId },
-    data: {
-      status: 'SCHEDULED',
-      plannedStartAt: input.plannedStartAt ? new Date(input.plannedStartAt) : trip.plannedStartAt,
-      plannedEndAt: input.plannedEndAt ? new Date(input.plannedEndAt) : trip.plannedEndAt,
-      driverId: input.driverId !== undefined ? input.driverId : trip.driverId,
-      assistantDriverId: input.assistantDriverId !== undefined ? input.assistantDriverId : trip.assistantDriverId,
-      notes: input.notes !== undefined ? input.notes : trip.notes,
-    },
-    include: tripInclude,
-  });
+  const effectiveDriverId = input.driverId !== undefined ? input.driverId : trip.driverId;
+  const effectiveAssistantId = input.assistantDriverId !== undefined ? input.assistantDriverId : trip.assistantDriverId;
 
-  await writeTripHistory(tripId, 'SCHEDULED', userId, 'DRAFT', 'SCHEDULED', 'Trip scheduled');
+  if (effectiveDriverId && effectiveAssistantId && effectiveDriverId === effectiveAssistantId) {
+    throw new AppError('Driver and assistant driver cannot be the same person', 400);
+  }
+
+  const effectivePlannedStart = input.plannedStartAt ? new Date(input.plannedStartAt) : trip.plannedStartAt;
+  const effectivePlannedEnd = input.plannedEndAt ? new Date(input.plannedEndAt) : trip.plannedEndAt;
+
+  if (effectivePlannedStart && effectivePlannedEnd && effectivePlannedEnd < effectivePlannedStart) {
+    throw new AppError('Planned end time cannot be before planned start time', 400);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedTrip = await tx.trip.update({
+      where: { id: tripId },
+      data: {
+        status: 'SCHEDULED',
+        plannedStartAt: effectivePlannedStart,
+        plannedEndAt: effectivePlannedEnd,
+        driverId: effectiveDriverId,
+        assistantDriverId: effectiveAssistantId,
+        notes: input.notes !== undefined ? input.notes : trip.notes,
+      },
+      include: tripInclude,
+    });
+
+    await tx.tripHistory.create({
+      data: {
+        tripId,
+        action: 'SCHEDULED',
+        fromStatus: 'DRAFT',
+        toStatus: 'SCHEDULED',
+        remarks: 'Trip scheduled',
+        createdById: userId ?? null,
+      },
+    });
+
+    return updatedTrip;
+  });
 
   return updated;
 }
@@ -407,6 +453,38 @@ export async function startTrip(
 
   if (trip.status !== 'DRAFT' && trip.status !== 'SCHEDULED') {
     throw new AppError('Only draft or scheduled trips can be started', 400);
+  }
+
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: trip.vehicleId } });
+  if (!vehicle) {
+    throw new AppError('Vehicle not found', 404);
+  }
+  if (vehicle.status !== 'AVAILABLE') {
+    throw new AppError(`Vehicle is not available (current status: ${vehicle.status})`, 400);
+  }
+
+  if (trip.driverId) {
+    const driver = await prisma.driver.findUnique({ where: { id: trip.driverId } });
+    if (!driver) {
+      throw new AppError('Driver not found', 404);
+    }
+    if (driver.status !== 'AVAILABLE') {
+      throw new AppError(`Driver is not available (current status: ${driver.status})`, 400);
+    }
+  }
+
+  if (trip.assistantDriverId) {
+    const assistant = await prisma.driver.findUnique({ where: { id: trip.assistantDriverId } });
+    if (!assistant) {
+      throw new AppError('Assistant driver not found', 404);
+    }
+    if (assistant.status !== 'AVAILABLE') {
+      throw new AppError(`Assistant driver is not available (current status: ${assistant.status})`, 400);
+    }
+  }
+
+  if (trip.driverId && trip.assistantDriverId && trip.driverId === trip.assistantDriverId) {
+    throw new AppError('Driver and assistant driver cannot be the same person', 400);
   }
 
   const vehicleConflict = await prisma.trip.findFirst({
@@ -435,8 +513,22 @@ export async function startTrip(
     }
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.trip.update({
+  if (trip.assistantDriverId) {
+    const assistantConflict = await prisma.trip.findFirst({
+      where: {
+        assistantDriverId: trip.assistantDriverId,
+        status: 'STARTED',
+        id: { not: tripId },
+      },
+    });
+
+    if (assistantConflict) {
+      throw new AppError('Assistant driver is already assigned to another started trip', 400);
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedTrip = await tx.trip.update({
       where: { id: tripId },
       data: {
         status: 'STARTED',
@@ -445,30 +537,41 @@ export async function startTrip(
         notes: input.notes !== undefined ? input.notes : trip.notes,
       },
       include: tripInclude,
-    }),
-    prisma.vehicle.update({
+    });
+
+    await tx.vehicle.update({
       where: { id: trip.vehicleId },
       data: { status: 'ON_TRIP' },
-    }),
-    ...(trip.driverId
-      ? [
-          prisma.driver.update({
-            where: { id: trip.driverId },
-            data: { status: 'ON_TRIP' },
-          }),
-        ]
-      : []),
-  ]);
+    });
 
-  await writeTripHistory(
-    tripId,
-    'STARTED',
-    userId,
-    trip.status,
-    'STARTED',
-    'Trip started',
-    { startOdometer: input.startOdometer },
-  );
+    if (trip.driverId) {
+      await tx.driver.update({
+        where: { id: trip.driverId },
+        data: { status: 'ON_TRIP' },
+      });
+    }
+
+    if (trip.assistantDriverId) {
+      await tx.driver.update({
+        where: { id: trip.assistantDriverId },
+        data: { status: 'ON_TRIP' },
+      });
+    }
+
+    await tx.tripHistory.create({
+      data: {
+        tripId,
+        action: 'STARTED',
+        fromStatus: trip.status,
+        toStatus: 'STARTED',
+        remarks: 'Trip started',
+        metadata: { startOdometer: input.startOdometer } as any,
+        createdById: userId ?? null,
+      },
+    });
+
+    return updatedTrip;
+  });
 
   return updated;
 }
@@ -504,8 +607,8 @@ export async function completeTrip(
       ? input.endOdometer - trip.startOdometer
       : null);
 
-  const [updated] = await prisma.$transaction([
-    prisma.trip.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedTrip = await tx.trip.update({
       where: { id: tripId },
       data: {
         status: 'COMPLETED',
@@ -515,30 +618,41 @@ export async function completeTrip(
         notes: input.notes !== undefined ? input.notes : trip.notes,
       },
       include: tripInclude,
-    }),
-    prisma.vehicle.update({
+    });
+
+    await tx.vehicle.update({
       where: { id: trip.vehicleId },
       data: { status: 'AVAILABLE' },
-    }),
-    ...(trip.driverId
-      ? [
-          prisma.driver.update({
-            where: { id: trip.driverId },
-            data: { status: 'AVAILABLE' },
-          }),
-        ]
-      : []),
-  ]);
+    });
 
-  await writeTripHistory(
-    tripId,
-    'COMPLETED',
-    userId,
-    'STARTED',
-    'COMPLETED',
-    'Trip completed',
-    { endOdometer: input.endOdometer, distanceKm },
-  );
+    if (trip.driverId) {
+      await tx.driver.update({
+        where: { id: trip.driverId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
+
+    if (trip.assistantDriverId) {
+      await tx.driver.update({
+        where: { id: trip.assistantDriverId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
+
+    await tx.tripHistory.create({
+      data: {
+        tripId,
+        action: 'COMPLETED',
+        fromStatus: 'STARTED',
+        toStatus: 'COMPLETED',
+        remarks: 'Trip completed',
+        metadata: { endOdometer: input.endOdometer, distanceKm } as any,
+        createdById: userId ?? null,
+      },
+    });
+
+    return updatedTrip;
+  });
 
   return updated;
 }
@@ -564,39 +678,50 @@ export async function cancelTrip(
 
   const previousStatus = trip.status;
 
-  const updateData: Prisma.TripUpdateInput = {
-    status: 'CANCELLED',
-    notes: input.notes !== undefined ? input.notes : trip.notes,
-  };
-
-  const updated = await prisma.trip.update({
-    where: { id: tripId },
-    data: updateData,
-    include: tripInclude,
-  });
-
-  if (previousStatus === 'STARTED') {
-    await prisma.vehicle.update({
-      where: { id: trip.vehicleId },
-      data: { status: 'AVAILABLE' },
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedTrip = await tx.trip.update({
+      where: { id: tripId },
+      data: {
+        status: 'CANCELLED',
+        notes: input.notes !== undefined ? input.notes : trip.notes,
+      },
+      include: tripInclude,
     });
 
-    if (trip.driverId) {
-      await prisma.driver.update({
-        where: { id: trip.driverId },
+    if (previousStatus === 'STARTED') {
+      await tx.vehicle.update({
+        where: { id: trip.vehicleId },
         data: { status: 'AVAILABLE' },
       });
-    }
-  }
 
-  await writeTripHistory(
-    tripId,
-    'CANCELLED',
-    userId,
-    previousStatus,
-    'CANCELLED',
-    'Trip cancelled',
-  );
+      if (trip.driverId) {
+        await tx.driver.update({
+          where: { id: trip.driverId },
+          data: { status: 'AVAILABLE' },
+        });
+      }
+
+      if (trip.assistantDriverId) {
+        await tx.driver.update({
+          where: { id: trip.assistantDriverId },
+          data: { status: 'AVAILABLE' },
+        });
+      }
+    }
+
+    await tx.tripHistory.create({
+      data: {
+        tripId,
+        action: 'CANCELLED',
+        fromStatus: previousStatus,
+        toStatus: 'CANCELLED',
+        remarks: 'Trip cancelled',
+        createdById: userId ?? null,
+      },
+    });
+
+    return updatedTrip;
+  });
 
   return updated;
 }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/authMiddleware';
-import { requirePermission, requireAnyPermission } from '../../middlewares/permissions';
+import { requirePermission } from '../../middlewares/permissions';
 import { validateRequest } from '../../middlewares/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
@@ -52,35 +52,35 @@ router.post(
 
 router.patch(
   '/:id',
-  requireAnyPermission(['trip_update', 'trip_create']),
+  requirePermission('trip_update'),
   validateRequest({ params: tripIdParamsSchema, body: updateTripSchema }),
   asyncHandler(updateTripController),
 );
 
 router.post(
   '/:id/schedule',
-  requireAnyPermission(['trip_update', 'trip_create']),
+  requirePermission('trip_update'),
   validateRequest({ params: tripIdParamsSchema, body: scheduleTripSchema }),
   asyncHandler(scheduleTripController),
 );
 
 router.post(
   '/:id/start',
-  requireAnyPermission(['trip_start', 'trip_create']),
+  requirePermission('trip_start'),
   validateRequest({ params: tripIdParamsSchema, body: startTripSchema }),
   asyncHandler(startTripController),
 );
 
 router.post(
   '/:id/complete',
-  requireAnyPermission(['trip_end', 'trip_create']),
+  requirePermission('trip_end'),
   validateRequest({ params: tripIdParamsSchema, body: completeTripSchema }),
   asyncHandler(completeTripController),
 );
 
 router.post(
   '/:id/cancel',
-  requireAnyPermission(['trip_cancel', 'trip_create']),
+  requirePermission('trip_cancel'),
   validateRequest({ params: tripIdParamsSchema, body: cancelTripSchema }),
   asyncHandler(cancelTripController),
 );

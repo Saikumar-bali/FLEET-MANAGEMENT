@@ -31,6 +31,15 @@ export const createTripSchema = z
       return true;
     },
     { message: 'Planned end time cannot be before planned start time', path: ['plannedEndAt'] },
+  )
+  .refine(
+    (data) => {
+      if (data.driverId && data.assistantDriverId && data.driverId === data.assistantDriverId) {
+        return false;
+      }
+      return true;
+    },
+    { message: 'Driver and assistant driver cannot be the same person', path: ['assistantDriverId'] },
   );
 
 export const updateTripSchema = z
@@ -68,15 +77,43 @@ export const updateTripSchema = z
       return true;
     },
     { message: 'End odometer cannot be less than start odometer', path: ['endOdometer'] },
+  )
+  .refine(
+    (data) => {
+      if (data.driverId && data.assistantDriverId && data.driverId === data.assistantDriverId) {
+        return false;
+      }
+      return true;
+    },
+    { message: 'Driver and assistant driver cannot be the same person', path: ['assistantDriverId'] },
   );
 
-export const scheduleTripSchema = z.object({
-  plannedStartAt: z.string().datetime().optional().nullable(),
-  plannedEndAt: z.string().datetime().optional().nullable(),
-  driverId: z.string().optional().nullable(),
-  assistantDriverId: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
+export const scheduleTripSchema = z
+  .object({
+    plannedStartAt: z.string().datetime().optional().nullable(),
+    plannedEndAt: z.string().datetime().optional().nullable(),
+    driverId: z.string().optional().nullable(),
+    assistantDriverId: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      if (data.plannedStartAt && data.plannedEndAt) {
+        return new Date(data.plannedEndAt) >= new Date(data.plannedStartAt);
+      }
+      return true;
+    },
+    { message: 'Planned end time cannot be before planned start time', path: ['plannedEndAt'] },
+  )
+  .refine(
+    (data) => {
+      if (data.driverId && data.assistantDriverId && data.driverId === data.assistantDriverId) {
+        return false;
+      }
+      return true;
+    },
+    { message: 'Driver and assistant driver cannot be the same person', path: ['assistantDriverId'] },
+  );
 
 export const startTripSchema = z
   .object({
@@ -115,8 +152,8 @@ export const cancelTripSchema = z.object({
 
 export const tripQuerySchema = z.object({
   search: z.string().optional(),
-  status: z.string().optional(),
-  tripType: z.string().optional(),
+  status: tripStatusEnum.optional(),
+  tripType: tripTypeEnum.optional(),
   vehicleId: z.string().optional(),
   driverId: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
