@@ -19,6 +19,7 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 | Phase 3 | Asset Assignment and History | Completed locally and verified against Neon |
 | Phase 3.1 | Enterprise Frontend UX Stabilization | Completed locally and verified |
 | Phase 3.2 | Final UI Quality Gate and Safety Cleanup | Completed locally and verified |
+| Phase 3.3 | Final Permission Matrix and UI Acceptance Patch | Completed locally and verified |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
@@ -96,6 +97,9 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 - Phase 3: Added assignment/history audit logging and automatic asset-history creation for asset create, update, assignment, return, transfer, damaged, lost, repaired, and retired flows.
 - Phase 3: Added reusable holder-label enrichment for vehicles, drivers, and users so both APIs and UI can show readable assignment targets.
 - Phase 3: Reworked the asset detail page with a compact current-assignment card, assignment records, action modal flow, and assignment history table.
+- Phase 3.3: Removed the last inline RolesPage layout styles and replaced them with shared Permission Matrix CSS classes.
+- Phase 3.3: Removed old permission card/grid CSS so the table-based Permission Matrix is the only active permissions UX.
+- Phase 3.3: Tightened Playwright checks for the Roles page, including matrix table presence, compact checkbox sizing, no legacy permission cards, and no desktop horizontal overflow.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
@@ -243,6 +247,27 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
   - Unauthorized requests return `401`
   - Requests without required permission return `403`
 - Existing auth, roles, users, and permissions endpoints still work.
+
+### 2026-06-12 (Phase 3.3)
+
+- `npm run backend:lint`: pass
+- `npm run backend:build`: pass
+- `npm run web:lint`: pass
+- `npm run web:build`: pass
+- `npm --prefix web run test:e2e`: pass
+- Manual browser checks:
+  - `/roles`: pass
+  - `/vehicles/:id`: pass
+  - `/assets/:id`: pass
+  - `/users`: pass
+- Roles page proof:
+  - remaining inline layout styles removed
+  - dead permission card/grid CSS removed
+  - Permission Matrix remains a single table
+  - role selector, search, selected count, and Save Permissions remain visible
+  - view-only state stays explicit when permission assignment is unavailable
+- Secret scan result: no committed secrets found in tracked files
+- Mobile status: not modified
 
 ### 2026-06-10 (Phase 3.1 — Enterprise Frontend UX Stabilization)
 

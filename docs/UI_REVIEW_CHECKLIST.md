@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 3.2 final UI quality gate and safety cleanup: cleaned RolesPage inline styles into reusable CSS classes, improved Permission Matrix UX, added Playwright env-driven test setup, removed unsafe cleanup script.
+Phase 3.3 final Permission Matrix and UI acceptance patch: removed the last inline RolesPage layout styles, confirmed the table-based Permission Matrix UX, removed dead permission-card CSS, and tightened Playwright UI coverage.
 
 ## Visual Review Checklist
 
@@ -52,9 +52,13 @@ Phase 3.2 final UI quality gate and safety cleanup: cleaned RolesPage inline sty
 - [ ] Select all / Clear actions per module.
 - [ ] Selected count is shown.
 - [ ] Role details compact panel is visible.
+- [ ] "Editing permissions for: <role name>" is visible.
+- [ ] View-only state is clear when `permission_assign` is missing.
 - [ ] No giant permission cards.
 - [ ] No two-column permission grid.
-- [ ] All inline styles replaced with CSS classes (`role-permission-toolbar`, `permission-module-row`, etc.).
+- [ ] All inline styles replaced with CSS classes (`role-selector-input`, `permission-col-module`, `permission-col-key`, `permission-col-enabled`, `permission-error-spacing`).
+- [ ] Old permission card CSS is removed.
+- [ ] Permission Matrix table is the only permission-management layout.
 
 ### Users (`/users`)
 - [ ] Create user is in a modal, separate from edit.
@@ -85,7 +89,7 @@ Phase 3.2 final UI quality gate and safety cleanup: cleaned RolesPage inline sty
 
 ## Verification Proof
 
-Date: `2026-06-10`
+Date: `2026-06-12`
 
 ### Build/Lint Results
 - `npm run backend:lint`: pass
@@ -95,6 +99,11 @@ Date: `2026-06-10`
 
 ### Playwright UI Verification
 - Login as admin
-- Open /vehicles/:id — General Information visible, form width usable
-- Open /roles — Permission checkboxes 16px, Save Permissions visible, no inline styles
-- Open /users — Create User button visible
+- Open /vehicles/:id - General Information visible, form width usable
+- Open /roles - Permission Matrix table visible, role selector visible, Save Permissions visible, no `.permission-module-card`, checkbox size <= 20px, no horizontal overflow at 1366x768
+- Open /users - Create User button visible
+
+### Phase 3.3 Notes
+- Remaining inline RolesPage layout styles were removed and replaced with CSS classes.
+- Old permission card/grid CSS was removed from the shared stylesheet.
+- Permission Matrix table UX was confirmed as the single active roles/permissions layout.

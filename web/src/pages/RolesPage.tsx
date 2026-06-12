@@ -289,9 +289,9 @@ export function RolesPage() {
             <label className="role-selector-row">
               <span className="field-label">Role:</span>
               <select
+                className="role-selector-input"
                 value={selectedRoleId ?? ''}
                 onChange={(event) => setSelectedRoleId(event.target.value)}
-                style={{ width: 'auto', minWidth: '200px' }}
               >
                 {roles.map((role) => (
                   <option key={role.id} value={role.id}>
@@ -391,7 +391,19 @@ export function RolesPage() {
       ) : null}
 
       <div className="card table-card" id="permission-matrix">
-        <h4 className="role-edit-h4">Permissions</h4>
+        <div className="section-header wrap-row">
+          <div>
+            <h4 className="role-edit-h4">Permissions</h4>
+            <p className="helper-text permission-matrix-editing">
+              {selectedRole
+                ? `Editing permissions for: ${selectedRole.name}`
+                : 'Select a role to edit permissions.'}
+            </p>
+          </div>
+          {!auth.hasPermission('permission_assign') ? (
+            <span className="permission-matrix-view-only">View only: you do not have permission to assign changes.</span>
+          ) : null}
+        </div>
 
         {Object.entries(filteredPermissionGroups).length === 0 ? (
           <p className="muted-copy">No permissions match your search.</p>
@@ -400,10 +412,10 @@ export function RolesPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: '160px' }}>Module</th>
-                  <th style={{ width: '200px' }}>Permission</th>
+                  <th className="permission-col-module">Module</th>
+                  <th className="permission-col-key">Permission</th>
                   <th>Description</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Enabled</th>
+                  <th className="permission-col-enabled">Enabled</th>
                 </tr>
               </thead>
               <tbody>
@@ -469,7 +481,7 @@ export function RolesPage() {
           </div>
         )}
 
-        {permissionError ? <div className="error-banner" style={{ marginTop: '0.9rem' }}>{permissionError}</div> : null}
+        {permissionError ? <div className="error-banner permission-error-spacing">{permissionError}</div> : null}
 
         <div className="permission-toolbar">
           <p className="helper-text">

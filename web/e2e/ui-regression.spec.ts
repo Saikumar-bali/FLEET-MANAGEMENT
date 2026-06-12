@@ -11,7 +11,7 @@ async function loginAsAdmin(page: import('@playwright/test').Page) {
   await page.waitForURL('/');
 }
 
-test.describe('Phase 3.2 UI regression tests', () => {
+test.describe('Phase 3.3 UI regression tests', () => {
   test('Login as admin', async ({ page }) => {
     await loginAsAdmin(page);
     await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
@@ -35,13 +35,16 @@ test.describe('Phase 3.2 UI regression tests', () => {
   });
 
   test('Open /roles and confirm permission UX', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
     await loginAsAdmin(page);
 
     await page.goto('/roles');
     await page.waitForSelector('#permission-matrix');
 
+    await expect(page.locator('#permission-matrix .data-table')).toBeVisible();
     await expect(page.locator('button:has-text("Save Permissions")').first()).toBeVisible();
-    await expect(page.locator('select').first()).toBeVisible();
+    await expect(page.locator('.role-selector-input')).toBeVisible();
+    await expect(page.getByText(/Editing permissions for:/)).toBeVisible();
 
     const checkbox = page.locator('#permission-matrix input[type="checkbox"]').first();
     if (await checkbox.isVisible()) {
@@ -54,6 +57,12 @@ test.describe('Phase 3.2 UI regression tests', () => {
     }
 
     await expect(page.locator('.permission-module-card')).toHaveCount(0);
+
+    const horizontalOverflow = await page.evaluate(() => {
+      const doc = document.documentElement;
+      return doc.scrollWidth - doc.clientWidth;
+    });
+    expect(horizontalOverflow).toBeLessThanOrEqual(4);
   });
 
   test('Open /users and confirm Create User button', async ({ page }) => {
