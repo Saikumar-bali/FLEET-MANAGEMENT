@@ -20,6 +20,7 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 | Phase 3.1 | Enterprise Frontend UX Stabilization | Completed locally and verified |
 | Phase 3.2 | Final UI Quality Gate and Safety Cleanup | Completed locally and verified |
 | Phase 3.3 | Final Permission Matrix and UI Acceptance Patch | Completed locally and verified |
+| Phase 3.4 | Small UI Correctness Patch | Completed locally and verified |
 | Phase 4 | Trip / Transfer Workflow | Not Started |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
@@ -100,6 +101,9 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 - Phase 3.3: Removed the last inline RolesPage layout styles and replaced them with shared Permission Matrix CSS classes.
 - Phase 3.3: Removed old permission card/grid CSS so the table-based Permission Matrix is the only active permissions UX.
 - Phase 3.3: Tightened Playwright checks for the Roles page, including matrix table presence, compact checkbox sizing, no legacy permission cards, and no desktop horizontal overflow.
+- Phase 3.4: Simplified Asset Categories submit-button mode logic with explicit `canSubmitCategory` and `categorySubmitLabel` variables.
+- Phase 3.4: Reconfirmed create mode resets selected category, form values, error state, and success state from both Create/New Category entry points.
+- Phase 3.4: Kept the sidebar nav vertically scrollable with the footer/profile pinned and no horizontal sidebar scroll.
 - Backend and web lint/build checks pass locally.
 - Neon verification: `prisma db push` succeeded using pooled `DATABASE_URL` and direct `DIRECT_URL`.
 - Neon seed verification: `prisma db seed` succeeded.
@@ -379,6 +383,30 @@ Phase 3 is completed locally and verified against Neon. Asset assignment, return
 **Docs updated:**
 - `docs/UI_REVIEW_CHECKLIST.md` updated with Phase 3.2 checks, Playwright env var instructions, and safety notes.
 - `progress.md` updated with Phase 3.2 completion status.
+
+### 2026-06-12 (Phase 3.4 - Small UI Correctness Patch)
+
+- Replaced the Asset Categories submit button nested ternary with explicit `isCreateMode`, `canSubmitCategory`, and `categorySubmitLabel` variables.
+- Confirmed both `Create Category` and `New Category` return the screen to clean create mode by clearing `selectedId`, form state, success state, and error state.
+- Updated the detail form heading so create mode shows `Create Category` and edit mode shows `Edit Category`.
+- Reconfirmed the sidebar keeps a vertically scrollable nav area, hides horizontal overflow, and leaves the footer/profile visible.
+- Follow-up fix: unlocked Asset Category key editing in edit mode and added create-mode key auto-generation from the entered name.
+- Follow-up fix: create-mode key generation now keeps tracking the name until the user intentionally types a custom key.
+
+**Verification proof:**
+- `npm run web:lint`
+- `npm run web:build`
+- `npm run backend:lint`
+- `npm run backend:build`
+- Local browser verification on `http://127.0.0.1:4173` confirmed:
+  - `/asset-categories` header `Create Category` action resets the form and shows the `Create Category` submit button
+  - `/asset-categories` list `New Category` action also resets the form and clears stale banners
+  - `/asset-categories` edit mode shows `Edit Category` with `Update Category`
+  - sidebar nav uses vertical scrolling with hidden horizontal overflow and a visible footer/profile section
+  - `/roles` permission matrix table still loads correctly
+  - `/vehicles/:id` detail page still loads correctly
+- No mobile files changed.
+- No secrets committed.
 
 ## Next Step
 

@@ -18,11 +18,21 @@ type CategoryForm = {
 
 const initialForm: CategoryForm = { name: '', key: '', description: '', status: 'ACTIVE' };
 
+function normalizeCategoryKey(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_{2,}/g, '_');
+}
+
 export function AssetCategoriesPage() {
   const auth = useAuth();
   const [categories, setCategories] = useState<AssetCategoryRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryForm>(initialForm);
+  const [isKeyManuallyEdited, setIsKeyManuallyEdited] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -31,6 +41,9 @@ export function AssetCategoriesPage() {
   const selected = categories.find((c) => c.id === selectedId) ?? null;
   const canCreate = auth.hasPermission('asset_create');
   const canUpdate = auth.hasPermission('asset_update');
+  const isCreateMode = selectedId === null;
+  const canSubmitCategory = isCreateMode ? canCreate : canUpdate;
+  const categorySubmitLabel = isCreateMode ? 'Create Category' : 'Update Category';
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +57,7 @@ export function AssetCategoriesPage() {
           const first = response.data[0];
           setSelectedId(first.id);
           setForm({ name: first.name, key: first.key, description: first.description ?? '', status: first.status });
+          setIsKeyManuallyEdited(true);
         }
       } catch (caughtError) {
         if (caughtError instanceof ApiError) setError(caughtError.message);
@@ -58,14 +72,36 @@ export function AssetCategoriesPage() {
   useEffect(() => {
     if (!selected) return;
     setForm({ name: selected.name, key: selected.key, description: selected.description ?? '', status: selected.status });
+    setIsKeyManuallyEdited(true);
     setMessage(null);
   }, [selected]);
 
   function startCreateMode() {
     setSelectedId(null);
     setForm(initialForm);
+    setIsKeyManuallyEdited(false);
     setError(null);
     setMessage(null);
+  }
+
+  function handleNameChange(name: string) {
+    setForm((current) => {
+      if (!isCreateMode || isKeyManuallyEdited) {
+        return { ...current, name };
+      }
+
+      return {
+        ...current,
+        name,
+        key: normalizeCategoryKey(name),
+      };
+    });
+  }
+
+  function handleKeyChange(key: string) {
+    const normalizedKey = normalizeCategoryKey(key);
+    setForm((current) => ({ ...current, key: normalizedKey }));
+    setIsKeyManuallyEdited(!isCreateMode || normalizedKey !== normalizeCategoryKey(form.name));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -154,23 +190,24 @@ export function AssetCategoriesPage() {
           <article className="card detail-card">
             <div className="table-toolbar">
               <div>
-                <h3 className="table-toolbar-title">{selected?.name ?? 'Create category'}</h3>
-                <p className="table-toolbar-copy">{selected ? 'Edit the selected category' : 'Add a new category'}</p>
+                <h3 className="table-toolbar-title">{isCreateMode ? 'Create Category' : 'Edit Category'}</h3>
+                <p className="table-toolbar-copy">
+                  {selected ? `Editing ${selected.name}` : 'Add a new category'}
+                </p>
               </div>
             </div>
 
             <form className="stack-form" onSubmit={handleSubmit}>
               <label>
                 <span className="field-label">Name</span>
-                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+                <input value={form.name} onChange={(e) => handleNameChange(e.target.value)} required />
               </label>
               <label>
                 <span className="field-label">Key</span>
                 <input
                   value={form.key}
-                  onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.replace(/[^a-z0-9_]/g, '_').toLowerCase() }))}
+                  onChange={(e) => handleKeyChange(e.target.value)}
                   required
-                  disabled={!!selected}
                 />
               </label>
               <label>
@@ -189,14 +226,14 @@ export function AssetCategoriesPage() {
               {message ? <div className="success-banner">{message}</div> : null}
 
               <div className="button-row">
-              {selectedId ? canUpdate : canCreate ? (
-                <button type="submit" className="primary-button" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : selectedId ? 'Update Category' : 'Create Category'}
-                </button>
-              ) : null}
-            </div>
-          </form>
-        </article>
+                {canSubmitCategory ? (
+                  <button type="submit" className="primary-button" disabled={isSaving}>
+                    {isSaving ? 'Saving...' : categorySubmitLabel}
+                  </button>
+                ) : null}
+              </div>
+            </form>
+          </article>
         </aside>
       </div>
     </section>
