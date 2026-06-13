@@ -44,8 +44,13 @@ function methodPath(method: string, path: string): string {
   return `${method.toUpperCase()} /${normalizePath(path)}`;
 }
 
-function getSecurity(pathObj: Record<string, unknown>): boolean {
-  return !!pathObj.security;
+function hasBearerAuth(operation: Record<string, unknown>): boolean {
+  const security = operation.security;
+  return Array.isArray(security) && security.some((requirement) => (
+    typeof requirement === 'object'
+    && requirement !== null
+    && Object.prototype.hasOwnProperty.call(requirement, 'bearerAuth')
+  ));
 }
 
 function main() {
@@ -81,33 +86,24 @@ function main() {
         continue;
       }
 
-      if (tag === 'Health' || tag === 'Auth') {
-        if (method === 'GET' && path === '/health') {
-          pass(results, `${endpoint}`);
-        } else if (method === 'POST' && path === '/auth/login') {
-          pass(results, `${endpoint}`);
-        } else if (method === 'GET' && path === '/auth/me') {
-          const sec = getSecurity(operation);
-          if (sec) {
-            pass(results, `${endpoint}`, 'bearerAuth present');
-          } else {
-            fail(results, `${endpoint}`, 'bearerAuth missing');
-          }
-        } else {
-          pass(results, `${endpoint}`);
-        }
+      const usesBearerAuth = ![
+        'GET /health',
+        'POST /auth/login',
+        'POST /auth/refresh',
+        'POST /auth/logout',
+      ].includes(endpoint);
+      if (!usesBearerAuth) {
+        pass(results, `${endpoint}`, 'Does not require bearerAuth');
+      } else if (hasBearerAuth(operation)) {
+        pass(results, `${endpoint}`, 'bearerAuth present');
       } else {
-        const sec = getSecurity(operation);
-        if (sec) {
-          pass(results, `${endpoint}`, 'bearerAuth present');
-        } else {
-          fail(results, `${endpoint}`, 'bearerAuth missing on protected route');
-        }
+        fail(results, `${endpoint}`, 'bearerAuth missing on protected route');
       }
     }
   }
 
   const loginPath = paths['/auth/login'];
+  let loginSchemaVerified = false;
   if (loginPath?.post) {
     const reqBody = (loginPath.post as Record<string, unknown>).requestBody as Record<string, unknown> | undefined;
     if (reqBody) {
@@ -124,21 +120,26 @@ function main() {
             const props = (loginSchema.properties ?? {}) as Record<string, unknown>;
             if (props.identifier && props.password) {
               pass(results, 'Auth login uses identifier/password');
+              loginSchemaVerified = true;
             } else if (props.email) {
               fail(results, 'Auth login uses identifier/password', 'Uses email instead of identifier');
+              loginSchemaVerified = true;
             } else {
               fail(results, 'Auth login uses identifier/password', 'Missing identifier or password field');
+              loginSchemaVerified = true;
             }
           }
         }
       }
     }
   }
+  if (!loginSchemaVerified) {
+    fail(results, 'Auth login uses identifier/password', 'Login request schema could not be resolved');
+  }
 
   const tripHistoryPath = paths['/trips/{id}/history'];
   if (tripHistoryPath?.get) {
-    const sec = getSecurity(tripHistoryPath.get);
-    if (sec) {
+    if (hasBearerAuth(tripHistoryPath.get)) {
       pass(results, 'Trip history has bearerAuth');
     } else {
       fail(results, 'Trip history has bearerAuth', 'Missing');

@@ -281,6 +281,7 @@ async function main() {
       );
       const tripToCancel = tCancelRes.data?.data;
       if (tripToCancel) {
+        pass(results, 'POST /trips (create second TEST-E2E-STAGING)', tCancelRes.status);
         created.tripIds.push(tripToCancel.id);
         const cancelRes = await requestJson<{ data?: { status: string } }>(
           endpoint(apiRoot, `/trips/${tripToCancel.id}/cancel`),
@@ -291,8 +292,17 @@ async function main() {
         } else {
           fail(results, 'POST /trips/:id/cancel', cancelRes.status);
         }
+
+        const cancelHistoryRes = await requestJson(endpoint(apiRoot, `/trips/${tripToCancel.id}/history`), { headers: authHeaders });
+        if (cancelHistoryRes.ok) {
+          pass(results, 'GET /trips/:id/history after cancel', cancelHistoryRes.status);
+        } else {
+          fail(results, 'GET /trips/:id/history after cancel', cancelHistoryRes.status);
+        }
       } else {
+        fail(results, 'POST /trips (create second TEST-E2E-STAGING)', tCancelRes.status);
         skip(results, 'POST /trips/:id/cancel', 'Could not create second trip for cancel test');
+        skip(results, 'GET /trips/:id/history after cancel', 'Could not create second trip for cancel test');
       }
     }
 

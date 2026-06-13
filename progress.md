@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Deployment Gate 5 (Final cleanup and PR gate) is completed and submitted for review. Phase 4 is now fully verified on staging with honest evidence. Phase 5 has not started.
+Phase 4 Gate 7 is submitted for final review with corrected lineage, reproducible scripts, green local/staging verification, and the wrong root Vercel project's Git integration disconnected. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -36,6 +36,7 @@ Phase 4 Deployment Gate 5 (Final cleanup and PR gate) is completed and submitted
 | Phase 4 Deployment Gate 3 | API Docs Coverage and PR Review Readiness | Completed |
 | Phase 4 Deployment Gate 4 | Build Redeploy and Staging Smoke | Completed |
 | Phase 4 Deployment Gate 5 | Final Cleanup and PR Gate | Completed |
+| Phase 4 Gate 7 | Lineage, Scripts, and Vercel Status Correction | Submitted for Final Review |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -907,4 +908,4 @@ Phase 4 Deployment Gate 5 (Final cleanup and PR gate) is completed and submitted
 
 ## Next Step
 
-Phase 4 Deployment Gate is next only after Phase 4.8 local QA evidence is reviewed and accepted. Phase 5 has not started.
+Reviewer approval to merge Phase 4, then Phase 5 Fuel and Expense Workflow. Phase 5 has not started.

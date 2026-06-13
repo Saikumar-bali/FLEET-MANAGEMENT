@@ -6,7 +6,8 @@ export const openApiSpec = {
     description: `Production-grade REST API for fleet management.
 
 ## Authentication
-All endpoints except \`/api/v1/health\` and \`/api/v1/auth/login\` require a valid JWT access token.
+All endpoints except health, login, refresh, and logout require a valid JWT access token.
+Refresh and logout accept a refresh token in the request body instead of a bearer access token.
 Include the token in the \`Authorization\` header: \`Bearer <token>\`.
 
 ## Permission Model

@@ -8,7 +8,7 @@
 - Authentication method: bearer token from `POST /api/v1/auth/login`
 - Safe testing rule: create and reuse only `TEST-E2E-STAGING-` records
 
-## Endpoint Coverage Summary (Final Gate 5)
+## Endpoint Coverage Summary (Gate 7)
 
 | Group | Total | PASS | FAIL | SKIP | Notes |
 |---|---|---|---|---|---|
@@ -155,7 +155,10 @@ All SKIP entries are safe mutation endpoints where staging data integrity is pre
 ## Notes
 
 - Protected endpoints require a bearer token but no token values are recorded here.
+- Refresh and logout use refresh-token request bodies and do not use bearer access-token authentication.
 - Swagger/OpenAPI coverage was confirmed for all 10 groups: Health, Auth, Users, Roles, Permissions, Vehicles, Drivers, Assets, Documents, Trips.
 - Trips coverage was verified live on staging for the full lifecycle: create, schedule, start, complete, cancel, and history.
+- Gate 7 live Swagger count: 10 tags, 40 paths, 54 operations, with no required Phase 4 operations missing.
+- Gate 7 API docs test: 66 PASS, 0 FAIL. Staging smoke for each supported base-URL format: 25 PASS, 0 FAIL, 0 SKIP.
 - Login schema correctly uses `identifier` (username or email), not `email`.
 - All endpoint errors documented: 400 (validation), 401 (auth required), 403 (permission denied), 404 (not found).
