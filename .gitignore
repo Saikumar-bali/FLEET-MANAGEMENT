@@ -7,4 +7,9 @@ build/
 .vercel/
 .DS_Store
 Thumbs.db
+vite-log.txt
+web/test-results/
+test-results/
+playwright-report/
 uploads/
+.vercel

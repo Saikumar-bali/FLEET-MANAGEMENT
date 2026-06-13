@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { config } from '../config';

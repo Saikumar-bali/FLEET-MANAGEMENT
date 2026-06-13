@@ -6,7 +6,8 @@ export const openApiSpec = {
     description: `Production-grade REST API for fleet management.
 
 ## Authentication
-All endpoints except \`/api/v1/health\` and \`/api/v1/auth/login\` require a valid JWT access token.
+All endpoints except health, login, refresh, and logout require a valid JWT access token.
+Refresh and logout accept a refresh token in the request body instead of a bearer access token.
 Include the token in the \`Authorization\` header: \`Bearer <token>\`.
 
 ## Permission Model
@@ -28,6 +29,18 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
   },
   servers: [
     { url: '/api/v1', description: 'Same-origin (local dev proxy or deployed)' },
+  ],
+  tags: [
+    { name: 'Health' },
+    { name: 'Auth' },
+    { name: 'Users' },
+    { name: 'Roles' },
+    { name: 'Permissions' },
+    { name: 'Vehicles' },
+    { name: 'Drivers' },
+    { name: 'Assets' },
+    { name: 'Documents' },
+    { name: 'Trips' },
   ],
   components: {
     securitySchemes: {
@@ -67,9 +80,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
       // Auth
       LoginInput: {
         type: 'object',
-        required: ['email', 'password'],
+        required: ['identifier', 'password'],
         properties: {
-          email: { type: 'string', format: 'email' },
+          identifier: { type: 'string', description: 'Username or email' },
           password: { type: 'string', minLength: 8 },
         },
       },
@@ -328,6 +341,66 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         required: ['currentStatus'],
         properties: {
           currentStatus: { type: 'string', enum: ['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'LOST', 'UNDER_REPAIR', 'RETIRED'] },
+          notes: { type: 'string' },
+          proofUrl: { type: 'string', format: 'uri' },
+        },
+      },
+      AssetAssignInput: {
+        type: 'object',
+        required: ['assignedToType', 'assignedToId'],
+        properties: {
+          assignedToType: { type: 'string', enum: ['VEHICLE', 'DRIVER', 'USER'] },
+          assignedToId: { type: 'string' },
+          notes: { type: 'string' },
+        },
+      },
+      AssetReturnInput: {
+        type: 'object',
+        properties: {
+          notes: { type: 'string' },
+          proofUrl: { type: 'string', format: 'uri' },
+        },
+      },
+      AssetTransferInput: {
+        type: 'object',
+        required: ['assignedToType', 'assignedToId'],
+        properties: {
+          assignedToType: { type: 'string', enum: ['VEHICLE', 'DRIVER', 'USER'] },
+          assignedToId: { type: 'string' },
+          notes: { type: 'string' },
+          proofUrl: { type: 'string', format: 'uri' },
+        },
+      },
+      AssetStatusActionInput: {
+        type: 'object',
+        properties: {
+          notes: { type: 'string' },
+          proofUrl: { type: 'string', format: 'uri' },
+        },
+      },
+      AssetAssignment: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          assetId: { type: 'string' },
+          assignedToType: { type: 'string', enum: ['VEHICLE', 'DRIVER', 'USER'] },
+          assignedToId: { type: 'string' },
+          assignedAt: { type: 'string', format: 'date-time' },
+          returnedAt: { type: 'string', format: 'date-time', nullable: true },
+          status: { type: 'string', enum: ['ACTIVE', 'RETURNED', 'TRANSFERRED'] },
+          notes: { type: 'string', nullable: true },
+        },
+      },
+      AssetHistoryEntry: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          assetId: { type: 'string' },
+          action: { type: 'string' },
+          performedBy: { type: 'string', nullable: true },
+          notes: { type: 'string', nullable: true },
+          proofUrl: { type: 'string', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
         },
       },
 
@@ -401,22 +474,23 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     // Auth
     '/auth/login': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Login',
-        description: 'Authenticate with email and password. Returns JWT access token and refresh token.',
+        description: 'Authenticate with username or email and password. Returns JWT access token and refresh token.',
         requestBody: {
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginInput' } } },
         },
         responses: {
           '200': { description: 'Login successful' },
-          '401': { description: 'Invalid email or password' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Invalid credentials' },
         },
       },
     },
     '/auth/me': {
       get: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Current user',
         description: 'Returns the authenticated user with their permissions.',
         security: [{ bearerAuth: [] }],
@@ -428,7 +502,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/auth/refresh': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Refresh session',
         description: 'Exchange a valid refresh token for a new access token.',
         requestBody: {
@@ -443,14 +517,17 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/auth/logout': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Logout',
         description: 'Revoke the refresh token.',
         requestBody: {
           required: true,
           content: { 'application/json': { schema: { type: 'object', properties: { refreshToken: { type: 'string' } } } } },
         },
-        responses: { '200': { description: 'Logout successful' } },
+        responses: {
+          '200': { description: 'Logout successful' },
+          '400': { description: 'Validation error' },
+        },
       },
     },
 
@@ -531,8 +608,15 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         tags: ['Users'],
         summary: 'List users',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
         responses: {
-          '200': { description: 'Array of users with roles' },
+          '200': { description: 'Paginated user list' },
+          '401': { description: 'Authentication required' },
           '403': { description: 'Missing user_view permission' },
         },
       },
@@ -546,6 +630,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         },
         responses: {
           '201': { description: 'User created' },
+          '400': { description: 'Validation error or duplicate email/username' },
+          '401': { description: 'Authentication required' },
           '403': { description: 'Missing user_create permission' },
         },
       },
@@ -558,6 +644,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
           '200': { description: 'User details with role' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_view permission' },
           '404': { description: 'User not found' },
         },
       },
@@ -569,7 +657,12 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         requestBody: {
           content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, mobile: { type: 'string' }, roleId: { type: 'string' }, status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] } } } } },
         },
-        responses: { '200': { description: 'User updated' } },
+        responses: {
+          '200': { description: 'User updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_update permission' },
+          '404': { description: 'User not found' },
+        },
       },
     },
     '/users/{id}/status': {
@@ -582,7 +675,12 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { type: 'object', properties: { status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] } } } } },
         },
-        responses: { '200': { description: 'Status updated' } },
+        responses: {
+          '200': { description: 'Status updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_delete or user_deactivate permission' },
+          '404': { description: 'User not found' },
+        },
       },
     },
     '/users/{id}/password': {
@@ -595,7 +693,12 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { type: 'object', properties: { password: { type: 'string', minLength: 8 } } } } },
         },
-        responses: { '200': { description: 'Password updated' } },
+        responses: {
+          '200': { description: 'Password updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_update permission' },
+          '404': { description: 'User not found' },
+        },
       },
     },
 
@@ -639,6 +742,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
           '200': { description: 'Vehicle details with current driver' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing vehicle_view permission' },
           '404': { description: 'Vehicle not found' },
         },
       },
@@ -650,7 +755,12 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         requestBody: {
           content: { 'application/json': { schema: { $ref: '#/components/schemas/VehicleCreateInput' } } },
         },
-        responses: { '200': { description: 'Vehicle updated' } },
+        responses: {
+          '200': { description: 'Vehicle updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing vehicle_update permission' },
+          '404': { description: 'Vehicle not found' },
+        },
       },
     },
     '/vehicles/{id}/status': {
@@ -663,7 +773,13 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/VehicleStatusInput' } } },
         },
-        responses: { '200': { description: 'Status updated' } },
+        responses: {
+          '200': { description: 'Status updated' },
+          '400': { description: 'Invalid status transition' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing vehicle_update or vehicle_delete permission' },
+          '404': { description: 'Vehicle not found' },
+        },
       },
     },
 
@@ -698,14 +814,24 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         summary: 'Get driver',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Driver details' } },
+        responses: {
+          '200': { description: 'Driver details' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing driver_view permission' },
+          '404': { description: 'Driver not found' },
+        },
       },
       patch: {
         tags: ['Drivers'],
         summary: 'Update driver',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Driver updated' } },
+        responses: {
+          '200': { description: 'Driver updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing driver_update permission' },
+          '404': { description: 'Driver not found' },
+        },
       },
     },
     '/drivers/{id}/status': {
@@ -718,20 +844,26 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/DriverStatusInput' } } },
         },
-        responses: { '200': { description: 'Status updated' } },
+        responses: {
+          '200': { description: 'Status updated' },
+          '400': { description: 'Invalid status transition' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing driver_update or driver_delete permission' },
+          '404': { description: 'Driver not found' },
+        },
       },
     },
 
     // Asset Categories
     '/assets/categories': {
       get: {
-        tags: ['Asset Categories'],
+        tags: ['Assets'],
         summary: 'List asset categories',
         security: [{ bearerAuth: [] }],
         responses: { '200': { description: 'Array of categories with asset counts' } },
       },
       post: {
-        tags: ['Asset Categories'],
+        tags: ['Assets'],
         summary: 'Create asset category',
         security: [{ bearerAuth: [] }],
         requestBody: {
@@ -743,7 +875,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/assets/categories/{id}': {
       patch: {
-        tags: ['Asset Categories'],
+        tags: ['Assets'],
         summary: 'Update asset category',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
@@ -806,7 +938,165 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetStatusInput' } } },
         },
-        responses: { '200': { description: 'Status updated' } },
+        responses: {
+          '200': { description: 'Status updated' },
+          '400': { description: 'Invalid status transition' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_update or asset_delete permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/assignments': {
+      get: {
+        tags: ['Assets'],
+        summary: 'List asset assignments',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Array of assignment records',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/AssetAssignment' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_view permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/history': {
+      get: {
+        tags: ['Assets'],
+        summary: 'Get asset history',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Array of history entries',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/AssetHistoryEntry' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_view permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/assign': {
+      post: {
+        tags: ['Assets'],
+        summary: 'Assign asset to holder',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetAssignInput' } } },
+        },
+        responses: {
+          '200': { description: 'Asset assigned' },
+          '400': { description: 'Asset already assigned or invalid holder' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_assign permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/return': {
+      post: {
+        tags: ['Assets'],
+        summary: 'Return assigned asset',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetReturnInput' } } },
+        },
+        responses: {
+          '200': { description: 'Asset returned' },
+          '400': { description: 'Asset is not currently assigned' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_return permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/transfer': {
+      post: {
+        tags: ['Assets'],
+        summary: 'Transfer asset to new holder',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetTransferInput' } } },
+        },
+        responses: {
+          '200': { description: 'Asset transferred' },
+          '400': { description: 'Asset is not currently assigned' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_transfer permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/mark-damaged': {
+      post: {
+        tags: ['Assets'],
+        summary: 'Mark asset as damaged',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetStatusActionInput' } } },
+        },
+        responses: {
+          '200': { description: 'Asset marked as damaged' },
+          '400': { description: 'Invalid status transition' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_mark_damaged permission' },
+          '404': { description: 'Asset not found' },
+        },
+      },
+    },
+    '/assets/{id}/mark-lost': {
+      post: {
+        tags: ['Assets'],
+        summary: 'Mark asset as lost',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/AssetStatusActionInput' } } },
+        },
+        responses: {
+          '200': { description: 'Asset marked as lost' },
+          '400': { description: 'Invalid status transition' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_mark_lost permission' },
+          '404': { description: 'Asset not found' },
+        },
       },
     },
 
@@ -822,7 +1112,11 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           { name: 'entityId', in: 'query', schema: { type: 'string' } },
           { name: 'documentType', in: 'query', schema: { type: 'string' } },
         ],
-        responses: { '200': { description: 'Paginated document list' } },
+        responses: {
+          '200': { description: 'Paginated document list' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_view permission' },
+        },
       },
       post: {
         tags: ['Documents'],
@@ -832,7 +1126,12 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/DocumentCreateInput' } } },
         },
-        responses: { '201': { description: 'Document created' } },
+        responses: {
+          '201': { description: 'Document created' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_update permission' },
+        },
       },
     },
     '/documents/{id}': {
@@ -841,14 +1140,186 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         summary: 'Update document',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Document updated' } },
+        responses: {
+          '200': { description: 'Document updated' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_update permission' },
+          '404': { description: 'Document not found' },
+        },
       },
       delete: {
         tags: ['Documents'],
         summary: 'Delete document',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '200': { description: 'Document deleted' } },
+        responses: {
+          '200': { description: 'Document deleted' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing asset_update permission' },
+          '404': { description: 'Document not found' },
+        },
+      },
+    },
+
+    // Trips
+    '/trips': {
+      get: {
+        tags: ['Trips'],
+        summary: 'List trips',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SCHEDULED', 'STARTED', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'tripType', in: 'query', schema: { type: 'string', enum: ['TRANSFER', 'DELIVERY', 'PICKUP', 'SERVICE', 'INTERNAL'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated trip list' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_view permission' },
+        },
+      },
+      post: {
+        tags: ['Trips'],
+        summary: 'Create trip',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCreateInput' } } },
+        },
+        responses: {
+          '201': { description: 'Trip created' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_create permission' },
+        },
+      },
+    },
+    '/trips/{id}': {
+      get: {
+        tags: ['Trips'],
+        summary: 'Get trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Trip details', content: { 'application/json': { schema: { $ref: '#/components/schemas/Trip' } } } },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_view permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+      patch: {
+        tags: ['Trips'],
+        summary: 'Update trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripUpdateInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip updated' },
+          '400': { description: 'Validation error or invalid state' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_update permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+    },
+    '/trips/{id}/schedule': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Schedule trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripScheduleInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip scheduled' },
+          '400': { description: 'Invalid state or validation error' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_update permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+    },
+    '/trips/{id}/start': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Start trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripStartInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip started' },
+          '400': { description: 'Vehicle or driver unavailable' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_start permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+    },
+    '/trips/{id}/complete': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Complete trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCompleteInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip completed' },
+          '400': { description: 'Invalid odometer or state' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_end permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+    },
+    '/trips/{id}/cancel': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Cancel trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCancelInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip cancelled' },
+          '400': { description: 'Invalid state' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_cancel permission' },
+          '404': { description: 'Trip not found' },
+        },
+      },
+    },
+    '/trips/{id}/history': {
+      get: {
+        tags: ['Trips'],
+        summary: 'Get trip history',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Trip history entries',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/TripHistoryEntry' },
+                },
+              },
+            },
+          },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing trip_view permission' },
+          '404': { description: 'Trip not found' },
+        },
       },
     },
   },
