@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.9 (backend build fix, honest local QA rerun, and branch/PR discipline) is current. Phase 4.8 is completed. Phase 5 remains Not Started.
+Phase 4 Deployment Gate is current. The local QA rerun passed, but the staging Vercel environment prerequisite check failed because required env vars are missing in the linked staging projects. Phase 4 Deployment Gate blocked. Do not start Phase 5.
 
 ## Phase Progress
 
@@ -31,6 +31,7 @@ Phase 4.9 (backend build fix, honest local QA rerun, and branch/PR discipline) i
 | Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
 | Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
 | Phase 4.9 | Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline | Submitted for Review |
+| Phase 4 Deployment Gate | Local QA + Staging Deployment Gate | Blocked |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -889,6 +890,24 @@ Phase 4.9 (backend build fix, honest local QA rerun, and branch/PR discipline) i
 - No mobile files changed.
 - Phase 4.9 local QA submitted for review; deployment not performed.
 
+### 2026-06-13 (Phase 4 Deployment Gate)
+
+- Created `phase-4-deployment-gate` from latest `main` and carried forward the reviewed Phase 4.9 commits without working directly on `main`.
+- Re-ran the full required local verification on this branch:
+  - `npm run backend:lint`: PASS
+  - `npm run backend:build`: PASS
+  - `npm run web:lint`: PASS
+  - `npm run web:build`: PASS
+  - `npm --prefix backend run test:trips`: PASS (79 passed, 0 failed, 0 skipped)
+  - `npm --prefix web run test:e2e`: PASS (31 passed, 0 failed, 0 skipped)
+- Verified all ten seeded role credentials were present for local QA with `E2E_REQUIRE_ALL_ROLES=false`.
+- Re-linked `backend/` and `web/` to the existing Vercel staging projects.
+- Deployment gate blocker found: required staging Vercel environment variables are missing for both linked staging projects.
+- Because the env prerequisite failed, backend deployment was NOT RUN, web deployment was NOT RUN, and staging smoke checks were NOT RUN.
+- No Vercel deployment completed.
+- No mobile changes were made.
+- No Phase 5 work was started.
+
 ## Next Step
 
-Phase 4 Deployment Gate is next only after Phase 4.9 is reviewed and accepted. Phase 5 remains Not Started.
+Phase 4 Deployment Gate blocked. Do not start Phase 5.
