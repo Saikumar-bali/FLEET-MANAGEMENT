@@ -1,0 +1,179 @@
+name: CI Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Hygiene, build, API, and Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fleet_ci
+          POSTGRES_USER: fleet_ci
+          POSTGRES_PASSWORD: fleet_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fleet_ci -d fleet_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      NODE_ENV: test
+      PORT: "4000"
+      CORS_ORIGIN: http://localhost:5173
+      DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
+      DIRECT_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
+      CI_DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+      ADMIN_EMAIL: ci-super-admin@example.invalid
+      ADMIN_USERNAME: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
+      ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
+      ENABLE_DEMO_USERS: "true"
+      E2E_REQUIRE_ALL_ROLES: "true"
+      API_BASE_URL: http://localhost:4000
+      E2E_API_BASE_URL: http://localhost:4000
+      E2E_BASE_URL: http://localhost:5173
+      CI_SUPER_ADMIN_IDENTIFIER: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
+      CI_SUPER_ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
+      CI_ADMIN_IDENTIFIER: ${{ secrets.CI_ADMIN_IDENTIFIER }}
+      CI_ADMIN_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
+      CI_MANAGER_IDENTIFIER: ${{ secrets.CI_MANAGER_IDENTIFIER }}
+      CI_MANAGER_PASSWORD: ${{ secrets.CI_MANAGER_PASSWORD }}
+      CI_SUPERVISOR_IDENTIFIER: ${{ secrets.CI_SUPERVISOR_IDENTIFIER }}
+      CI_SUPERVISOR_PASSWORD: ${{ secrets.CI_SUPERVISOR_PASSWORD }}
+      CI_DRIVER_IDENTIFIER: ${{ secrets.CI_DRIVER_IDENTIFIER }}
+      CI_DRIVER_PASSWORD: ${{ secrets.CI_DRIVER_PASSWORD }}
+      CI_ASSISTANT_DRIVER_IDENTIFIER: ${{ secrets.CI_ASSISTANT_DRIVER_IDENTIFIER }}
+      CI_ASSISTANT_DRIVER_PASSWORD: ${{ secrets.CI_ASSISTANT_DRIVER_PASSWORD }}
+      CI_COLLECTOR_IDENTIFIER: ${{ secrets.CI_COLLECTOR_IDENTIFIER }}
+      CI_COLLECTOR_PASSWORD: ${{ secrets.CI_COLLECTOR_PASSWORD }}
+      CI_MECHANIC_IDENTIFIER: ${{ secrets.CI_MECHANIC_IDENTIFIER }}
+      CI_MECHANIC_PASSWORD: ${{ secrets.CI_MECHANIC_PASSWORD }}
+      CI_FINANCE_IDENTIFIER: ${{ secrets.CI_FINANCE_IDENTIFIER }}
+      CI_FINANCE_PASSWORD: ${{ secrets.CI_FINANCE_PASSWORD }}
+      CI_VIEWER_IDENTIFIER: ${{ secrets.CI_VIEWER_IDENTIFIER }}
+      CI_VIEWER_PASSWORD: ${{ secrets.CI_VIEWER_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            web/package-lock.json
+
+      - name: Verify Git hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          real_env_files="$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$' || true)"
+          if [[ -n "$real_env_files" ]]; then
+            echo "Tracked real .env files are not allowed."
+            exit 1
+          fi
+
+          forbidden_files="$(git ls-files | grep -E '(^|/)\.vercel/|(^|/)vite-log\.txt$|(^|/)web/test-results/|(^|/)test-results/|(^|/)playwright-report/' || true)"
+          if [[ -n "$forbidden_files" ]]; then
+            echo "Tracked Vercel or test artifacts are not allowed."
+            exit 1
+          fi
+
+      - name: Verify required CI secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            JWT_SECRET
+            CI_SUPER_ADMIN_IDENTIFIER CI_SUPER_ADMIN_PASSWORD
+            CI_ADMIN_IDENTIFIER CI_ADMIN_PASSWORD
+            CI_MANAGER_IDENTIFIER CI_MANAGER_PASSWORD
+            CI_SUPERVISOR_IDENTIFIER CI_SUPERVISOR_PASSWORD
+            CI_DRIVER_IDENTIFIER CI_DRIVER_PASSWORD
+            CI_ASSISTANT_DRIVER_IDENTIFIER CI_ASSISTANT_DRIVER_PASSWORD
+            CI_COLLECTOR_IDENTIFIER CI_COLLECTOR_PASSWORD
+            CI_MECHANIC_IDENTIFIER CI_MECHANIC_PASSWORD
+            CI_FINANCE_IDENTIFIER CI_FINANCE_PASSWORD
+            CI_VIEWER_IDENTIFIER CI_VIEWER_PASSWORD
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Required CI secret is not configured: $name"
+              exit 1
+            fi
+          done
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Install web dependencies
+        run: npm ci --prefix web
+
+      - name: Generate Prisma client
+        run: npm --prefix backend run prisma:generate
+
+      - name: Prepare isolated CI database
+        run: |
+          npm --prefix backend run prisma:db:push
+          npm --prefix backend run prisma:seed
+
+      - name: Backend lint
+        run: npm run backend:lint
+
+      - name: Backend build
+        run: npm run backend:build
+
+      - name: API docs coverage
+        run: npm --prefix backend run test:api-docs
+
+      - name: Web lint
+        run: npm run web:lint
+
+      - name: Web build
+        run: npm run web:build
+
+      - name: Install Playwright browser
+        run: npm exec --prefix web -- playwright install --with-deps chromium
+
+      - name: Start local backend
+        shell: bash
+        run: |
+          npm --prefix backend run start > /tmp/fleet-backend.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl --fail --silent http://localhost:4000/api/v1/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Local backend did not become ready."
+          exit 1
+
+      - name: Local backend trip API tests
+        run: npm --prefix backend run test:trips
+
+      - name: Local Playwright tests
+        run: npm --prefix web run test:e2e
