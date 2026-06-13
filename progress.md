@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Gate 7 is submitted for final review with corrected lineage, reproducible scripts, green local/staging verification, and the wrong root Vercel project's Git integration disconnected. Phase 5 has not started.
+Phase 4 Final PR Merge Gate is blocked because the final rerun of `npm run backend:build` failed with a Windows Prisma query-engine DLL lock (`EPERM`). Phase 5 has not started.
 
 ## Phase Progress
 
@@ -37,6 +37,7 @@ Phase 4 Gate 7 is submitted for final review with corrected lineage, reproducibl
 | Phase 4 Deployment Gate 4 | Build Redeploy and Staging Smoke | Completed |
 | Phase 4 Deployment Gate 5 | Final Cleanup and PR Gate | Completed |
 | Phase 4 Gate 7 | Lineage, Scripts, and Vercel Status Correction | Submitted for Final Review |
+| Phase 4 Final PR Merge Gate | Final reviewed merge readiness | Blocked |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -908,4 +909,4 @@ Phase 4 Gate 7 is submitted for final review with corrected lineage, reproducibl
 
 ## Next Step
 
-Reviewer approval to merge Phase 4, then Phase 5 Fuel and Expense Workflow. Phase 5 has not started.
+Fix the failed backend build item and rerun the complete Phase 4 Final PR Merge Gate. Phase 5 has not started.
