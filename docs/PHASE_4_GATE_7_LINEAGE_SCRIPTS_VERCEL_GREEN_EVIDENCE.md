@@ -9,9 +9,10 @@ Date: 2026-06-13
 - Phase 4 source branch: `phase-4-deployment-gate-5-final-cleanup-pr-gate`
 - Phase 4 source commit merged: `6e27896a2d1a61c63fe5c5585323719a33935ad7`
 - Lineage merge commit: `56bd081efa21eb3a5fa698d40e2a9c01c707469d`
-- Final correction commit: the branch-tip commit containing this evidence
+- Correction commit first pushed for status verification: `2730a7a27dbca2bc7f03825925131ceb4a68620e`
+- Final branch head: the branch-tip evidence-status commit; exact SHA is reported by `git rev-parse HEAD` and in the final run response
 - Main status: unchanged; correction is branch-only
-- Gate status at evidence write: submitted for final review, pending final pushed-commit status confirmation
+- Gate status at evidence write: submitted for final review with reviewer-acceptable clean status isolation
 - Phase 5: not started
 
 ## Reproducible Scripts
@@ -66,7 +67,8 @@ Cancel proof: the smoke test created a second `TEST-E2E-STAGING` trip, `POST /tr
 - Original Gate 6 status: red.
 - Root cause: GitHub status context `Vercel` failed from the separate root-level project `web`.
 - Action: linked the existing wrong `web` project and ran `vercel git disconnect --yes`; CLI confirmed the repository was disconnected.
-- Final branch status: to be confirmed after the correction branch is pushed. It must not be described as green until GitHub reports it green.
+- Final pushed correction status: clean isolation with no status contexts and no GitHub workflow runs.
+- Final status is not described as green because GitHub reported no Vercel status context after the wrong project was disconnected.
 
 ## Hygiene and Confirmations
 
@@ -78,4 +80,3 @@ Cancel proof: the smoke test created a second `TEST-E2E-STAGING` trip, `POST /tr
 - No production database was used.
 - No mobile files were changed.
 - No Phase 5, fuel, expenses, maintenance, finance, GPS/maps, or Tally work was started.
-

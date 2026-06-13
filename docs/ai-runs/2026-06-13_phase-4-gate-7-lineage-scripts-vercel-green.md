@@ -11,5 +11,5 @@ Date: 2026-06-13
 - Both staging URL formats passed with 25/0/0.
 - Live Swagger passed with 10 tags, 40 paths, and 54 operations.
 - Confirmed Gate 6 red status came from the wrong root `web` Vercel project and disconnected that project's Git integration via Vercel CLI.
+- Pushed correction commit `2730a7a`; GitHub returned no status contexts and no workflow runs, confirming clean isolation after disconnect rather than a green Vercel context.
 - Kept Phase 5 blocked pending final reviewer acceptance.
-
