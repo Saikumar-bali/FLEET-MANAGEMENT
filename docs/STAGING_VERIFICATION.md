@@ -205,27 +205,45 @@ vercel whoami
   - deployed sidebar width verified at `228px`
   - deployed cards and topbar spacing verified as compact and readable
 
-## 2026-06-13 Phase 4 Deployment Gate Result
+## 2026-06-13 Phase 4 Deployment Gate 2 Result
 
-- Deployment gate status: blocked before deployment
-- Backend staging project relinked successfully: `fleet-management-backend-staging`
-- Web staging project relinked successfully: `fleet-management-web-staging`
-- Latest existing backend staging URL observed: `https://fleet-management-backend-staging-iy7uo1ld7.vercel.app`
-- Latest existing web staging URL observed: `https://fleet-management-web-staging-4f0tceqf9.vercel.app`
-- Local QA rerun result:
+- Deployment gate status: submitted for review
+- Backend staging URL: `https://fleet-management-backend-staging.vercel.app`
+- Web staging URL: `https://fleet-management-web-staging.vercel.app`
+- Swagger UI URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
+- OpenAPI JSON URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
+- Vercel env setup:
+  - backend required keys present: `NODE_ENV`, `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `ADMIN_EMAIL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `UPLOAD_DIR`, `MAX_FILE_SIZE`, `ENABLE_DEMO_USERS`
+  - web required key present: `VITE_API_URL`
+- Local QA rerun:
   - `npm run backend:lint`: pass
   - `npm run backend:build`: pass
   - `npm run web:lint`: pass
   - `npm run web:build`: pass
-  - backend trip API suite: pass
-  - Playwright suite: pass
-- Staging environment prerequisite result:
-  - backend required env inventory: missing
-  - web required env inventory: missing
-- Backend deploy: not run
-- Web deploy: not run
-- Health check: not run in this gate
-- Auth smoke: not run in this gate
-- Trips smoke: not run in this gate
-- Web smoke: not run in this gate
+  - backend trip API suite: `79 passed, 0 failed, 0 skipped`
+  - local Playwright suite: `31 passed, 0 failed, 0 skipped`
+- Neon / Prisma:
+  - `npm --prefix backend run prisma:db:push`: pass
+  - `npm --prefix backend run prisma:seed`: pass
+- Backend staging smoke:
+  - `GET /api/v1/health`: pass, `database: connected`
+  - `GET /api/v1/docs`: pass
+  - `GET /api/v1/docs/openapi.json`: pass
+  - `POST /api/v1/auth/login`: pass
+  - `GET /api/v1/auth/me`: pass
+  - `GET /api/v1/roles`: pass
+  - `GET /api/v1/users`: pass
+  - `GET /api/v1/trips`: pass
+  - `npm run smoke:test` against staging: `5 passed, 0 failed`
+- Web staging smoke:
+  - admin login: pass
+  - dashboard load: pass
+  - `/trips`: pass
+  - `/roles`: pass
+  - `/users`: pass
+  - `/vehicles/:id`: pass
+  - staging Playwright suite: `31 passed, 0 failed, 0 skipped`
+- OpenAPI verification:
+  - required groups present: Health, Auth, Users, Roles, Permissions, Vehicles, Drivers, Assets, Documents, Trips
+  - trip endpoints documented: list, create, detail, update, schedule, start, complete, cancel, history
 - No passwords, tokens, database URLs, or private env values were recorded here.

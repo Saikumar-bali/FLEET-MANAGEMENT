@@ -1,5 +1,9 @@
-const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '');
 
-export const API_BASE_URL = configuredApiUrl
-  ? `${configuredApiUrl.replace(/\/$/, '')}/api/v1`
-  : '/api/v1';
+const normalizedApiUrl = configuredApiUrl
+  ? configuredApiUrl.endsWith('/api/v1')
+    ? configuredApiUrl
+    : `${configuredApiUrl}/api/v1`
+  : null;
+
+export const API_BASE_URL = normalizedApiUrl || '/api/v1';

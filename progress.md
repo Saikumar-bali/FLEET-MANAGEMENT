@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Deployment Gate is current. The local QA rerun passed, but the staging Vercel environment prerequisite check failed because required env vars are missing in the linked staging projects. Phase 4 Deployment Gate blocked. Do not start Phase 5.
+Phase 4 Deployment Gate 2 is current. Backend and web are deployed to Vercel staging, Neon seed and smoke checks passed, and the evidence pack is ready for review. Phase 5 is still not started.
 
 ## Phase Progress
 
@@ -31,7 +31,8 @@ Phase 4 Deployment Gate is current. The local QA rerun passed, but the staging V
 | Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
 | Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
 | Phase 4.9 | Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline | Submitted for Review |
-| Phase 4 Deployment Gate | Local QA + Staging Deployment Gate | Blocked |
+| Phase 4 Deployment Gate | Local QA + Staging Deployment Gate | Completed |
+| Phase 4 Deployment Gate 2 | Vercel Env, Swagger, and Staging Smoke | Submitted for Review |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -902,12 +903,52 @@ Phase 4 Deployment Gate is current. The local QA rerun passed, but the staging V
   - `npm --prefix web run test:e2e`: PASS (31 passed, 0 failed, 0 skipped)
 - Verified all ten seeded role credentials were present for local QA with `E2E_REQUIRE_ALL_ROLES=false`.
 - Re-linked `backend/` and `web/` to the existing Vercel staging projects.
-- Deployment gate blocker found: required staging Vercel environment variables are missing for both linked staging projects.
-- Because the env prerequisite failed, backend deployment was NOT RUN, web deployment was NOT RUN, and staging smoke checks were NOT RUN.
-- No Vercel deployment completed.
+- Initial env prerequisite check found missing staging Vercel environment variables and blocked the first deployment-gate pass.
+- No mobile changes were made.
+- No Phase 5 work was started.
+
+### 2026-06-13 (Phase 4 Deployment Gate 2 - Vercel Env, Swagger, and Staging Smoke)
+
+- Created and used branch `phase-4-deployment-gate-2-vercel-env-swagger` from latest `main` without working directly on `main`.
+- Confirmed `.vercel` link files are not tracked by Git and kept `.gitignore` protection in place.
+- Updated backend OpenAPI docs to include the required tags, auth login identifier schema, and full Trips endpoint coverage.
+- Hardened `web/src/config/api.ts` so `VITE_API_URL` works safely with either a host root or a full `/api/v1` base.
+- Updated `web/playwright.config.ts` so the existing Playwright suite can target staging directly without starting local servers.
+- Hardened `web/e2e/trips.spec.ts` for real staging latency and role-based denial timing.
+- Configured the existing staging Vercel projects with the required backend and web environment variable keys through the Vercel CLI only.
+- Ran Neon staging schema sync and seed:
+  - `npm --prefix backend run prisma:db:push`: PASS
+  - `npm --prefix backend run prisma:seed`: PASS
+- Deployed both existing staging projects through the Vercel CLI:
+  - backend: `https://fleet-management-backend-staging.vercel.app`
+  - web: `https://fleet-management-web-staging.vercel.app`
+- Verified live backend staging:
+  - `GET /api/v1/health`: PASS (`database: connected`)
+  - `GET /api/v1/docs`: PASS
+  - `GET /api/v1/docs/openapi.json`: PASS
+  - `POST /api/v1/auth/login`: PASS
+  - `GET /api/v1/auth/me`: PASS
+  - `GET /api/v1/roles`: PASS
+  - `GET /api/v1/permissions`: PASS
+  - `GET /api/v1/users`: PASS
+  - `GET /api/v1/trips`: PASS
+  - `GET /api/v1/vehicles`: PASS
+  - `GET /api/v1/drivers`: PASS
+  - unauthenticated `GET /api/v1/users`: PASS (`401`)
+  - `npm run smoke:test` against staging: PASS (`5 passed, 0 failed`)
+- Verified live web staging with Playwright against deployed URLs:
+  - `npm run test:e2e`: PASS (`31 passed, 0 failed, 0 skipped`)
+  - admin login, dashboard, `/trips`, `/roles`, `/users`, and `/vehicles/:id` all verified
+  - seeded-role trip access expectations verified for all ten roles
+- Created the evidence package:
+  - `docs/API_ENDPOINT_TESTING_PHASE_4.md`
+  - `docs/PHASE_4_DEPLOYMENT_GATE_2_EVIDENCE.md`
+  - `docs/ai-runs/2026-06-13_phase-4-deployment-gate-2-vercel-env-swagger.md`
+- No secrets were printed or committed.
+- No production database was used.
 - No mobile changes were made.
 - No Phase 5 work was started.
 
 ## Next Step
 
-Phase 4 Deployment Gate blocked. Do not start Phase 5.
+Review Phase 4 Deployment Gate 2 evidence, then proceed to Phase 5 Fuel and Expense Workflow when approved.

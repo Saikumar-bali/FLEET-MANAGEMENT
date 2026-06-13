@@ -26,6 +26,18 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
       name: 'Fleet Management Team',
     },
   },
+  tags: [
+    { name: 'Health' },
+    { name: 'Auth' },
+    { name: 'Users' },
+    { name: 'Roles' },
+    { name: 'Permissions' },
+    { name: 'Vehicles' },
+    { name: 'Drivers' },
+    { name: 'Assets' },
+    { name: 'Documents' },
+    { name: 'Trips' },
+  ],
   servers: [
     { url: '/api/v1', description: 'Same-origin (local dev proxy or deployed)' },
   ],
@@ -67,9 +79,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
       // Auth
       LoginInput: {
         type: 'object',
-        required: ['email', 'password'],
+        required: ['identifier', 'password'],
         properties: {
-          email: { type: 'string', format: 'email' },
+          identifier: { type: 'string', description: 'Username or email' },
           password: { type: 'string', minLength: 8 },
         },
       },
@@ -362,6 +374,115 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           sizeBytes: { type: 'integer' },
         },
       },
+
+      // Trips
+      Trip: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          tripNumber: { type: 'string' },
+          tripType: { type: 'string', enum: ['TRANSFER', 'DELIVERY', 'PICKUP', 'SERVICE', 'INTERNAL'] },
+          status: { type: 'string', enum: ['DRAFT', 'SCHEDULED', 'STARTED', 'COMPLETED', 'CANCELLED'] },
+          vehicleId: { type: 'string' },
+          driverId: { type: 'string', nullable: true },
+          assistantDriverId: { type: 'string', nullable: true },
+          originName: { type: 'string' },
+          originAddress: { type: 'string', nullable: true },
+          destinationName: { type: 'string' },
+          destinationAddress: { type: 'string', nullable: true },
+          plannedStartAt: { type: 'string', format: 'date-time', nullable: true },
+          actualStartAt: { type: 'string', format: 'date-time', nullable: true },
+          plannedEndAt: { type: 'string', format: 'date-time', nullable: true },
+          actualEndAt: { type: 'string', format: 'date-time', nullable: true },
+          startOdometer: { type: 'integer', nullable: true },
+          endOdometer: { type: 'integer', nullable: true },
+          distanceKm: { type: 'integer', nullable: true },
+          purpose: { type: 'string', nullable: true },
+          notes: { type: 'string', nullable: true },
+        },
+      },
+      TripCreateInput: {
+        type: 'object',
+        required: ['tripType', 'vehicleId', 'originName', 'destinationName'],
+        properties: {
+          tripType: { type: 'string', enum: ['TRANSFER', 'DELIVERY', 'PICKUP', 'SERVICE', 'INTERNAL'] },
+          vehicleId: { type: 'string' },
+          driverId: { type: 'string' },
+          assistantDriverId: { type: 'string' },
+          originName: { type: 'string', minLength: 2 },
+          originAddress: { type: 'string' },
+          destinationName: { type: 'string', minLength: 2 },
+          destinationAddress: { type: 'string' },
+          plannedStartAt: { type: 'string', format: 'date-time' },
+          plannedEndAt: { type: 'string', format: 'date-time' },
+          purpose: { type: 'string' },
+          notes: { type: 'string' },
+        },
+      },
+      TripUpdateInput: {
+        type: 'object',
+        properties: {
+          tripType: { type: 'string', enum: ['TRANSFER', 'DELIVERY', 'PICKUP', 'SERVICE', 'INTERNAL'] },
+          vehicleId: { type: 'string' },
+          driverId: { type: 'string', nullable: true },
+          assistantDriverId: { type: 'string', nullable: true },
+          originName: { type: 'string', minLength: 2 },
+          originAddress: { type: 'string' },
+          destinationName: { type: 'string', minLength: 2 },
+          destinationAddress: { type: 'string' },
+          plannedStartAt: { type: 'string', format: 'date-time', nullable: true },
+          plannedEndAt: { type: 'string', format: 'date-time', nullable: true },
+          purpose: { type: 'string' },
+          notes: { type: 'string' },
+        },
+      },
+      TripScheduleInput: {
+        type: 'object',
+        properties: {
+          plannedStartAt: { type: 'string', format: 'date-time' },
+          plannedEndAt: { type: 'string', format: 'date-time' },
+          notes: { type: 'string' },
+        },
+      },
+      TripStartInput: {
+        type: 'object',
+        properties: {
+          actualStartAt: { type: 'string', format: 'date-time' },
+          startOdometer: { type: 'integer', minimum: 0 },
+          notes: { type: 'string' },
+        },
+      },
+      TripCompleteInput: {
+        type: 'object',
+        properties: {
+          actualEndAt: { type: 'string', format: 'date-time' },
+          endOdometer: { type: 'integer', minimum: 0 },
+          distanceKm: { type: 'integer', minimum: 0 },
+          notes: { type: 'string' },
+        },
+      },
+      TripCancelInput: {
+        type: 'object',
+        properties: {
+          notes: { type: 'string' },
+        },
+      },
+      TripHistoryEntry: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          tripId: { type: 'string' },
+          action: {
+            type: 'string',
+            enum: ['CREATED', 'UPDATED', 'SCHEDULED', 'STARTED', 'COMPLETED', 'CANCELLED', 'VEHICLE_CHANGED', 'DRIVER_CHANGED'],
+          },
+          fromStatus: { type: 'string', nullable: true },
+          toStatus: { type: 'string', nullable: true },
+          remarks: { type: 'string', nullable: true },
+          metadata: { type: 'object', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
     },
   },
   paths: {
@@ -401,9 +522,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     // Auth
     '/auth/login': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Login',
-        description: 'Authenticate with email and password. Returns JWT access token and refresh token.',
+        description: 'Authenticate with username or email and password. Returns JWT access token and refresh token.',
         requestBody: {
           required: true,
           content: { 'application/json': { schema: { $ref: '#/components/schemas/LoginInput' } } },
@@ -416,7 +537,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/auth/me': {
       get: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Current user',
         description: 'Returns the authenticated user with their permissions.',
         security: [{ bearerAuth: [] }],
@@ -428,7 +549,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/auth/refresh': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Refresh session',
         description: 'Exchange a valid refresh token for a new access token.',
         requestBody: {
@@ -443,7 +564,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/auth/logout': {
       post: {
-        tags: ['Authentication'],
+        tags: ['Auth'],
         summary: 'Logout',
         description: 'Revoke the refresh token.',
         requestBody: {
@@ -849,6 +970,146 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: 'Document deleted' } },
+      },
+    },
+
+    // Trips
+    '/trips': {
+      get: {
+        tags: ['Trips'],
+        summary: 'List trips',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SCHEDULED', 'STARTED', 'COMPLETED', 'CANCELLED'] } },
+          { name: 'tripType', in: 'query', schema: { type: 'string', enum: ['TRANSFER', 'DELIVERY', 'PICKUP', 'SERVICE', 'INTERNAL'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated trip list' },
+          '403': { description: 'Missing trip_view permission' },
+        },
+      },
+      post: {
+        tags: ['Trips'],
+        summary: 'Create trip',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCreateInput' } } },
+        },
+        responses: {
+          '201': { description: 'Trip created' },
+          '403': { description: 'Missing trip_create permission' },
+        },
+      },
+    },
+    '/trips/{id}': {
+      get: {
+        tags: ['Trips'],
+        summary: 'Get trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Trip details', content: { 'application/json': { schema: { $ref: '#/components/schemas/Trip' } } } },
+          '404': { description: 'Trip not found' },
+        },
+      },
+      patch: {
+        tags: ['Trips'],
+        summary: 'Update trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripUpdateInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip updated' },
+          '403': { description: 'Missing trip_update permission' },
+        },
+      },
+    },
+    '/trips/{id}/schedule': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Schedule trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripScheduleInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip scheduled' },
+          '403': { description: 'Missing trip_update permission' },
+        },
+      },
+    },
+    '/trips/{id}/start': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Start trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripStartInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip started' },
+          '403': { description: 'Missing trip_start permission' },
+        },
+      },
+    },
+    '/trips/{id}/complete': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Complete trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCompleteInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip completed' },
+          '403': { description: 'Missing trip_end permission' },
+        },
+      },
+    },
+    '/trips/{id}/cancel': {
+      post: {
+        tags: ['Trips'],
+        summary: 'Cancel trip',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/TripCancelInput' } } },
+        },
+        responses: {
+          '200': { description: 'Trip cancelled' },
+          '403': { description: 'Missing trip_cancel permission' },
+        },
+      },
+    },
+    '/trips/{id}/history': {
+      get: {
+        tags: ['Trips'],
+        summary: 'Get trip history',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': {
+            description: 'Trip history entries',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/TripHistoryEntry' },
+                },
+              },
+            },
+          },
+          '403': { description: 'Missing trip_view permission' },
+        },
       },
     },
   },
