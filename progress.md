@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurring Windows Prisma DLL lock and passing every required local, staging, Swagger, and API documentation check. Phase 5 has not started.
+Phase 4 is completed, merged into main, and verified by the full post-merge local, staging, Swagger, and API documentation smoke gate. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -41,6 +41,7 @@ Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurr
 | Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 4 PR Merge Approval | Final reviewed PR merge and post-merge smoke | Blocked |
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
+| Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -912,4 +913,4 @@ Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurr
 
 ## Next Step
 
-Merge Phase 4 after review, run post-merge smoke, then start Phase 5 Fuel and Expense Workflow on a fresh branch. Phase 5 has not started.
+Start Phase 5 Fuel and Expense Workflow on a fresh branch. Phase 5 has not started.
