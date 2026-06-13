@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Final PR Merge Gate is blocked because the final rerun of `npm run backend:build` failed with a Windows Prisma query-engine DLL lock (`EPERM`). Phase 5 has not started.
+Phase 4 Final PR Merge Gate 2 is submitted for review after safely clearing the Windows Prisma DLL lock and passing every required local, staging, Swagger, and API documentation check. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -38,6 +38,7 @@ Phase 4 Final PR Merge Gate is blocked because the final rerun of `npm run backe
 | Phase 4 Deployment Gate 5 | Final Cleanup and PR Gate | Completed |
 | Phase 4 Gate 7 | Lineage, Scripts, and Vercel Status Correction | Submitted for Final Review |
 | Phase 4 Final PR Merge Gate | Final reviewed merge readiness | Blocked |
+| Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -909,4 +910,4 @@ Phase 4 Final PR Merge Gate is blocked because the final rerun of `npm run backe
 
 ## Next Step
 
-Fix the failed backend build item and rerun the complete Phase 4 Final PR Merge Gate. Phase 5 has not started.
+Merge Phase 4 to main after review, run post-merge smoke, then begin Phase 5 Fuel and Expense Workflow. Phase 5 has not started.
