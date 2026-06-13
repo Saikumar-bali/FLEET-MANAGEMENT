@@ -22,6 +22,18 @@ function ts(): string {
   return Date.now().toString();
 }
 
+function normalizeApiBase(raw: string): string {
+  let base = raw.trim().replace(/\/+$/, '');
+  if (base.endsWith('/api/v1')) {
+    base = base.slice(0, -'/api/v1'.length);
+  }
+  return base;
+}
+
+function endpoint(apiRoot: string, path: string): string {
+  return `${apiRoot}/api/v1${path}`;
+}
+
 async function requestJson<T = unknown>(
   url: string,
   init?: RequestInit,
@@ -36,20 +48,23 @@ async function requestJson<T = unknown>(
   }
 }
 
-async function login(apiBase: string, identifier: string, password: string): Promise<string | null> {
+async function login(apiRoot: string, identifier: string, password: string): Promise<string | null> {
   const res = await requestJson<{ data?: { accessToken?: string } }>(
-    `${apiBase}/api/v1/auth/login`,
+    endpoint(apiRoot, '/auth/login'),
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier, password }) },
   );
   return res.data?.data?.accessToken ?? null;
 }
 
 async function main() {
-  const apiBase = process.env.API_BASE_URL;
-  if (!apiBase) {
+  const rawBase = process.env.API_BASE_URL;
+  if (!rawBase) {
     console.error('FAIL: API_BASE_URL environment variable is required');
     process.exit(1);
   }
+
+  const apiRoot = normalizeApiBase(rawBase);
+  console.log(`Using API root: ${apiRoot}`);
 
   const adminId = process.env.E2E_ADMIN_IDENTIFIER || process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL;
   const adminPass = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
@@ -70,28 +85,28 @@ async function main() {
   let adminToken: string | null = null;
 
   try {
-    const health = await requestJson<{ data?: { database?: string } }>(`${apiBase}/api/v1/health`);
+    const health = await requestJson<{ data?: { database?: string } }>(endpoint(apiRoot, '/health'));
     if (health.ok && health.data?.data?.database === 'connected') {
       pass(results, 'GET /health', health.status);
     } else {
       fail(results, 'GET /health', health.status);
     }
 
-    const docsRes = await requestJson(`${apiBase}/api/v1/docs`);
+    const docsRes = await requestJson(endpoint(apiRoot, '/docs'));
     if (docsRes.ok) {
       pass(results, 'GET /docs', docsRes.status);
     } else {
       fail(results, 'GET /docs', docsRes.status);
     }
 
-    const openapiRes = await requestJson(`${apiBase}/api/v1/docs/openapi.json`);
+    const openapiRes = await requestJson(endpoint(apiRoot, '/docs/openapi.json'));
     if (openapiRes.ok) {
       pass(results, 'GET /docs/openapi.json', openapiRes.status);
     } else {
       fail(results, 'GET /docs/openapi.json', openapiRes.status);
     }
 
-    adminToken = await login(apiBase, adminId, adminPass);
+    adminToken = await login(apiRoot, adminId, adminPass);
     if (adminToken) {
       pass(results, 'POST /auth/login');
     } else {
@@ -102,77 +117,77 @@ async function main() {
 
     const authHeaders = { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' };
 
-    const meRes = await requestJson(`${apiBase}/api/v1/auth/me`, { headers: authHeaders });
+    const meRes = await requestJson(endpoint(apiRoot, '/auth/me'), { headers: authHeaders });
     if (meRes.ok) {
       pass(results, 'GET /auth/me', meRes.status);
     } else {
       fail(results, 'GET /auth/me', meRes.status);
     }
 
-    const usersRes = await requestJson(`${apiBase}/api/v1/users`, { headers: authHeaders });
+    const usersRes = await requestJson(endpoint(apiRoot, '/users'), { headers: authHeaders });
     if (usersRes.ok) {
       pass(results, 'GET /users', usersRes.status);
     } else {
       fail(results, 'GET /users', usersRes.status);
     }
 
-    const rolesRes = await requestJson(`${apiBase}/api/v1/roles`, { headers: authHeaders });
+    const rolesRes = await requestJson(endpoint(apiRoot, '/roles'), { headers: authHeaders });
     if (rolesRes.ok) {
       pass(results, 'GET /roles', rolesRes.status);
     } else {
       fail(results, 'GET /roles', rolesRes.status);
     }
 
-    const permsRes = await requestJson(`${apiBase}/api/v1/permissions`, { headers: authHeaders });
+    const permsRes = await requestJson(endpoint(apiRoot, '/permissions'), { headers: authHeaders });
     if (permsRes.ok) {
       pass(results, 'GET /permissions', permsRes.status);
     } else {
       fail(results, 'GET /permissions', permsRes.status);
     }
 
-    const vehiclesRes = await requestJson(`${apiBase}/api/v1/vehicles`, { headers: authHeaders });
+    const vehiclesRes = await requestJson(endpoint(apiRoot, '/vehicles'), { headers: authHeaders });
     if (vehiclesRes.ok) {
       pass(results, 'GET /vehicles', vehiclesRes.status);
     } else {
       fail(results, 'GET /vehicles', vehiclesRes.status);
     }
 
-    const driversRes = await requestJson(`${apiBase}/api/v1/drivers`, { headers: authHeaders });
+    const driversRes = await requestJson(endpoint(apiRoot, '/drivers'), { headers: authHeaders });
     if (driversRes.ok) {
       pass(results, 'GET /drivers', driversRes.status);
     } else {
       fail(results, 'GET /drivers', driversRes.status);
     }
 
-    const assetsRes = await requestJson(`${apiBase}/api/v1/assets`, { headers: authHeaders });
+    const assetsRes = await requestJson(endpoint(apiRoot, '/assets'), { headers: authHeaders });
     if (assetsRes.ok) {
       pass(results, 'GET /assets', assetsRes.status);
     } else {
       fail(results, 'GET /assets', assetsRes.status);
     }
 
-    const assetCatsRes = await requestJson(`${apiBase}/api/v1/assets/categories`, { headers: authHeaders });
+    const assetCatsRes = await requestJson(endpoint(apiRoot, '/assets/categories'), { headers: authHeaders });
     if (assetCatsRes.ok) {
       pass(results, 'GET /assets/categories', assetCatsRes.status);
     } else {
       fail(results, 'GET /assets/categories', assetCatsRes.status);
     }
 
-    const docsListRes = await requestJson(`${apiBase}/api/v1/documents`, { headers: authHeaders });
+    const docsListRes = await requestJson(endpoint(apiRoot, '/documents'), { headers: authHeaders });
     if (docsListRes.ok || docsListRes.status === 403) {
       pass(results, 'GET /documents', docsListRes.status, docsListRes.status === 403 ? 'Permission denied (expected for some roles)' : undefined);
     } else {
       fail(results, 'GET /documents', docsListRes.status);
     }
 
-    const tripsRes = await requestJson(`${apiBase}/api/v1/trips`, { headers: authHeaders });
+    const tripsRes = await requestJson(endpoint(apiRoot, '/trips'), { headers: authHeaders });
     if (tripsRes.ok) {
       pass(results, 'GET /trips', tripsRes.status);
     } else {
       fail(results, 'GET /trips', tripsRes.status);
     }
 
-    const unauthRes = await requestJson(`${apiBase}/api/v1/users`);
+    const unauthRes = await requestJson(endpoint(apiRoot, '/users'));
     if (!unauthRes.ok && unauthRes.status === 401) {
       pass(results, 'GET /users without token returns 401', unauthRes.status);
     } else {
@@ -181,7 +196,7 @@ async function main() {
 
     const vNum = `TEST-E2E-API-${ts()}`;
     const newV = await requestJson<{ data?: { id: string } }>(
-      `${apiBase}/api/v1/vehicles`,
+      endpoint(apiRoot, '/vehicles'),
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: vNum, vehicleType: 'TRUCK', fuelType: 'DIESEL' }) },
     );
     const vehicle = newV.data?.data;
@@ -195,7 +210,7 @@ async function main() {
     const dName = `TEST-E2E-API-DRV-${ts()}`;
     const dMobile = `7${ts().slice(-9)}`;
     const newD = await requestJson<{ data?: { id: string } }>(
-      `${apiBase}/api/v1/drivers`,
+      endpoint(apiRoot, '/drivers'),
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: dName, mobile: dMobile, licenseNumber: `DL-API-${ts()}` }) },
     );
     const driver = newD.data?.data;
@@ -208,7 +223,7 @@ async function main() {
 
     if (vehicle && driver) {
       const tRes = await requestJson<{ data?: { id: string; status: string } }>(
-        `${apiBase}/api/v1/trips`,
+        endpoint(apiRoot, '/trips'),
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'Test Origin', destinationName: 'Test Destination' }) },
       );
       const trip = tRes.data?.data;
@@ -217,7 +232,7 @@ async function main() {
         created.tripIds.push(trip.id);
 
         const schedRes = await requestJson<{ data?: { status: string } }>(
-          `${apiBase}/api/v1/trips/${trip.id}/schedule`,
+          endpoint(apiRoot, `/trips/${trip.id}/schedule`),
           { method: 'POST', headers: authHeaders, body: JSON.stringify({ plannedStartAt: new Date().toISOString() }) },
         );
         if (schedRes.ok && schedRes.data?.data?.status === 'SCHEDULED') {
@@ -227,7 +242,7 @@ async function main() {
         }
 
         const startRes = await requestJson<{ data?: { status: string } }>(
-          `${apiBase}/api/v1/trips/${trip.id}/start`,
+          endpoint(apiRoot, `/trips/${trip.id}/start`),
           { method: 'POST', headers: authHeaders, body: JSON.stringify({ startOdometer: 1000 }) },
         );
         if (startRes.ok && startRes.data?.data?.status === 'STARTED') {
@@ -238,7 +253,7 @@ async function main() {
         }
 
         const compRes = await requestJson<{ data?: { status: string } }>(
-          `${apiBase}/api/v1/trips/${trip.id}/complete`,
+          endpoint(apiRoot, `/trips/${trip.id}/complete`),
           { method: 'POST', headers: authHeaders, body: JSON.stringify({ endOdometer: 1200 }) },
         );
         if (compRes.ok && compRes.data?.data?.status === 'COMPLETED') {
@@ -248,7 +263,7 @@ async function main() {
           fail(results, 'POST /trips/:id/complete', compRes.status);
         }
 
-        const histRes = await requestJson(`${apiBase}/api/v1/trips/${trip.id}/history`, { headers: authHeaders });
+        const histRes = await requestJson(endpoint(apiRoot, `/trips/${trip.id}/history`), { headers: authHeaders });
         if (histRes.ok) {
           pass(results, 'GET /trips/:id/history', histRes.status);
         } else {
@@ -261,7 +276,7 @@ async function main() {
 
     for (const tripId of created.startedTripIds) {
       try {
-        await requestJson(`${apiBase}/api/v1/trips/${tripId}/cancel`, {
+        await requestJson(endpoint(apiRoot, `/trips/${tripId}/cancel`), {
           method: 'POST', headers: authHeaders, body: JSON.stringify({ notes: 'staging smoke cleanup' }),
         });
       } catch { /* best effort */ }
@@ -269,7 +284,7 @@ async function main() {
 
     for (const vId of created.vehicleIds) {
       try {
-        await requestJson(`${apiBase}/api/v1/vehicles/${vId}/status`, {
+        await requestJson(endpoint(apiRoot, `/vehicles/${vId}/status`), {
           method: 'PATCH', headers: authHeaders, body: JSON.stringify({ status: 'AVAILABLE' }),
         });
       } catch { /* best effort */ }
@@ -277,7 +292,7 @@ async function main() {
 
     for (const dId of created.driverIds) {
       try {
-        await requestJson(`${apiBase}/api/v1/drivers/${dId}/status`, {
+        await requestJson(endpoint(apiRoot, `/drivers/${dId}/status`), {
           method: 'PATCH', headers: authHeaders, body: JSON.stringify({ status: 'AVAILABLE' }),
         });
       } catch { /* best effort */ }
@@ -288,7 +303,7 @@ async function main() {
       for (const tripId of created.startedTripIds) {
         try {
           const authHeaders = { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' };
-          await requestJson(`${apiBase}/api/v1/trips/${tripId}/cancel`, {
+          await requestJson(endpoint(apiRoot, `/trips/${tripId}/cancel`), {
             method: 'POST', headers: authHeaders, body: JSON.stringify({ notes: 'final cleanup' }),
           });
         } catch { /* best effort */ }

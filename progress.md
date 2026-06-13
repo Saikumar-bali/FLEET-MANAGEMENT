@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Deployment Gate 3 (API docs coverage and PR review readiness) is submitted for review. Phase 5 has not started.
+Phase 4 Deployment Gate 4 (Build redeploy and staging smoke) is completed and submitted for review. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -32,8 +32,9 @@ Phase 4 Deployment Gate 3 (API docs coverage and PR review readiness) is submitt
 | Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
 | Phase 4.9 | Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline | Completed |
 | Phase 4 Deployment Gate | Local QA + Staging Deployment Gate | Completed |
-| Phase 4 Deployment Gate 2 | Vercel Env, Swagger, and Staging Smoke | Submitted for Review |
-| Phase 4 Deployment Gate 3 | API Docs Coverage and PR Review Readiness | Submitted for Review |
+| Phase 4 Deployment Gate 2 | Vercel Env, Swagger, and Staging Smoke | Completed |
+| Phase 4 Deployment Gate 3 | API Docs Coverage and PR Review Readiness | Completed |
+| Phase 4 Deployment Gate 4 | Build Redeploy and Staging Smoke | Completed |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -832,6 +833,27 @@ Phase 4 Deployment Gate 3 (API docs coverage and PR review readiness) is submitt
 - No Vercel deployment performed
 - No mobile files changed
 - No secrets committed
+
+### 2026-06-13 (Phase 4 Deployment Gate 4)
+
+- **Hygiene:** Verified branch `phase-4-deployment-gate-4-build-redeploy-smoke` and confirmed `.vercel` files are not tracked.
+- **Build Fix:** Identified and killed blocking `node.exe` processes to resolve Prisma `EPERM` during `prisma generate` on Windows.
+- **Native Binary Fix:** Replaced `bcrypt` with `bcryptjs` and added `binaryTargets` (`rhel-openssl-1.0.x`, `rhel-openssl-3.0.x`, `debian-openssl-3.0.x`) to `schema.prisma` to resolve `Error: No native build was found for platform` on Vercel's Linux environment.
+- **Local Verification:**
+  - `npm run backend:lint`: PASS
+  - `npm run backend:build`: PASS
+  - `npm run web:lint`: PASS
+  - `npm run web:build`: PASS
+  - `npm --prefix backend run test:api-docs`: PASS (66 passed)
+  - `npm --prefix backend run test:trips`: PASS (79 passed)
+  - `npm --prefix web run test:e2e`: PASS (31 passed)
+- **Deployment:** Redeployed backend to `fleet-management-backend-staging` using Vercel CLI with `--prod` flag to maintain stable staging URL.
+- **Staging Smoke:**
+  - `npm run test:staging-api`: PASS (22 tests passed)
+  - Verified full trip lifecycle on live staging: create, schedule, start, complete, history, cancel.
+  - Verified `API_BASE_URL` normalization: works with and without `/api/v1` suffix.
+- **Swagger Verification:** Verified live `openapi.json` contains all 53 endpoints across 10 groups.
+- **Documentation:** Updated `API_ENDPOINT_TESTING_PHASE_4.md`, `STAGING_VERIFICATION.md`, `progress.md`, and created `PHASE_4_DEPLOYMENT_GATE_4_EVIDENCE.md`.
 
 ### 2026-06-12 (Phase 4.8 — Evidence-Backed Local QA Gate, Honest Reporting Enforcement)
 

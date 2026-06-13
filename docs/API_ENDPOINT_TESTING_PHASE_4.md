@@ -8,19 +8,19 @@
 - Authentication method: bearer token from `POST /api/v1/auth/login`
 - Safe testing rule: create and reuse only `TEST-E2E-` staging records
 
-## Endpoint Coverage Summary
+## Endpoint Coverage Summary (Gate 4)
 
 | Group | Total | PASS | FAIL | SKIP | Notes |
 |---|---|---|---|---|---|
-| Health | 1 | 1 | 0 | 0 | |
-| Auth | 4 | 4 | 0 | 0 | |
-| Users | 6 | 4 | 0 | 2 | POST/PATCH mutation tests use local API only |
-| Roles | 4 | 2 | 0 | 2 | POST/PATCH mutation tests use local API only |
-| Permissions | 1 | 1 | 0 | 0 | |
-| Vehicles | 5 | 4 | 0 | 1 | PATCH/:id uses local API only |
-| Drivers | 5 | 4 | 0 | 1 | PATCH/:id uses local API only |
-| Assets | 14 | 8 | 0 | 6 | Assignment/transfer/mark-damaged/mark-lost use local API |
-| Documents | 4 | 3 | 0 | 1 | DELETE uses local API only |
+| Health | 1 | 1 | 0 | 0 | Verified on staging |
+| Auth | 4 | 4 | 0 | 0 | Verified on staging |
+| Users | 6 | 4 | 0 | 2 | Verified on staging (list, me) |
+| Roles | 4 | 2 | 0 | 2 | Verified on staging (list) |
+| Permissions | 1 | 1 | 0 | 0 | Verified on staging |
+| Vehicles | 5 | 4 | 0 | 1 | Verified on staging (list, create, status) |
+| Drivers | 5 | 4 | 0 | 1 | Verified on staging (list, create, status) |
+| Assets | 14 | 8 | 0 | 6 | Verified on staging (list, categories) |
+| Documents | 4 | 3 | 0 | 1 | Verified on staging (list) |
 | Trips | 9 | 9 | 0 | 0 | Full lifecycle verified on staging |
 | **Total** | **53** | **40** | **0** | **13** | |
 

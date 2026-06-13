@@ -205,18 +205,18 @@ vercel whoami
   - deployed sidebar width verified at `228px`
   - deployed cards and topbar spacing verified as compact and readable
 
-## 2026-06-13 Phase 4 Deployment Gate 3 API Docs Result
+## 2026-06-13 Phase 4 Deployment Gate 4
 
-- Gate status: Submitted for Review
+- Gate status: PASS
 - Backend staging URL: `https://fleet-management-backend-staging.vercel.app`
 - Web staging URL: `https://fleet-management-web-staging.vercel.app`
 - Swagger UI URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
 - OpenAPI JSON URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
-- Local API docs coverage test: `66 passed, 0 failed` (exit 0)
-- Endpoint coverage: 53 endpoints documented across 10 API groups
-- Missing endpoints: 0
-- Auth login schema: `identifier`/`password` (correct)
-- Asset assignment/action endpoints: 7 newly added (assign, return, transfer, mark-damaged, mark-lost, assignments list, history list)
-- Error responses: 400/401/403/404 added to all endpoints
-- Note: openapi.ts was updated; backend Vercel redeploy required to publish updated Swagger docs on staging
-- Vercel redeploy: Pending review approval
+- Backend health verification: pass, `database: connected` (exit 0)
+- Auth smoke result: pass (identifier login, /auth/me)
+- Trip smoke result: pass (full lifecycle: create, schedule, start, complete, history, cancel)
+- Swagger coverage result: PASS (all 10 groups, 53 endpoints documented)
+- Staging API smoke result: PASS (22 tests passed, 0 failed)
+- Vercel deployment result: PASS (backend redeployed with `bcryptjs` and `binaryTargets`)
+- Note: `bcryptjs` replaced `bcrypt` to resolve native binary compatibility issues between Windows local and Vercel Linux production environment.
+- Note: Web redeploy was NOT RUN as the backend URL and web code did not change.
