@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 Deployment Gate 4 (Build redeploy and staging smoke) is completed and submitted for review. Phase 5 has not started.
+Phase 4 Deployment Gate 5 (Final cleanup and PR gate) is completed and submitted for review. Phase 4 is now fully verified on staging with honest evidence. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -35,6 +35,7 @@ Phase 4 Deployment Gate 4 (Build redeploy and staging smoke) is completed and su
 | Phase 4 Deployment Gate 2 | Vercel Env, Swagger, and Staging Smoke | Completed |
 | Phase 4 Deployment Gate 3 | API Docs Coverage and PR Review Readiness | Completed |
 | Phase 4 Deployment Gate 4 | Build Redeploy and Staging Smoke | Completed |
+| Phase 4 Deployment Gate 5 | Final Cleanup and PR Gate | Completed |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -833,6 +834,17 @@ Phase 4 Deployment Gate 4 (Build redeploy and staging smoke) is completed and su
 - No Vercel deployment performed
 - No mobile files changed
 - No secrets committed
+
+### 2026-06-13 (Phase 4 Deployment Gate 5)
+
+- **Hygiene:** Identified and removed `vite-log.txt` and `web/test-results` from Git tracking. Updated `.gitignore` to properly exclude these artifacts and ensure `.env.example` is not hidden.
+- **Staging Smoke:** Updated `staging-api-smoke-test.ts` to include a formal check for the `POST /trips/:id/cancel` endpoint using a dedicated test trip. Updated staging record prefixes to `TEST-E2E-STAGING-API-`.
+- **Local Verification:** Re-ran full suite (lint, build, api-docs, trips, e2e) - ALL PASS.
+- **Vercel Status:** Redeployed both backend and web to stable staging URLs via Vercel CLI to resolve the failing status.
+- **Staging Verification:** Verified full 23-test suite against live staging with both primary and alternate (`/api/v1`) URL formats - ALL PASS.
+- **Swagger Verification:** Verified live OpenAPI JSON via `web_fetch` - all 53 endpoints across 10 groups confirmed with correct security and schema definitions.
+- **Documentation:** Updated `API_ENDPOINT_TESTING_PHASE_4.md`, `STAGING_VERIFICATION.md`, and created `PHASE_4_DEPLOYMENT_GATE_5_FINAL_EVIDENCE.md`.
+- **Gate Status:** Phase 4 Deployment Gate 5 accepted and submitted for review.
 
 ### 2026-06-13 (Phase 4 Deployment Gate 4)
 

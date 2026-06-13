@@ -6,9 +6,9 @@
 - Swagger UI: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
 - OpenAPI JSON: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
 - Authentication method: bearer token from `POST /api/v1/auth/login`
-- Safe testing rule: create and reuse only `TEST-E2E-` staging records
+- Safe testing rule: create and reuse only `TEST-E2E-STAGING-` records
 
-## Endpoint Coverage Summary (Gate 4)
+## Endpoint Coverage Summary (Final Gate 5)
 
 | Group | Total | PASS | FAIL | SKIP | Notes |
 |---|---|---|---|---|---|
@@ -21,7 +21,7 @@
 | Drivers | 5 | 4 | 0 | 1 | Verified on staging (list, create, status) |
 | Assets | 14 | 8 | 0 | 6 | Verified on staging (list, categories) |
 | Documents | 4 | 3 | 0 | 1 | Verified on staging (list) |
-| Trips | 9 | 9 | 0 | 0 | Full lifecycle verified on staging |
+| Trips | 9 | 9 | 0 | 0 | Full lifecycle verified on staging including Cancel |
 | **Total** | **53** | **40** | **0** | **13** | |
 
 ## Endpoint Status

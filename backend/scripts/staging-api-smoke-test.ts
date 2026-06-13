@@ -194,41 +194,42 @@ async function main() {
       fail(results, 'GET /users without token returns 401', unauthRes.status);
     }
 
-    const vNum = `TEST-E2E-API-${ts()}`;
+    const vNum = `TEST-E2E-STAGING-API-${ts()}`;
     const newV = await requestJson<{ data?: { id: string } }>(
       endpoint(apiRoot, '/vehicles'),
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ vehicleNumber: vNum, vehicleType: 'TRUCK', fuelType: 'DIESEL' }) },
     );
     const vehicle = newV.data?.data;
     if (vehicle) {
-      pass(results, 'POST /vehicles (create TEST-E2E)', newV.status);
+      pass(results, 'POST /vehicles (create TEST-E2E-STAGING)', newV.status);
       created.vehicleIds.push(vehicle.id);
     } else {
-      fail(results, 'POST /vehicles (create TEST-E2E)', newV.status);
+      fail(results, 'POST /vehicles (create TEST-E2E-STAGING)', newV.status);
     }
 
-    const dName = `TEST-E2E-API-DRV-${ts()}`;
+    const dName = `TEST-E2E-STAGING-API-DRV-${ts()}`;
     const dMobile = `7${ts().slice(-9)}`;
     const newD = await requestJson<{ data?: { id: string } }>(
       endpoint(apiRoot, '/drivers'),
-      { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: dName, mobile: dMobile, licenseNumber: `DL-API-${ts()}` }) },
+      { method: 'POST', headers: authHeaders, body: JSON.stringify({ name: dName, mobile: dMobile, licenseNumber: `DL-STAGING-${ts()}` }) },
     );
     const driver = newD.data?.data;
     if (driver) {
-      pass(results, 'POST /drivers (create TEST-E2E)', newD.status);
+      pass(results, 'POST /drivers (create TEST-E2E-STAGING)', newD.status);
       created.driverIds.push(driver.id);
     } else {
-      fail(results, 'POST /drivers (create TEST-E2E)', newD.status);
+      fail(results, 'POST /drivers (create TEST-E2E-STAGING)', newD.status);
     }
 
     if (vehicle && driver) {
+      // 1. Full Lifecycle Trip
       const tRes = await requestJson<{ data?: { id: string; status: string } }>(
         endpoint(apiRoot, '/trips'),
         { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'DELIVERY', vehicleId: vehicle.id, driverId: driver.id, originName: 'Test Origin', destinationName: 'Test Destination' }) },
       );
       const trip = tRes.data?.data;
       if (trip) {
-        pass(results, 'POST /trips (create TEST-E2E)', tRes.status);
+        pass(results, 'POST /trips (create TEST-E2E-STAGING)', tRes.status);
         created.tripIds.push(trip.id);
 
         const schedRes = await requestJson<{ data?: { status: string } }>(
@@ -270,10 +271,32 @@ async function main() {
           fail(results, 'GET /trips/:id/history', histRes.status);
         }
       } else {
-        fail(results, 'POST /trips (create TEST-E2E)', tRes.status);
+        fail(results, 'POST /trips (create TEST-E2E-STAGING)', tRes.status);
+      }
+
+      // 2. Cancellation Trip
+      const tCancelRes = await requestJson<{ data?: { id: string; status: string } }>(
+        endpoint(apiRoot, '/trips'),
+        { method: 'POST', headers: authHeaders, body: JSON.stringify({ tripType: 'INTERNAL', vehicleId: vehicle.id, driverId: driver.id, originName: 'Cancel Origin', destinationName: 'Cancel Destination' }) },
+      );
+      const tripToCancel = tCancelRes.data?.data;
+      if (tripToCancel) {
+        created.tripIds.push(tripToCancel.id);
+        const cancelRes = await requestJson<{ data?: { status: string } }>(
+          endpoint(apiRoot, `/trips/${tripToCancel.id}/cancel`),
+          { method: 'POST', headers: authHeaders, body: JSON.stringify({ notes: 'testing cancel on staging' }) },
+        );
+        if (cancelRes.ok && cancelRes.data?.data?.status === 'CANCELLED') {
+          pass(results, 'POST /trips/:id/cancel', cancelRes.status);
+        } else {
+          fail(results, 'POST /trips/:id/cancel', cancelRes.status);
+        }
+      } else {
+        skip(results, 'POST /trips/:id/cancel', 'Could not create second trip for cancel test');
       }
     }
 
+    // Cleanup TEST-E2E-STAGING records
     for (const tripId of created.startedTripIds) {
       try {
         await requestJson(endpoint(apiRoot, `/trips/${tripId}/cancel`), {

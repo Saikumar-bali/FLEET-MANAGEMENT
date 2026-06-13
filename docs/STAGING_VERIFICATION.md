@@ -205,18 +205,19 @@ vercel whoami
   - deployed sidebar width verified at `228px`
   - deployed cards and topbar spacing verified as compact and readable
 
-## 2026-06-13 Phase 4 Deployment Gate 4
+## 2026-06-13 Phase 4 Deployment Gate 5
 
 - Gate status: PASS
 - Backend staging URL: `https://fleet-management-backend-staging.vercel.app`
 - Web staging URL: `https://fleet-management-web-staging.vercel.app`
 - Swagger UI URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
 - OpenAPI JSON URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
-- Backend health verification: pass, `database: connected` (exit 0)
-- Auth smoke result: pass (identifier login, /auth/me)
-- Trip smoke result: pass (full lifecycle: create, schedule, start, complete, history, cancel)
+- Backend health verification: PASS, `database: connected` (exit 0)
+- Auth smoke result: PASS (identifier login, /auth/me)
+- Trip smoke result: PASS (full lifecycle: create, schedule, start, complete, cancel, history)
+- Cancel proof: Verified live on staging via `POST /trips/:id/cancel` with dedicated test trip. Status correctly transitioned to `CANCELLED`.
 - Swagger coverage result: PASS (all 10 groups, 53 endpoints documented)
-- Staging API smoke result: PASS (22 tests passed, 0 failed)
-- Vercel deployment result: PASS (backend redeployed with `bcryptjs` and `binaryTargets`)
-- Note: `bcryptjs` replaced `bcrypt` to resolve native binary compatibility issues between Windows local and Vercel Linux production environment.
-- Note: Web redeploy was NOT RUN as the backend URL and web code did not change.
+- Staging API smoke result: PASS (23 tests passed, 0 failed)
+- Vercel deployment result: PASS (backend and web redeployed to fix commit status failure)
+- Hygiene check: PASS (vite-log.txt, web/test-results, and .vercel files removed from Git tracking and gitignored)
+- Note: All staging records use `TEST-E2E-STAGING-API-` prefix for safe identification.
