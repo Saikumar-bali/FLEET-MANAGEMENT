@@ -70,3 +70,25 @@ Date: 2026-06-13
 
 Phase 4 is completed, merged, and post-merge smoke verified. Phase 5 remains not started.
 
+## Repeated Post-Merge Verification
+
+The complete post-merge smoke was rerun from clean `main` at
+`321e1dd27034b9c59b6bd52189242c1ee763fce4`.
+
+| Check | Result |
+|---|---|
+| Backend lint/build | PASS, exit 0 |
+| Web lint/build | PASS, exit 0 |
+| API docs coverage | PASS, 66 passed / 0 failed |
+| Local trip API | PASS, 79 passed / 0 failed / 0 skipped |
+| Local Playwright | PASS, 31 passed |
+| Staging smoke, backend root URL | PASS, 25 passed / 0 failed / 0 skipped |
+| Staging smoke, `/api/v1` URL | PASS, 25 passed / 0 failed / 0 skipped |
+| Live Swagger | PASS, HTTP 200, 10 groups / 40 paths / 54 operations |
+| Missing protected-operation bearer declarations | 0 |
+| GitHub/Vercel status | No contexts |
+| Vercel deploy | NOT RUN; staging remained current and passed |
+
+No credentials, tokens, Vercel environment values, or production database
+values were printed or used. Phase 5 remains not started.
+

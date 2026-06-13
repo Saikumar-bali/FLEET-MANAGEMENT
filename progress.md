@@ -4,6 +4,8 @@
 
 Phase 4 is completed, merged into main, and verified by the full post-merge local, staging, Swagger, and API documentation smoke gate. Phase 5 has not started.
 
+The complete Phase 4 post-merge smoke was repeated from main commit `321e1dd` and passed again. Phase 5 remains not started.
+
 ## Phase Progress
 
 | Phase | Name | Status |

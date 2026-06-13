@@ -13,4 +13,9 @@ Date: 2026-06-13
 - Merge commit GitHub/Vercel status: no contexts.
 - Vercel deploys were not required because staging remained current and passed.
 - No secrets printed, no production database used, no mobile changes, and no Phase 5 work started.
+- Repeated the complete smoke from clean `main` at `321e1dd`: static gate,
+  API docs 66/0, trips 79/0/0, Playwright 31, both staging formats 25/0/0,
+  and live Swagger 10/40/54 all passed again.
+- Repeated-run Vercel deploy: not required because staging remained current
+  and all live checks passed.
 
