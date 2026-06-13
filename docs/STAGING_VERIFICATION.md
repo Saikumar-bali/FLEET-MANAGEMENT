@@ -204,3 +204,16 @@ vercel whoami
   - deployed root font size verified at `13px`
   - deployed sidebar width verified at `228px`
   - deployed cards and topbar spacing verified as compact and readable
+
+## 2026-06-13 Phase 4 Gate 6 Vercel Status Reconciliation
+
+- GitHub commit status for `6e27896` shows red Vercel failure
+- Root cause: failure is attached to wrong Vercel project (`web`), not staging projects
+- Backend staging redeployed: `2026-06-13 15:22 UTC` — PASS
+- Web staging redeployed: `2026-06-13 15:23 UTC` — PASS
+- Backend staging health: `database: connected` — PASS
+- Staging smoke test (root URL): 5/5 PASS
+- Staging E2E trip lifecycle: 10/10 PASS (create, schedule, start, complete, history, cancel)
+- Swagger UI loads: PASS
+- OpenAPI JSON: 54 endpoints, 10 groups, bearerAuth enforced
+- See `PHASE_4_GATE_6_VERCEL_STATUS_RECONCILIATION.md` for full evidence

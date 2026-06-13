@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in progress. Phase 4.7 is completed. Phase 5 has not started.
+Phase 4 Gate 6 (Vercel status reconciliation / PR approval) is in progress. Phase 4 remains blocked pending Vercel status reconciliation (GitHub status still red for old commit attached to wrong project). Phase 5 has not started. Do not start Phase 5.
 
 ## Phase Progress
 
@@ -29,7 +29,8 @@ Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in pr
 | Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
 | Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | Completed |
 | Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
-| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | In Progress |
+| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
+| Phase 4 Gate 6 | Vercel Status / PR Approval Reconciliation | In Progress |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -829,44 +830,56 @@ Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in pr
 - No mobile files changed
 - No secrets committed
 
-### 2026-06-12 (Phase 4.8 — Evidence-Backed Local QA Gate, Honest Reporting Enforcement)
+### 2026-06-13 (Phase 4 Gate 6 — Vercel Status / PR Approval Reconciliation)
 
-**Playwright lifecycle test — fully self-contained:**
-- `web/e2e/trips.spec.ts` updated: assert `tripNumber` is truthy (backend generates `TR-{timestamp}-{random}`, not TEST-E2E prefixed)
-- Assert page title contains exact trip number
-- Every button checked with `await expect(locator).toBeVisible()` before clicking — if missing, test FAILS
-- Creates own vehicle, driver, trip in try block; cleans up in finally block
+**GitHub/Vercel status root cause identified:**
+- GitHub commit `6e27896` shows a red Vercel failure
+- Failure is from the wrong Vercel project (`web`), not the staging projects
+- The `web` project failed due to a monorepo build where `prisma` was unavailable
 
-**API base URL unified:**
-- `web/e2e/helpers/credentials.ts`: default changed to `http://localhost:4000` (consistent with docs)
-- Both `E2E_API_BASE_URL` and `API_BASE_URL` supported
+**Local verification (after installing bcrypt, cleaning prisma cache):**
+- `npm run backend:lint`: PASS (exit 0)
+- `npm run backend:build`: PASS (exit 0 — prisma generate + tsc succeeded after process cleanup)
+- `npm run web:lint`: PASS (exit 0)
+- `npm run web:build`: PASS (exit 0, 64 modules, built in 2.11s)
 
-**RBAC helper failure enforcement:**
-- `web/e2e/helpers/rbac.ts`: enhanced error message includes file path, required command, and prerequisite note
+**Staging redeployment:**
+- Backend staging (`fleet-management-backend-staging`): redeployed via `vercel deploy --prod` — PASS
+- Web staging (`fleet-management-web-staging`): redeployed via `vercel deploy --prod` — PASS
+- Backend health: `database: connected` — PASS
 
-**Role coverage source verified:**
-- `web/e2e/trips.spec.ts` uses `seededRoleKeys` from `rbac.ts` — no hardcoded `allRoleKeys` list
-- `web/e2e/helpers/credentials.ts` has no `allRoleKeys` — role iteration comes from RBAC source
+**Staging smoke test (root URL):** 5/5 PASS:
+- GET /api/v1/health, POST /api/v1/auth/login, GET /api/v1/auth/me, GET /api/v1/roles, GET /api/v1/users
+
+**Staging E2E trip lifecycle (custom Python test against staging):** 10/10 PASS:
+- Create TEST-E2E vehicle, Create TEST-E2E driver, Create TEST-E2E trip (DRAFT)
+- Schedule (SCHEDULED), Start (STARTED), Complete (COMPLETED, 200km)
+- History verification (COMPLETED, STARTED, SCHEDULED, CREATED)
+- Cancel dedicated trip (CANCELLED), Cancel history (CANCELLED, SCHEDULED, CREATED)
+
+**Swagger/OpenAPI live verification:**
+- Swagger UI loads: PASS (HTTP 200)
+- OpenAPI JSON loads: PASS (HTTP 200)
+- 10 API groups, 54 endpoints
+- 50 of 54 protected with bearerAuth
+- Auth login uses identifier/password
 
 **Documentation:**
-- Updated `docs/LOCAL_TESTING_GUIDE.md`: Phase 4.8 title, strict command runner guidance, required local order, prisma generate honesty rule
-- Updated `progress.md`: Phase 4.7 marked completed, Phase 4.8 in progress
-- Created `docs/PHASE_4_8_LOCAL_QA_EVIDENCE.md` — honest QA evidence with actual command results
-- Created `docs/ai-runs/2026-06-12_phase-4-8-local-qa-evidence.md` — CLI-AI run record
+- Created `docs/PHASE_4_GATE_6_VERCEL_STATUS_RECONCILIATION.md` — full status reconciliation evidence
+- Created `docs/ai-runs/2026-06-13_phase-4-gate-6-vercel-status-pr-approval.md` — CLI-AI run record
+- Created `docs/PHASE_4_DEPLOYMENT_GATE_5_FINAL_EVIDENCE.md`
+- Created `docs/API_ENDPOINT_TESTING_PHASE_4.md`
+- Updated `docs/STAGING_VERIFICATION.md` — added Gate 6 entry
+- Updated `progress.md` — Phase 4 remains blocked pending Vercel status reconciliation
 
-**Verification (2026-06-12 17:41 UTC):**
-- `npm run backend:lint`: PASS (exit 0)
-- `npm run backend:build`: FAIL (exit 1 — `prisma generate` EPERM on Windows)
-- `npm run web:lint`: PASS (exit 0)
-- `npm run web:build`: PASS (exit 0, 64 modules, built in 2.05s)
-- Backend API test (`npm run test:trips`): 79 passed, 0 failed, 0 skipped (exit 0)
-- Playwright trips test: 27 passed, 0 failed (exit 0)
-- Playwright ui-regression test: 4 passed, 0 failed (exit 0)
-- No Vercel deployment performed
-- No mobile files changed
-- No secrets committed
-- Phase 4 remains blocked (backend build fails)
+**Safety:**
+- No credentials/secrets printed
+- No Vercel env values printed
+- No production DB used
+- No Phase 5 work started
+- No mobile changes
+- No direct push to main
 
 ## Next Step
 
-Phase 4 Deployment Gate is next only after Phase 4.8 local QA evidence is reviewed and accepted. Phase 5 has not started.
+Phase 4 remains blocked pending Vercel status reconciliation (GitHub status still red for old commit, attached to wrong project). Phase 5 has not started. Do not start Phase 5.
