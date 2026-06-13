@@ -11,6 +11,8 @@
     "lint": "tsc --noEmit",
     "smoke:test": "ts-node scripts/smoke-test.ts",
     "test:trips": "ts-node scripts/trip-workflow-test.ts",
+    "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
+    "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:migrate:deploy": "prisma migrate deploy",

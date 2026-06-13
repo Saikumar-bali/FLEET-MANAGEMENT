@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in progress. Phase 4.7 is completed. Phase 5 has not started.
+Phase 4 Deployment Gate 3 (API docs coverage and PR review readiness) is submitted for review. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -29,7 +29,11 @@ Phase 4.8 (evidence-backed local QA gate, honest reporting enforcement) is in pr
 | Phase 4.5 | Strict Playwright-safe Data, Accurate Role Coverage, Final Local QA Gate | Completed |
 | Phase 4.6 | Final Local QA Proof, Playwright RBAC Enforcement, No-Deploy Gate | Completed |
 | Phase 4.7 | Honest Local QA Evidence Gate, Self-Contained Playwright, Unified API Base URL | Completed |
-| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | In Progress |
+| Phase 4.8 | Evidence-Backed Local QA Gate, Honest Reporting Enforcement | Completed |
+| Phase 4.9 | Backend Build Fix, Honest Local QA Rerun, Branch/PR Discipline | Completed |
+| Phase 4 Deployment Gate | Local QA + Staging Deployment Gate | Completed |
+| Phase 4 Deployment Gate 2 | Vercel Env, Swagger, and Staging Smoke | Submitted for Review |
+| Phase 4 Deployment Gate 3 | API Docs Coverage and PR Review Readiness | Submitted for Review |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |

@@ -204,3 +204,19 @@ vercel whoami
   - deployed root font size verified at `13px`
   - deployed sidebar width verified at `228px`
   - deployed cards and topbar spacing verified as compact and readable
+
+## 2026-06-13 Phase 4 Deployment Gate 3 API Docs Result
+
+- Gate status: Submitted for Review
+- Backend staging URL: `https://fleet-management-backend-staging.vercel.app`
+- Web staging URL: `https://fleet-management-web-staging.vercel.app`
+- Swagger UI URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
+- OpenAPI JSON URL: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
+- Local API docs coverage test: `66 passed, 0 failed` (exit 0)
+- Endpoint coverage: 53 endpoints documented across 10 API groups
+- Missing endpoints: 0
+- Auth login schema: `identifier`/`password` (correct)
+- Asset assignment/action endpoints: 7 newly added (assign, return, transfer, mark-damaged, mark-lost, assignments list, history list)
+- Error responses: 400/401/403/404 added to all endpoints
+- Note: openapi.ts was updated; backend Vercel redeploy required to publish updated Swagger docs on staging
+- Vercel redeploy: Pending review approval
