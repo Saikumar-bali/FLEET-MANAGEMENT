@@ -32,6 +32,8 @@ Date: 2026-06-13
 - Playwright uses `http://localhost:5173` and local backend `http://localhost:4000`.
 - Contains no Vercel deployment commands.
 - Node version: 20
+- CI workflow run #2 result: ALL STEPS PASSED (success)
+- GitHub Secrets not required (JWT auto-generated, demo credential fallbacks)
 
 ## Local Verification
 
@@ -55,8 +57,8 @@ Date: 2026-06-13
 - Production or staging database used by CI: NO
 - Mobile changes: none
 - Phase 5 work: none
-- GitHub Secrets configured: UNKNOWN (pending GitHub verification)
-- GitHub Actions result: NOT RUN (pending push)
+- GitHub Secrets configured: NO (demo credential fallbacks used)
+- GitHub Actions result: PASS (run #2, commit 57b7d51)
 - CI database: isolated PostgreSQL 16 service container only
 - Backend API tests use local backend: YES
 - Playwright uses local backend and local web: YES
