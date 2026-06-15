@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate: PR #10 check passed (`CI Gate` run #5, `Hygiene, build, API, and Playwright`). GitHub Secrets are optional overrides; CI is self-contained with a runtime JWT and temporary-database-only demo fallbacks. Phase 4 Post-Merge Smoke is pending. Phase 5 has not started.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 is completed and verified by the full post-merge local, staging, Swagger, and API documentation smoke gate from main commit `0caa6f2`. Branch protection requires manual configuration. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -41,8 +41,8 @@ GitHub Actions CI Gate: PR #10 check passed (`CI Gate` run #5, `Hygiene, build, 
 | Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 4 PR Merge Approval | Final reviewed PR merge and post-merge smoke | Blocked |
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
-| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | PR #10 PASS (`CI Gate` run #5) |
-| Phase 4 Post-Merge Smoke | Post-merge local and staging verification | Pending |
+| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
+| Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -914,4 +914,4 @@ GitHub Actions CI Gate: PR #10 check passed (`CI Gate` run #5, `Hygiene, build, 
 
 ## Next Step
 
-Review and merge the GitHub Actions CI Gate, then complete Phase 4 Post-Merge Smoke. Phase 5 has not started.
+Start Phase 5 Fuel and Expense Workflow on a fresh branch. Phase 5 has not started.
