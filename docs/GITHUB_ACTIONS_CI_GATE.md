@@ -11,7 +11,8 @@
 ## What CI Runs
 
 The workflow at `.github/workflows/ci.yml` runs for pull requests targeting
-`main`, pushes to branches, and manual `workflow_dispatch` runs.
+`main`, pushes to non-main branches (`branches-ignore: main`), and manual
+`workflow_dispatch` runs. It does **not** run on direct pushes to `main`.
 
 It verifies:
 

@@ -5,6 +5,7 @@ Date: 2026-06-13
 ## Status
 
 - Branch: `ci-gate-github-actions`
+- Reviewed commit: `197554f77d84a7939e2d693a0695c6aa8fcb27fd`
 - Workflow: `.github/workflows/ci.yml`
 - GitHub Actions CI Gate: Submitted for Review
 - Vercel deployment added: **NO**
@@ -12,18 +13,16 @@ Date: 2026-06-13
 
 ## Files Changed
 
-- `.github/workflows/ci.yml`
-- `backend/prisma/seed.ts`
-- `backend/scripts/test-helpers/credentials.ts`
-- `web/e2e/helpers/credentials.ts`
-- `docs/GITHUB_ACTIONS_CI_GATE.md`
-- `docs/CI_GATE_IMPLEMENTATION_EVIDENCE.md`
-- `docs/ai-runs/2026-06-13_ci-gate-github-actions.md`
-- `progress.md`
+- `.github/workflows/ci.yml` (trigger policy, Node 22 → 20)
+- `docs/GITHUB_ACTIONS_CI_GATE.md` (trigger policy)
+- `docs/CI_GATE_IMPLEMENTATION_EVIDENCE.md` (evidence update)
+- `docs/ai-runs/2026-06-13_ci-gate-github-actions.md` (evidence update)
+- `progress.md` (status update)
 
 ## CI Gate Coverage
 
-- Runs on pull requests targeting `main`, branch pushes, and manual dispatch.
+- Runs on pull requests targeting `main`, pushes to non-main branches, and manual dispatch.
+- Does **not** run on direct `main` pushes.
 - Fails on tracked real `.env`, `.vercel`, or test artifact files.
 - Uses a temporary PostgreSQL 16 service container.
 - Runs Prisma generation, schema push, and CI-only seed against the temporary database.
@@ -32,6 +31,7 @@ Date: 2026-06-13
 - Backend API tests use `http://localhost:4000`.
 - Playwright uses `http://localhost:5173` and local backend `http://localhost:4000`.
 - Contains no Vercel deployment commands.
+- Node version: 20
 
 ## Local Verification
 
@@ -41,9 +41,9 @@ Date: 2026-06-13
 | `npm run backend:build` | PASS | 0 |
 | `npm run web:lint` | PASS | 0 |
 | `npm run web:build` | PASS | 0 |
-| `npm --prefix backend run test:api-docs` | PASS, 66 passed / 0 failed | 0 |
-| `npm --prefix backend run test:trips` with local backend | PASS, 79 passed / 0 failed / 0 skipped | 0 |
-| `npm --prefix web run test:e2e` with local web/backend | PASS, 31 passed | 0 |
+| `npm --prefix backend run test:api-docs` | PASS (66 passed / 0 failed) | 0 |
+| `npm --prefix backend run test:trips` (local backend) | NOT RUN (Windows Node fetch limitation; Linux CI compatible) | - |
+| `npm --prefix web run test:e2e` (local web + backend) | NOT RUN (Windows Node fetch limitation; Linux CI compatible) | - |
 
 ## Hygiene And Safety
 
@@ -55,6 +55,11 @@ Date: 2026-06-13
 - Production or staging database used by CI: NO
 - Mobile changes: none
 - Phase 5 work: none
+- GitHub Secrets configured: UNKNOWN (pending GitHub verification)
+- GitHub Actions result: NOT RUN (pending push)
+- CI database: isolated PostgreSQL 16 service container only
+- Backend API tests use local backend: YES
+- Playwright uses local backend and local web: YES
 
 ## Required Repository Configuration
 

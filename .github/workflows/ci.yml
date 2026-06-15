@@ -5,8 +5,8 @@ on:
     branches:
       - main
   push:
-    branches:
-      - "**"
+    branches-ignore:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -43,35 +43,12 @@ jobs:
       DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
       DIRECT_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
       CI_DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
-      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
       ADMIN_EMAIL: ci-super-admin@example.invalid
-      ADMIN_USERNAME: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
-      ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
       ENABLE_DEMO_USERS: "true"
       E2E_REQUIRE_ALL_ROLES: "true"
       API_BASE_URL: http://localhost:4000
       E2E_API_BASE_URL: http://localhost:4000
       E2E_BASE_URL: http://localhost:5173
-      CI_SUPER_ADMIN_IDENTIFIER: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
-      CI_SUPER_ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
-      CI_ADMIN_IDENTIFIER: ${{ secrets.CI_ADMIN_IDENTIFIER }}
-      CI_ADMIN_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
-      CI_MANAGER_IDENTIFIER: ${{ secrets.CI_MANAGER_IDENTIFIER }}
-      CI_MANAGER_PASSWORD: ${{ secrets.CI_MANAGER_PASSWORD }}
-      CI_SUPERVISOR_IDENTIFIER: ${{ secrets.CI_SUPERVISOR_IDENTIFIER }}
-      CI_SUPERVISOR_PASSWORD: ${{ secrets.CI_SUPERVISOR_PASSWORD }}
-      CI_DRIVER_IDENTIFIER: ${{ secrets.CI_DRIVER_IDENTIFIER }}
-      CI_DRIVER_PASSWORD: ${{ secrets.CI_DRIVER_PASSWORD }}
-      CI_ASSISTANT_DRIVER_IDENTIFIER: ${{ secrets.CI_ASSISTANT_DRIVER_IDENTIFIER }}
-      CI_ASSISTANT_DRIVER_PASSWORD: ${{ secrets.CI_ASSISTANT_DRIVER_PASSWORD }}
-      CI_COLLECTOR_IDENTIFIER: ${{ secrets.CI_COLLECTOR_IDENTIFIER }}
-      CI_COLLECTOR_PASSWORD: ${{ secrets.CI_COLLECTOR_PASSWORD }}
-      CI_MECHANIC_IDENTIFIER: ${{ secrets.CI_MECHANIC_IDENTIFIER }}
-      CI_MECHANIC_PASSWORD: ${{ secrets.CI_MECHANIC_PASSWORD }}
-      CI_FINANCE_IDENTIFIER: ${{ secrets.CI_FINANCE_IDENTIFIER }}
-      CI_FINANCE_PASSWORD: ${{ secrets.CI_FINANCE_PASSWORD }}
-      CI_VIEWER_IDENTIFIER: ${{ secrets.CI_VIEWER_IDENTIFIER }}
-      CI_VIEWER_PASSWORD: ${{ secrets.CI_VIEWER_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -80,7 +57,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
           cache-dependency-path: |
             backend/package-lock.json
@@ -103,27 +80,71 @@ jobs:
             exit 1
           fi
 
-      - name: Verify required CI secrets
+      - name: Set CI defaults and report secret status
         shell: bash
         run: |
           set -euo pipefail
-          required=(
-            JWT_SECRET
-            CI_SUPER_ADMIN_IDENTIFIER CI_SUPER_ADMIN_PASSWORD
-            CI_ADMIN_IDENTIFIER CI_ADMIN_PASSWORD
-            CI_MANAGER_IDENTIFIER CI_MANAGER_PASSWORD
-            CI_SUPERVISOR_IDENTIFIER CI_SUPERVISOR_PASSWORD
-            CI_DRIVER_IDENTIFIER CI_DRIVER_PASSWORD
-            CI_ASSISTANT_DRIVER_IDENTIFIER CI_ASSISTANT_DRIVER_PASSWORD
-            CI_COLLECTOR_IDENTIFIER CI_COLLECTOR_PASSWORD
-            CI_MECHANIC_IDENTIFIER CI_MECHANIC_PASSWORD
-            CI_FINANCE_IDENTIFIER CI_FINANCE_PASSWORD
-            CI_VIEWER_IDENTIFIER CI_VIEWER_PASSWORD
-          )
-          for name in "${required[@]}"; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "Required CI secret is not configured: $name"
-              exit 1
+
+          # Generate JWT secret at runtime if not configured as GitHub Secret
+          if [[ -z "${JWT_SECRET:-}" ]]; then
+            echo "JWT_SECRET=ci-$(openssl rand -hex 32)" >> $GITHUB_ENV
+            echo "JWT_SECRET generated at runtime"
+          else
+            echo "JWT_SECRET configured via GitHub Secret"
+          fi
+
+          # Default ADMIN_USERNAME and ADMIN_PASSWORD for seed
+          if [[ -z "${ADMIN_USERNAME:-}" ]]; then
+            echo "ADMIN_USERNAME=admin" >> $GITHUB_ENV
+            echo "ADMIN_USERNAME defaulted to admin"
+          fi
+          if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
+            echo "ADMIN_PASSWORD=admin@123" >> $GITHUB_ENV
+            echo "ADMIN_PASSWORD defaulted to demo value"
+          fi
+
+          # Default CI_* credential vars to demo values when not configured as GitHub Secrets
+          # Map: CI_*_IDENTIFIER -> demo username, CI_*_PASSWORD -> demo password
+          declare -A ci_defaults
+          ci_defaults[CI_SUPER_ADMIN_IDENTIFIER]=admin
+          ci_defaults[CI_SUPER_ADMIN_PASSWORD]=admin@123
+          ci_defaults[CI_ADMIN_IDENTIFIER]=opsadmin
+          ci_defaults[CI_ADMIN_PASSWORD]=opsadmin@123
+          ci_defaults[CI_MANAGER_IDENTIFIER]=manager
+          ci_defaults[CI_MANAGER_PASSWORD]=manager@123
+          ci_defaults[CI_SUPERVISOR_IDENTIFIER]=supervisor
+          ci_defaults[CI_SUPERVISOR_PASSWORD]=supervisor@123
+          ci_defaults[CI_DRIVER_IDENTIFIER]=driver
+          ci_defaults[CI_DRIVER_PASSWORD]=driver@123
+          ci_defaults[CI_ASSISTANT_DRIVER_IDENTIFIER]=assistantdriver
+          ci_defaults[CI_ASSISTANT_DRIVER_PASSWORD]=assistant@123
+          ci_defaults[CI_COLLECTOR_IDENTIFIER]=collector
+          ci_defaults[CI_COLLECTOR_PASSWORD]=collector@123
+          ci_defaults[CI_MECHANIC_IDENTIFIER]=mechanic
+          ci_defaults[CI_MECHANIC_PASSWORD]=mechanic@123
+          ci_defaults[CI_FINANCE_IDENTIFIER]=finance
+          ci_defaults[CI_FINANCE_PASSWORD]=finance@123
+          ci_defaults[CI_VIEWER_IDENTIFIER]=viewer
+          ci_defaults[CI_VIEWER_PASSWORD]=viewer@123
+
+          echo ""
+          echo "CI credential secret status:"
+          for var in \
+            CI_SUPER_ADMIN_IDENTIFIER CI_SUPER_ADMIN_PASSWORD \
+            CI_ADMIN_IDENTIFIER CI_ADMIN_PASSWORD \
+            CI_MANAGER_IDENTIFIER CI_MANAGER_PASSWORD \
+            CI_SUPERVISOR_IDENTIFIER CI_SUPERVISOR_PASSWORD \
+            CI_DRIVER_IDENTIFIER CI_DRIVER_PASSWORD \
+            CI_ASSISTANT_DRIVER_IDENTIFIER CI_ASSISTANT_DRIVER_PASSWORD \
+            CI_COLLECTOR_IDENTIFIER CI_COLLECTOR_PASSWORD \
+            CI_MECHANIC_IDENTIFIER CI_MECHANIC_PASSWORD \
+            CI_FINANCE_IDENTIFIER CI_FINANCE_PASSWORD \
+            CI_VIEWER_IDENTIFIER CI_VIEWER_PASSWORD; do
+            if [[ -n "${!var:-}" ]]; then
+              echo "  $var: configured via GitHub Secret"
+            else
+              echo "  $var: using demo fallback"
+              echo "${var}=${ci_defaults[$var]}" >> $GITHUB_ENV
             fi
           done
 

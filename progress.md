@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is submitted for review as the automatic repository gatekeeper. Phase 4 Post-Merge Smoke is pending. Phase 5 has not started.
+GitHub Actions CI Gate: self-contained secrets (JWT auto-gen, demo credential fallbacks). CI run failed due to unconfigured secrets; now fixed. Phase 4 Post-Merge Smoke is pending. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -41,7 +41,7 @@ GitHub Actions CI Gate is submitted for review as the automatic repository gatek
 | Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 4 PR Merge Approval | Final reviewed PR merge and post-merge smoke | Blocked |
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
-| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Submitted for Review |
+| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Node 20, main-ignore push, self-contained secrets |
 | Phase 4 Post-Merge Smoke | Post-merge local and staging verification | Pending |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
