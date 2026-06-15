@@ -3,6 +3,7 @@ import { prisma } from '../src/lib/prisma';
 import { defaultRolePermissionMap, permissionDefinitions, roleDefinitions } from '../src/constants/rbac';
 
 const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+const adminUsername = process.env.ADMIN_USERNAME?.trim().toLowerCase() || 'admin';
 const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase() || 'development';
 const demoUsersEnabled = process.env.ENABLE_DEMO_USERS === 'true';
@@ -92,14 +93,14 @@ async function seedSuperAdmin() {
     where: { email: ensuredAdminEmail },
     update: {
       name: 'Super Admin',
-      username: 'admin',
+      username: adminUsername,
       passwordHash,
       roleId: superAdminRole.id,
       status: 'ACTIVE',
     },
     create: {
       name: 'Super Admin',
-      username: 'admin',
+      username: adminUsername,
       email: ensuredAdminEmail,
       passwordHash,
       roleId: superAdminRole.id,
@@ -108,7 +109,7 @@ async function seedSuperAdmin() {
   });
 }
 
-const demoCredentialDefinitions = [
+const defaultDemoCredentialDefinitions = [
   { roleKey: 'admin', username: 'opsadmin', password: 'opsadmin@123', name: 'Demo Ops Admin', email: 'opsadmin.demo@fleet.local' },
   { roleKey: 'manager', username: 'manager', password: 'manager@123', name: 'Demo Manager', email: 'manager.demo@fleet.local' },
   { roleKey: 'supervisor', username: 'supervisor', password: 'supervisor@123', name: 'Demo Supervisor', email: 'supervisor.demo@fleet.local' },
@@ -120,12 +121,26 @@ const demoCredentialDefinitions = [
   { roleKey: 'viewer', username: 'viewer', password: 'viewer@123', name: 'Demo Viewer', email: 'viewer.demo@fleet.local' },
 ] as const;
 
+function ciDemoCredential(roleKey: string, fallback: typeof defaultDemoCredentialDefinitions[number]) {
+  const envPrefix = roleKey.toUpperCase();
+  const identifier = process.env[`CI_${envPrefix}_IDENTIFIER`]?.trim();
+  const password = process.env[`CI_${envPrefix}_PASSWORD`]?.trim();
+  if (!identifier || !password) return fallback;
+  return {
+    ...fallback,
+    username: identifier.toLowerCase(),
+    password,
+    email: `ci-${roleKey.replace(/_/g, '-')}@example.invalid`,
+  };
+}
+
 async function seedDemoUsers() {
   if (!demoUsersEnabled) {
     return;
   }
 
-  for (const demoUser of demoCredentialDefinitions) {
+  for (const fallback of defaultDemoCredentialDefinitions) {
+    const demoUser = ciDemoCredential(fallback.roleKey, fallback);
     const role = await prisma.role.findUnique({
       where: { key: demoUser.roleKey },
     });

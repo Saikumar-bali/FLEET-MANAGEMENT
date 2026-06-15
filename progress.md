@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurring Windows Prisma DLL lock and passing every required local, staging, Swagger, and API documentation check. Phase 5 has not started.
+GitHub Actions CI Gate: PR #10 check passed (`CI Gate` run #5, `Hygiene, build, API, and Playwright`). GitHub Secrets are optional overrides; CI is self-contained with a runtime JWT and temporary-database-only demo fallbacks. Phase 4 Post-Merge Smoke is pending. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -41,6 +41,8 @@ Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurr
 | Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 4 PR Merge Approval | Final reviewed PR merge and post-merge smoke | Blocked |
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
+| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | PR #10 PASS (`CI Gate` run #5) |
+| Phase 4 Post-Merge Smoke | Post-merge local and staging verification | Pending |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
@@ -912,4 +914,4 @@ Phase 4 PR Merge Approval 2 is submitted for review after stabilizing the recurr
 
 ## Next Step
 
-Merge Phase 4 after review, run post-merge smoke, then start Phase 5 Fuel and Expense Workflow on a fresh branch. Phase 5 has not started.
+Review and merge the GitHub Actions CI Gate, then complete Phase 4 Post-Merge Smoke. Phase 5 has not started.
