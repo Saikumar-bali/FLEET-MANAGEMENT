@@ -219,5 +219,8 @@ jobs:
       - name: Local backend trip API tests
         run: npm --prefix backend run test:trips
 
+      - name: Local backend fuel and expense API tests
+        run: npm --prefix backend run test:fuel-expenses
+
       - name: Local Playwright tests
         run: npm --prefix web run test:e2e

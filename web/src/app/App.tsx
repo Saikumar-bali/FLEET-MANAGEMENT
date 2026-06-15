@@ -14,6 +14,8 @@ import { AssetDetailPage } from '../pages/AssetDetailPage';
 import { AssetCategoriesPage } from '../pages/AssetCategoriesPage';
 import { TripsPage } from '../pages/TripsPage';
 import { TripDetailPage } from '../pages/TripDetailPage';
+import { WorkflowListPage } from '../pages/WorkflowListPage';
+import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 
 function App() {
@@ -41,6 +43,14 @@ function App() {
               <Route element={<ProtectedRoute requiredPermissions={['trip_view']} />}>
                 <Route path="/trips" element={<TripsPage />} />
                 <Route path="/trips/:id" element={<TripDetailPage />} />
+              </Route>
+              <Route element={<ProtectedRoute requiredPermissions={['fuel_view']} />}>
+                <Route path="/fuel" element={<WorkflowListPage kind="fuel" />} />
+                <Route path="/fuel/:id" element={<WorkflowDetailPage kind="fuel" />} />
+              </Route>
+              <Route element={<ProtectedRoute requiredPermissions={['expense_view']} />}>
+                <Route path="/expenses" element={<WorkflowListPage kind="expense" />} />
+                <Route path="/expenses/:id" element={<WorkflowDetailPage kind="expense" />} />
               </Route>
               <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                 <Route path="/roles" element={<RolesPage />} />

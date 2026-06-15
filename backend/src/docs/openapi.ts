@@ -41,6 +41,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Assets' },
     { name: 'Documents' },
     { name: 'Trips' },
+    { name: 'Fuel' },
+    { name: 'Expenses' },
   ],
   components: {
     securitySchemes: {
@@ -1322,5 +1324,31 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
         },
       },
     },
+    '/fuel': {
+      get: { tags: ['Fuel'], summary: 'List fuel entries', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated fuel entries' } } },
+      post: { tags: ['Fuel'], summary: 'Create fuel entry', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'fuelDate', 'fuelType', 'quantityLiters', 'pricePerLiter'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, fuelDate: { type: 'string', format: 'date-time' }, odometerReading: { type: 'integer', minimum: 0 }, fuelType: { type: 'string' }, quantityLiters: { type: 'number', exclusiveMinimum: 0 }, pricePerLiter: { type: 'number', exclusiveMinimum: 0 }, totalAmount: { type: 'number', exclusiveMinimum: 0 }, stationName: { type: 'string' }, receiptNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Fuel entry created' } } },
+    },
+    '/fuel/{id}': {
+      get: { tags: ['Fuel'], summary: 'Get fuel entry', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fuel entry' } } },
+      patch: { tags: ['Fuel'], summary: 'Update fuel entry', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fuel entry updated' } } },
+      delete: { tags: ['Fuel'], summary: 'Cancel fuel entry', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fuel entry cancelled' } } },
+    },
+    '/fuel/{id}/submit': { post: { tags: ['Fuel'], summary: 'Submit fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry submitted' } } } },
+    '/fuel/{id}/approve': { post: { tags: ['Fuel'], summary: 'Approve fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry approved' } } } },
+    '/fuel/{id}/reject': { post: { tags: ['Fuel'], summary: 'Reject fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry rejected' } } } },
+    '/fuel/{id}/cancel': { post: { tags: ['Fuel'], summary: 'Cancel fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry cancelled' } } } },
+    '/expenses': {
+      get: { tags: ['Expenses'], summary: 'List expenses', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated expenses' } } },
+      post: { tags: ['Expenses'], summary: 'Create expense', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'category', 'expenseDate', 'amount'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, category: { type: 'string' }, expenseDate: { type: 'string', format: 'date-time' }, amount: { type: 'number', exclusiveMinimum: 0 }, vendor: { type: 'string' }, receiptNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Expense created' } } },
+    },
+    '/expenses/{id}': {
+      get: { tags: ['Expenses'], summary: 'Get expense', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Expense' } } },
+      patch: { tags: ['Expenses'], summary: 'Update expense', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Expense updated' } } },
+      delete: { tags: ['Expenses'], summary: 'Cancel expense', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Expense cancelled' } } },
+    },
+    '/expenses/{id}/submit': { post: { tags: ['Expenses'], summary: 'Submit expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense submitted' } } } },
+    '/expenses/{id}/approve': { post: { tags: ['Expenses'], summary: 'Approve expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense approved' } } } },
+    '/expenses/{id}/reject': { post: { tags: ['Expenses'], summary: 'Reject expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense rejected' } } } },
+    '/expenses/{id}/cancel': { post: { tags: ['Expenses'], summary: 'Cancel expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense cancelled' } } } },
   },
 };

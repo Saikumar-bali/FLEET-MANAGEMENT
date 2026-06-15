@@ -14,6 +14,8 @@ import driverRoutes from './modules/drivers/drivers.routes';
 import assetRoutes from './modules/assets/assets.routes';
 import documentRoutes from './modules/documents/documents.routes';
 import tripRoutes from './modules/trips/trips.routes';
+import fuelRoutes from './modules/fuel/fuel.routes';
+import expenseRoutes from './modules/expenses/expenses.routes';
 import docsRoutes from './modules/docs/docs.routes';
 import { sendError } from './utils/response';
 
@@ -49,6 +51,8 @@ app.use('/api/v1/drivers', driverRoutes);
 app.use('/api/v1/assets', assetRoutes);
 app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/trips', tripRoutes);
+app.use('/api/v1/fuel', fuelRoutes);
+app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/docs', docsRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
