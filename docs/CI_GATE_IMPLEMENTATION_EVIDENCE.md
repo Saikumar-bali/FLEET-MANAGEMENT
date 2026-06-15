@@ -1,13 +1,16 @@
 # CI Gate Implementation Evidence
 
-Date: 2026-06-13
+Date: 2026-06-15
 
 ## Status
 
 - Branch: `ci-gate-github-actions`
-- Reviewed commit: `e8d9f505b968f10e1d2b80fe155ed2ca69c18831`
+- PR: [#10 - Add GitHub Actions CI gate](https://github.com/Saikumar-bali/FLEET-MANAGEMENT/pull/10)
+- Tested head commit: `8a49904516e3f514181cef09c8afb27daae9974b`
 - Workflow: `.github/workflows/ci.yml`
-- GitHub Actions PR Gate: Pending new PR-triggered proof
+- GitHub Actions PR check: `Hygiene, build, API, and Playwright`
+- GitHub Actions PR result: **PASS**
+- GitHub Actions run: `CI Gate` run `#5`
 - Vercel deployment added: **NO**
 - Phase 5 started: **NO**
 
@@ -34,8 +37,7 @@ Date: 2026-06-13
 - Playwright uses `http://localhost:5173` and local backend `http://localhost:4000`.
 - Contains no Vercel deployment commands.
 - Node version: 20
-- Earlier non-PR workflow run #2 result: ALL STEPS PASSED (success)
-- Required PR-triggered workflow result: PENDING
+- Required PR-triggered workflow result: PASS (`CI Gate` run `#5`, tested commit `8a49904516e3f514181cef09c8afb27daae9974b`)
 - GitHub Secrets: optional overrides only
 
 ## Local Verification
@@ -62,7 +64,7 @@ Date: 2026-06-13
 - Phase 5 work: none
 - GitHub Secrets required: NO (optional overrides only)
 - Demo fallback values are allowed only in the temporary CI database.
-- GitHub Actions PR result: PENDING
+- GitHub Actions PR result: PASS
 - CI database: isolated PostgreSQL 16 service container only
 - Backend API tests use local backend: YES
 - Playwright uses local backend and local web: YES
