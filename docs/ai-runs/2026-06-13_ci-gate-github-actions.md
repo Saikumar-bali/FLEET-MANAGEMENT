@@ -26,6 +26,8 @@ Date: 2026-06-13 (updated)
 - Phase 5 started: NO
 - Local trip tests used local backend; Playwright used local web and local backend
 - No secrets printed, no tracked env/Vercel/test artifacts, no mobile changes
-- GitHub Actions run #2 (commit 57b7d51): ALL 19 steps PASSED
-- GitHub Secrets not required (self-contained defaults)
-
+- Earlier non-PR GitHub Actions run #2 (commit 57b7d51): ALL 19 steps PASSED
+- Required PR-triggered GitHub Actions proof: PENDING
+- GitHub Secrets are optional overrides; runtime JWT and CI-only demo fallbacks make CI self-contained.
+- Demo fallbacks are safe only in the isolated temporary CI database and must not be used for local, staging, or production accounts.
+- Local CLI-AI credentials may come from untracked `backend/.env`; GitHub Actions never reads it.

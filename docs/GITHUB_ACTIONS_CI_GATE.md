@@ -32,9 +32,16 @@ GitHub Actions starts a PostgreSQL 16 service container for each workflow run.
 `CI_DATABASE_URL`, `DATABASE_URL`, and `DIRECT_URL` point only to that temporary
 database. CI must never use staging or production database URLs.
 
-## Required GitHub Secrets
+## Optional GitHub Secret Overrides
 
-Configure these repository or environment secrets before requiring the CI gate:
+The CI gate is self-contained by default and does not require GitHub Secrets.
+It generates a JWT secret at runtime and seeds CI-only demo credentials into
+the isolated, temporary PostgreSQL service database. Those fallback values are
+safe only in that disposable CI database. Never use them for local, staging, or
+production accounts.
+
+The following repository or environment secrets may optionally override the
+CI-only defaults:
 
 - `CI_JWT_SECRET`
 - `CI_SUPER_ADMIN_IDENTIFIER`, `CI_SUPER_ADMIN_PASSWORD`
@@ -48,19 +55,18 @@ Configure these repository or environment secrets before requiring the CI gate:
 - `CI_FINANCE_IDENTIFIER`, `CI_FINANCE_PASSWORD`
 - `CI_VIEWER_IDENTIFIER`, `CI_VIEWER_PASSWORD`
 
-Use unique CI-only username identifiers and strong CI-only passwords. Do not use
-local, staging, or production credentials.
+When overrides are configured, use unique CI-only identifiers and strong
+CI-only passwords. Do not use local, staging, or production credentials.
 
-`CI_DATABASE_URL` is also a required CI environment name, but the workflow sets
-it to the temporary PostgreSQL service container rather than storing a shared
-database URL as a secret.
+`CI_DATABASE_URL` is set by the workflow to the temporary PostgreSQL service
+container. It is not read from GitHub Secrets or any shared database.
 
 ## Local Development
 
 Local CLI-AI and developer test runs may read credentials from `backend/.env`.
 That file must never be committed or printed. Credential helpers prefer `CI_*`
 environment variables when present and otherwise retain the existing local
-`.env` behavior.
+`.env` behavior. GitHub Actions never reads `backend/.env`.
 
 ## Secret Safety
 
@@ -68,4 +74,3 @@ environment variables when present and otherwise retain the existing local
 - Never upload backend or Playwright logs that may contain sensitive values.
 - Never point pull-request CI at staging or production databases.
 - Never add Vercel deployment credentials or deployment commands to this workflow.
-
