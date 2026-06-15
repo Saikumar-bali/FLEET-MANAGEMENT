@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence was merged through PR #11 after CI Gate run #9 passed. Phase 5 Fuel and Expense Workflow is implemented locally on `phase-5-fuel-expense-workflow` and awaiting GitHub Actions review. Branch protection requires manual configuration. No Vercel deployment was performed.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence was merged through PR #11 after CI Gate run #9 passed. Phase 5 Fuel and Expense Workflow is ready for review in PR #12 after CI Gate run #11 passed. Branch protection requires manual configuration. No Vercel deployment was performed.
 
 ## Phase Progress
 
@@ -43,7 +43,7 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
 | GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
-| Phase 5 | Fuel and Expense Workflow | Implemented locally, awaiting PR CI |
+| Phase 5 | Fuel and Expense Workflow | Ready for review, PR #12 CI PASS |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
