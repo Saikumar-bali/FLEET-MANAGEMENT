@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence was merged through PR #11 after CI Gate run #9 passed. Phase 5 Fuel and Expense Workflow is ready for review in PR #12 after CI Gate run #11 passed. Branch protection requires manual configuration. No Vercel deployment was performed.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 5 Fuel and Expense Workflow was merged through PR #12 after current-head CI passed, and the complete post-merge local smoke passed from main commit `c951bf1`. Phase 6 has not started. No Vercel deployment was performed.
 
 ## Phase Progress
 
@@ -43,7 +43,8 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
 | GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
-| Phase 5 | Fuel and Expense Workflow | Ready for review, PR #12 CI PASS |
+| Phase 5 | Fuel and Expense Workflow | Completed locally and merged |
+| Phase 5 Post-Merge Smoke | Complete local verification after merge | Completed |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
@@ -914,4 +915,4 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 
 ## Next Step
 
-Review the Phase 5 Fuel and Expense Workflow PR and require GitHub Actions to pass. Do not deploy Vercel during implementation.
+Start the Phase 5 Deployment Gate on a separate branch after post-merge evidence review. Apply the staging database schema before deploying backend code. Phase 6 has not started.
