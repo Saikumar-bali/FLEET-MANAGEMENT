@@ -250,3 +250,35 @@ export type PaginatedResponse<T> = {
     totalPages: number;
   };
 };
+
+export type WorkflowStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type WorkflowRelated = {
+  id: string;
+  vehicleId: string;
+  tripId: string | null;
+  driverId: string | null;
+  status: WorkflowStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  trip: { id: string; tripNumber: string; vehicleId: string } | null;
+  driver: { id: string; name: string; status: string } | null;
+};
+export type FuelRecord = WorkflowRelated & {
+  fuelDate: string;
+  odometerReading: number | null;
+  fuelType: string;
+  quantityLiters: number;
+  pricePerLiter: number;
+  totalAmount: number;
+  stationName: string | null;
+  receiptNumber: string | null;
+};
+export type ExpenseRecord = WorkflowRelated & {
+  category: string;
+  expenseDate: string;
+  amount: number;
+  vendor: string | null;
+  receiptNumber: string | null;
+};

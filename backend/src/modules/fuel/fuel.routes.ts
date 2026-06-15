@@ -1,0 +1,20 @@
+import { Router } from 'express';
+import { authMiddleware } from '../../middlewares/authMiddleware';
+import { requirePermission } from '../../middlewares/permissions';
+import { validateRequest } from '../../middlewares/validate';
+import { asyncHandler } from '../../utils/asyncHandler';
+import * as c from './fuel.controller';
+import * as v from './fuel.validators';
+
+const router = Router();
+router.use(asyncHandler(authMiddleware));
+router.get('/', requirePermission('fuel_view'), validateRequest({ query: v.fuelQuerySchema }), asyncHandler(c.listFuelController));
+router.post('/', requirePermission('fuel_create'), validateRequest({ body: v.createFuelSchema }), asyncHandler(c.createFuelController));
+router.get('/:id', requirePermission('fuel_view'), validateRequest({ params: v.fuelIdParamsSchema }), asyncHandler(c.getFuelController));
+router.patch('/:id', requirePermission('fuel_update'), validateRequest({ params: v.fuelIdParamsSchema, body: v.updateFuelSchema }), asyncHandler(c.updateFuelController));
+router.post('/:id/submit', requirePermission('fuel_submit'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.submitFuelController));
+router.post('/:id/approve', requirePermission('fuel_approve'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.approveFuelController));
+router.post('/:id/reject', requirePermission('fuel_approve'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.rejectFuelController));
+router.post('/:id/cancel', requirePermission('fuel_delete'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.cancelFuelController));
+router.delete('/:id', requirePermission('fuel_delete'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.cancelFuelController));
+export default router;

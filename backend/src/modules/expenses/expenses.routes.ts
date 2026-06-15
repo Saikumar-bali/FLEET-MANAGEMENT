@@ -1,0 +1,20 @@
+import { Router } from 'express';
+import { authMiddleware } from '../../middlewares/authMiddleware';
+import { requirePermission } from '../../middlewares/permissions';
+import { validateRequest } from '../../middlewares/validate';
+import { asyncHandler } from '../../utils/asyncHandler';
+import * as c from './expenses.controller';
+import * as v from './expenses.validators';
+
+const router = Router();
+router.use(asyncHandler(authMiddleware));
+router.get('/', requirePermission('expense_view'), validateRequest({ query: v.expenseQuerySchema }), asyncHandler(c.listExpensesController));
+router.post('/', requirePermission('expense_create'), validateRequest({ body: v.createExpenseSchema }), asyncHandler(c.createExpenseController));
+router.get('/:id', requirePermission('expense_view'), validateRequest({ params: v.expenseIdParamsSchema }), asyncHandler(c.getExpenseController));
+router.patch('/:id', requirePermission('expense_update'), validateRequest({ params: v.expenseIdParamsSchema, body: v.updateExpenseSchema }), asyncHandler(c.updateExpenseController));
+router.post('/:id/submit', requirePermission('expense_submit'), validateRequest({ params: v.expenseIdParamsSchema, body: v.expenseActionSchema }), asyncHandler(c.submitExpenseController));
+router.post('/:id/approve', requirePermission('expense_approve'), validateRequest({ params: v.expenseIdParamsSchema, body: v.expenseActionSchema }), asyncHandler(c.approveExpenseController));
+router.post('/:id/reject', requirePermission('expense_approve'), validateRequest({ params: v.expenseIdParamsSchema, body: v.expenseActionSchema }), asyncHandler(c.rejectExpenseController));
+router.post('/:id/cancel', requirePermission('expense_delete'), validateRequest({ params: v.expenseIdParamsSchema, body: v.expenseActionSchema }), asyncHandler(c.cancelExpenseController));
+router.delete('/:id', requirePermission('expense_delete'), validateRequest({ params: v.expenseIdParamsSchema, body: v.expenseActionSchema }), asyncHandler(c.cancelExpenseController));
+export default router;

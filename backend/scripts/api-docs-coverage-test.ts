@@ -11,7 +11,7 @@ function fail(results: CheckResult[], name: string, detail?: string) {
   results.push({ name, status: 'FAIL', detail });
 }
 
-const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips'];
+const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips', 'Fuel', 'Expenses'];
 
 const REQUIRED_PATHS: Record<string, string[]> = {
   'Health': ['GET /health'],
@@ -34,6 +34,8 @@ const REQUIRED_PATHS: Record<string, string[]> = {
     'POST /trips/{id}/schedule', 'POST /trips/{id}/start', 'POST /trips/{id}/complete',
     'POST /trips/{id}/cancel', 'GET /trips/{id}/history',
   ],
+  'Fuel': ['GET /fuel', 'POST /fuel', 'GET /fuel/{id}', 'PATCH /fuel/{id}', 'DELETE /fuel/{id}', 'POST /fuel/{id}/submit', 'POST /fuel/{id}/approve', 'POST /fuel/{id}/reject', 'POST /fuel/{id}/cancel'],
+  'Expenses': ['GET /expenses', 'POST /expenses', 'GET /expenses/{id}', 'PATCH /expenses/{id}', 'DELETE /expenses/{id}', 'POST /expenses/{id}/submit', 'POST /expenses/{id}/approve', 'POST /expenses/{id}/reject', 'POST /expenses/{id}/cancel'],
 };
 
 function normalizePath(path: string): string {

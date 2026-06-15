@@ -17,6 +17,8 @@ import type {
   TripRecord,
   UserRecord,
   VehicleRecord,
+  FuelRecord,
+  ExpenseRecord,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -636,3 +638,20 @@ export function cancelTrip(
 export function getTripHistory(token: string, tripId: string) {
   return request<TripHistoryRecord[]>(`/trips/${tripId}/history`, { token });
 }
+
+type WorkflowQuery = { search?: string; status?: string; vehicleId?: string; tripId?: string; driverId?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number };
+function workflowQuery(params?: WorkflowQuery) {
+  const query = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)); });
+  return query.toString();
+}
+export function getFuelEntries(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<FuelRecord>>(`/fuel${q ? `?${q}` : ''}`, { token }); }
+export function getFuelEntry(token: string, id: string) { return request<FuelRecord>(`/fuel/${id}`, { token }); }
+export function createFuelEntry(token: string, payload: Record<string, unknown>) { return request<FuelRecord>('/fuel', { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateFuelEntry(token: string, id: string, payload: Record<string, unknown>) { return request<FuelRecord>(`/fuel/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
+export function fuelAction(token: string, id: string, action: string) { return request<FuelRecord>(`/fuel/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+export function getExpenses(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<ExpenseRecord>>(`/expenses${q ? `?${q}` : ''}`, { token }); }
+export function getExpense(token: string, id: string) { return request<ExpenseRecord>(`/expenses/${id}`, { token }); }
+export function createExpense(token: string, payload: Record<string, unknown>) { return request<ExpenseRecord>('/expenses', { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateExpense(token: string, id: string, payload: Record<string, unknown>) { return request<ExpenseRecord>(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
+export function expenseAction(token: string, id: string, action: string) { return request<ExpenseRecord>(`/expenses/${id}/${action}`, { method: 'POST', body: '{}', token }); }

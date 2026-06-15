@@ -39,6 +39,10 @@ model User {
   assetHistoriesCreated    AssetHistory[]    @relation("AssetHistoryCreatedBy")
   tripsCreated             Trip[]            @relation("TripCreatedBy")
   tripHistoriesCreated     TripHistory[]     @relation("TripHistoryCreatedBy")
+  fuelEntriesCreated       FuelEntry[]       @relation("FuelCreatedBy")
+  fuelEntriesApproved      FuelEntry[]       @relation("FuelApprovedBy")
+  expensesCreated          Expense[]         @relation("ExpenseCreatedBy")
+  expensesApproved         Expense[]         @relation("ExpenseApprovedBy")
 
   @@map("users")
 }
@@ -209,6 +213,8 @@ model Vehicle {
   updatedAt       DateTime      @updatedAt @map("updated_at")
   currentDriver   Driver?       @relation(fields: [currentDriverId], references: [id])
   trips           Trip[]
+  fuelEntries     FuelEntry[]
+  expenses        Expense[]
 
   @@map("vehicles")
 }
@@ -229,6 +235,8 @@ model Driver {
   vehicles          Vehicle[]
   tripsAsDriver     Trip[]
   tripsAsAssistant  Trip[]       @relation("TripAssistantDriver")
+  fuelEntries       FuelEntry[]
+  expenses          Expense[]
 
   @@map("drivers")
 }
@@ -332,6 +340,8 @@ model Trip {
   assistantDriver   Driver?     @relation("TripAssistantDriver", fields: [assistantDriverId], references: [id])
   createdBy         User?       @relation("TripCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   history           TripHistory[]
+  fuelEntries       FuelEntry[]
+  expenses          Expense[]
 
   @@index([vehicleId, status])
   @@index([driverId, status])
@@ -354,6 +364,77 @@ model TripHistory {
 
   @@index([tripId, createdAt])
   @@map("trip_history")
+}
+
+enum WorkflowRecordStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model FuelEntry {
+  id               String               @id @default(cuid())
+  vehicleId        String               @map("vehicle_id")
+  tripId           String?              @map("trip_id")
+  driverId         String?              @map("driver_id")
+  fuelDate         DateTime             @map("fuel_date")
+  odometerReading  Int?                 @map("odometer_reading")
+  fuelType         String               @map("fuel_type")
+  quantityLiters   Decimal              @map("quantity_liters") @db.Decimal(12, 3)
+  pricePerLiter    Decimal              @map("price_per_liter") @db.Decimal(12, 2)
+  totalAmount      Decimal              @map("total_amount") @db.Decimal(14, 2)
+  stationName      String?              @map("station_name")
+  receiptNumber    String?              @map("receipt_number")
+  notes            String?
+  status           WorkflowRecordStatus @default(DRAFT)
+  createdById      String?              @map("created_by")
+  approvedById     String?              @map("approved_by")
+  approvedAt       DateTime?            @map("approved_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  vehicle          Vehicle              @relation(fields: [vehicleId], references: [id])
+  trip             Trip?                @relation(fields: [tripId], references: [id])
+  driver           Driver?              @relation(fields: [driverId], references: [id])
+  createdBy        User?                @relation("FuelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy       User?                @relation("FuelApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, fuelDate])
+  @@index([tripId])
+  @@index([driverId])
+  @@index([status])
+  @@map("fuel_entries")
+}
+
+model Expense {
+  id            String               @id @default(cuid())
+  vehicleId     String               @map("vehicle_id")
+  tripId        String?              @map("trip_id")
+  driverId      String?              @map("driver_id")
+  category      String
+  expenseDate   DateTime             @map("expense_date")
+  amount        Decimal              @db.Decimal(14, 2)
+  vendor        String?
+  receiptNumber String?              @map("receipt_number")
+  notes         String?
+  status        WorkflowRecordStatus @default(DRAFT)
+  createdById   String?              @map("created_by")
+  approvedById  String?              @map("approved_by")
+  approvedAt    DateTime?            @map("approved_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+  vehicle       Vehicle              @relation(fields: [vehicleId], references: [id])
+  trip          Trip?                @relation(fields: [tripId], references: [id])
+  driver        Driver?              @relation(fields: [driverId], references: [id])
+  createdBy     User?                @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy    User?                @relation("ExpenseApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, expenseDate])
+  @@index([tripId])
+  @@index([driverId])
+  @@index([status])
+  @@map("expenses")
 }
 
 model Document {
