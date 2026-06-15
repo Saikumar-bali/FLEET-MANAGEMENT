@@ -2,9 +2,7 @@
 
 ## Current Status
 
-Phase 4 is completed, merged into main, and verified by the full post-merge local, staging, Swagger, and API documentation smoke gate. Phase 5 has not started.
-
-The complete Phase 4 post-merge smoke was repeated from main commit `321e1dd` and passed again. Phase 5 remains not started.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 is completed and verified by the full post-merge local, staging, Swagger, and API documentation smoke gate from main commit `0caa6f2`. Branch protection requires manual configuration. Phase 5 has not started.
 
 ## Phase Progress
 
@@ -43,6 +41,7 @@ The complete Phase 4 post-merge smoke was repeated from main commit `321e1dd` an
 | Phase 4 Final PR Merge Gate 2 | Prisma lock correction and complete merge readiness rerun | Submitted for Review |
 | Phase 4 PR Merge Approval | Final reviewed PR merge and post-merge smoke | Blocked |
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
+| GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
 | Phase 5 | Fuel and Expense Workflow | Not Started |
 | Phase 6 | Maintenance and Repair | Not Started |

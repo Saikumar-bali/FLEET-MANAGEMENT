@@ -1,19 +1,27 @@
 # Phase 4 Post-Merge Smoke Evidence
 
-Date: 2026-06-13
+Date: 2026-06-15
 
-## Merge Status
+## Merge And Gate Status
 
-- Accepted source branch: `phase-4-pr-merge-approval-2-prisma-build-stability`
-- Accepted source commit: `4437f84a0dfeb7d58960588ab4ffb9918c341edb`
-- Pull request: `#9` - Phase 4: Trip workflow, staging deployment, Swagger API documentation
-- PR status: merged
-- Main merge commit: `321e1dd27034b9c59b6bd52189242c1ee763fce4`
-- Post-merge evidence branch: `phase-4-post-merge-smoke`
-- Direct main push: none; main changed only through the reviewed PR merge
+- PR: [#10 - Add GitHub Actions CI gate](https://github.com/Saikumar-bali/FLEET-MANAGEMENT/pull/10)
+- PR status: MERGED
+- Accepted PR head: `265057372f87bbc73a4ed653d05d339cd09abba7`
+- CI workflow: `CI Gate`
+- Required check: `Hygiene, build, API, and Playwright`
+- Required check result on accepted head: PASS, run `#7`
+- Main merge commit: `0caa6f2073de8207b01878f9b90a72cc59395cc9`
+- Evidence branch: `phase-4-post-merge-smoke`
+- Branch protection: MANUAL ACTION REQUIRED
 - Phase 5: Not Started
 
-## Post-Merge Local Smoke On Main
+Branch protection could not be configured from this session because the
+connected GitHub tools expose no branch-protection mutation and the GitHub UI
+was not authenticated. Configure `main` to require pull requests, require
+`Hygiene, build, API, and Playwright`, require conversation resolution where
+available, and block direct pushes, force pushes, and deletions.
+
+## Post-Merge Verification
 
 | Command | Result | Exit Code |
 |---|---|---:|
@@ -22,73 +30,42 @@ Date: 2026-06-13
 | `npm run web:lint` | PASS | 0 |
 | `npm run web:build` | PASS | 0 |
 | `npm --prefix backend run test:api-docs` | PASS, 66 passed / 0 failed | 0 |
-| `npm --prefix backend run test:trips` | PASS, 79 passed / 0 failed / 0 skipped | 0 |
-| `npm --prefix web run test:e2e` | PASS, 31 passed | 0 |
+| `npm run test:trips` with `API_BASE_URL=http://localhost:4000` | PASS, 79 passed / 0 failed / 0 skipped | 0 |
+| `npm run test:e2e` with local API and web URLs | PASS, 31 passed | 0 |
+| `npm run test:staging-api` with staging root URL | PASS, 25 passed / 0 failed / 0 skipped | 0 |
+| `npm run test:staging-api` with staging `/api/v1` URL | PASS, 25 passed / 0 failed / 0 skipped | 0 |
 
-## Post-Merge Staging Smoke
-
-| Command | Result | Exit Code |
-|---|---|---:|
-| `npm --prefix backend run test:staging-api` with backend root URL | PASS, 25 passed / 0 failed / 0 skipped | 0 |
-| `npm --prefix backend run test:staging-api` with `/api/v1` URL | PASS, 25 passed / 0 failed / 0 skipped | 0 |
-
-- Both URL inputs normalized to exactly one `/api/v1`.
-- Dedicated second-trip cancel and cancel-history checks: PASS.
-- Only `TEST-E2E-STAGING` records were created.
+- Backend API tests used local backend: YES
+- Playwright used local web and local backend: YES
+- Both staging URL formats normalized to exactly one `/api/v1`.
+- Staging smoke created only `TEST-E2E-STAGING` records.
 
 ## Live Swagger And API Documentation
 
-- Swagger UI: `https://fleet-management-backend-staging.vercel.app/api/v1/docs`
-- OpenAPI JSON: `https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json`
-- Swagger UI: PASS, HTTP 200
+- Swagger UI: https://fleet-management-backend-staging.vercel.app/api/v1/docs
+- OpenAPI JSON: https://fleet-management-backend-staging.vercel.app/api/v1/docs/openapi.json
+- Swagger UI result: PASS, HTTP 200
+- OpenAPI JSON result: PASS, HTTP 200
 - API groups: 10
 - Paths: 40
-- Operations: 54
-- Protected operations missing `bearerAuth`: 0
-- Missing Phase 4 endpoints: none
-- Endpoint testing summary: PASS 66 / FAIL 0 / SKIP 0 / NOT RUN 0
+- Phase 4 trip paths: 7
+- Protected operations with bearer security: 50
+- Login schema: `LoginInput`, using `identifier` and `password`
+- API endpoint testing document: [API_ENDPOINT_TESTING_PHASE_4.md](./API_ENDPOINT_TESTING_PHASE_4.md)
 
-## GitHub, Vercel, And Deployment
+## Deployment And Hygiene
 
-- GitHub/Vercel status for merge commit: **no contexts**
-- No GitHub status contexts after disconnecting wrong root Vercel project.
-- Backend deploy: NOT RUN; live staging passed and was current.
-- Web deploy: NOT RUN; live staging passed and was current.
-- No new Vercel projects were created.
-
-## Hygiene And Confirmations
-
-- No `.vercel` files tracked.
-- No test artifacts tracked.
-- No real `.env` files tracked.
-- No credentials, secrets, passwords, tokens, database URLs, emails, full usernames, or Vercel environment values printed.
-- No production database used.
-- No mobile changes.
-- No Phase 5, fuel, expense, maintenance, finance, GPS/maps, or Tally work started.
+- Vercel deployment: NOT RUN; staging passed and the merge did not change deployed runtime behavior.
+- New Vercel projects created: NO
+- Real `.env` files tracked: NO
+- `.vercel` files tracked: NO
+- Test artifacts tracked: NO
+- Secrets printed: NO
+- Production database used: NO
+- Mobile changes: NO
+- Phase 5 work started: NO
 
 ## Outcome
 
-Phase 4 is completed, merged, and post-merge smoke verified. Phase 5 remains not started.
-
-## Repeated Post-Merge Verification
-
-The complete post-merge smoke was rerun from clean `main` at
-`321e1dd27034b9c59b6bd52189242c1ee763fce4`.
-
-| Check | Result |
-|---|---|
-| Backend lint/build | PASS, exit 0 |
-| Web lint/build | PASS, exit 0 |
-| API docs coverage | PASS, 66 passed / 0 failed |
-| Local trip API | PASS, 79 passed / 0 failed / 0 skipped |
-| Local Playwright | PASS, 31 passed |
-| Staging smoke, backend root URL | PASS, 25 passed / 0 failed / 0 skipped |
-| Staging smoke, `/api/v1` URL | PASS, 25 passed / 0 failed / 0 skipped |
-| Live Swagger | PASS, HTTP 200, 10 groups / 40 paths / 54 operations |
-| Missing protected-operation bearer declarations | 0 |
-| GitHub/Vercel status | No contexts |
-| Vercel deploy | NOT RUN; staging remained current and passed |
-
-No credentials, tokens, Vercel environment values, or production database
-values were printed or used. Phase 5 remains not started.
-
+GitHub Actions CI Gate is completed and merged. Phase 4 post-merge smoke is
+completed. Phase 4 is completed. Phase 5 remains not started.
