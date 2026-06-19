@@ -45,8 +45,8 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
 | Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed |
 | Phase 5 Deployment Gate | Local verification + CI + staging deploy | Merged through PR #14 |
-| Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16, CI PASS, final review pending |
-| Phase 6 | Maintenance and Repair | Premature PR #15 open, BLOCKED, not accepted |
+| Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16 MERGED |
+| Phase 6 | Maintenance and Repair | PR #15 rebased on main, CI pending, ready for review |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
 | Phase 9 | Reports, Notifications, Deployment | Not Started |

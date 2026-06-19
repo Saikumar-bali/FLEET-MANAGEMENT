@@ -38,16 +38,18 @@
 
 ## Local Verification Results
 
-| Check | Result |
-|-------|--------|
-| `tsc --noEmit` (backend) | PASS (exit 0) |
-| `tsc --noEmit` (web) | PASS (exit 0) |
-| API docs coverage `npm run test:api-docs` | NOT RUN (no such script) |
-| Fuel/expense API test | 18/18 PASS |
-| Trip API test | 79/79 PASS |
-| Maintenance/repair API test | 25/25 PASS |
-| Playwright headed | NOT RUN (no headed env) |
-| Vercel deploy | NOT RUN during implementation |
+| Check | Result | Exit code |
+|-------|--------|-----------|
+| `npm run backend:lint` | PASS | 0 |
+| `npm run backend:build` | PASS | 0 |
+| `npm run web:lint` | PASS | 0 |
+| `npm run web:build` | PASS | 0 |
+| `npm --prefix backend run test:api-docs` | 86/86 PASS | 0 |
+| `npm --prefix backend run test:trips` | 79/79 PASS | 0 |
+| `npm --prefix backend run test:fuel-expenses` | 18/18 PASS | 0 |
+| `npx ts-node scripts/maintenance-repair-workflow-test.ts` | 25/25 PASS | 0 |
+| `npx playwright test --headed` (web) | 35/35 PASS | 0 |
+| Vercel deploy | NOT RUN | — |
 
 ## Status Transition Rules
 
@@ -72,6 +74,16 @@ Side transitions: DRAFT → CANCELLED
 - Test artifacts: NOT tracked
 - Secrets: NOT printed
 
+## PR #16 Merge Status
+
+PR #16 (Phase 5 Deployment Gate Review) was merged into `main` at commit `fcad767e2becf108958d61c79e4b0050f18294b4`.
+Branch protection is configured on `main`. PR #15 was rebased on `main` at commit `15b35b3`.
+
+## Fixes Applied
+
+- Fixed `MaintenanceDetailPage.tsx` and `RepairDetailPage.tsx`: changed `limit: 200` to `limit: 100`
+  to match backend vehicle list validation (max 100).
+
 ## Next Step
 
-Push branch, open PR to main, confirm GitHub Actions passes, then deploy Vercel via a separate Phase 6 Deployment Gate.
+Push branch, confirm GitHub Actions passes, then open for review.
