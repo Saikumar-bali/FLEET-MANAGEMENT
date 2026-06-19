@@ -4,7 +4,8 @@
 
 - **Branch name**: `phase-5-deployment-gate`
 - **Main base commit**: `c951bf126ae54826bfdef92fafb022b2bdeb2ffb` (PR #12 merge)
-- **Current head commit**: `69a60a28f9d87e50a7f8a4f132bbea2ea1e744bf`
+- **Reviewed deployment evidence commit**: `b2f30872e070b404eae4cec300bad624f8b9c35c`
+- **Current correction commit**: `08a9bdabf4cfa898c74e717b5700b55480b9f1f0`
 
 ## Local Verification Results
 
@@ -89,8 +90,15 @@
 | Phase 6 started | NO |
 | New Vercel projects created | NO |
 
+## Correction History
+
+| Date | Commit | Description |
+|------|--------|-------------|
+| 2026-06-19 | `b2f30872e070b404eae4cec300bad624f8b9c35c` | Original deployment gate evidence |
+| 2026-06-19 | `08a9bdabf4cfa898c74e717b5700b55480b9f1f0` | Fix evidence/progress metadata accuracy |
+
 ## Decision
 
-**Phase 5 Deployment Gate: Submitted for Review**
+**Phase 5 Deployment Gate: Submitted for Review in PR #14**
 **Phase 6: Not Started**
 **Next**: Review deployment evidence, then decide whether Phase 6 can start.

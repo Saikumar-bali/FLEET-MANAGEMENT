@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence was merged through PR #11 after CI Gate run #9 passed. Phase 5 Fuel and Expense Workflow is ready for review in PR #12 after CI Gate run #11 passed. Branch protection requires manual configuration. No Vercel deployment was performed.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is submitted for review in PR #14. Backend staging deploy completed. Web deploy was NOT RUN because no web source deployment was needed. Swagger/OpenAPI live links are verified. Phase 6 is NOT Started. Branch protection still requires manual configuration if not configured.
 
 ## Phase Progress
 
@@ -43,8 +43,8 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
 | GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
-| Phase 5 | Fuel and Expense Workflow | Deployed to staging |
-| Phase 5 Deployment Gate | Local verification + CI + staging deploy | Submitted for Review |
+| Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed, pending deployment evidence merge |
+| Phase 5 Deployment Gate | Local verification + CI + staging deploy | Submitted for Review in PR #14 |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
