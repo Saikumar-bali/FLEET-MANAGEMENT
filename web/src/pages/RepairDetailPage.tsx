@@ -1,0 +1,32 @@
+import { FormEvent, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ErrorState } from '../components/ErrorState';
+import { LoadingState } from '../components/LoadingState';
+import { PageHeader } from '../components/PageHeader';
+import { useAuth } from '../context/AuthContext';
+import { createRepair, getRepair, getVehicles, repairAction, updateRepair } from '../services/api';
+import type { RepairRecord, VehicleRecord } from '../types/auth';
+
+const empty = { vehicleId: '', maintenanceRequestId: '', repairType: '', vendorName: '', laborCost: '', partsCost: '', totalCost: '', assignedMechanicId: '', repairNotes: '' };
+export function RepairDetailPage() {
+  const { id } = useParams(); const isNew = id === 'new'; const auth = useAuth(); const navigate = useNavigate();
+  const [record, setRecord] = useState<RepairRecord | null>(null); const [form, setForm] = useState(empty); const [vehicles, setVehicles] = useState<VehicleRecord[]>([]); const [loading, setLoading] = useState(!isNew); const [error, setError] = useState<string | null>(null);
+  useEffect(() => { void (async () => { if (!auth.accessToken) return; const v = await getVehicles(auth.accessToken, { limit: 200 }); setVehicles(v.data.items); if (!isNew && id) { try { const r = await getRepair(auth.accessToken, id); const x = r.data; setRecord(x); setForm({ vehicleId: x.vehicleId, maintenanceRequestId: x.maintenanceRequestId ?? '', repairType: x.repairType, vendorName: x.vendorName ?? '', laborCost: x.laborCost ? String(x.laborCost) : '', partsCost: x.partsCost ? String(x.partsCost) : '', totalCost: x.totalCost ? String(x.totalCost) : '', assignedMechanicId: x.assignedMechanicId ?? '', repairNotes: x.repairNotes ?? '' }); } catch { setError('Failed to load repair.'); } finally { setLoading(false); } } })(); }, [auth.accessToken, id, isNew]);
+  if (loading) return <LoadingState message="Loading repair..." />; if (error && !record && !isNew) return <ErrorState message={error} />;
+  const set = (key: keyof typeof empty, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  async function save(e: FormEvent) { e.preventDefault(); if (!auth.accessToken) return; setError(null); try { const payload: Record<string, unknown> = { vehicleId: form.vehicleId, repairType: form.repairType, vendorName: form.vendorName || undefined, laborCost: form.laborCost ? Number(form.laborCost) : undefined, partsCost: form.partsCost ? Number(form.partsCost) : undefined, totalCost: form.totalCost ? Number(form.totalCost) : undefined, assignedMechanicId: form.assignedMechanicId || undefined, repairNotes: form.repairNotes || undefined, maintenanceRequestId: form.maintenanceRequestId || undefined }; const r = isNew ? await createRepair(auth.accessToken, payload) : await updateRepair(auth.accessToken, id!, payload); navigate(`/repairs/${r.data.id}`); } catch (e) { setError(e instanceof Error ? e.message : 'Save failed'); } }
+  async function action(name: string) { if (!auth.accessToken || !id) return; const r = await repairAction(auth.accessToken, id, name); setRecord(r.data); }
+  const editable = isNew || record?.status === 'DRAFT';
+  return <section><PageHeader title={isNew ? 'Create Repair' : 'Repair Detail'} description={record ? `Status: ${record.status}` : 'Draft repair'} actions={!isNew && record ? [
+    record.status === 'DRAFT' && auth.hasPermission('repair_update') ? <button key="schedule" className="primary-button" onClick={() => action('schedule')}>Schedule</button> : null,
+    record.status === 'DRAFT' && auth.hasPermission('repair_delete') ? <button key="cancel" className="danger-button" onClick={() => action('cancel')}>Cancel</button> : null,
+    record.status === 'SCHEDULED' && auth.hasPermission('repair_assign') ? <button key="start" className="primary-button" onClick={() => action('start')}>Start</button> : null,
+    record.status === 'IN_PROGRESS' && auth.hasPermission('repair_complete') ? <button key="complete" className="primary-button" onClick={() => action('complete')}>Complete</button> : null,
+  ].filter(Boolean) as JSX.Element[] : undefined} />
+    {error && <div className="error-banner">{error}</div>}<form className="card stack-form" onSubmit={save}><div className="form-two-column"><label><span className="field-label">Vehicle *</span><select required disabled={!editable} value={form.vehicleId} onChange={(e) => set('vehicleId', e.target.value)}><option value="">Select vehicle</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.vehicleNumber}</option>)}</select></label><label><span className="field-label">Repair Type *</span><input required disabled={!editable} value={form.repairType} onChange={(e) => set('repairType', e.target.value)} /></label></div>
+    <div className="form-two-column"><label><span className="field-label">Vendor Name</span><input disabled={!editable} value={form.vendorName} onChange={(e) => set('vendorName', e.target.value)} /></label><label><span className="field-label">Maintenance Request ID</span><input disabled={!editable} value={form.maintenanceRequestId} onChange={(e) => set('maintenanceRequestId', e.target.value)} /></label></div>
+    <div className="form-two-column"><label><span className="field-label">Labor Cost</span><input disabled={!editable} type="number" min="0" step="0.01" value={form.laborCost} onChange={(e) => set('laborCost', e.target.value)} /></label><label><span className="field-label">Parts Cost</span><input disabled={!editable} type="number" min="0" step="0.01" value={form.partsCost} onChange={(e) => set('partsCost', e.target.value)} /></label></div>
+    <div className="form-two-column"><label><span className="field-label">Total Cost</span><input disabled={!editable} type="number" min="0" step="0.01" value={form.totalCost} onChange={(e) => set('totalCost', e.target.value)} /></label><label><span className="field-label">Assigned Mechanic ID</span><input disabled={!editable} value={form.assignedMechanicId} onChange={(e) => set('assignedMechanicId', e.target.value)} /></label></div>
+    <label><span className="field-label">Repair Notes</span><textarea disabled={!editable} value={form.repairNotes} onChange={(e) => set('repairNotes', e.target.value)} /></label>
+    {editable && <div className="action-panel"><button className="primary-button" type="submit">Save</button><button className="secondary-button" type="button" onClick={() => navigate('/repairs')}>Cancel</button></div>}</form></section>;
+}

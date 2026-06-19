@@ -20,6 +20,31 @@ enum RoleStatus {
   INACTIVE
 }
 
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum MaintenanceStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum RepairStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id            String         @id @default(cuid())
   name          String
@@ -43,8 +68,69 @@ model User {
   fuelEntriesApproved      FuelEntry[]       @relation("FuelApprovedBy")
   expensesCreated          Expense[]         @relation("ExpenseCreatedBy")
   expensesApproved         Expense[]         @relation("ExpenseApprovedBy")
+  maintenanceRequestsCreated MaintenanceRequest[] @relation("MaintenanceCreatedBy")
+  maintenanceRequestsApproved MaintenanceRequest[] @relation("MaintenanceApprovedBy")
+  repairsCreated            Repair[]          @relation("RepairCreatedBy")
+  repairsCompleted          Repair[]          @relation("RepairCompletedBy")
+  repairsAssigned           Repair[]          @relation("RepairAssignedMechanic")
 
   @@map("users")
+}
+
+model MaintenanceRequest {
+  id                String              @id @default(cuid())
+  vehicleId         String              @map("vehicle_id")
+  driverId          String?             @map("driver_id")
+  issueTitle        String              @map("issue_title")
+  issueDescription  String?             @map("issue_description")
+  priority          MaintenancePriority @default(MEDIUM)
+  odometerReading   Int?                @map("odometer_reading")
+  reportedAt        DateTime            @default(now()) @map("reported_at")
+  status            MaintenanceStatus   @default(DRAFT)
+  createdById       String?             @map("created_by")
+  approvedById      String?             @map("approved_by")
+  approvedAt        DateTime?           @map("approved_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  vehicle           Vehicle             @relation(fields: [vehicleId], references: [id])
+  driver            Driver?             @relation(fields: [driverId], references: [id])
+  createdBy         User?               @relation("MaintenanceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy        User?               @relation("MaintenanceApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  repairs           Repair[]
+
+  @@index([vehicleId, status])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+model Repair {
+  id                    String        @id @default(cuid())
+  maintenanceRequestId  String?       @map("maintenance_request_id")
+  vehicleId             String        @map("vehicle_id")
+  assignedMechanicId    String?       @map("assigned_mechanic_id")
+  vendorName            String?       @map("vendor_name")
+  repairType            String        @map("repair_type")
+  repairNotes           String?       @map("repair_notes")
+  laborCost             Decimal?      @map("labor_cost") @db.Decimal(12, 2)
+  partsCost             Decimal?      @map("parts_cost") @db.Decimal(12, 2)
+  totalCost             Decimal?      @map("total_cost") @db.Decimal(12, 2)
+  startedAt             DateTime?     @map("started_at")
+  completedAt           DateTime?     @map("completed_at")
+  status                RepairStatus  @default(DRAFT)
+  createdById           String?       @map("created_by")
+  completedById         String?       @map("completed_by")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  vehicle               Vehicle       @relation(fields: [vehicleId], references: [id])
+  maintenanceRequest    MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+  assignedMechanic      User?         @relation("RepairAssignedMechanic", fields: [assignedMechanicId], references: [id], onDelete: SetNull)
+  createdBy             User?         @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy           User?         @relation("RepairCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, status])
+  @@index([assignedMechanicId])
+  @@index([status])
+  @@map("repairs")
 }
 
 model Role {
@@ -215,6 +301,8 @@ model Vehicle {
   trips           Trip[]
   fuelEntries     FuelEntry[]
   expenses        Expense[]
+  maintenanceRequests MaintenanceRequest[]
+  repairs             Repair[]
 
   @@map("vehicles")
 }
@@ -237,6 +325,7 @@ model Driver {
   tripsAsAssistant  Trip[]       @relation("TripAssistantDriver")
   fuelEntries       FuelEntry[]
   expenses          Expense[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@map("drivers")
 }

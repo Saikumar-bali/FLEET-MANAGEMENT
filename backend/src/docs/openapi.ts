@@ -43,6 +43,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Trips' },
     { name: 'Fuel' },
     { name: 'Expenses' },
+    { name: 'Maintenance' },
+    { name: 'Repairs' },
   ],
   components: {
     securitySchemes: {
@@ -435,6 +437,80 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           fileName: { type: 'string' },
           mimeType: { type: 'string' },
           sizeBytes: { type: 'integer' },
+        },
+      },
+
+      // Maintenance
+      MaintenanceRequest: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          vehicleId: { type: 'string' },
+          driverId: { type: 'string', nullable: true },
+          issueTitle: { type: 'string' },
+          issueDescription: { type: 'string', nullable: true },
+          priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+          odometerReading: { type: 'integer', nullable: true },
+          reportedAt: { type: 'string', format: 'date-time' },
+          status: { type: 'string', enum: ['DRAFT', 'SUBMITTED', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED', 'CANCELLED'] },
+          createdById: { type: 'string', nullable: true },
+          approvedById: { type: 'string', nullable: true },
+          approvedAt: { type: 'string', format: 'date-time', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      MaintenanceCreateInput: {
+        type: 'object',
+        required: ['vehicleId', 'issueTitle'],
+        properties: {
+          vehicleId: { type: 'string' },
+          driverId: { type: 'string' },
+          issueTitle: { type: 'string' },
+          issueDescription: { type: 'string' },
+          priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] },
+          odometerReading: { type: 'integer', minimum: 0 },
+          reportedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+
+      // Repairs
+      Repair: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          maintenanceRequestId: { type: 'string', nullable: true },
+          vehicleId: { type: 'string' },
+          assignedMechanicId: { type: 'string', nullable: true },
+          vendorName: { type: 'string', nullable: true },
+          repairType: { type: 'string' },
+          repairNotes: { type: 'string', nullable: true },
+          laborCost: { type: 'number', nullable: true },
+          partsCost: { type: 'number', nullable: true },
+          totalCost: { type: 'number', nullable: true },
+          startedAt: { type: 'string', format: 'date-time', nullable: true },
+          completedAt: { type: 'string', format: 'date-time', nullable: true },
+          status: { type: 'string', enum: ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] },
+          createdById: { type: 'string', nullable: true },
+          completedById: { type: 'string', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      RepairCreateInput: {
+        type: 'object',
+        required: ['vehicleId', 'repairType'],
+        properties: {
+          maintenanceRequestId: { type: 'string' },
+          vehicleId: { type: 'string' },
+          assignedMechanicId: { type: 'string' },
+          vendorName: { type: 'string' },
+          repairType: { type: 'string' },
+          repairNotes: { type: 'string' },
+          laborCost: { type: 'number', minimum: 0 },
+          partsCost: { type: 'number', minimum: 0 },
+          totalCost: { type: 'number', minimum: 0 },
+          startedAt: { type: 'string', format: 'date-time' },
         },
       },
     },
@@ -1350,5 +1426,35 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/expenses/{id}/approve': { post: { tags: ['Expenses'], summary: 'Approve expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense approved' } } } },
     '/expenses/{id}/reject': { post: { tags: ['Expenses'], summary: 'Reject expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense rejected' } } } },
     '/expenses/{id}/cancel': { post: { tags: ['Expenses'], summary: 'Cancel expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense cancelled' } } } },
+
+    // Maintenance
+    '/maintenance': {
+      get: { tags: ['Maintenance'], summary: 'List maintenance requests', security: [{ bearerAuth: [] }], parameters: [{ name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SUBMITTED', 'APPROVED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED', 'CANCELLED'] } }, { name: 'priority', in: 'query', schema: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated maintenance requests' } } },
+      post: { tags: ['Maintenance'], summary: 'Create maintenance request', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/MaintenanceCreateInput' } } } }, responses: { '201': { description: 'Maintenance request created' } } },
+    },
+    '/maintenance/{id}': {
+      get: { tags: ['Maintenance'], summary: 'Get maintenance request', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance request' } } },
+      patch: { tags: ['Maintenance'], summary: 'Update maintenance request', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance request updated' } } },
+    },
+    '/maintenance/{id}/submit': { post: { tags: ['Maintenance'], summary: 'Submit maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request submitted' } } } },
+    '/maintenance/{id}/approve': { post: { tags: ['Maintenance'], summary: 'Approve maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request approved' } } } },
+    '/maintenance/{id}/reject': { post: { tags: ['Maintenance'], summary: 'Reject maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request rejected' } } } },
+    '/maintenance/{id}/start': { post: { tags: ['Maintenance'], summary: 'Start maintenance (set IN_PROGRESS)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance started' } } } },
+    '/maintenance/{id}/complete': { post: { tags: ['Maintenance'], summary: 'Complete maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance completed' } } } },
+    '/maintenance/{id}/cancel': { post: { tags: ['Maintenance'], summary: 'Cancel maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance cancelled' } } } },
+
+    // Repairs
+    '/repairs': {
+      get: { tags: ['Repairs'], summary: 'List repairs', security: [{ bearerAuth: [] }], parameters: [{ name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'assignedMechanicId', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated repairs' } } },
+      post: { tags: ['Repairs'], summary: 'Create repair', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/RepairCreateInput' } } } }, responses: { '201': { description: 'Repair created' } } },
+    },
+    '/repairs/{id}': {
+      get: { tags: ['Repairs'], summary: 'Get repair', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Repair' } } },
+      patch: { tags: ['Repairs'], summary: 'Update repair', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Repair updated' } } },
+    },
+    '/repairs/{id}/schedule': { post: { tags: ['Repairs'], summary: 'Schedule repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair scheduled' } } } },
+    '/repairs/{id}/start': { post: { tags: ['Repairs'], summary: 'Start repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair started' } } } },
+    '/repairs/{id}/complete': { post: { tags: ['Repairs'], summary: 'Complete repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair completed' } } } },
+    '/repairs/{id}/cancel': { post: { tags: ['Repairs'], summary: 'Cancel repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair cancelled' } } } },
   },
 };

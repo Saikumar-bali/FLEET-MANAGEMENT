@@ -282,3 +282,53 @@ export type ExpenseRecord = WorkflowRelated & {
   vendor: string | null;
   receiptNumber: string | null;
 };
+
+export type MaintenancePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type MaintenanceStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
+export type MaintenanceRecord = {
+  id: string;
+  vehicleId: string;
+  driverId: string | null;
+  issueTitle: string;
+  issueDescription: string | null;
+  priority: MaintenancePriority;
+  odometerReading: number | null;
+  reportedAt: string;
+  status: MaintenanceStatus;
+  createdById: string | null;
+  approvedById: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  driver: { id: string; name: string; status: string } | null;
+  createdBy: { id: string; name: string; username: string } | null;
+  approvedBy: { id: string; name: string; username: string } | null;
+  repairs: Array<{ id: string; repairType: string; status: string; totalCost: number | null; assignedMechanicId: string | null; createdAt: string }>;
+};
+
+export type RepairStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type RepairRecord = {
+  id: string;
+  maintenanceRequestId: string | null;
+  vehicleId: string;
+  assignedMechanicId: string | null;
+  vendorName: string | null;
+  repairType: string;
+  repairNotes: string | null;
+  laborCost: number | null;
+  partsCost: number | null;
+  totalCost: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  status: RepairStatus;
+  createdById: string | null;
+  completedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  maintenanceRequest: { id: string; issueTitle: string; status: string } | null;
+  assignedMechanic: { id: string; name: string; username: string } | null;
+  createdBy: { id: string; name: string; username: string } | null;
+  completedBy: { id: string; name: string; username: string } | null;
+};
