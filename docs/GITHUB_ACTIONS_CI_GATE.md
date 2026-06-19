@@ -43,16 +43,25 @@ the disposable CI database created per workflow run.
 ### Super Admin
 
 The super admin user is created by the Prisma seed using `ADMIN_USERNAME` and
-`ADMIN_PASSWORD` (not `CI_SUPER_ADMIN_*`). The CI workflow generates a random
-`ADMIN_PASSWORD` at runtime. Test credential helpers fall through from
-`CI_SUPER_ADMIN_IDENTIFIER`/`CI_SUPER_ADMIN_PASSWORD` to `ADMIN_USERNAME`/
-`ADMIN_PASSWORD`, so the super admin resolves correctly without independent
-CI_SUPER_ADMIN variables.
+`ADMIN_PASSWORD` (the seed itself reads these env vars, not `CI_SUPER_ADMIN_*`).
+The CI workflow maps GitHub Secrets into those variables:
 
-If GitHub Secrets `CI_SUPER_ADMIN_IDENTIFIER` and `CI_SUPER_ADMIN_PASSWORD`
-are configured, the seed will still use `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
-To use overridden super admin credentials, also configure `ADMIN_USERNAME`
-and `ADMIN_PASSWORD` as GitHub Secrets.
+| GitHub Secret Name | Maps to env var | Used by seed as |
+|---|---|---|
+| `CI_SUPER_ADMIN_IDENTIFIER` | `ADMIN_USERNAME` | super admin login identifier |
+| `CI_SUPER_ADMIN_PASSWORD` | `ADMIN_PASSWORD` | super admin password |
+
+When no `CI_SUPER_ADMIN_*` secrets are configured, the workflow defaults
+`ADMIN_USERNAME=admin` and generates a random `ADMIN_PASSWORD` at runtime.
+Test credential helpers fall through from `CI_SUPER_ADMIN_IDENTIFIER` →
+`ADMIN_USERNAME` and `CI_SUPER_ADMIN_PASSWORD` → `ADMIN_PASSWORD`, so the
+super admin resolves correctly in all cases.
+
+**Important:** `CI_SUPER_ADMIN_IDENTIFIER` and `CI_SUPER_ADMIN_PASSWORD` must
+NOT be generated independently in the runtime credential loop. The seed creates
+the super admin through `ADMIN_USERNAME`/`ADMIN_PASSWORD`, not through
+CI_SUPER_ADMIN env vars. Setting them independently would create a mismatch
+between the login identifier and the seed-created user.
 
 ### Demo Roles (admin, manager, supervisor, driver, etc.)
 
@@ -69,7 +78,7 @@ The following repository or environment secrets may optionally override the
 runtime-generated CI credentials:
 
 - `CI_JWT_SECRET`
-- `ADMIN_USERNAME`, `ADMIN_PASSWORD` (super admin — if set, overrides the seed super admin)
+- `CI_SUPER_ADMIN_IDENTIFIER`, `CI_SUPER_ADMIN_PASSWORD` (super admin — mapped into `ADMIN_USERNAME`/`ADMIN_PASSWORD` for the seed)
 - `CI_ADMIN_IDENTIFIER`, `CI_ADMIN_PASSWORD`
 - `CI_MANAGER_IDENTIFIER`, `CI_MANAGER_PASSWORD`
 - `CI_SUPERVISOR_IDENTIFIER`, `CI_SUPERVISOR_PASSWORD`

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review performed on `phase-5-deployment-gate-review-fixes` (PR #16). CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection documented but not yet configured. Phase 6 is NOT Started and is BLOCKED until Phase 5 review is accepted. Branch protection still requires manual configuration if not configured.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review is in PR #16 and CI is passing. CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection documented but not yet configured. Branch protection still requires manual configuration in GitHub UI. Phase 6 was started prematurely in PR #15 and is BLOCKED. PR #15 must not be reviewed or merged until PR #16 is accepted and merged. Do not mark Phase 6 as accepted, completed, or deployable.
 
 ## Phase Progress
 
@@ -45,8 +45,8 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
 | Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed |
 | Phase 5 Deployment Gate | Local verification + CI + staging deploy | Merged through PR #14 |
-| Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | Review Fix PR #16 (CI PASS) |
-| Phase 6 | Maintenance and Repair | Not Started |
+| Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16, CI PASS, final review pending |
+| Phase 6 | Maintenance and Repair | Premature PR #15 open, BLOCKED, not accepted |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
 | Phase 9 | Reports, Notifications, Deployment | Not Started |
