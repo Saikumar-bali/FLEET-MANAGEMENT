@@ -5,7 +5,7 @@
 - **Branch name**: `phase-5-deployment-gate`
 - **Main base commit**: `c951bf126ae54826bfdef92fafb022b2bdeb2ffb` (PR #12 merge)
 - **Reviewed deployment evidence commit**: `b2f30872e070b404eae4cec300bad624f8b9c35c`
-- **Current correction commit**: `82780006862322291cf516a8518d72a3a5feb24f`
+- **Current correction commit**: `718f348756efbc407e5dc113bb490ad083e2aa21`
 
 ## Local Verification Results
 
@@ -96,7 +96,7 @@
 |------|--------|-------------|
 | 2026-06-19 | `b2f30872e070b404eae4cec300bad624f8b9c35c` | Original deployment gate evidence |
 | 2026-06-19 | `615daa9cbd42d842ddf4a822b524b2aebb62c9dd` | Fix evidence/progress metadata accuracy |
-| 2026-06-19 | `82780006862322291cf516a8518d72a3a5feb24f` | Fix correction SHA in evidence |
+| 2026-06-19 | `718f348756efbc407e5dc113bb490ad083e2aa21` | Fix correction SHA in evidence |
 
 ## Decision
 
