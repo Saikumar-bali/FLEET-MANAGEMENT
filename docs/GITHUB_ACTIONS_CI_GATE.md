@@ -40,13 +40,36 @@ It generates a JWT secret and unique per-role passwords at runtime using
 never match local, staging, or production credentials. They exist only within
 the disposable CI database created per workflow run.
 
+### Super Admin
+
+The super admin user is created by the Prisma seed using `ADMIN_USERNAME` and
+`ADMIN_PASSWORD` (not `CI_SUPER_ADMIN_*`). The CI workflow generates a random
+`ADMIN_PASSWORD` at runtime. Test credential helpers fall through from
+`CI_SUPER_ADMIN_IDENTIFIER`/`CI_SUPER_ADMIN_PASSWORD` to `ADMIN_USERNAME`/
+`ADMIN_PASSWORD`, so the super admin resolves correctly without independent
+CI_SUPER_ADMIN variables.
+
+If GitHub Secrets `CI_SUPER_ADMIN_IDENTIFIER` and `CI_SUPER_ADMIN_PASSWORD`
+are configured, the seed will still use `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
+To use overridden super admin credentials, also configure `ADMIN_USERNAME`
+and `ADMIN_PASSWORD` as GitHub Secrets.
+
+### Demo Roles (admin, manager, supervisor, driver, etc.)
+
+For all other roles, the workflow generates random passwords at runtime.
+The seed's `ciDemoCredential()` function reads `CI_<ROLE>_IDENTIFIER` and
+`CI_<ROLE>_PASSWORD` environment variables. When both are present (either
+from GitHub Secrets or runtime generation), the seed creates a CI-only user
+with those credentials. When either is missing, the seed falls back to default
+demo credentials (safe only in the disposable CI database).
+
 ### Optional GitHub Secret Overrides
 
 The following repository or environment secrets may optionally override the
 runtime-generated CI credentials:
 
 - `CI_JWT_SECRET`
-- `CI_SUPER_ADMIN_IDENTIFIER`, `CI_SUPER_ADMIN_PASSWORD`
+- `ADMIN_USERNAME`, `ADMIN_PASSWORD` (super admin — if set, overrides the seed super admin)
 - `CI_ADMIN_IDENTIFIER`, `CI_ADMIN_PASSWORD`
 - `CI_MANAGER_IDENTIFIER`, `CI_MANAGER_PASSWORD`
 - `CI_SUPERVISOR_IDENTIFIER`, `CI_SUPERVISOR_PASSWORD`
@@ -63,10 +86,10 @@ CI-only passwords. Do not use local, staging, or production credentials.
 `CI_DATABASE_URL` is set by the workflow to the temporary PostgreSQL service
 container. It is not read from GitHub Secrets or any shared database.
 
-When GitHub Secrets are not configured, the workflow generates both the
-identifier and password for each CI role at runtime. Previously hardcoded
-demo fallback passwords (`admin@123`, `manager@123`, etc.) have been replaced
-with `openssl rand -hex 12` generated values to eliminate any reuse risk.
+When GitHub Secrets are not configured, the workflow generates random
+passwords at runtime. Previously hardcoded demo fallback passwords
+(`admin@123`, `manager@123`, etc.) have been replaced with
+`openssl rand -hex 12` generated values to eliminate any reuse risk.
 
 ## Local Development
 
