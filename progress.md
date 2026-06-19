@@ -43,7 +43,8 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
 | GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
-| Phase 5 | Fuel and Expense Workflow | Ready for review, PR #12 CI PASS |
+| Phase 5 | Fuel and Expense Workflow | Deployed to staging |
+| Phase 5 Deployment Gate | Local verification + CI + staging deploy | Submitted for Review |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
@@ -912,6 +913,33 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 evidence 
 - No secrets committed
 - Phase 4 remains blocked (backend build fails)
 
+### 2026-06-19 (Phase 5 Deployment Gate)
+
+- **Branch**: `phase-5-deployment-gate`
+- **PR**: https://github.com/Saikumar-bali/FLEET-MANAGEMENT/pull/14
+- **CI Gate**: PASS (both checks SUCCESS)
+- **Local verification**:
+  - Backend lint: PASS
+  - Backend build: PASS
+  - Web lint: PASS
+  - Web build: PASS
+  - API docs coverage: PASS (86/86)
+  - Trip API tests: PASS (39 passed, 0 failed, 8 skipped)
+  - Fuel/Expense API tests: PASS (18 passed, 0 failed)
+  - Playwright E2E: PASS (33 passed, 0 failed)
+- **Staging DB schema**: PASS (fuel_entries and expenses tables confirmed)
+- **Backend Vercel deploy**:
+  - Project: `fleet-management-backend-staging`
+  - URL: https://fleet-management-backend-staging.vercel.app
+  - Status: PASS
+- **Web Vercel deploy**: NOT RUN (no web source code changes)
+- **Staging smoke**:
+  - Standard API: PASS (25/0/0)
+  - Fuel/Expense: PASS (24/0/0)
+- **Swagger/OpenAPI**: PASS (Fuel and Expenses groups present, all endpoints documented)
+- **API endpoint testing**: 19/19 Phase 5 endpoints PASS
+- **Compliance**: No secrets printed, no production DB used, no mobile changes, Phase 6 not started
+
 ## Next Step
 
-Review the Phase 5 Fuel and Expense Workflow PR and require GitHub Actions to pass. Do not deploy Vercel during implementation.
+Review the Phase 5 Deployment Gate evidence and decide whether Phase 6 can start.
