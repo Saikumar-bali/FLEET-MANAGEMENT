@@ -53,6 +53,18 @@ function validatedUrl(name: string, value: string, protocols: string[]): string 
   return value;
 }
 
+function validatedUrls(name: string, value: string, protocols: string[]): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((v) => validatedUrl(name, v, protocols));
+}
+
 const databaseUrl = validatedUrl(
   'DATABASE_URL',
   requiredInDeployedEnvironment('DATABASE_URL'),
@@ -64,9 +76,9 @@ const directUrl = validatedUrl(
   ['postgres:', 'postgresql:'],
 );
 const jwtSecret = requiredInDeployedEnvironment('JWT_SECRET', 'development-only-secret');
-const corsOrigin = validatedUrl(
+const corsOrigins = validatedUrls(
   'CORS_ORIGIN',
-  requiredInDeployedEnvironment('CORS_ORIGIN', 'http://localhost:5173'),
+  requiredInDeployedEnvironment('CORS_ORIGIN', 'http://localhost:5173,http://localhost:5174'),
   ['http:', 'https:'],
 );
 
@@ -85,7 +97,7 @@ export const config = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxFileSize: positiveInteger('MAX_FILE_SIZE', '5242880'),
-  corsOrigin,
+  corsOrigins,
   adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || '',
   adminUsername: process.env.ADMIN_USERNAME?.trim().toLowerCase() || '',
   adminPassword: process.env.ADMIN_PASSWORD?.trim() || '',
