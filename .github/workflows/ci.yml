@@ -122,52 +122,52 @@ jobs:
             echo "ADMIN_USERNAME defaulted to admin"
           fi
           if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
-            echo "ADMIN_PASSWORD=admin@123" >> $GITHUB_ENV
-            echo "ADMIN_PASSWORD defaulted to demo value"
+            echo "ADMIN_PASSWORD=ci-$(openssl rand -hex 12)" >> $GITHUB_ENV
+            echo "ADMIN_PASSWORD generated at runtime"
           fi
 
-          # Default CI_* credential vars to demo values when not configured as GitHub Secrets
-          # Map: CI_*_IDENTIFIER -> demo username, CI_*_PASSWORD -> demo password
-          declare -A ci_defaults
-          ci_defaults[CI_SUPER_ADMIN_IDENTIFIER]=admin
-          ci_defaults[CI_SUPER_ADMIN_PASSWORD]=admin@123
-          ci_defaults[CI_ADMIN_IDENTIFIER]=opsadmin
-          ci_defaults[CI_ADMIN_PASSWORD]=opsadmin@123
-          ci_defaults[CI_MANAGER_IDENTIFIER]=manager
-          ci_defaults[CI_MANAGER_PASSWORD]=manager@123
-          ci_defaults[CI_SUPERVISOR_IDENTIFIER]=supervisor
-          ci_defaults[CI_SUPERVISOR_PASSWORD]=supervisor@123
-          ci_defaults[CI_DRIVER_IDENTIFIER]=driver
-          ci_defaults[CI_DRIVER_PASSWORD]=driver@123
-          ci_defaults[CI_ASSISTANT_DRIVER_IDENTIFIER]=assistantdriver
-          ci_defaults[CI_ASSISTANT_DRIVER_PASSWORD]=assistant@123
-          ci_defaults[CI_COLLECTOR_IDENTIFIER]=collector
-          ci_defaults[CI_COLLECTOR_PASSWORD]=collector@123
-          ci_defaults[CI_MECHANIC_IDENTIFIER]=mechanic
-          ci_defaults[CI_MECHANIC_PASSWORD]=mechanic@123
-          ci_defaults[CI_FINANCE_IDENTIFIER]=finance
-          ci_defaults[CI_FINANCE_PASSWORD]=finance@123
-          ci_defaults[CI_VIEWER_IDENTIFIER]=viewer
-          ci_defaults[CI_VIEWER_PASSWORD]=viewer@123
+          # Default CI_* identifiers to simple CI-only role names
+          declare -A ci_ident_defaults
+          ci_ident_defaults[CI_SUPER_ADMIN_IDENTIFIER]=ci-super-admin
+          ci_ident_defaults[CI_ADMIN_IDENTIFIER]=ci-admin
+          ci_ident_defaults[CI_MANAGER_IDENTIFIER]=ci-manager
+          ci_ident_defaults[CI_SUPERVISOR_IDENTIFIER]=ci-supervisor
+          ci_ident_defaults[CI_DRIVER_IDENTIFIER]=ci-driver
+          ci_ident_defaults[CI_ASSISTANT_DRIVER_IDENTIFIER]=ci-assistant-driver
+          ci_ident_defaults[CI_COLLECTOR_IDENTIFIER]=ci-collector
+          ci_ident_defaults[CI_MECHANIC_IDENTIFIER]=ci-mechanic
+          ci_ident_defaults[CI_FINANCE_IDENTIFIER]=ci-finance
+          ci_ident_defaults[CI_VIEWER_IDENTIFIER]=ci-viewer
 
           echo ""
-          echo "CI credential secret status:"
-          for var in \
-            CI_SUPER_ADMIN_IDENTIFIER CI_SUPER_ADMIN_PASSWORD \
-            CI_ADMIN_IDENTIFIER CI_ADMIN_PASSWORD \
-            CI_MANAGER_IDENTIFIER CI_MANAGER_PASSWORD \
-            CI_SUPERVISOR_IDENTIFIER CI_SUPERVISOR_PASSWORD \
-            CI_DRIVER_IDENTIFIER CI_DRIVER_PASSWORD \
-            CI_ASSISTANT_DRIVER_IDENTIFIER CI_ASSISTANT_DRIVER_PASSWORD \
-            CI_COLLECTOR_IDENTIFIER CI_COLLECTOR_PASSWORD \
-            CI_MECHANIC_IDENTIFIER CI_MECHANIC_PASSWORD \
-            CI_FINANCE_IDENTIFIER CI_FINANCE_PASSWORD \
-            CI_VIEWER_IDENTIFIER CI_VIEWER_PASSWORD; do
-            if [[ -n "${!var:-}" ]]; then
-              echo "  $var: configured via GitHub Secret"
+          echo "CI credential fallback status:"
+          for role in \
+            CI_SUPER_ADMIN \
+            CI_ADMIN \
+            CI_MANAGER \
+            CI_SUPERVISOR \
+            CI_DRIVER \
+            CI_ASSISTANT_DRIVER \
+            CI_COLLECTOR \
+            CI_MECHANIC \
+            CI_FINANCE \
+            CI_VIEWER; do
+            ident_var="${role}_IDENTIFIER"
+            pass_var="${role}_PASSWORD"
+            if [[ -n "${!ident_var:-}" ]]; then
+              echo "  $ident_var: configured via GitHub Secret"
             else
-              echo "  $var: using demo fallback"
-              echo "${var}=${ci_defaults[$var]}" >> $GITHUB_ENV
+              generated="ci-$(openssl rand -hex 12)"
+              echo "${ident_var}=${ci_ident_defaults[$ident_var]}" >> $GITHUB_ENV
+              echo "${pass_var}=${generated}" >> $GITHUB_ENV
+              echo "  $ident_var: generated at runtime"
+            fi
+            if [[ -z "${!pass_var:-}" ]]; then
+              generated="ci-$(openssl rand -hex 12)"
+              echo "${pass_var}=${generated}" >> $GITHUB_ENV
+              echo "  $pass_var: generated at runtime"
+            else
+              echo "  $pass_var: configured via GitHub Secret"
             fi
           done
 

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is submitted for review in PR #14. Backend staging deploy completed. Web deploy was NOT RUN because no web source deployment was needed. Swagger/OpenAPI live links are verified. Phase 6 is NOT Started. Branch protection still requires manual configuration if not configured.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review performed on `phase-5-deployment-gate-review-fixes`. CI workflow demo password fallbacks replaced with runtime-generated values. Branch protection documented but not yet configured. Phase 6 is NOT Started. Branch protection still requires manual configuration if not configured.
 
 ## Phase Progress
 
@@ -43,8 +43,9 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 | Phase 4 PR Merge Approval 2 | Prisma build stability and complete approval rerun | Submitted for Review |
 | GitHub Actions CI Gate | Automated hygiene, build, API, and Playwright gate | Completed and merged through PR #10 |
 | Phase 4 Post-Merge Smoke | Main merge and complete post-merge verification | Completed |
-| Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed, pending deployment evidence merge |
-| Phase 5 Deployment Gate | Local verification + CI + staging deploy | Submitted for Review in PR #14 |
+| Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed |
+| Phase 5 Deployment Gate | Local verification + CI + staging deploy | Merged through PR #14 |
+| Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | Review Fix PR #? (Not Yet Opened) |
 | Phase 6 | Maintenance and Repair | Not Started |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
@@ -940,6 +941,33 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 - **API endpoint testing**: 19/19 Phase 5 endpoints PASS
 - **Compliance**: No secrets printed, no production DB used, no mobile changes, Phase 6 not started
 
+### 2026-06-19 (Phase 5 Deployment Gate Review)
+
+**Branch:** `phase-5-deployment-gate-review-fixes`
+**Base:** `main` (Phase 5 merge commit `c99fa4e`)
+
+**Fixes applied:**
+- CI workflow: replaced hardcoded demo password fallbacks (`admin@123`, `manager@123`, etc.) with `openssl rand -hex 12` generated disposable CI-only passwords
+- CI identifiers prefixed `ci-` (e.g., `ci-admin`, `ci-viewer`) to avoid confusion with real accounts
+- Created `docs/BRANCH_PROTECTION_REQUIRED.md` with step-by-step GitHub UI instructions
+- Updated `docs/GITHUB_ACTIONS_CI_GATE.md` to document new credential generation approach
+
+**Verification:**
+- `npm run backend:lint` (via tsc): PASS (exit 0)
+- `npm run backend:build`: PASS (exit 0)
+- `npm run web:lint` (via tsc): PASS (exit 0)
+- `npm run web:build`: PASS (exit 0)
+- `npm --prefix backend run test:api-docs`: 86/86 PASS (exit 0)
+- `npm --prefix backend run test:trips`: 79/79 PASS (exit 0)
+- `npm --prefix backend run test:fuel-expenses`: 18/18 PASS (exit 0)
+- `npm --prefix web run test:e2e:headed`: 33/33 PASS (exit 0)
+- Swagger UI: local OpenAPI has 52 paths, 12 tags
+- Vercel deploy: NOT RUN (awaiting PR CI and human review)
+- Phase 6: NOT started
+- Mobile: NOT modified
+- Secrets: NOT printed or committed
+- Branch protection: NOT configured (documentation provided)
+
 ## Next Step
 
-Review the Phase 5 Deployment Gate evidence and decide whether Phase 6 can start.
+Review the Phase 5 Deployment Gate Review. If accepted, configure branch protection and proceed to Phase 6.
