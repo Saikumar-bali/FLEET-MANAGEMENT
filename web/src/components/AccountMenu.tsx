@@ -8,7 +8,15 @@ type AccountMenuProps = {
 export function AccountMenu({ anchorRect, onClose }: AccountMenuProps) {
   const auth = useAuth();
 
-  const top = anchorRect.top;
+  const menuHeight = 140;
+  const viewportHeight = window.innerHeight;
+
+  let top = anchorRect.top;
+  if (top + menuHeight > viewportHeight - 16) {
+    top = anchorRect.bottom - menuHeight;
+  }
+  if (top < 16) top = 16;
+
   const left = anchorRect.right + 4;
 
   const handleSignOut = async () => {
