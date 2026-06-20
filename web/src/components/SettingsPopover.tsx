@@ -9,7 +9,11 @@ type SettingsPopoverProps = {
 export function SettingsPopover({ anchorRect, onClose, onThemeClick }: SettingsPopoverProps) {
   const { theme } = useTheme();
 
-  const top = anchorRect.bottom + 8;
+  const popoverHeight = 380;
+  const spaceBelow = window.innerHeight - anchorRect.bottom;
+  const openAbove = spaceBelow < popoverHeight + 16;
+
+  const top = openAbove ? anchorRect.top - popoverHeight - 8 : anchorRect.bottom + 8;
   const left = anchorRect.left;
 
   return (
@@ -67,8 +71,12 @@ type ThemeSubmenuProps = {
 export function ThemeSubmenu({ anchorRect, onClose }: ThemeSubmenuProps) {
   const { theme, setTheme } = useTheme();
 
+  const submenuWidth = 180;
+  const spaceRight = window.innerWidth - anchorRect.right;
+  const openLeft = spaceRight < submenuWidth + 16;
+
   const top = anchorRect.top;
-  const left = anchorRect.right + 4;
+  const left = openLeft ? anchorRect.left - submenuWidth - 4 : anchorRect.right + 4;
 
   return (
     <>
