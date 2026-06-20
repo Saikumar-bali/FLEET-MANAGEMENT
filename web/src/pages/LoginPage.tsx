@@ -36,11 +36,11 @@ export function LoginPage() {
     <div className="login-shell">
       <section className="login-panel login-panel-shell">
         <div className="login-aside">
-          <div className="login-brand-mark">HF</div>
+          <div className="login-brand-mark">FM</div>
           <p className="eyebrow login-eyebrow">Fleet Management Platform</p>
-          <h1 className="login-title">A calmer admin workspace</h1>
+          <h1 className="login-title">Manage your fleet with clarity</h1>
           <p className="login-copy">
-            Fresh colors, clearer hierarchy, and responsive layouts across desktop, tablet, and phone.
+            A clean, modern workspace for vehicles, drivers, trips, and operations.
           </p>
           <div className="login-feature-list">
             <div className="login-feature-item">
@@ -48,8 +48,8 @@ export function LoginPage() {
               <span>Roles, users, vehicles, and assets in one consistent shell.</span>
             </div>
             <div className="login-feature-item">
-              <strong>Responsive by default</strong>
-              <span>The navigation and content adapt cleanly from wide screens down to mobile widths.</span>
+              <strong>Workflow-driven</strong>
+              <span>Trips, fuel, expenses, maintenance, and repairs with approval flows.</span>
             </div>
           </div>
         </div>

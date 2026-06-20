@@ -261,7 +261,7 @@ export function RolesPage() {
   }
 
   return (
-    <section className="form-page">
+    <section className="page-content">
       <div className="section-header">
         <div>
           <PageHeader

@@ -60,7 +60,7 @@ export function DriversPage() {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section>
+    <section className="page-content">
       <PageHeader
         title="Drivers"
         description={`${total} driver${total !== 1 ? 's' : ''} registered`}
@@ -71,15 +71,19 @@ export function DriversPage() {
         ] : undefined}
       />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="card trips-filter-card">
+        <div className="trips-filter-row">
           <input
+            className="trips-search-input"
             placeholder="Search drivers..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            style={{ flex: 1, minWidth: '200px' }}
           />
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} style={{ width: 'auto', minWidth: '150px' }}>
+          <select
+            className="trips-filter-select"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          >
             <option value="">All statuses</option>
             <option value="AVAILABLE">Available</option>
             <option value="ON_TRIP">On Trip</option>
@@ -96,7 +100,7 @@ export function DriversPage() {
           action={auth.hasPermission('driver_create') ? <button type="button" className="primary-button" onClick={() => navigate('/drivers/new')}>Add Driver</button> : undefined}
         />
       ) : (
-        <div className="card">
+        <div className="card table-card">
           <DataTable
             columns={columns}
             data={drivers}

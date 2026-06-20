@@ -173,10 +173,10 @@ export function VehicleDetailPage() {
   const canChangeStatus = auth.hasAnyPermission(['vehicle_update', 'vehicle_delete']);
 
   return (
-    <section className="form-page-full">
+    <section className="page-content">
       <div className="section-header">
         <div>
-          <a href="/vehicles" className="eyebrow" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.25rem' }}>Back to Vehicles</a>
+          <a href="/vehicles" className="trip-back-link">Back to Vehicles</a>
           <PageHeader
             title={isNew ? 'Add Vehicle' : vehicle ? vehicle.vehicleNumber : 'Vehicle'}
             description={isNew ? 'Register a new vehicle' : undefined}
@@ -213,7 +213,7 @@ export function VehicleDetailPage() {
       <form id="vehicle-form" className="form-main" onSubmit={handleSubmit}>
         {isNew || activeSection === 'overview' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>General Information</h4>
+            <h4 className="role-edit-h4">General Information</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Vehicle Number *</span>
@@ -295,7 +295,7 @@ export function VehicleDetailPage() {
 
         {!isNew && activeSection === 'registration' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Registration & Identification</h4>
+            <h4 className="role-edit-h4">Registration & Identification</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Chassis Number</span>
@@ -327,7 +327,7 @@ export function VehicleDetailPage() {
 
         {!isNew && activeSection === 'expiry' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Expiry Dates</h4>
+            <h4 className="role-edit-h4">Expiry Dates</h4>
             <div className="form-two-column">
               <label>
                 <span className="field-label">Insurance Expiry</span>
@@ -371,7 +371,7 @@ export function VehicleDetailPage() {
 
         {!isNew && activeSection === 'documents' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Documents</h4>
+            <h4 className="role-edit-h4">Documents</h4>
             <div className="info-banner">
               Documents section placeholder. Add RC, insurance, and permit documents here.
             </div>
@@ -380,15 +380,14 @@ export function VehicleDetailPage() {
 
         {!isNew && activeSection === 'status' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Status Management</h4>
+            <h4 className="role-edit-h4">Status Management</h4>
             {canChangeStatus ? (
               <div className="action-panel">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                  <span className="field-label" style={{ whiteSpace: 'nowrap' }}>Status:</span>
+                <label className="role-status-label">
+                  <span className="field-label">Status:</span>
                   <select
                     value={statusValue}
                     onChange={(e) => setStatusValue(e.target.value)}
-                    style={{ width: 'auto', minWidth: '180px' }}
                   >
                     <option value="AVAILABLE">Available</option>
                     <option value="UNDER_MAINTENANCE">Under Maintenance</option>
@@ -404,7 +403,7 @@ export function VehicleDetailPage() {
               <p className="helper-text">You do not have permission to change status.</p>
             )}
             {vehicle ? (
-              <div className="form-two-column" style={{ marginTop: '0.5rem' }}>
+              <div className="form-two-column">
                 <div>
                   <p className="detail-label">Created</p>
                   <p className="detail-value">{new Date(vehicle.createdAt).toLocaleDateString()}</p>
@@ -419,7 +418,7 @@ export function VehicleDetailPage() {
         ) : null}
 
         {isNew ? (
-          <div className="action-panel" style={{ marginTop: '0.5rem' }}>
+          <div className="action-panel">
             <button type="submit" className="primary-button" disabled={isSaving}>
               {isSaving ? 'Creating...' : 'Create Vehicle'}
             </button>

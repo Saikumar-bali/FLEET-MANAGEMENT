@@ -28,8 +28,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand-row">
-            <div className="sidebar-brand-mark">HF</div>
-            <h1 className="sidebar-title">Hippofleet</h1>
+            <div className="sidebar-brand-mark">FM</div>
+            <h1 className="sidebar-title">Fleet Management</h1>
             <button type="button" className="sidebar-close-button" onClick={onClose}>
               Close
             </button>

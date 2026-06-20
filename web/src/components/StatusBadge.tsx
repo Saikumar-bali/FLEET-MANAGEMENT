@@ -1,19 +1,27 @@
 const statusStyles: Record<string, { bg: string; color: string }> = {
-  AVAILABLE: { bg: '#edf7f1', color: '#0f6b42' },
-  ON_TRIP: { bg: '#eef4ff', color: '#2a5bd7' },
-  ON_LEAVE: { bg: '#fff6e8', color: '#9a6400' },
-  UNDER_MAINTENANCE: { bg: '#fff6e8', color: '#9a6400' },
-  UNDER_REPAIR: { bg: '#fff0f1', color: '#b42318' },
-  INACTIVE: { bg: '#f2f4f7', color: '#475467' },
-  SOLD: { bg: '#f2f4f7', color: '#475467' },
-  ACCIDENT: { bg: '#fff0f1', color: '#b42318' },
-  SUSPENDED: { bg: '#fff0f1', color: '#b42318' },
-  ACTIVE: { bg: '#edf7f1', color: '#0f6b42' },
-  ASSIGNED: { bg: '#eef4ff', color: '#2a5bd7' },
-  DAMAGED: { bg: '#fff0f1', color: '#b42318' },
-  LOST: { bg: '#fff0f1', color: '#b42318' },
-  RETIRED: { bg: '#f2f4f7', color: '#475467' },
-  SYSTEM: { bg: '#f4f3ff', color: '#6941c6' },
+  AVAILABLE: { bg: '#e6f4ea', color: '#1e8e3e' },
+  ON_TRIP: { bg: '#e8f0fe', color: '#1a73e8' },
+  ON_LEAVE: { bg: '#fef7e0', color: '#e37400' },
+  UNDER_MAINTENANCE: { bg: '#fef7e0', color: '#e37400' },
+  UNDER_REPAIR: { bg: '#fce8e6', color: '#d93025' },
+  INACTIVE: { bg: '#f1f3f4', color: '#5f6368' },
+  SOLD: { bg: '#f1f3f4', color: '#5f6368' },
+  ACCIDENT: { bg: '#fce8e6', color: '#d93025' },
+  SUSPENDED: { bg: '#fce8e6', color: '#d93025' },
+  ACTIVE: { bg: '#e6f4ea', color: '#1e8e3e' },
+  ASSIGNED: { bg: '#e8f0fe', color: '#1a73e8' },
+  DAMAGED: { bg: '#fce8e6', color: '#d93025' },
+  LOST: { bg: '#fce8e6', color: '#d93025' },
+  RETIRED: { bg: '#f1f3f4', color: '#5f6368' },
+  SYSTEM: { bg: '#f3e8ff', color: '#7c3aed' },
+  DRAFT: { bg: '#f1f3f4', color: '#5f6368' },
+  SUBMITTED: { bg: '#e8f0fe', color: '#1a73e8' },
+  APPROVED: { bg: '#e6f4ea', color: '#1e8e3e' },
+  REJECTED: { bg: '#fce8e6', color: '#d93025' },
+  CANCELLED: { bg: '#f1f3f4', color: '#5f6368' },
+  SCHEDULED: { bg: '#e8f0fe', color: '#1a73e8' },
+  STARTED: { bg: '#e8f0fe', color: '#1a73e8' },
+  COMPLETED: { bg: '#e6f4ea', color: '#1e8e3e' },
 };
 
 type StatusBadgeProps = {
@@ -21,7 +29,7 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const style = statusStyles[status] ?? { bg: '#e9ecef', color: '#5a6474' };
+  const style = statusStyles[status] ?? { bg: '#f1f3f4', color: '#5f6368' };
 
   return (
     <span
@@ -29,8 +37,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       style={{
         background: style.bg,
         color: style.color,
-        border: `1px solid ${style.color}22`,
-        fontWeight: 600,
+        border: `1px solid ${style.color}18`,
       }}
     >
       {status.replace(/_/g, ' ')}

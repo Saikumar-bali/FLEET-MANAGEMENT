@@ -90,7 +90,7 @@ export function VehiclesPage() {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section>
+    <section className="page-content">
       <PageHeader
         title="Vehicles"
         description={`${total} vehicle${total !== 1 ? 's' : ''} registered`}
@@ -110,18 +110,18 @@ export function VehiclesPage() {
         }
       />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+      <div className="card trips-filter-card">
+        <div className="trips-filter-row">
           <input
+            className="trips-search-input"
             placeholder="Search vehicles..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            style={{ flex: 1, minWidth: '200px' }}
           />
           <select
+            className="trips-filter-select"
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            style={{ width: 'auto', minWidth: '150px' }}
           >
             <option value="">All statuses</option>
             <option value="AVAILABLE">Available</option>
@@ -145,7 +145,7 @@ export function VehiclesPage() {
           }
         />
       ) : (
-        <div className="card">
+        <div className="card table-card">
           <DataTable
             columns={columns}
             data={vehicles}

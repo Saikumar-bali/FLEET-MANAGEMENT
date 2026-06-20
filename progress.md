@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review is in PR #16 and CI is passing. CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection documented but not yet configured. Branch protection still requires manual configuration in GitHub UI. Phase 6 was started prematurely in PR #15 and is BLOCKED. PR #15 must not be reviewed or merged until PR #16 is accepted and merged. Do not mark Phase 6 as accepted, completed, or deployable.
+UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete design system rewrite, app shell rebuild, and all major pages redesigned with AI Studio-inspired visual language. Web lint PASS, web build PASS, backend lint PASS. Ready for local API tests, Playwright headed verification, and PR.
 
 ## Phase Progress
 

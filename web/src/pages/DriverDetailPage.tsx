@@ -144,10 +144,10 @@ export function DriverDetailPage() {
   const canChangeStatus = auth.hasAnyPermission(['driver_update', 'driver_delete']);
 
   return (
-    <section className="form-page-full">
+    <section className="page-content">
       <div className="section-header">
         <div>
-          <a href="/drivers" className="eyebrow" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.25rem' }}>Back to Drivers</a>
+          <a href="/drivers" className="trip-back-link">Back to Drivers</a>
           <PageHeader
             title={isNew ? 'Add Driver' : driver ? driver.name : 'Driver'}
             description={isNew ? 'Register a new driver' : undefined}
@@ -184,7 +184,7 @@ export function DriverDetailPage() {
       <form id="driver-form" className="form-main" onSubmit={handleSubmit}>
         {isNew || activeSection === 'personal' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Personal Information</h4>
+            <h4 className="role-edit-h4">Personal Information</h4>
             <label>
               <span className="field-label">Name *</span>
               <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required disabled={!isNew && !canEdit} />
@@ -212,7 +212,7 @@ export function DriverDetailPage() {
 
         {!isNew && activeSection === 'license' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>License Information</h4>
+            <h4 className="role-edit-h4">License Information</h4>
             <label>
               <span className="field-label">License Number *</span>
               <input value={form.licenseNumber} onChange={(e) => setForm((f) => ({ ...f, licenseNumber: e.target.value }))} required disabled={!isNew && !canEdit} />
@@ -232,7 +232,7 @@ export function DriverDetailPage() {
 
         {!isNew && activeSection === 'documents' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Documents</h4>
+            <h4 className="role-edit-h4">Documents</h4>
             <div className="info-banner">
               Documents section placeholder. Add license, ID, and other documents here.
             </div>
@@ -241,15 +241,14 @@ export function DriverDetailPage() {
 
         {!isNew && activeSection === 'status' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>Status Management</h4>
+            <h4 className="role-edit-h4">Status Management</h4>
             {canChangeStatus ? (
               <div className="action-panel">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                  <span className="field-label" style={{ whiteSpace: 'nowrap' }}>Status:</span>
+                <label className="role-status-label">
+                  <span className="field-label">Status:</span>
                   <select
                     value={statusValue}
                     onChange={(e) => setStatusValue(e.target.value)}
-                    style={{ width: 'auto', minWidth: '180px' }}
                   >
                     <option value="AVAILABLE">Available</option>
                     <option value="ON_LEAVE">On Leave</option>
@@ -264,7 +263,7 @@ export function DriverDetailPage() {
               <p className="helper-text">You do not have permission to change status.</p>
             )}
             {driver ? (
-              <div className="form-two-column" style={{ marginTop: '0.5rem' }}>
+              <div className="form-two-column">
                 <div>
                   <p className="detail-label">Created</p>
                   <p className="detail-value">{new Date(driver.createdAt).toLocaleDateString()}</p>
@@ -279,7 +278,7 @@ export function DriverDetailPage() {
         ) : null}
 
         {isNew ? (
-          <div className="action-panel" style={{ marginTop: '0.5rem' }}>
+          <div className="action-panel">
             <button type="submit" className="primary-button" disabled={isSaving}>
               {isSaving ? 'Creating...' : 'Create Driver'}
             </button>

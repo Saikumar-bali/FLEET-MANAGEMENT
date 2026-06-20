@@ -35,7 +35,7 @@ export function AppLayout() {
               >
                 Menu
               </button>
-              <span className="topbar-mobile-brand">Hippofleet</span>
+              <span className="topbar-mobile-brand">Fleet Management</span>
             </div>
             <p className="topbar-eyebrow">{sectionLabel}</p>
             <h2 className="page-title">{pageTitle}</h2>
