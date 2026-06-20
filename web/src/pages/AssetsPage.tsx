@@ -48,9 +48,8 @@ export function AssetsPage() {
   const [categories, setCategories] = useState<AssetCategoryRecord[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(initialCategoryForm);
-  const [isKeyManuallyEdited, setIsKeyManuallyEdited] = useState(false);
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
@@ -94,7 +93,6 @@ export function AssetsPage() {
           const first = response.data[0];
           setSelectedCategoryId(first.id);
           setCategoryForm({ name: first.name, key: first.key, description: first.description ?? '', status: first.status });
-          setIsKeyManuallyEdited(true);
         }
       } catch (caughtError) {
         if (caughtError instanceof ApiError) setCategoryError(caughtError.message);
@@ -115,29 +113,18 @@ export function AssetsPage() {
   useEffect(() => {
     if (!selectedCategory) return;
     setCategoryForm({ name: selectedCategory.name, key: selectedCategory.key, description: selectedCategory.description ?? '', status: selectedCategory.status });
-    setIsKeyManuallyEdited(true);
     setCategoryMessage(null);
   }, [selectedCategory]);
 
   function startCreateCategoryMode() {
     setSelectedCategoryId(null);
     setCategoryForm(initialCategoryForm);
-    setIsKeyManuallyEdited(false);
     setCategoryError(null);
     setCategoryMessage(null);
   }
 
   function handleCategoryNameChange(name: string) {
-    setCategoryForm((current) => {
-      if (!isCreateCategoryMode || isKeyManuallyEdited) return { ...current, name };
-      return { ...current, name, key: normalizeCategoryKey(name) };
-    });
-  }
-
-  function handleCategoryKeyChange(key: string) {
-    const normalizedKey = normalizeCategoryKey(key);
-    setCategoryForm((current) => ({ ...current, key: normalizedKey }));
-    setIsKeyManuallyEdited(!isCreateCategoryMode || normalizedKey !== normalizeCategoryKey(categoryForm.name));
+    setCategoryForm((current) => ({ ...current, name, key: normalizeCategoryKey(name) }));
   }
 
   async function handleCategorySubmit(event: FormEvent<HTMLFormElement>) {
@@ -285,10 +272,6 @@ export function AssetsPage() {
                     <label>
                       <span className="field-label">Name</span>
                       <input value={categoryForm.name} onChange={(e) => handleCategoryNameChange(e.target.value)} required />
-                    </label>
-                    <label>
-                      <span className="field-label">Key</span>
-                      <input value={categoryForm.key} onChange={(e) => handleCategoryKeyChange(e.target.value)} required />
                     </label>
                     <label>
                       <span className="field-label">Description</span>
