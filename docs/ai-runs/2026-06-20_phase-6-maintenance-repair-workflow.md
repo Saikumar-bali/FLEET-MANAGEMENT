@@ -3,6 +3,7 @@
 **Date:** 2026-06-20
 **Branch:** `phase-6-maintenance-repair-clean`
 **Base:** `main` (latest, commit `8cbeb12`)
+**Latest head:** `0435f58bbca7f6e73a5680c2a902fb367c29eaf7`
 
 ## What Was Built
 
@@ -36,14 +37,14 @@
 - Repair list page with search, status filter
 - Repair detail/create page with vehicle, category, provider, estimated cost, description fields
 - Repair lifecycle buttons: Start Repair, Complete, Cancel
-- Sidebar navigation updated with Maintenance and Repairs links
+- Sidebar navigation updated with Maintenance and Repairs links (clipboard-check and wrench icons)
 
 ### Tests
 - Backend API test: 35+ scenarios covering CRUD, lifecycle, vehicle status transitions, viewer denied, negative cases
 - Playwright E2E: 2 test scenarios for maintenance and repair workflows
-- API docs coverage: 102 endpoints across 12 tags
+- API docs coverage: 86/86 PASS
 
-## CI Failure Root Cause and Fixes
+## CI Failure Root Cause and Fixes (Codex Feedback Addressed)
 
 ### Codex P1: Repair Prisma Include Bug
 **File:** `backend/src/modules/repairs/repairs.service.ts`
@@ -77,23 +78,43 @@
 | No "API key" text (Integrations instead) | PASS |
 | Mobile sidebar override at 900px | PASS |
 | Maintenance and Repairs nav links visible | PASS |
+| Maintenance clipboard-check icon | PASS |
+| Repair wrench icon | PASS |
 
-## Verification Commands
+## Verification Commands (Latest Head: 0435f58)
 
-| Command | Result | Exit Code |
-|---------|--------|-----------|
-| `npm run backend:lint` (tsc --noEmit) | PASS | 0 |
-| `npm run backend:build` (tsc) | PASS | 0 |
-| `npm run web:lint` (tsc --noEmit) | PASS | 0 |
-| `npm run web:build` (vite build) | PASS | 0 |
-| API docs coverage test | 86/86 PASS | 0 |
-| Playwright test list | 35 tests in 4 files | — |
-| Backend API test | Requires running server | — |
+| Command | Result | Exit Code | Notes |
+|---------|--------|-----------|-------|
+| `npm run backend:lint` (tsc --noEmit) | PASS | 0 | |
+| `npm run backend:build` (prisma generate + tsc) | FAIL (EPERM) | 1 | Known Windows Prisma EPM — not code-related |
+| `npm run web:lint` (tsc --noEmit) | PASS | 0 | |
+| `npm run web:build` (tsc -b + vite build) | PASS | 0 | |
+| API docs coverage test | 86/86 PASS | 0 | |
+| Playwright test list | 35 tests in 4 files | — | |
+| Backend API test (maintenance-repair) | Requires running server | — | API_BASE_URL not set locally |
+
+## Codex Review Comments — Addressed
+
+All three Codex review issues have been resolved:
+1. Repair queries now use `repairInclude` with `closedBy` — VERIFIED in `repairs.service.ts`
+2. Repair transitions update vehicle status using `Prisma.$transaction` — VERIFIED in `repairs.service.ts`
+3. Maintenance Playwright test fills `Description *` — VERIFIED in `maintenance-repairs.spec.ts`
+
+## Intentional Deferrals
+
+- **Vehicle compliance expansion** (insurance/permit documents): Deferred to Phase 6.1. Current vehicle model has basic expiry fields only.
+- **Real document upload**: Deferred to Phase 6.1. No file upload added in this PR.
+- **Vercel deploy**: NOT RUN during this implementation.
+- **Phase 7**: NOT started.
+- **Mobile**: NOT modified.
 
 ## Gate Status
 
+- **GitHub Actions CI Gate:** PASS (commit `0435f58`)
+  - Completed: 2026-06-20T10:56:39Z
+  - Workflow: CI Gate — Hygiene, build, API, and Playwright
+- **Branch protection:** CONFIGURED
 - **Vercel deploy:** NOT RUN
 - **Phase 7:** NOT started
 - **Mobile:** NOT modified
 - **Secrets:** NOT printed or committed
-- **GitHub Actions CI:** Pending (awaiting push and CI run)
