@@ -26,42 +26,42 @@ export function SettingsPopover({ anchorRect, onClose, onThemeClick }: SettingsP
       <div className="popover-backdrop" onClick={onClose} />
       <div className="popover" style={{ top, left, minWidth: popoverWidth }}>
         <button type="button" className="popover-row" onClick={(e) => onThemeClick(e.currentTarget)}>
-          <span className="popover-row-label">Theme</span>
+          <span className="popover-row-label">Appearance</span>
           <span className="popover-row-chevron">
             {theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'System'} ›
           </span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Submit prompt key</span>
+          <span className="popover-row-label">Keyboard shortcuts</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Autocomplete</span>
+          <span className="popover-row-label">Smart suggestions</span>
           <span className="popover-row-chevron">›</span>
         </button>
         <div className="popover-divider" />
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Applet notifications</span>
+          <span className="popover-row-label">Fleet alerts</span>
           <span className="popover-row-chevron">›</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Account status</span>
+          <span className="popover-row-label">User access status</span>
           <span className="popover-row-chevron">›</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">View status</span>
+          <span className="popover-row-label">System health</span>
         </button>
         <div className="popover-divider" />
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Terms of service</span>
+          <span className="popover-row-label">Usage policy</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Privacy policy</span>
+          <span className="popover-row-label">Data & privacy</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Send feedback</span>
+          <span className="popover-row-label">Report an issue</span>
         </button>
         <button type="button" className="popover-row" onClick={() => {}}>
-          <span className="popover-row-label">Billing Support</span>
+          <span className="popover-row-label">Help & support</span>
         </button>
       </div>
     </>

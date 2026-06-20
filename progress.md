@@ -1035,6 +1035,37 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 - No mobile app changed
 - No Vercel deployment
 
+### 2026-06-20 (UI Final Fleet Copy Polish)
+
+**Branch:** `ui-aistudio-final-fleet-copy-polish` (from `ui-aistudio-sidebar-exact-light-toggle`)
+**Base Commit:** `3f92fa672aea13c120aa4bcd0691f02a1aa66919`
+
+**What was done:** Small final polish to replace Google AI Studio / AI product terms with Fleet Management domain terms. No layout, theme, or backend changes.
+
+**Changes made:**
+- Sidebar icon bar: "API key" renamed to "Integrations" with link icon
+- Upgrade card: fleet-specific copy ("Upgrade fleet limits" / "Add more vehicles, users, reports, and automation.")
+- Settings popover: all 10 labels renamed (Theme -> Appearance, Submit prompt key -> Keyboard shortcuts, Autocomplete -> Smart suggestions, Applet notifications -> Fleet alerts, Account status -> User access status, View status -> System health, Terms of service -> Usage policy, Privacy policy -> Data & privacy, Send feedback -> Report an issue, Billing Support -> Help & support)
+- Navigation labels: Playground -> Overview, History -> Activity History, New trip -> New Trip, My fleet -> My Fleet, Gallery -> Asset Library, Overview (MANAGE) -> Dashboard
+- AccountMenu: inline styles replaced with CSS classes
+
+**Files changed:**
+- `web/src/components/Sidebar.tsx`
+- `web/src/components/SettingsPopover.tsx`
+- `web/src/components/AccountMenu.tsx`
+- `web/src/config/navigation.ts`
+- `web/src/app/styles.css`
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
 ## Next Step
+
+Review the Final Fleet Copy Polish. If accepted, merge and proceed.
 
 Review the AI Studio Sidebar Exact Light Toggle correction. If accepted, commit, push, and proceed to Phase 6.
