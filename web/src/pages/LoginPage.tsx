@@ -36,8 +36,7 @@ export function LoginPage() {
     <div className="login-shell">
       <section className="login-panel login-panel-shell">
         <div className="login-aside">
-          <div className="login-brand-mark">FM</div>
-          <p className="eyebrow login-eyebrow">Fleet Management Platform</p>
+          <p className="eyebrow">Fleet Management Platform</p>
           <h1 className="login-title">Manage your fleet with clarity</h1>
           <p className="login-copy">
             A clean, modern workspace for vehicles, drivers, trips, and operations.

@@ -968,6 +968,36 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 - Secrets: NOT printed or committed
 - Branch protection: NOT configured (documentation provided)
 
+### 2026-06-19 (UI Dark-Only AI Studio Replica Correction)
+
+**Branch:** `ui-aistudio-exact-dark-replica` (from `ui-aistudio-redesign`)
+**Correcting Commit:** `367a2ad4fef2fc5988e88693beec8e457e336c95` (Phase 1 UI redesign)
+
+**What was rejected:** Phase 1 UI redesign was only "AI Studio inspired" — used Inter font, light theme variables (`#f8f9fa` backgrounds, white cards), mixed light/dark surfaces. Not a faithful dark-mode replica.
+
+**Changes made:**
+- Complete CSS design system rewrite to dark-only palette (near-black `#0f0f0f` page, `#1a1a1a` surfaces, `#2a2a2a` borders)
+- Removed Inter font import; replaced with Google Sans / Roboto fallback stack
+- All color tokens converted to dark-optimized muted palette
+- StatusBadge: muted dark backgrounds with subtle colored borders (no bright light-theme colors)
+- Sidebar: removed gradient brand mark, compact dark nav with pill highlights
+- LoginPage: removed broken `.login-brand-mark` reference
+- All shadows dark-optimized
+
+**Files changed:**
+- `web/src/app/styles.css` — complete dark-only CSS rewrite (1710 lines)
+- `web/src/components/StatusBadge.tsx` — muted dark badge palette
+- `web/src/pages/LoginPage.tsx` — removed broken brand-mark div
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- Playwright screenshots captured at 1440x900 dark-mode viewport
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
 ## Next Step
 
-Review the Phase 5 Deployment Gate Review. If accepted, configure branch protection and proceed to Phase 6.
+Review the Dark-Only AI Studio Replica correction. If accepted, commit, push, and proceed to Phase 6.
