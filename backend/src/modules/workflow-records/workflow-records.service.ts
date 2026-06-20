@@ -2,7 +2,7 @@ import { Prisma, WorkflowRecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 
-export type RecordKind = 'fuel' | 'expense';
+export type RecordKind = 'fuel' | 'expense' | 'maintenance';
 
 export const workflowInclude = {
   vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true } },

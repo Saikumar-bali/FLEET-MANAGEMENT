@@ -282,3 +282,37 @@ export type ExpenseRecord = WorkflowRelated & {
   vendor: string | null;
   receiptNumber: string | null;
 };
+export type MaintenanceRecord = WorkflowRelated & {
+  requestDate: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  category: string;
+  description: string;
+  estimatedCost: number | null;
+  actualCost: number | null;
+  scheduledDate: string | null;
+  completedDate: string | null;
+};
+export type RepairRecord = {
+  id: string;
+  vehicleId: string;
+  tripId: string | null;
+  driverId: string | null;
+  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  trip: { id: string; tripNumber: string; vehicleId: string } | null;
+  driver: { id: string; name: string; status: string } | null;
+  createdBy: { id: string; name: string; username: string } | null;
+  closedBy: { id: string; name: string; username: string } | null;
+  repairDate: string;
+  category: string;
+  description: string;
+  estimatedCost: number | null;
+  actualCost: number | null;
+  provider: string | null;
+  invoiceNumber: string | null;
+  closedById: string | null;
+  closedAt: string | null;
+};

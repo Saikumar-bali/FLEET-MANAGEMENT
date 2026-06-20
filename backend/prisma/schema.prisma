@@ -43,6 +43,10 @@ model User {
   fuelEntriesApproved      FuelEntry[]       @relation("FuelApprovedBy")
   expensesCreated          Expense[]         @relation("ExpenseCreatedBy")
   expensesApproved         Expense[]         @relation("ExpenseApprovedBy")
+  maintenanceCreated       MaintenanceRequest[] @relation("MaintenanceCreatedBy")
+  maintenanceApproved      MaintenanceRequest[] @relation("MaintenanceApprovedBy")
+  repairsCreated           Repair[]          @relation("RepairCreatedBy")
+  repairsClosed            Repair[]          @relation("RepairClosedBy")
 
   @@map("users")
 }
@@ -211,10 +215,12 @@ model Vehicle {
   currentDriverId String?       @map("current_driver_id")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
-  currentDriver   Driver?       @relation(fields: [currentDriverId], references: [id])
+  currentDriver   Driver?              @relation(fields: [currentDriverId], references: [id])
   trips           Trip[]
   fuelEntries     FuelEntry[]
   expenses        Expense[]
+  maintenance     MaintenanceRequest[]
+  repairs         Repair[]
 
   @@map("vehicles")
 }
@@ -234,9 +240,11 @@ model Driver {
   updatedAt         DateTime     @updatedAt @map("updated_at")
   vehicles          Vehicle[]
   tripsAsDriver     Trip[]
-  tripsAsAssistant  Trip[]       @relation("TripAssistantDriver")
+  tripsAsAssistant  Trip[]               @relation("TripAssistantDriver")
   fuelEntries       FuelEntry[]
   expenses          Expense[]
+  maintenance       MaintenanceRequest[]
+  repairs           Repair[]
 
   @@map("drivers")
 }
@@ -342,6 +350,8 @@ model Trip {
   history           TripHistory[]
   fuelEntries       FuelEntry[]
   expenses          Expense[]
+  maintenance       MaintenanceRequest[]
+  repairs           Repair[]
 
   @@index([vehicleId, status])
   @@index([driverId, status])
@@ -371,6 +381,20 @@ enum WorkflowRecordStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  CANCELLED
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RepairStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
   CANCELLED
 }
 
@@ -453,6 +477,71 @@ model Document {
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
   @@map("documents")
+}
+
+model MaintenanceRequest {
+  id              String               @id @default(cuid())
+  vehicleId       String               @map("vehicle_id")
+  tripId          String?              @map("trip_id")
+  driverId        String?              @map("driver_id")
+  requestDate     DateTime             @map("request_date")
+  priority        MaintenancePriority  @default(MEDIUM)
+  category        String
+  description     String
+  estimatedCost   Decimal?             @map("estimated_cost") @db.Decimal(14, 2)
+  actualCost      Decimal?             @map("actual_cost") @db.Decimal(14, 2)
+  scheduledDate   DateTime?            @map("scheduled_date")
+  completedDate   DateTime?            @map("completed_date")
+  notes           String?
+  status          WorkflowRecordStatus @default(DRAFT)
+  createdById     String?              @map("created_by")
+  approvedById    String?              @map("approved_by")
+  approvedAt      DateTime?            @map("approved_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  vehicle         Vehicle              @relation(fields: [vehicleId], references: [id])
+  trip            Trip?                @relation(fields: [tripId], references: [id])
+  driver          Driver?              @relation(fields: [driverId], references: [id])
+  createdBy       User?                @relation("MaintenanceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy      User?                @relation("MaintenanceApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, requestDate])
+  @@index([tripId])
+  @@index([driverId])
+  @@index([status])
+  @@map("maintenance_requests")
+}
+
+model Repair {
+  id              String        @id @default(cuid())
+  vehicleId       String        @map("vehicle_id")
+  tripId          String?       @map("trip_id")
+  driverId        String?       @map("driver_id")
+  repairDate      DateTime      @map("repair_date")
+  category        String
+  description     String
+  estimatedCost   Decimal?      @map("estimated_cost") @db.Decimal(14, 2)
+  actualCost      Decimal?      @map("actual_cost") @db.Decimal(14, 2)
+  provider        String?
+  invoiceNumber   String?       @map("invoice_number")
+  notes           String?
+  status          RepairStatus  @default(OPEN)
+  createdById     String?       @map("created_by")
+  closedById      String?       @map("closed_by")
+  closedAt        DateTime?     @map("closed_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  trip            Trip?         @relation(fields: [tripId], references: [id])
+  driver          Driver?       @relation(fields: [driverId], references: [id])
+  createdBy       User?         @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  closedBy        User?         @relation("RepairClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, repairDate])
+  @@index([tripId])
+  @@index([driverId])
+  @@index([status])
+  @@map("repairs")
 }
 
 model AuditLog {

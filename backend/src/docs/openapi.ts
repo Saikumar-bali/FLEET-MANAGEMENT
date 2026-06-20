@@ -43,6 +43,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Trips' },
     { name: 'Fuel' },
     { name: 'Expenses' },
+    { name: 'Maintenance' },
+    { name: 'Repairs' },
   ],
   components: {
     securitySchemes: {
@@ -1350,5 +1352,30 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/expenses/{id}/approve': { post: { tags: ['Expenses'], summary: 'Approve expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense approved' } } } },
     '/expenses/{id}/reject': { post: { tags: ['Expenses'], summary: 'Reject expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense rejected' } } } },
     '/expenses/{id}/cancel': { post: { tags: ['Expenses'], summary: 'Cancel expense', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expense cancelled' } } } },
+    '/maintenance': {
+      get: { tags: ['Maintenance'], summary: 'List maintenance requests', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated maintenance requests' } } },
+      post: { tags: ['Maintenance'], summary: 'Create maintenance request', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'requestDate', 'category', 'description'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, requestDate: { type: 'string', format: 'date-time' }, priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] }, category: { type: 'string' }, description: { type: 'string' }, estimatedCost: { type: 'number' }, actualCost: { type: 'number' }, scheduledDate: { type: 'string', format: 'date-time' }, completedDate: { type: 'string', format: 'date-time' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Maintenance request created' } } },
+    },
+    '/maintenance/{id}': {
+      get: { tags: ['Maintenance'], summary: 'Get maintenance request', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance request' } } },
+      patch: { tags: ['Maintenance'], summary: 'Update maintenance request', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance request updated' } } },
+      delete: { tags: ['Maintenance'], summary: 'Cancel maintenance request', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance request cancelled' } } },
+    },
+    '/maintenance/{id}/submit': { post: { tags: ['Maintenance'], summary: 'Submit maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request submitted' } } } },
+    '/maintenance/{id}/approve': { post: { tags: ['Maintenance'], summary: 'Approve maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request approved' } } } },
+    '/maintenance/{id}/reject': { post: { tags: ['Maintenance'], summary: 'Reject maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request rejected' } } } },
+    '/maintenance/{id}/cancel': { post: { tags: ['Maintenance'], summary: 'Cancel maintenance request', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Maintenance request cancelled' } } } },
+    '/repairs': {
+      get: { tags: ['Repairs'], summary: 'List repairs', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated repairs' } } },
+      post: { tags: ['Repairs'], summary: 'Create repair', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'repairDate', 'category', 'description'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, repairDate: { type: 'string', format: 'date-time' }, category: { type: 'string' }, description: { type: 'string' }, estimatedCost: { type: 'number' }, actualCost: { type: 'number' }, provider: { type: 'string' }, invoiceNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Repair created' } } },
+    },
+    '/repairs/{id}': {
+      get: { tags: ['Repairs'], summary: 'Get repair', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Repair' } } },
+      patch: { tags: ['Repairs'], summary: 'Update repair', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Repair updated' } } },
+      delete: { tags: ['Repairs'], summary: 'Cancel repair', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Repair cancelled' } } },
+    },
+    '/repairs/{id}/start': { post: { tags: ['Repairs'], summary: 'Start repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair started' } } } },
+    '/repairs/{id}/complete': { post: { tags: ['Repairs'], summary: 'Complete repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair completed' } } } },
+    '/repairs/{id}/cancel': { post: { tags: ['Repairs'], summary: 'Cancel repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair cancelled' } } } },
   },
 };

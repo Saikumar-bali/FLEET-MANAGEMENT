@@ -2136,3 +2136,7 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.page-tabs {
+  margin-bottom: 1rem;
+}

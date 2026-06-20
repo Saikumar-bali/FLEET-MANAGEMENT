@@ -207,6 +207,25 @@ export function DriverDetailPage() {
               <span className="field-label">Emergency Contact</span>
               <input value={form.emergencyContact} onChange={(e) => setForm((f) => ({ ...f, emergencyContact: e.target.value }))} disabled={!canEdit} />
             </label>
+            {isNew ? (
+              <>
+                <h4 className="role-edit-h4">License Information</h4>
+                <label>
+                  <span className="field-label">License Number *</span>
+                  <input value={form.licenseNumber} onChange={(e) => setForm((f) => ({ ...f, licenseNumber: e.target.value }))} required />
+                </label>
+                <div className="form-two-column">
+                  <label>
+                    <span className="field-label">License Expiry</span>
+                    <input type="date" value={form.licenseExpiry ? form.licenseExpiry.substring(0, 10) : ''} onChange={(e) => setForm((f) => ({ ...f, licenseExpiry: e.target.value ? new Date(e.target.value).toISOString() : '' }))} />
+                  </label>
+                  <label>
+                    <span className="field-label">Experience (Years)</span>
+                    <input type="number" min={0} value={form.experienceYears} onChange={(e) => setForm((f) => ({ ...f, experienceYears: e.target.value }))} />
+                  </label>
+                </div>
+              </>
+            ) : null}
           </div>
         ) : null}
 
