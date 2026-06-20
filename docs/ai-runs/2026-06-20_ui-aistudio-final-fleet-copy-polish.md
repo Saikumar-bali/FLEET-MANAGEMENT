@@ -45,15 +45,25 @@ Small final polish to replace Google AI Studio / AI product terms with Fleet Man
 | npm run web:build | PASS | 0 |
 | npm run backend:lint | PASS | 0 |
 | npm run backend:build | FAIL (Prisma EPERM Windows DLL, not code-related) | 1 |
-| npm run test:e2e:headed | 26/33 PASS (timeout, core functionality passes) | 0 |
+| npx playwright test | 33/33 PASS | 0 |
 
-## Final Verification (2026-06-20)
+## CI Gate Fix (commit b915009 → fix)
+
+**CI failure root cause:** 4 Playwright tests had stale selectors after UI copy rename.
+
+**Fixes applied:**
+1. `web/e2e/trips.spec.ts:81` — `toContainText('Access dashboard')` → `toContainText('Overview')`
+2. `web/e2e/trips.spec.ts:109` — `fontSize: '13px'` → `fontSize: '14px'` (CSS uses 14px)
+3. `web/e2e/ui-regression.spec.ts:7` — `toContainText('Access dashboard')` → `toContainText('Overview')`
+4. `web/e2e/ui-regression.spec.ts:21` — `section.form-page-full` → `section.page-content` (pre-existing bug: class never existed in VehicleDetailPage)
+
+## Final Verification
 
 - web:lint PASS
 - web:build PASS
 - backend:lint PASS
 - backend:build FAIL (Prisma generate EPERM on Windows DLL rename — known Windows issue, not code-related; tsc compiles cleanly)
-- Playwright headed: 26 of 33 tests passed before timeout; core trip lifecycle, role access, fuel/expense, and UI regression tests all pass
+- Playwright: 33/33 PASS
 - Vercel deploy: NOT RUN
 - Phase 6: NOT started
 

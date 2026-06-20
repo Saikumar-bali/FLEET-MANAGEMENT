@@ -4,7 +4,7 @@ import { loginAsRole } from './helpers/credentials';
 test.describe('Phase 3.3 UI regression tests', () => {
   test('Login as admin', async ({ page }) => {
     await loginAsRole(page, 'admin');
-    await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
+    await expect(page.locator('.page-header-title')).toContainText('Overview');
   });
 
   test('Open /vehicles/:id and confirm layout', async ({ page }) => {
@@ -18,7 +18,7 @@ test.describe('Phase 3.3 UI regression tests', () => {
     await firstRow.click();
     await page.waitForURL(/\/vehicles\//);
 
-    await expect(page.locator('section.form-page-full')).toBeVisible();
+    await expect(page.locator('section.page-content')).toBeVisible();
     await expect(page.locator('text=General Information').first()).toBeVisible();
     await expect(page.locator('text=Status').first()).toBeVisible();
     await expect(page.locator('#vehicle-form')).toBeVisible();
