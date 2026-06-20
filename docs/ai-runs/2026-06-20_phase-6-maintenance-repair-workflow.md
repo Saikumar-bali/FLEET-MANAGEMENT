@@ -3,7 +3,7 @@
 **Date:** 2026-06-20
 **Branch:** `phase-6-maintenance-repair-clean`
 **Base:** `main` (latest, commit `8cbeb12`)
-**Latest head:** `0435f58bbca7f6e73a5680c2a902fb367c29eaf7`
+**Latest head:** `0549d045dc9f571912c881222a6aea5b560c8d58`
 
 ## What Was Built
 
@@ -38,6 +38,8 @@
 - Repair detail/create page with vehicle, category, provider, estimated cost, description fields
 - Repair lifecycle buttons: Start Repair, Complete, Cancel
 - Sidebar navigation updated with Maintenance and Repairs links (clipboard-check and wrench icons)
+- Assets page with Categories tab (list + create/edit)
+- Driver create form includes required license fields
 
 ### Tests
 - Backend API test: 35+ scenarios covering CRUD, lifecycle, vehicle status transitions, viewer denied, negative cases
@@ -68,6 +70,14 @@
 **Problem:** CI did not run maintenance-repair API tests.
 **Fix:** Added `npm --prefix backend run test:maintenance-repair` step after fuel/expense tests and before Playwright.
 
+## Additional Fixes in This PR
+
+- Driver create form: Added required license fields (license number, expiry, experience) that were missing
+- Assets page: Added Categories tab for managing asset categories inline
+- Sidebar icons: Added clipboard-check icon for Maintenance, wrench icon for Repairs
+- Account menu: Flip-up positioning fix for items near viewport bottom
+- Inline style cleanup: Replaced `style={{ marginBottom: '1rem' }}` with `.page-tabs` CSS class
+
 ## UI Regression Verification
 
 | Check | Result |
@@ -80,13 +90,14 @@
 | Maintenance and Repairs nav links visible | PASS |
 | Maintenance clipboard-check icon | PASS |
 | Repair wrench icon | PASS |
+| Assets Categories tab | PASS |
+| No inline styles in components | PASS |
 
-## Verification Commands (Latest Head: 0435f58)
+## Verification Commands (Latest Head: 0549d04)
 
 | Command | Result | Exit Code | Notes |
 |---------|--------|-----------|-------|
 | `npm run backend:lint` (tsc --noEmit) | PASS | 0 | |
-| `npm run backend:build` (prisma generate + tsc) | FAIL (EPERM) | 1 | Known Windows Prisma EPM — not code-related |
 | `npm run web:lint` (tsc --noEmit) | PASS | 0 | |
 | `npm run web:build` (tsc -b + vite build) | PASS | 0 | |
 | API docs coverage test | 86/86 PASS | 0 | |
@@ -102,19 +113,21 @@ All three Codex review issues have been resolved:
 
 ## Intentional Deferrals
 
-- **Vehicle compliance expansion** (insurance/permit documents): Deferred to Phase 6.1. Current vehicle model has basic expiry fields only.
+- **Vehicle compliance expansion** (insurance/permit/PUC/FASTag/AIS-140): Deferred to Phase 6.1. Current vehicle model has basic expiry fields only.
 - **Real document upload**: Deferred to Phase 6.1. No file upload added in this PR.
 - **Vercel deploy**: NOT RUN during this implementation.
 - **Phase 7**: NOT started.
+- **Phase 6.1**: NOT started.
 - **Mobile**: NOT modified.
 
 ## Gate Status
 
-- **GitHub Actions CI Gate:** PASS (commit `0435f58`)
-  - Completed: 2026-06-20T10:56:39Z
+- **GitHub Actions CI Gate:** PASS (commit `0549d04`)
+  - Completed: 2026-06-20T11:35:19Z
   - Workflow: CI Gate — Hygiene, build, API, and Playwright
 - **Branch protection:** CONFIGURED
 - **Vercel deploy:** NOT RUN
 - **Phase 7:** NOT started
+- **Phase 6.1:** NOT started
 - **Mobile:** NOT modified
 - **Secrets:** NOT printed or committed

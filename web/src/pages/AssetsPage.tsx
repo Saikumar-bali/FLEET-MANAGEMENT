@@ -172,7 +172,7 @@ export function AssetsPage() {
         ] : undefined}
       />
 
-      <div className="detail-tabs" style={{ marginBottom: '1rem' }}>
+      <div className="detail-tabs page-tabs">
         <button type="button" className={`detail-tab${activeTab === 'assets' ? ' detail-tab-active' : ''}`} onClick={() => setActiveTab('assets')}>Assets</button>
         <button type="button" className={`detail-tab${activeTab === 'categories' ? ' detail-tab-active' : ''}`} onClick={() => setActiveTab('categories')}>Categories</button>
       </div>
