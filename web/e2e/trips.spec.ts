@@ -78,7 +78,7 @@ test.describe('Phase 4.8 Trip workflow tests', () => {
 
   test('Login as admin', async ({ page }) => {
     await loginAsRole(page, 'admin');
-    await expect(page.locator('.page-header-title')).toContainText('Access dashboard');
+    await expect(page.locator('.page-header-title')).toContainText('Overview');
   });
 
   test('Admin: Create Trip button visible on /trips', async ({ page }) => {
@@ -106,7 +106,7 @@ test.describe('Phase 4.8 Trip workflow tests', () => {
     const fontSize = await page.evaluate(() => {
       return window.getComputedStyle(document.documentElement).fontSize;
     });
-    expect(fontSize).toBe('13px');
+    expect(fontSize).toBe('14px');
   });
 
   test('Roles page still works', async ({ page }) => {

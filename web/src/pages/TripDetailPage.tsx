@@ -334,10 +334,10 @@ export function TripDetailPage() {
   const canCancelTrip = status !== 'COMPLETED' && status !== 'CANCELLED' && canCancel;
 
   return (
-    <section className="form-page-full">
+    <section className="page-content">
       <div className="section-header">
         <div>
-          <a href="/trips" className="eyebrow trip-back-link">Back to Trips</a>
+          <a href="/trips" className="trip-back-link">Back to Trips</a>
           <PageHeader
             title={isNew ? 'Create Trip' : trip ? trip.tripNumber : 'Trip'}
             description={isNew ? 'Create a new trip or transfer' : undefined}
@@ -806,7 +806,7 @@ export function TripDetailPage() {
         )}
 
         {isNew && (
-          <div className="action-panel" style={{ marginTop: '0.5rem' }}>
+          <div className="action-panel">
             <button type="submit" className="primary-button" disabled={isSaving}>
               {isSaving ? 'Creating...' : 'Create Trip'}
             </button>

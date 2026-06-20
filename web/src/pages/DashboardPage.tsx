@@ -27,16 +27,14 @@ export function DashboardPage() {
   }, []);
 
   return (
-    <section className="page-grid">
-      <div className="content-span-12">
-        <PageHeader
-          eyebrow="Security"
-          title="Access dashboard"
-          description="Current user context, role coverage, and quick checks before access changes."
-        />
-      </div>
+    <section className="page-content">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Overview"
+        description="Current user context, role coverage, and quick checks before access changes."
+      />
 
-      <article className="card content-span-12">
+      <article className="card">
         <div className="dashboard-grid">
           <div className="content-span-5 metric-card">
             <p className="metric-label">Current user</p>
@@ -64,11 +62,11 @@ export function DashboardPage() {
         </div>
       </article>
 
-      <article className="card content-span-7">
+      <article className="card">
         <div className="table-toolbar">
           <div>
             <h3 className="table-toolbar-title">Quick links</h3>
-            <p className="table-toolbar-copy">Jump straight into the security areas people touch most.</p>
+            <p className="table-toolbar-copy">Jump straight into the areas people touch most.</p>
           </div>
         </div>
         <div className="quick-link-grid">
@@ -84,16 +82,22 @@ export function DashboardPage() {
               <span>Review system and custom roles</span>
             </Link>
           ) : null}
-          {auth.hasAnyPermission(['permission_view', 'permission_assign']) ? (
-            <Link className="quick-link-card" to="/roles#permission-matrix">
-              <strong>Permissions</strong>
-              <span>Open the permission matrix directly</span>
+          {auth.hasAnyPermission(['vehicle_view']) ? (
+            <Link className="quick-link-card" to="/vehicles">
+              <strong>Vehicles</strong>
+              <span>Manage vehicle master data</span>
+            </Link>
+          ) : null}
+          {auth.hasAnyPermission(['trip_view']) ? (
+            <Link className="quick-link-card" to="/trips">
+              <strong>Trips</strong>
+              <span>Manage trips and transfers</span>
             </Link>
           ) : null}
         </div>
       </article>
 
-      <article className="card content-span-5">
+      <article className="card">
         <div className="table-toolbar">
           <div>
             <h3 className="table-toolbar-title">Session detail</h3>
@@ -125,12 +129,10 @@ export function DashboardPage() {
       </article>
 
       {auth.permissions.length === 0 ? (
-        <div className="content-span-12">
-          <EmptyState
-            title="This account has no active permissions"
-            message="Check role assignments before trying to manage any secured area."
-          />
-        </div>
+        <EmptyState
+          title="This account has no active permissions"
+          message="Check role assignments before trying to manage any secured area."
+        />
       ) : null}
     </section>
   );

@@ -116,7 +116,7 @@ export function TripsPage() {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section>
+    <section className="page-content">
       <PageHeader
         title="Trips"
         description={`${total} trip${total !== 1 ? 's' : ''}`}
@@ -181,7 +181,7 @@ export function TripsPage() {
           }
         />
       ) : (
-        <div className="card">
+        <div className="card table-card">
           <DataTable
             columns={columns}
             data={trips}

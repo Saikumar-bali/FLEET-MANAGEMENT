@@ -408,10 +408,10 @@ export function AssetDetailPage() {
   ];
 
   return (
-    <section className="form-page-full">
+    <section className="page-content">
       <div className="section-header">
         <div>
-          <a href="/assets" className="eyebrow" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '0.25rem' }}>Back to Assets</a>
+          <a href="/assets" className="trip-back-link">Back to Assets</a>
           <PageHeader
             title={isNew ? 'Add Asset' : asset ? `${asset.assetCode} - ${asset.name}` : 'Asset'}
             description={isNew ? 'Register a new asset' : undefined}
@@ -474,7 +474,7 @@ export function AssetDetailPage() {
       <form id="asset-form" className="form-main" onSubmit={handleSubmit}>
         {isNew || activeSection === 'overview' ? (
           <div className="card form-section-grid">
-            <h4 style={{ margin: 0 }}>{isNew ? 'Asset Information' : 'Overview'}</h4>
+            <h4 className="role-edit-h4">{isNew ? 'Asset Information' : 'Overview'}</h4>
 
             <div className="form-two-column">
               <label>
@@ -560,7 +560,7 @@ export function AssetDetailPage() {
         {!isNew && activeSection === 'assignment' && asset ? (
           <>
             <div className="card form-section-grid">
-              <h4 style={{ margin: 0 }}>Current Assignment</h4>
+              <h4 className="role-edit-h4">Current Assignment</h4>
               {currentAssignment ? (
                 <div className="form-two-column">
                   <div>
@@ -579,7 +579,7 @@ export function AssetDetailPage() {
                     <p className="detail-label">Assigned By</p>
                     <p className="detail-value">{currentAssignment.assignedBy ? `${currentAssignment.assignedBy.name} (${currentAssignment.assignedBy.email})` : '-'}</p>
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
+                  <div className="content-span-12">
                     <p className="detail-label">Notes</p>
                     <p className="detail-value">{currentAssignment.notes || '-'}</p>
                   </div>
@@ -590,7 +590,7 @@ export function AssetDetailPage() {
             </div>
 
             <div className="card form-section-grid">
-              <h4 style={{ margin: 0 }}>Snapshot</h4>
+              <h4 className="role-edit-h4">Snapshot</h4>
               <div className="form-two-column">
                 <div>
                   <p className="detail-label">Status</p>
@@ -612,7 +612,7 @@ export function AssetDetailPage() {
             </div>
 
             <div className="card form-section-grid">
-              <h4 style={{ margin: 0 }}>Assignment Records</h4>
+              <h4 className="role-edit-h4">Assignment Records</h4>
               {assignments.length === 0 ? (
                 <p className="muted-copy">No assignment history yet.</p>
               ) : (
@@ -650,7 +650,7 @@ export function AssetDetailPage() {
         ) : null}
 
         {isNew ? (
-          <div className="action-panel" style={{ marginTop: '0.5rem' }}>
+          <div className="action-panel">
             <button type="submit" className="primary-button" disabled={isSaving}>
               {isSaving ? 'Creating...' : 'Create Asset'}
             </button>

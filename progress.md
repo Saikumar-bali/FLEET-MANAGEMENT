@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review is in PR #16 and CI is passing. CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection documented but not yet configured. Branch protection still requires manual configuration in GitHub UI. Phase 6 was started prematurely in PR #15 and is BLOCKED. PR #15 must not be reviewed or merged until PR #16 is accepted and merged. Do not mark Phase 6 as accepted, completed, or deployable.
+UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete design system rewrite, app shell rebuild, and all major pages redesigned with AI Studio-inspired visual language. Web lint PASS, web build PASS, backend lint PASS. Ready for local API tests, Playwright headed verification, and PR.
 
 ## Phase Progress
 
@@ -968,6 +968,104 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 - Secrets: NOT printed or committed
 - Branch protection: NOT configured (documentation provided)
 
+### 2026-06-19 (UI Dark-Only AI Studio Replica Correction)
+
+**Branch:** `ui-aistudio-exact-dark-replica` (from `ui-aistudio-redesign`)
+**Correcting Commit:** `367a2ad4fef2fc5988e88693beec8e457e336c95` (Phase 1 UI redesign)
+
+**What was rejected:** Phase 1 UI redesign was only "AI Studio inspired" — used Inter font, light theme variables (`#f8f9fa` backgrounds, white cards), mixed light/dark surfaces. Not a faithful dark-mode replica.
+
+**Changes made:**
+- Complete CSS design system rewrite to dark-only palette (near-black `#0f0f0f` page, `#1a1a1a` surfaces, `#2a2a2a` borders)
+- Removed Inter font import; replaced with Google Sans / Roboto fallback stack
+- All color tokens converted to dark-optimized muted palette
+- StatusBadge: muted dark backgrounds with subtle colored borders (no bright light-theme colors)
+- Sidebar: removed gradient brand mark, compact dark nav with pill highlights
+- LoginPage: removed broken `.login-brand-mark` reference
+- All shadows dark-optimized
+
+**Files changed:**
+- `web/src/app/styles.css` — complete dark-only CSS rewrite (1710 lines)
+- `web/src/components/StatusBadge.tsx` — muted dark badge palette
+- `web/src/pages/LoginPage.tsx` — removed broken brand-mark div
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- Playwright screenshots captured at 1440x900 dark-mode viewport
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
+### 2026-06-19 (UI AI Studio Sidebar Exact Light Toggle Correction)
+
+**Branch:** `ui-aistudio-sidebar-exact-light-toggle` (from `ui-aistudio-exact-dark-replica`)
+**Rejected Commit:** `9ac848fc457b2dbe8544f52ebab63a1913da402b` (dark-only AI Studio replica)
+
+**What was rejected:** The previous push only made the app dark-only. It did not replicate the Google AI Studio sidebar shown in the reference screenshot.
+
+**Changes made:**
+- New ThemeProvider with light/dark/system support and localStorage persistence
+- Complete CSS rewrite with light/dark tokens using `[data-theme]` selectors, light mode as default
+- AI Studio-style sidebar with EXPLORE / BUILD / MANAGE sections
+- Desktop collapse toggle with localStorage persistence
+- Bottom upgrade card, icon bar (bell, gear, search, key), account chip
+- Settings popover with theme submenu and all required rows
+- Account menu with user info and sign out
+- Logout moved from topbar to account menu
+- Minimal AI Studio-style topbar
+
+**Files changed:**
+- `web/src/context/ThemeContext.tsx` — NEW
+- `web/src/components/Sidebar.tsx` — Rewritten
+- `web/src/components/SettingsPopover.tsx` — NEW
+- `web/src/components/AccountMenu.tsx` — NEW
+- `web/src/layouts/AppLayout.tsx` — Updated
+- `web/src/config/navigation.ts` — Updated
+- `web/src/app/styles.css` — Rewritten (light/dark tokens)
+- `web/src/app/App.tsx` — Updated (ThemeProvider wrapper)
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- Playwright screenshot capture: PASS (10 screenshots)
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
+### 2026-06-20 (UI Final Fleet Copy Polish)
+
+**Branch:** `ui-aistudio-final-fleet-copy-polish` (from `ui-aistudio-sidebar-exact-light-toggle`)
+**Base Commit:** `3f92fa672aea13c120aa4bcd0691f02a1aa66919`
+
+**What was done:** Small final polish to replace Google AI Studio / AI product terms with Fleet Management domain terms. No layout, theme, or backend changes.
+
+**Changes made:**
+- Sidebar icon bar: "API key" renamed to "Integrations" with link icon
+- Upgrade card: fleet-specific copy ("Upgrade fleet limits" / "Add more vehicles, users, reports, and automation.")
+- Settings popover: all 10 labels renamed (Theme -> Appearance, Submit prompt key -> Keyboard shortcuts, Autocomplete -> Smart suggestions, Applet notifications -> Fleet alerts, Account status -> User access status, View status -> System health, Terms of service -> Usage policy, Privacy policy -> Data & privacy, Send feedback -> Report an issue, Billing Support -> Help & support)
+- Navigation labels: Playground -> Overview, History -> Activity History, New trip -> New Trip, My fleet -> My Fleet, Gallery -> Asset Library, Overview (MANAGE) -> Dashboard
+- AccountMenu: inline styles replaced with CSS classes
+
+**Files changed:**
+- `web/src/components/Sidebar.tsx`
+- `web/src/components/SettingsPopover.tsx`
+- `web/src/components/AccountMenu.tsx`
+- `web/src/config/navigation.ts`
+- `web/src/app/styles.css`
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
 ## Next Step
 
-Review the Phase 5 Deployment Gate Review. If accepted, configure branch protection and proceed to Phase 6.
+Review the Final Fleet Copy Polish. If accepted, merge and proceed.
+
+Review the AI Studio Sidebar Exact Light Toggle correction. If accepted, commit, push, and proceed to Phase 6.

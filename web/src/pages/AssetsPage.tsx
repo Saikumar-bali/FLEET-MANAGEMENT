@@ -60,7 +60,7 @@ export function AssetsPage() {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section>
+    <section className="page-content">
       <PageHeader
         title="Assets"
         description={`${total} asset${total !== 1 ? 's' : ''} registered`}
@@ -71,10 +71,19 @@ export function AssetsPage() {
         ] : undefined}
       />
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <input placeholder="Search assets..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ flex: 1, minWidth: '200px' }} />
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} style={{ width: 'auto', minWidth: '150px' }}>
+      <div className="card trips-filter-card">
+        <div className="trips-filter-row">
+          <input
+            className="trips-search-input"
+            placeholder="Search assets..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+          <select
+            className="trips-filter-select"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          >
             <option value="">All statuses</option>
             <option value="AVAILABLE">Available</option>
             <option value="ASSIGNED">Assigned</option>
@@ -92,7 +101,7 @@ export function AssetsPage() {
           action={auth.hasPermission('asset_create') ? <button type="button" className="primary-button" onClick={() => navigate('/assets/new')}>Add Asset</button> : undefined}
         />
       ) : (
-        <div className="card">
+        <div className="card table-card">
           <DataTable
             columns={columns}
             data={assets}

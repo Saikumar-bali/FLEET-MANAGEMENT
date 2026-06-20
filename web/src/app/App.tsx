@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { AppLayout } from '../layouts/AppLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -20,50 +21,52 @@ import { ProtectedRoute } from '../routes/ProtectedRoute';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
-                <Route path="/vehicles" element={<VehiclesPage />} />
-                <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['driver_view']} />}>
-                <Route path="/drivers" element={<DriversPage />} />
-                <Route path="/drivers/:id" element={<DriverDetailPage />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['asset_view']} />}>
-                <Route path="/assets" element={<AssetsPage />} />
-                <Route path="/assets/:id" element={<AssetDetailPage />} />
-                <Route path="/asset-categories" element={<AssetCategoriesPage />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['trip_view']} />}>
-                <Route path="/trips" element={<TripsPage />} />
-                <Route path="/trips/:id" element={<TripDetailPage />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['fuel_view']} />}>
-                <Route path="/fuel" element={<WorkflowListPage kind="fuel" />} />
-                <Route path="/fuel/:id" element={<WorkflowDetailPage kind="fuel" />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['expense_view']} />}>
-                <Route path="/expenses" element={<WorkflowListPage kind="expense" />} />
-                <Route path="/expenses/:id" element={<WorkflowDetailPage kind="expense" />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
-                <Route path="/roles" element={<RolesPage />} />
-              </Route>
-              <Route element={<ProtectedRoute requiredPermissions={['user_view']} />}>
-                <Route path="/users" element={<UsersPage />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
+                  <Route path="/vehicles" element={<VehiclesPage />} />
+                  <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['driver_view']} />}>
+                  <Route path="/drivers" element={<DriversPage />} />
+                  <Route path="/drivers/:id" element={<DriverDetailPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['asset_view']} />}>
+                  <Route path="/assets" element={<AssetsPage />} />
+                  <Route path="/assets/:id" element={<AssetDetailPage />} />
+                  <Route path="/asset-categories" element={<AssetCategoriesPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['trip_view']} />}>
+                  <Route path="/trips" element={<TripsPage />} />
+                  <Route path="/trips/:id" element={<TripDetailPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['fuel_view']} />}>
+                  <Route path="/fuel" element={<WorkflowListPage kind="fuel" />} />
+                  <Route path="/fuel/:id" element={<WorkflowDetailPage kind="fuel" />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['expense_view']} />}>
+                  <Route path="/expenses" element={<WorkflowListPage kind="expense" />} />
+                  <Route path="/expenses/:id" element={<WorkflowDetailPage kind="expense" />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
+                  <Route path="/roles" element={<RolesPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['user_view']} />}>
+                  <Route path="/users" element={<UsersPage />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

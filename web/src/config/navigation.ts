@@ -8,22 +8,73 @@ export type NavigationItem = {
   pageDescription?: string;
 };
 
+export type SidebarSection = {
+  key: string;
+  label: string;
+  items: NavigationItem[];
+};
+
 export const navigationItems: NavigationItem[] = [
   {
     label: 'Overview',
     path: '/',
     description: 'Current session and permission summary',
     permissionKeys: [],
-    section: 'Workspace',
-    pageTitle: 'Access dashboard',
+    section: 'EXPLORE',
+    pageTitle: 'Overview',
     pageDescription: 'Identity, permission, and staging status',
+  },
+  {
+    label: 'Activity History',
+    path: '/trips',
+    description: 'Recent trips and activity',
+    permissionKeys: ['trip_view'],
+    section: 'EXPLORE',
+    pageTitle: 'Activity History',
+    pageDescription: 'Recent trips and activity',
+  },
+  {
+    label: 'New Trip',
+    path: '/trips/new',
+    description: 'Create a new trip',
+    permissionKeys: ['trip_create'],
+    section: 'BUILD',
+    pageTitle: 'New Trip',
+    pageDescription: 'Create a new trip',
+  },
+  {
+    label: 'My Fleet',
+    path: '/vehicles',
+    description: 'Manage your vehicles',
+    permissionKeys: ['vehicle_view'],
+    section: 'BUILD',
+    pageTitle: 'My Fleet',
+    pageDescription: 'Manage your vehicles',
+  },
+  {
+    label: 'Asset Library',
+    path: '/assets',
+    description: 'Browse assets and equipment',
+    permissionKeys: ['asset_view'],
+    section: 'BUILD',
+    pageTitle: 'Asset Library',
+    pageDescription: 'Browse assets and equipment',
+  },
+  {
+    label: 'Dashboard',
+    path: '/',
+    description: 'Fleet overview and quick links',
+    permissionKeys: [],
+    section: 'MANAGE',
+    pageTitle: 'Dashboard',
+    pageDescription: 'Fleet overview and quick links',
   },
   {
     label: 'Vehicles',
     path: '/vehicles',
     description: 'Manage vehicle master data',
     permissionKeys: ['vehicle_view'],
-    section: 'Masters',
+    section: 'MANAGE',
     pageTitle: 'Vehicles',
     pageDescription: 'Vehicle master records',
   },
@@ -32,7 +83,7 @@ export const navigationItems: NavigationItem[] = [
     path: '/drivers',
     description: 'Manage driver master data',
     permissionKeys: ['driver_view'],
-    section: 'Masters',
+    section: 'MANAGE',
     pageTitle: 'Drivers',
     pageDescription: 'Driver master records',
   },
@@ -41,25 +92,16 @@ export const navigationItems: NavigationItem[] = [
     path: '/assets',
     description: 'Manage inventory and equipment',
     permissionKeys: ['asset_view'],
-    section: 'Masters',
+    section: 'MANAGE',
     pageTitle: 'Assets',
     pageDescription: 'Asset master records',
-  },
-  {
-    label: 'Asset Categories',
-    path: '/asset-categories',
-    description: 'Categorize inventory types',
-    permissionKeys: ['asset_view'],
-    section: 'Masters',
-    pageTitle: 'Asset categories',
-    pageDescription: 'Asset category configuration',
   },
   {
     label: 'Trips',
     path: '/trips',
     description: 'Manage trips and transfers',
     permissionKeys: ['trip_view'],
-    section: 'Operations',
+    section: 'MANAGE',
     pageTitle: 'Trips',
     pageDescription: 'Trip and transfer workflow',
   },
@@ -68,7 +110,7 @@ export const navigationItems: NavigationItem[] = [
     path: '/fuel',
     description: 'Fuel entries and approvals',
     permissionKeys: ['fuel_view'],
-    section: 'Operations',
+    section: 'MANAGE',
     pageTitle: 'Fuel',
     pageDescription: 'Fuel entry workflow',
   },
@@ -77,7 +119,7 @@ export const navigationItems: NavigationItem[] = [
     path: '/expenses',
     description: 'Vehicle and trip expenses',
     permissionKeys: ['expense_view'],
-    section: 'Operations',
+    section: 'MANAGE',
     pageTitle: 'Expenses',
     pageDescription: 'Expense workflow',
   },
@@ -86,7 +128,7 @@ export const navigationItems: NavigationItem[] = [
     path: '/roles',
     description: 'Roles and permission assignments',
     permissionKeys: ['role_view'],
-    section: 'Security',
+    section: 'MANAGE',
     pageTitle: 'Roles and permissions',
     pageDescription: 'Role definitions and permission coverage',
   },
@@ -95,8 +137,26 @@ export const navigationItems: NavigationItem[] = [
     path: '/users',
     description: 'Create, update, and review user access',
     permissionKeys: ['user_view'],
-    section: 'Security',
+    section: 'MANAGE',
     pageTitle: 'Users',
     pageDescription: 'User access management',
+  },
+];
+
+export const sidebarSections: SidebarSection[] = [
+  {
+    key: 'EXPLORE',
+    label: 'EXPLORE',
+    items: navigationItems.filter((item) => item.section === 'EXPLORE'),
+  },
+  {
+    key: 'BUILD',
+    label: 'BUILD',
+    items: navigationItems.filter((item) => item.section === 'BUILD'),
+  },
+  {
+    key: 'MANAGE',
+    label: 'MANAGE',
+    items: navigationItems.filter((item) => item.section === 'MANAGE'),
   },
 ];
