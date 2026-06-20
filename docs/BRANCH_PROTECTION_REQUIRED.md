@@ -7,6 +7,19 @@ any user with push access can bypass the CI Gate (PR review, required checks,
 force pushes, direct pushes). This creates risk of unverified code reaching
 the main deployment branch.
 
+## Status: CONFIGURED AND VERIFIED
+
+Branch protection is now configured on `main` with the following required check:
+- `Hygiene, build, API, and Playwright`
+
+Verification command:
+```bash
+gh api repos/Saikumar-bali/FLEET-MANAGEMENT/branches/main/protection
+```
+
+This returns a JSON response with `required_status_checks`, `required_pull_request_reviews`,
+and `restrictions` (not `Branch not protected`).
+
 ## Required Configuration
 
 Configure the following branch protection rule for `main` in the GitHub

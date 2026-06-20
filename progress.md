@@ -2,7 +2,7 @@
 
 ## Current Status
 
-GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review is in PR #16 and CI is passing. CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection documented but not yet configured. Branch protection still requires manual configuration in GitHub UI. Phase 6 was started prematurely in PR #15 and is BLOCKED. PR #15 must not be reviewed or merged until PR #16 is accepted and merged. Do not mark Phase 6 as accepted, completed, or deployable.
+GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merge smoke is completed. Phase 5 Fuel and Expense Workflow was merged through PR #12. Phase 5 post-merge smoke is completed. Phase 5 Deployment Gate is merged through PR #14. Phase 5 Deployment Gate Review merged through PR #16. CI workflow demo password fallbacks replaced with runtime-generated values. Initial CI failure (super_admin login) fixed — CI now passes. Branch protection is configured and verified on `main` with required check: `Hygiene, build, API, and Playwright`. Phase 6 Maintenance and Repair PR #15 is open. Phase 6 review blockers fixed in commit `1e6337c59d4da44fe011037fa9c523e61ddbdd1c`. GitHub Actions passes and includes maintenance/repair API tests. Phase 6 is ready for final review only after this truth cleanup commit passes CI. Vercel deploy NOT RUN. Phase 7 NOT started.
 
 ## Phase Progress
 
@@ -46,7 +46,7 @@ GitHub Actions CI Gate is completed and merged through PR #10. Phase 4 post-merg
 | Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed |
 | Phase 5 Deployment Gate | Local verification + CI + staging deploy | Merged through PR #14 |
 | Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16 MERGED |
-| Phase 6 | Maintenance and Repair | PR #15 rebased on main, CI pending, review blockers fixed |
+| Phase 6 | Maintenance and Repair | PR #15 open, CI PASS with maintenance/repair API tests, final review pending |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
 | Phase 9 | Reports, Notifications, Deployment | Not Started |

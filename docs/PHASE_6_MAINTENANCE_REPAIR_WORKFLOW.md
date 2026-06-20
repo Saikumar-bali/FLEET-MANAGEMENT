@@ -21,7 +21,7 @@
 | `backend/src/modules/repairs/repairs.routes.ts` | 7 endpoints under `/api/v1/repairs` |
 | `backend/src/app.ts` | Registered maintenance and repair route modules |
 | `backend/src/docs/openapi.ts` | Maintenance/Repairs tags, schemas, all paths with security |
-| `backend/scripts/maintenance-repair-workflow-test.ts` | API integration test (25 scenarios) |
+| `backend/scripts/maintenance-repair-workflow-test.ts` | API integration test (35 scenarios including notes transitions and mismatch validation) |
 
 ### Web
 | File | Change |
@@ -47,7 +47,7 @@
 | `npm --prefix backend run test:api-docs` | 86/86 PASS | 0 |
 | `npm --prefix backend run test:trips` | 79/79 PASS | 0 |
 | `npm --prefix backend run test:fuel-expenses` | 18/18 PASS | 0 |
-| `npx ts-node scripts/maintenance-repair-workflow-test.ts` | 35/35 PASS | 0 |
+| `npm run test:maintenance-repairs` | 35/35 PASS | 0 |
 | `npx playwright test --headed` (web) | 35/35 PASS | 0 |
 | Vercel deploy | NOT RUN | — |
 
