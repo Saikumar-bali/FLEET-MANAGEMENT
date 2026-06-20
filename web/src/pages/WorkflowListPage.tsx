@@ -7,13 +7,13 @@ import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
-import { getExpenses, getFuelEntries } from '../services/api';
-import type { ExpenseRecord, FuelRecord } from '../types/auth';
+import { getExpenses, getFuelEntries, getMaintenanceRecords } from '../services/api';
+import type { ExpenseRecord, FuelRecord, MaintenanceRecord } from '../types/auth';
 
-export function WorkflowListPage({ kind }: { kind: 'fuel' | 'expense' }) {
+export function WorkflowListPage({ kind }: { kind: 'fuel' | 'expense' | 'maintenance' }) {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [items, setItems] = useState<Array<FuelRecord | ExpenseRecord>>([]);
+  const [items, setItems] = useState<Array<FuelRecord | ExpenseRecord | MaintenanceRecord>>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,9 @@ export function WorkflowListPage({ kind }: { kind: 'fuel' | 'expense' }) {
       try {
         const r = kind === 'fuel'
           ? await getFuelEntries(auth.accessToken, { search, status })
-          : await getExpenses(auth.accessToken, { search, status });
+          : kind === 'expense'
+            ? await getExpenses(auth.accessToken, { search, status })
+            : await getMaintenanceRecords(auth.accessToken, { search, status });
         setItems(r.data.items);
         setError(null);
       } catch {
@@ -41,45 +43,48 @@ export function WorkflowListPage({ kind }: { kind: 'fuel' | 'expense' }) {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   const createPermission = `${kind}_create`;
-  const basePath = kind === 'fuel' ? 'fuel' : 'expenses';
+  const basePath = kind === 'fuel' ? 'fuel' : kind === 'expense' ? 'expenses' : 'maintenance';
 
   const columns = [
     {
       key: 'date',
       header: 'Date',
-      render: (x: FuelRecord | ExpenseRecord) =>
-        new Date(kind === 'fuel' ? (x as FuelRecord).fuelDate : (x as ExpenseRecord).expenseDate).toLocaleDateString(),
+      render: (x: FuelRecord | ExpenseRecord | MaintenanceRecord) =>
+        new Date(kind === 'fuel' ? (x as FuelRecord).fuelDate : kind === 'expense' ? (x as ExpenseRecord).expenseDate : (x as MaintenanceRecord).requestDate).toLocaleDateString(),
     },
     {
       key: 'vehicle',
       header: 'Vehicle',
-      render: (x: FuelRecord | ExpenseRecord) => x.vehicle.vehicleNumber,
+      render: (x: FuelRecord | ExpenseRecord | MaintenanceRecord) => x.vehicle.vehicleNumber,
     },
     {
       key: 'reference',
-      header: kind === 'fuel' ? 'Station / Fuel' : 'Category / Vendor',
-      render: (x: FuelRecord | ExpenseRecord) =>
+      header: kind === 'fuel' ? 'Station / Fuel' : kind === 'expense' ? 'Category / Vendor' : 'Category / Priority',
+      render: (x: FuelRecord | ExpenseRecord | MaintenanceRecord) =>
         kind === 'fuel'
           ? `${(x as FuelRecord).stationName ?? '-'} / ${(x as FuelRecord).fuelType}`
-          : `${(x as ExpenseRecord).category} / ${(x as ExpenseRecord).vendor ?? '-'}`,
+          : kind === 'expense'
+            ? `${(x as ExpenseRecord).category} / ${(x as ExpenseRecord).vendor ?? '-'}`
+            : `${(x as MaintenanceRecord).category} / ${(x as MaintenanceRecord).priority}`,
     },
     {
       key: 'amount',
       header: 'Amount',
-      render: (x: FuelRecord | ExpenseRecord) =>
-        Number(kind === 'fuel' ? (x as FuelRecord).totalAmount : (x as ExpenseRecord).amount).toFixed(2),
+      render: (x: FuelRecord | ExpenseRecord | MaintenanceRecord) =>
+        kind === 'maintenance' ? ((x as MaintenanceRecord).estimatedCost != null ? Number((x as MaintenanceRecord).estimatedCost).toFixed(2) : '-')
+        : Number(kind === 'fuel' ? (x as FuelRecord).totalAmount : (x as ExpenseRecord).amount).toFixed(2),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (x: FuelRecord | ExpenseRecord) => <StatusBadge status={x.status} />,
+      render: (x: FuelRecord | ExpenseRecord | MaintenanceRecord) => <StatusBadge status={x.status} />,
     },
   ];
 
   return (
     <section className="page-content">
       <PageHeader
-        title={kind === 'fuel' ? 'Fuel' : 'Expenses'}
+        title={kind === 'fuel' ? 'Fuel' : kind === 'expense' ? 'Expenses' : 'Maintenance'}
         description={`${items.length} records`}
         actions={auth.hasPermission(createPermission) ? [
           <button
@@ -87,7 +92,7 @@ export function WorkflowListPage({ kind }: { kind: 'fuel' | 'expense' }) {
             className="primary-button"
             onClick={() => navigate(`/${basePath}/new`)}
           >
-            Create {kind === 'fuel' ? 'Fuel Entry' : 'Expense'}
+            Create {kind === 'fuel' ? 'Fuel Entry' : kind === 'expense' ? 'Expense' : 'Maintenance Request'}
           </button>,
         ] : undefined}
       />

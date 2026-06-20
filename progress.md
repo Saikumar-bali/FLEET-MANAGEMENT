@@ -46,7 +46,7 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 | Phase 5 | Fuel and Expense Workflow | Completed locally and staging deployed |
 | Phase 5 Deployment Gate | Local verification + CI + staging deploy | Merged through PR #14 |
 | Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16, CI PASS, final review pending |
-| Phase 6 | Maintenance and Repair | Premature PR #15 open, BLOCKED, not accepted |
+| Phase 6 | Maintenance and Repair | In progress on branch `phase-6-maintenance-repair-clean` from latest main |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
 | Phase 9 | Reports, Notifications, Deployment | Not Started |

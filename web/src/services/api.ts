@@ -19,6 +19,8 @@ import type {
   VehicleRecord,
   FuelRecord,
   ExpenseRecord,
+  MaintenanceRecord,
+  RepairRecord,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -655,3 +657,15 @@ export function getExpense(token: string, id: string) { return request<ExpenseRe
 export function createExpense(token: string, payload: Record<string, unknown>) { return request<ExpenseRecord>('/expenses', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function updateExpense(token: string, id: string, payload: Record<string, unknown>) { return request<ExpenseRecord>(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
 export function expenseAction(token: string, id: string, action: string) { return request<ExpenseRecord>(`/expenses/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+
+export function getMaintenanceRecords(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<MaintenanceRecord>>(`/maintenance${q ? `?${q}` : ''}`, { token }); }
+export function getMaintenanceRecord(token: string, id: string) { return request<MaintenanceRecord>(`/maintenance/${id}`, { token }); }
+export function createMaintenanceRecord(token: string, payload: Record<string, unknown>) { return request<MaintenanceRecord>('/maintenance', { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateMaintenanceRecord(token: string, id: string, payload: Record<string, unknown>) { return request<MaintenanceRecord>(`/maintenance/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
+export function maintenanceAction(token: string, id: string, action: string) { return request<MaintenanceRecord>(`/maintenance/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+
+export function getRepairs(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<RepairRecord>>(`/repairs${q ? `?${q}` : ''}`, { token }); }
+export function getRepair(token: string, id: string) { return request<RepairRecord>(`/repairs/${id}`, { token }); }
+export function createRepair(token: string, payload: Record<string, unknown>) { return request<RepairRecord>('/repairs', { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateRepair(token: string, id: string, payload: Record<string, unknown>) { return request<RepairRecord>(`/repairs/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
+export function repairAction(token: string, id: string, action: string) { return request<RepairRecord>(`/repairs/${id}/${action}`, { method: 'POST', body: '{}', token }); }
