@@ -998,6 +998,43 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 - No mobile app changed
 - No Vercel deployment
 
+### 2026-06-19 (UI AI Studio Sidebar Exact Light Toggle Correction)
+
+**Branch:** `ui-aistudio-sidebar-exact-light-toggle` (from `ui-aistudio-exact-dark-replica`)
+**Rejected Commit:** `9ac848fc457b2dbe8544f52ebab63a1913da402b` (dark-only AI Studio replica)
+
+**What was rejected:** The previous push only made the app dark-only. It did not replicate the Google AI Studio sidebar shown in the reference screenshot.
+
+**Changes made:**
+- New ThemeProvider with light/dark/system support and localStorage persistence
+- Complete CSS rewrite with light/dark tokens using `[data-theme]` selectors, light mode as default
+- AI Studio-style sidebar with EXPLORE / BUILD / MANAGE sections
+- Desktop collapse toggle with localStorage persistence
+- Bottom upgrade card, icon bar (bell, gear, search, key), account chip
+- Settings popover with theme submenu and all required rows
+- Account menu with user info and sign out
+- Logout moved from topbar to account menu
+- Minimal AI Studio-style topbar
+
+**Files changed:**
+- `web/src/context/ThemeContext.tsx` — NEW
+- `web/src/components/Sidebar.tsx` — Rewritten
+- `web/src/components/SettingsPopover.tsx` — NEW
+- `web/src/components/AccountMenu.tsx` — NEW
+- `web/src/layouts/AppLayout.tsx` — Updated
+- `web/src/config/navigation.ts` — Updated
+- `web/src/app/styles.css` — Rewritten (light/dark tokens)
+- `web/src/app/App.tsx` — Updated (ThemeProvider wrapper)
+
+**Verification:**
+- `npm run web:lint`: PASS
+- `npm run web:build`: PASS
+- `npm run backend:lint`: PASS
+- Playwright screenshot capture: PASS (10 screenshots)
+- No backend logic changed
+- No mobile app changed
+- No Vercel deployment
+
 ## Next Step
 
-Review the Dark-Only AI Studio Replica correction. If accepted, commit, push, and proceed to Phase 6.
+Review the AI Studio Sidebar Exact Light Toggle correction. If accepted, commit, push, and proceed to Phase 6.
