@@ -10,16 +10,21 @@ export function SettingsPopover({ anchorRect, onClose, onThemeClick }: SettingsP
   const { theme } = useTheme();
 
   const popoverHeight = 380;
-  const spaceBelow = window.innerHeight - anchorRect.bottom;
-  const openAbove = spaceBelow < popoverHeight + 16;
+  const popoverWidth = 260;
+  const gap = 8;
 
-  const top = openAbove ? anchorRect.top - popoverHeight - 8 : anchorRect.bottom + 8;
-  const left = anchorRect.left;
+  const left = anchorRect.right + gap;
+
+  let top = anchorRect.top - 24;
+  if (top + popoverHeight > window.innerHeight - 16) {
+    top = window.innerHeight - popoverHeight - 16;
+  }
+  if (top < 16) top = 16;
 
   return (
     <>
       <div className="popover-backdrop" onClick={onClose} />
-      <div className="popover" style={{ top, left }}>
+      <div className="popover" style={{ top, left, minWidth: popoverWidth }}>
         <button type="button" className="popover-row" onClick={(e) => onThemeClick(e.currentTarget)}>
           <span className="popover-row-label">Theme</span>
           <span className="popover-row-chevron">
