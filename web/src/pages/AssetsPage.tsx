@@ -49,6 +49,7 @@ export function AssetsPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(initialCategoryForm);
   const [isKeyManuallyEdited, setIsKeyManuallyEdited] = useState(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
@@ -80,7 +81,7 @@ export function AssetsPage() {
   }, [auth.accessToken, page, search, statusFilter]);
 
   useEffect(() => {
-    if (activeTab !== 'categories') return;
+    if (activeTab !== 'categories' || categoriesLoaded) return;
     const load = async () => {
       if (!auth.accessToken) return;
       setIsLoadingCategories(true);
@@ -88,7 +89,8 @@ export function AssetsPage() {
       try {
         const response = await getAssetCategories(auth.accessToken);
         setCategories(response.data);
-        if (response.data.length > 0 && !selectedCategoryId) {
+        setCategoriesLoaded(true);
+        if (response.data.length > 0) {
           const first = response.data[0];
           setSelectedCategoryId(first.id);
           setCategoryForm({ name: first.name, key: first.key, description: first.description ?? '', status: first.status });
@@ -102,7 +104,7 @@ export function AssetsPage() {
       }
     };
     void load();
-  }, [auth.accessToken, activeTab, selectedCategoryId]);
+  }, [auth.accessToken, activeTab, categoriesLoaded]);
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null;
   const canCreateCategory = auth.hasPermission('asset_create');
