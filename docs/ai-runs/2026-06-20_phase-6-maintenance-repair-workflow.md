@@ -39,21 +39,61 @@
 - Sidebar navigation updated with Maintenance and Repairs links
 
 ### Tests
-- Backend API test: 35 scenarios covering CRUD, lifecycle, viewer denied, negative cases
+- Backend API test: 35+ scenarios covering CRUD, lifecycle, vehicle status transitions, viewer denied, negative cases
 - Playwright E2E: 2 test scenarios for maintenance and repair workflows
 - API docs coverage: 102 endpoints across 12 tags
 
-## Verification
+## CI Failure Root Cause and Fixes
+
+### Codex P1: Repair Prisma Include Bug
+**File:** `backend/src/modules/repairs/repairs.service.ts`
+**Problem:** Repair queries used shared `workflowInclude` which selects `approvedBy`, but Repair model has `closedBy` instead.
+**Fix:** Created `repairInclude` constant with `closedBy` relation instead of `approvedBy`. All repair queries now use `repairInclude`.
+
+### Codex P2: Repair Lifecycle Vehicle Status
+**File:** `backend/src/modules/repairs/repairs.service.ts`
+**Problem:** Repair transitions only updated `repair.status`. Vehicle status remained AVAILABLE, so trips could start while repair was active.
+**Fix:** Added Prisma `$transaction` for `IN_PROGRESS`, `COMPLETED`, and `CANCELLED` transitions:
+- `IN_PROGRESS`: updates vehicle to `UNDER_REPAIR`
+- `COMPLETED`/`CANCELLED`: checks for remaining active repairs; if none, resets vehicle to `AVAILABLE`
+
+### Codex P3: Playwright Maintenance Required Field
+**File:** `web/e2e/maintenance-repairs.spec.ts`
+**Problem:** Maintenance form has required Description field, but test did not fill it.
+**Fix:** Added `await page.getByLabel('Description *').fill('Engine oil change needed')` before Save.
+
+### CI Workflow Update
+**File:** `.github/workflows/ci.yml`
+**Problem:** CI did not run maintenance-repair API tests.
+**Fix:** Added `npm --prefix backend run test:maintenance-repair` step after fuel/expense tests and before Playwright.
+
+## UI Regression Verification
 
 | Check | Result |
 |-------|--------|
-| `npm run backend:lint` (tsc --noEmit) | PASS |
-| `npm run backend:build` (tsc) | PASS |
-| `npm run web:lint` (tsc --noEmit) | PASS |
-| `npm run web:build` (vite build) | PASS |
-| API docs coverage test | 102/102 PASS |
-| Playwright test list | 35 tests in 4 files (includes new maintenance-repairs.spec.ts) |
-| Backend API test | Requires running server (test script created) |
-| Vercel deploy | NOT RUN |
-| Mobile | NOT modified |
-| Secrets | NOT printed or committed |
+| Sidebar title "Fleet Management Studio" | PASS |
+| Appearance menu Light/Dark/System | PASS |
+| Logout inside account menu | PASS |
+| No "API key" text (Integrations instead) | PASS |
+| Mobile sidebar override at 900px | PASS |
+| Maintenance and Repairs nav links visible | PASS |
+
+## Verification Commands
+
+| Command | Result | Exit Code |
+|---------|--------|-----------|
+| `npm run backend:lint` (tsc --noEmit) | PASS | 0 |
+| `npm run backend:build` (tsc) | PASS | 0 |
+| `npm run web:lint` (tsc --noEmit) | PASS | 0 |
+| `npm run web:build` (vite build) | PASS | 0 |
+| API docs coverage test | 86/86 PASS | 0 |
+| Playwright test list | 35 tests in 4 files | — |
+| Backend API test | Requires running server | — |
+
+## Gate Status
+
+- **Vercel deploy:** NOT RUN
+- **Phase 7:** NOT started
+- **Mobile:** NOT modified
+- **Secrets:** NOT printed or committed
+- **GitHub Actions CI:** Pending (awaiting push and CI run)

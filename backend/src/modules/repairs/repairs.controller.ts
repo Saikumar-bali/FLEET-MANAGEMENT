@@ -19,6 +19,7 @@ export async function updateRepairController(req: Request, res: Response) {
 }
 async function action(req: Request, res: Response, status: any, actionName: string) {
   const item = await transitionRepair(String(req.params.id), status, req.authUser?.id, req.body.notes);
+  if (!item) return sendSuccess(res, null, `Repair ${actionName}d successfully`);
   await createAuditLog(req, { userId: req.authUser?.id, action: `repair.${actionName}`, entityType: 'repair', entityId: item.id });
   return sendSuccess(res, item, `Repair ${actionName}d successfully`);
 }

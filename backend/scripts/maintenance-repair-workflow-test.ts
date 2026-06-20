@@ -36,17 +36,46 @@ async function main() {
   // negative: viewer create denied
   check('viewer create maintenance denied', await call('/maintenance', viewer, 'POST', { vehicleId: vid }), 403);
 
-  // --- Repair tests ---
+  // --- Repair tests with vehicle status verification ---
   const r1 = await call('/repairs', admin, 'POST', { vehicleId: vid, repairDate: new Date().toISOString(), category: 'TEST-E2E TRANSMISSION', description: 'Transmission rebuild', estimatedCost: 25000, provider: 'TEST-E2E Workshop' }); check('create repair', r1, 201);
   check('list repairs', await call('/repairs?search=TEST-E2E', admin), 200);
   check('get repair', await call(`/repairs/${r1.data.data.id}`, admin), 200);
   check('update repair', await call(`/repairs/${r1.data.data.id}`, admin, 'PATCH', { actualCost: 27000 }), 200);
-  check('start repair', await call(`/repairs/${r1.data.data.id}/start`, admin, 'POST', {}), 200);
-  check('complete repair', await call(`/repairs/${r1.data.data.id}/complete`, admin, 'POST', {}), 200);
 
+  // start repair: vehicle should become UNDER_REPAIR
+  const startResult = await call(`/repairs/${r1.data.data.id}/start`, admin, 'POST', {});
+  check('start repair', startResult, 200);
+  const vehicleAfterStart = await call(`/vehicles/${vid}`, admin);
+  check('vehicle UNDER_REPAIR after start', vehicleAfterStart, 200);
+  if (vehicleAfterStart.ok) {
+    const statusOk = vehicleAfterStart.data.data.status === 'UNDER_REPAIR';
+    results.push({ name: 'vehicle status is UNDER_REPAIR', ok: statusOk, status: statusOk ? 200 : 500 });
+  }
+
+  // complete repair: vehicle should return to AVAILABLE
+  const completeResult = await call(`/repairs/${r1.data.data.id}/complete`, admin, 'POST', {});
+  check('complete repair', completeResult, 200);
+  const vehicleAfterComplete = await call(`/vehicles/${vid}`, admin);
+  check('vehicle AVAILABLE after complete', vehicleAfterComplete, 200);
+  if (vehicleAfterComplete.ok) {
+    const statusOk = vehicleAfterComplete.data.data.status === 'AVAILABLE';
+    results.push({ name: 'vehicle status is AVAILABLE after complete', ok: statusOk, status: statusOk ? 200 : 500 });
+  }
+
+  // cancel repair: vehicle should remain AVAILABLE
   const r2 = await call('/repairs', admin, 'POST', { vehicleId: vid, repairDate: new Date().toISOString(), category: 'TEST-E2E SUSPENSION', description: 'Suspension repair', estimatedCost: 8000 }); check('create repair 2', r2, 201);
   check('start repair 2', await call(`/repairs/${r2.data.data.id}/start`, admin, 'POST', {}), 200);
+  const vehicleMid = await call(`/vehicles/${vid}`, admin);
+  if (vehicleMid.ok) {
+    const statusOk = vehicleMid.data.data.status === 'UNDER_REPAIR';
+    results.push({ name: 'vehicle UNDER_REPAIR with 2nd repair', ok: statusOk, status: statusOk ? 200 : 500 });
+  }
   check('cancel repair', await call(`/repairs/${r2.data.data.id}/cancel`, admin, 'POST', {}), 200);
+  const vehicleAfterCancel = await call(`/vehicles/${vid}`, admin);
+  if (vehicleAfterCancel.ok) {
+    const statusOk = vehicleAfterCancel.data.data.status === 'AVAILABLE';
+    results.push({ name: 'vehicle AVAILABLE after cancel (no active repairs)', ok: statusOk, status: statusOk ? 200 : 500 });
+  }
 
   const r3 = await call('/repairs', admin, 'POST', { vehicleId: vid, repairDate: new Date().toISOString(), category: 'TEST-E2E ELECTRICAL', description: 'Wiring fix' }); check('create repair 3', r3, 201);
   check('cancel open repair', await call(`/repairs/${r3.data.data.id}/cancel`, admin, 'POST', {}), 200);

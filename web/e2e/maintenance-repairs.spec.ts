@@ -11,6 +11,7 @@ test.describe('Phase 6 maintenance and repair workflow', () => {
     await page.goto('/maintenance/new');
     await page.getByLabel('Vehicle *').selectOption(vehicle.id);
     await page.getByLabel('Category *').fill('TEST-E2E ENGINE');
+    await page.getByLabel('Description *').fill('Engine oil change needed');
     await page.getByLabel('Priority *').selectOption('HIGH');
     await page.getByLabel('Estimated Cost').fill('5000');
     await page.getByRole('button', { name: 'Save' }).click();

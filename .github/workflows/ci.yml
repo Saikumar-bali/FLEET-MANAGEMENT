@@ -222,5 +222,8 @@ jobs:
       - name: Local backend fuel and expense API tests
         run: npm --prefix backend run test:fuel-expenses
 
+      - name: Local backend maintenance and repair API tests
+        run: npm --prefix backend run test:maintenance-repair
+
       - name: Local Playwright tests
         run: npm --prefix web run test:e2e

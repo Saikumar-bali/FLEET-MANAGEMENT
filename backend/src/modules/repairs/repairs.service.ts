@@ -1,7 +1,15 @@
 import { Prisma, RepairStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
-import { dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
+import { dateRange, validateReferences } from '../workflow-records/workflow-records.service';
+
+const repairInclude = {
+  vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true } },
+  trip: { select: { id: true, tripNumber: true, vehicleId: true } },
+  driver: { select: { id: true, name: true, status: true } },
+  createdBy: { select: { id: true, name: true, username: true } },
+  closedBy: { select: { id: true, name: true, username: true } },
+};
 
 type RepairInput = {
   vehicleId: string;
@@ -46,6 +54,23 @@ function assertRepairTransition(current: RepairStatus, next: RepairStatus) {
   }
 }
 
+async function hasActiveRepairForVehicle(vehicleId: string, excludeRepairId?: string): Promise<boolean> {
+  const where: Prisma.RepairWhereInput = {
+    vehicleId,
+    status: { in: ['OPEN', 'IN_PROGRESS'] },
+  };
+  if (excludeRepairId) where.id = { not: excludeRepairId };
+  const count = await prisma.repair.count({ where });
+  return count > 0;
+}
+
+async function releaseVehicleIfNoActiveRepair(vehicleId: string) {
+  const hasActive = await hasActiveRepairForVehicle(vehicleId);
+  if (!hasActive) {
+    await prisma.vehicle.update({ where: { id: vehicleId }, data: { status: 'AVAILABLE' } });
+  }
+}
+
 export async function listRepairs(query: any) {
   const where: Prisma.RepairWhereInput = {};
   if (query.search) where.OR = [
@@ -61,14 +86,14 @@ export async function listRepairs(query: any) {
   if (query.status) where.status = query.status;
   where.repairDate = dateRange(query.dateFrom, query.dateTo);
   const [items, total] = await Promise.all([
-    prisma.repair.findMany({ where, include: workflowInclude, orderBy: { repairDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.repair.findMany({ where, include: repairInclude, orderBy: { repairDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.repair.count({ where }),
   ]);
   return { items, pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) } };
 }
 
 export async function getRepair(id: string) {
-  const item = await prisma.repair.findUnique({ where: { id }, include: workflowInclude });
+  const item = await prisma.repair.findUnique({ where: { id }, include: repairInclude });
   if (!item) throw new AppError('Repair not found', 404);
   return item;
 }
@@ -84,7 +109,7 @@ export async function createRepair(input: RepairInput & { createdById?: string |
       description: input.description,
       createdById: input.createdById ?? null,
     },
-    include: workflowInclude,
+    include: repairInclude,
   });
 }
 
@@ -97,20 +122,52 @@ export async function updateRepair(id: string, input: Partial<RepairInput>) {
   const tripId = input.tripId === undefined ? existing.tripId : input.tripId;
   const driverId = input.driverId === undefined ? existing.driverId : input.driverId;
   await validateReferences(vehicleId, tripId, driverId);
-  return prisma.repair.update({ where: { id }, data: repairData(input), include: workflowInclude });
+  return prisma.repair.update({ where: { id }, data: repairData(input), include: repairInclude });
 }
 
 export async function transitionRepair(id: string, status: RepairStatus, userId?: string | null, notes?: string | null) {
   const existing = await getRepair(id);
   assertRepairTransition(existing.status, status);
+
+  if (status === 'IN_PROGRESS') {
+    return prisma.$transaction(async (tx) => {
+      await tx.repair.update({
+        where: { id },
+        data: { status, notes: notes === undefined ? existing.notes : notes },
+      });
+      await tx.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'UNDER_REPAIR' } });
+      return prisma.repair.findUnique({ where: { id }, include: repairInclude });
+    });
+  }
+
+  if (status === 'COMPLETED' || status === 'CANCELLED') {
+    return prisma.$transaction(async (tx) => {
+      await tx.repair.update({
+        where: { id },
+        data: {
+          status,
+          notes: notes === undefined ? existing.notes : notes,
+          closedById: userId ?? null,
+          closedAt: new Date(),
+        },
+      });
+      const hasActive = await tx.repair.count({
+        where: {
+          vehicleId: existing.vehicleId,
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+          id: { not: id },
+        },
+      });
+      if (!hasActive) {
+        await tx.vehicle.update({ where: { id: existing.vehicleId }, data: { status: 'AVAILABLE' } });
+      }
+      return prisma.repair.findUnique({ where: { id }, include: repairInclude });
+    });
+  }
+
   return prisma.repair.update({
     where: { id },
-    data: {
-      status,
-      notes: notes === undefined ? existing.notes : notes,
-      closedById: status === 'COMPLETED' || status === 'CANCELLED' ? userId ?? null : undefined,
-      closedAt: status === 'COMPLETED' || status === 'CANCELLED' ? new Date() : undefined,
-    },
-    include: workflowInclude,
+    data: { status, notes: notes === undefined ? existing.notes : notes },
+    include: repairInclude,
   });
 }
