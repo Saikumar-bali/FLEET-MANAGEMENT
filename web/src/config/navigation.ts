@@ -35,7 +35,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     label: 'New Trip',
-    path: '/trips',
+    path: '/trips/new',
     description: 'Create a new trip',
     permissionKeys: ['trip_create'],
     section: 'BUILD',

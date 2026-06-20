@@ -2094,6 +2094,19 @@ textarea:focus {
   .login-form-panel {
     padding: var(--space-6);
   }
+
+  .app-shell.sidebar-collapsed .sidebar {
+    width: min(86vw, 300px);
+  }
+
+  .app-shell.sidebar-collapsed .sidebar .sidebar-label,
+  .app-shell.sidebar-collapsed .sidebar .sidebar-section-label,
+  .app-shell.sidebar-collapsed .sidebar .sidebar-brand-text,
+  .app-shell.sidebar-collapsed .sidebar .sidebar-upgrade-card,
+  .app-shell.sidebar-collapsed .sidebar .sidebar-account-chip {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 @media (max-width: 720px) {

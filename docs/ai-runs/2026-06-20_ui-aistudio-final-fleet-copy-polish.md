@@ -87,3 +87,25 @@ Small final polish to replace Google AI Studio / AI product terms with Fleet Man
 - Vercel deploy: NO
 - Secrets printed: NO
 - Phase 6 started: NO
+
+## PR Review Fixes (commit c271088 → fix)
+
+Two P2 review issues fixed:
+
+1. **New Trip route**: `path: '/trips'` → `path: '/trips/new'`
+   - Route `/trips/:id` in App.tsx handles `/trips/new` where `:id` = `"new"`
+   - `TripDetailPage` detects `isNew` from the `id` param
+
+2. **Mobile sidebar collapsed override**: Added inside `@media (max-width: 900px)`
+   - `.app-shell.sidebar-collapsed .sidebar` forced to `width: min(86vw, 300px)`
+   - Sidebar labels, section labels, brand text, upgrade card, and account chip forced visible
+   - Prevents localStorage desktop collapsed state from affecting mobile drawer
+
+## Verification After PR Review Fixes
+
+| Command | Status | Exit |
+|---|---|---|
+| npm run web:lint | PASS | 0 |
+| npm run web:build | PASS | 0 |
+| npm run backend:lint | PASS | 0 |
+| npx playwright test | 33/33 PASS | 0 |
