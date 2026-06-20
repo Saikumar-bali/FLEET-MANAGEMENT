@@ -25,7 +25,7 @@
 | `npm --prefix backend run test:api-docs` | 86/86 PASS | 0 |
 | `npm --prefix backend run test:trips` | 79/79 PASS | 0 |
 | `npm --prefix backend run test:fuel-expenses` | 18/18 PASS | 0 |
-| `npx ts-node scripts/maintenance-repair-workflow-test.ts` | 25/25 PASS | 0 |
+| `npx ts-node scripts/maintenance-repair-workflow-test.ts` | 35/35 PASS | 0 |
 | `npx playwright test --headed` | 35/35 PASS | 0 |
 | Vercel deploy | NOT RUN | — |
 | Secrets printed | NO | — |

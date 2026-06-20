@@ -12,6 +12,7 @@
     "smoke:test": "ts-node scripts/smoke-test.ts",
     "test:trips": "ts-node scripts/trip-workflow-test.ts",
     "test:fuel-expenses": "ts-node scripts/fuel-expense-workflow-test.ts",
+    "test:maintenance-repairs": "ts-node scripts/maintenance-repair-workflow-test.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",

@@ -25,7 +25,8 @@ export async function updateMaintenanceController(req: Request, res: Response) {
 
 async function action(req: Request, res: Response, status: any, actionName: string) {
   const item = await s.transitionMaintenance(String(req.params.id), status, req.authUser?.id, req.body.notes);
-  await createAuditLog(req, { userId: req.authUser?.id, action: `maintenance.${actionName}`, entityType: 'maintenance', entityId: item.id });
+  const metadata = req.body.notes ? { notes: req.body.notes } : undefined;
+  await createAuditLog(req, { userId: req.authUser?.id, action: `maintenance.${actionName}`, entityType: 'maintenance', entityId: item.id, metadata });
   return sendSuccess(res, item, `Maintenance request ${actionName}ed successfully`);
 }
 

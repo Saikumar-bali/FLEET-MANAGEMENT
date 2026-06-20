@@ -120,12 +120,22 @@ export async function updateRepair(id: string, input: Partial<RepairInput>) {
     throw new AppError('Repair cannot be edited in current status', 400);
   }
   const data: any = {};
+  const finalVehicleId = input.vehicleId !== undefined ? input.vehicleId : existing.vehicleId;
   if (input.vehicleId !== undefined) {
     const vehicle = await prisma.vehicle.findUnique({ where: { id: input.vehicleId } });
     if (!vehicle) throw new AppError('Vehicle not found', 400);
     data.vehicleId = input.vehicleId;
   }
-  if (input.maintenanceRequestId !== undefined) data.maintenanceRequestId = input.maintenanceRequestId || null;
+  if (input.maintenanceRequestId !== undefined) {
+    if (input.maintenanceRequestId) {
+      const maint = await prisma.maintenanceRequest.findUnique({ where: { id: input.maintenanceRequestId } });
+      if (!maint) throw new AppError('Maintenance request not found', 400);
+      if (maint.vehicleId !== finalVehicleId) throw new AppError('Maintenance request vehicle must match repair vehicle', 400);
+      data.maintenanceRequestId = input.maintenanceRequestId;
+    } else {
+      data.maintenanceRequestId = null;
+    }
+  }
   if (input.assignedMechanicId !== undefined) {
     if (input.assignedMechanicId) {
       const mechanic = await prisma.user.findUnique({ where: { id: input.assignedMechanicId } });
@@ -147,7 +157,7 @@ export async function updateRepair(id: string, input: Partial<RepairInput>) {
 export async function transitionRepair(id: string, status: RepairStatus, userId?: string | null, notes?: string | null) {
   const existing = await getRepair(id);
   assertTransition(existing.status, status);
-  const data: any = { status, notes: notes ?? undefined };
+  const data: any = { status };
   if (status === 'COMPLETED') {
     data.completedById = userId || null;
     data.completedAt = new Date();

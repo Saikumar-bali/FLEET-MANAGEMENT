@@ -122,7 +122,7 @@ export async function updateMaintenance(id: string, input: Partial<MaintenanceIn
 export async function transitionMaintenance(id: string, status: MaintenanceStatus, userId?: string | null, notes?: string | null) {
   const existing = await getMaintenance(id);
   assertTransition(existing.status, status);
-  const data: any = { status, notes: notes ?? undefined };
+  const data: any = { status };
   if (status === 'APPROVED' || status === 'REJECTED') {
     data.approvedById = userId || null;
     if (status === 'APPROVED') data.approvedAt = new Date();

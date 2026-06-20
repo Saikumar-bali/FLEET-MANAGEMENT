@@ -29,6 +29,13 @@ async function main() {
   check('start maintenance', await call(`/maintenance/${mid}/start`, admin, 'POST', {}), 200);
   check('complete maintenance', await call(`/maintenance/${mid}/complete`, admin, 'POST', {}), 200);
 
+  const notesMaint = await call('/maintenance', admin, 'POST', { vehicleId: vid, issueTitle: 'TEST-E2E Notes Maint', priority: 'MEDIUM' }); check('create notes maintenance', notesMaint, 201);
+  const nmid = getId(notesMaint);
+  await call(`/maintenance/${nmid}/submit`, admin, 'POST', {});
+  check('submit maintenance with notes', await call(`/maintenance/${nmid}/approve`, admin, 'POST', { notes: 'TEST-E2E note' }), 200);
+  await call(`/maintenance/${nmid}/start`, admin, 'POST', {});
+  check('start maintenance with notes', await call(`/maintenance/${nmid}/complete`, admin, 'POST', { notes: 'TEST-E2E completion note' }), 200);
+
   const rejectedMaint = await call('/maintenance', admin, 'POST', { vehicleId: vid, issueTitle: 'TEST-E2E Rejected Maint', priority: 'LOW' }); check('create rejected maintenance', rejectedMaint, 201);
   const rmid = getId(rejectedMaint);
   await call(`/maintenance/${rmid}/submit`, admin, 'POST', {});
@@ -45,8 +52,23 @@ async function main() {
   check('start repair', await call(`/repairs/${rid}/start`, admin, 'POST', {}), 200);
   check('complete repair', await call(`/repairs/${rid}/complete`, admin, 'POST', {}), 200);
 
+  const notesRepair = await call('/repairs', admin, 'POST', { vehicleId: vid, repairType: 'TEST-E2E Notes Repair', laborCost: 100, partsCost: 200 }); check('create notes repair', notesRepair, 201);
+  const nrid = getId(notesRepair);
+  await call(`/repairs/${nrid}/schedule`, admin, 'POST', {});
+  check('schedule repair with notes', await call(`/repairs/${nrid}/start`, admin, 'POST', { notes: 'TEST-E2E start note' }), 200);
+  check('complete repair with notes', await call(`/repairs/${nrid}/complete`, admin, 'POST', { notes: 'TEST-E2E completion note' }), 200);
+
   const cancelledRepair = await call('/repairs', admin, 'POST', { vehicleId: vid, repairType: 'TEST-E2E Cancelled' }); check('create cancelled repair', cancelledRepair, 201);
   check('cancel repair', await call(`/repairs/${getId(cancelledRepair)}/cancel`, admin, 'POST', {}), 200);
+
+  // Test update repair with mismatched maintenance request vehicle
+  const otherVehicle = await call('/vehicles', admin, 'POST', { vehicleNumber: `TEST-E2E-MR-OTHER-${stamp}`, vehicleType: 'VAN', fuelType: 'PETROL' }); check('create other vehicle', otherVehicle, 201);
+  const otherVid = getId(otherVehicle);
+  const otherMaint = await call('/maintenance', admin, 'POST', { vehicleId: otherVid, issueTitle: 'TEST-E2E Other Maint', priority: 'LOW' }); check('create other maintenance', otherMaint, 201);
+  const otherMid = getId(otherMaint);
+  const updateRepair = await call('/repairs', admin, 'POST', { vehicleId: vid, repairType: 'TEST-E2E Update Repair', laborCost: 50, partsCost: 100 }); check('create update repair', updateRepair, 201);
+  const updateRid = getId(updateRepair);
+  check('update repair mismatch vehicle', await call(`/repairs/${updateRid}`, admin, 'PATCH', { maintenanceRequestId: otherMid }), 400);
 
   check('viewer list maintenance', await call('/maintenance', viewer), 200);
   check('viewer create maintenance denied', await call('/maintenance', viewer, 'POST', { vehicleId: vid }), 403);
