@@ -2,10 +2,8 @@
 
 ## Why
 
-The `main` branch currently has no branch protection rules. Without protection,
-any user with push access can bypass the CI Gate (PR review, required checks,
-force pushes, direct pushes). This creates risk of unverified code reaching
-the main deployment branch.
+Before branch protection was configured, any user with push access could bypass the CI Gate (PR review, required checks,
+force pushes, direct pushes). This document records the required protection and verification status.
 
 ## Status: CONFIGURED AND VERIFIED
 
