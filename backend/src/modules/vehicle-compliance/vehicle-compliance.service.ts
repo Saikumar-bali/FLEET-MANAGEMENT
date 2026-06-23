@@ -387,6 +387,7 @@ export async function createComplianceDocument(vehicleId: string, input: Record<
       mimeType: input.mimeType as string | undefined,
       sizeBytes: input.sizeBytes as number | undefined,
       notes: input.notes as string | undefined,
+      ...(input.status !== undefined ? { status: input.status as any } : {}),
     },
   });
   await logHistory({ vehicleId, complianceType: input.complianceType as ComplianceType, entityType: 'VehicleComplianceDocument', entityId: result.id, action: 'CREATED', newValues: input, createdById: userId });
