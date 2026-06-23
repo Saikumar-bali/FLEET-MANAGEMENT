@@ -198,6 +198,7 @@ export const createComplianceDocumentSchema = z.object({
   mimeType: z.string().optional(),
   sizeBytes: z.number().int().min(0).optional().nullable(),
   notes: z.string().optional(),
+  status: complianceDocStatusEnum.optional(),
 });
 export const updateComplianceDocumentSchema = z.object({
   complianceType: complianceTypeEnum.optional(),
