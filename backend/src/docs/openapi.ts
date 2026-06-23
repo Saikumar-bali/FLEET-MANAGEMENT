@@ -48,6 +48,14 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Vehicle Compliance' },
     { name: 'Compliance Documents' },
     { name: 'Compliance History' },
+    { name: 'Finance' },
+    { name: 'Finance Accounts' },
+    { name: 'Finance Categories' },
+    { name: 'Finance Vendors' },
+    { name: 'Finance Customers' },
+    { name: 'Finance Trip Billing' },
+    { name: 'Finance Transactions' },
+    { name: 'Finance Payments' },
   ],
   components: {
     securitySchemes: {
@@ -1453,6 +1461,72 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/vehicle/{vehicleId}/compliance/history': {
       get: { tags: ['Compliance History'], summary: 'List compliance history for vehicle', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'complianceType', in: 'query', schema: { type: 'string' } }, { name: 'action', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated compliance history' } } },
+    },
+    '/finance/dashboard-summary': {
+      get: { tags: ['Finance'], summary: 'Get finance dashboard summary', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Dashboard summary with income, expenses, pending/overdue payments' } } },
+    },
+    '/finance/pnl': {
+      get: { tags: ['Finance'], summary: 'Get P&L report', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'P&L summary with category breakdown' } } },
+    },
+    '/finance/accounts': {
+      get: { tags: ['Finance Accounts'], summary: 'List finance accounts', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'type', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated finance accounts' } } },
+      post: { tags: ['Finance Accounts'], summary: 'Create finance account', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'type'], properties: { name: { type: 'string' }, type: { type: 'string', enum: ['CASH', 'BANK', 'WALLET', 'CREDIT', 'OTHER'] }, accountNumberMasked: { type: 'string' }, bankName: { type: 'string' }, openingBalance: { type: 'number' } } } } } }, responses: { '201': { description: 'Account created' } } },
+    },
+    '/finance/accounts/{id}': {
+      get: { tags: ['Finance Accounts'], summary: 'Get finance account', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Finance account' } } },
+      put: { tags: ['Finance Accounts'], summary: 'Update finance account', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Account updated' } } },
+      delete: { tags: ['Finance Accounts'], summary: 'Delete finance account', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Account deleted' } } },
+    },
+    '/finance/categories': {
+      get: { tags: ['Finance Categories'], summary: 'List finance categories', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'type', in: 'query', schema: { type: 'string' } }, { name: 'module', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated finance categories' } } },
+      post: { tags: ['Finance Categories'], summary: 'Create finance category', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'type', 'module'], properties: { name: { type: 'string' }, type: { type: 'string', enum: ['INCOME', 'EXPENSE'] }, module: { type: 'string', enum: ['TRIP', 'FUEL', 'EXPENSE', 'MAINTENANCE', 'REPAIR', 'COMPLIANCE', 'DRIVER', 'GENERAL'] } } } } } }, responses: { '201': { description: 'Category created' } } },
+    },
+    '/finance/categories/{id}': {
+      get: { tags: ['Finance Categories'], summary: 'Get finance category', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Finance category' } } },
+      delete: { tags: ['Finance Categories'], summary: 'Delete finance category', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Category deleted' } } },
+    },
+    '/finance/vendors': {
+      get: { tags: ['Finance Vendors'], summary: 'List vendors', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'search', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated vendors' } } },
+      post: { tags: ['Finance Vendors'], summary: 'Create vendor', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name', 'vendorType'], properties: { name: { type: 'string' }, vendorType: { type: 'string', enum: ['FUEL_STATION', 'WORKSHOP', 'INSURANCE', 'PERMIT_AGENT', 'RTO_AGENT', 'GPS_VENDOR', 'GENERAL'] }, phone: { type: 'string' }, email: { type: 'string' }, gstin: { type: 'string' }, address: { type: 'string' } } } } } }, responses: { '201': { description: 'Vendor created' } } },
+    },
+    '/finance/vendors/{id}': {
+      get: { tags: ['Finance Vendors'], summary: 'Get vendor', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Vendor' } } },
+      put: { tags: ['Finance Vendors'], summary: 'Update vendor', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Vendor updated' } } },
+      delete: { tags: ['Finance Vendors'], summary: 'Delete vendor', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Vendor deleted' } } },
+    },
+    '/finance/customers': {
+      get: { tags: ['Finance Customers'], summary: 'List customers', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'search', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated customers' } } },
+      post: { tags: ['Finance Customers'], summary: 'Create customer', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, phone: { type: 'string' }, email: { type: 'string' }, gstin: { type: 'string' }, billingAddress: { type: 'string' }, shippingAddress: { type: 'string' } } } } } }, responses: { '201': { description: 'Customer created' } } },
+    },
+    '/finance/customers/{id}': {
+      get: { tags: ['Finance Customers'], summary: 'Get customer', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Customer' } } },
+      put: { tags: ['Finance Customers'], summary: 'Update customer', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Customer updated' } } },
+      delete: { tags: ['Finance Customers'], summary: 'Delete customer', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Customer deleted' } } },
+    },
+    '/finance/trip-billings': {
+      get: { tags: ['Finance Trip Billing'], summary: 'List trip billings', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'paymentStatus', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated trip billings' } } },
+      post: { tags: ['Finance Trip Billing'], summary: 'Create trip billing', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['tripId', 'invoiceDate'], properties: { tripId: { type: 'string' }, customerId: { type: 'string' }, invoiceNumber: { type: 'string' }, invoiceDate: { type: 'string', format: 'date-time' }, billingAmount: { type: 'number' }, taxAmount: { type: 'number' }, discountAmount: { type: 'number' }, dueDate: { type: 'string', format: 'date-time' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Trip billing created' } } },
+    },
+    '/finance/trip-billings/{id}': {
+      get: { tags: ['Finance Trip Billing'], summary: 'Get trip billing', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip billing' } } },
+      put: { tags: ['Finance Trip Billing'], summary: 'Update trip billing', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip billing updated' } } },
+      delete: { tags: ['Finance Trip Billing'], summary: 'Delete trip billing', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip billing deleted' } } },
+    },
+    '/finance/transactions': {
+      get: { tags: ['Finance Transactions'], summary: 'List finance transactions', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }, { name: 'transactionType', in: 'query', schema: { type: 'string' } }, { name: 'paymentStatus', in: 'query', schema: { type: 'string' } }, { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' } }], responses: { '200': { description: 'Paginated transactions' } } },
+      post: { tags: ['Finance Transactions'], summary: 'Create finance transaction', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['transactionType', 'sourceModule', 'amount', 'transactionDate', 'paymentMode'], properties: { transactionType: { type: 'string', enum: ['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT'] }, sourceModule: { type: 'string', enum: ['TRIP', 'FUEL', 'EXPENSE', 'MAINTENANCE', 'REPAIR', 'COMPLIANCE', 'DRIVER', 'MANUAL'] }, vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, vendorId: { type: 'string' }, customerId: { type: 'string' }, accountId: { type: 'string' }, categoryId: { type: 'string' }, amount: { type: 'number' }, taxAmount: { type: 'number' }, transactionDate: { type: 'string', format: 'date-time' }, paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'CREDIT', 'OTHER'] }, referenceNumber: { type: 'string' }, description: { type: 'string' } } } } } }, responses: { '201': { description: 'Transaction created' } } },
+    },
+    '/finance/transactions/{id}': {
+      get: { tags: ['Finance Transactions'], summary: 'Get finance transaction', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Transaction' } } },
+      delete: { tags: ['Finance Transactions'], summary: 'Delete finance transaction', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Transaction deleted' } } },
+    },
+    '/finance/payments': {
+      get: { tags: ['Finance Payments'], summary: 'List payments', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated payments' } } },
+      post: { tags: ['Finance Payments'], summary: 'Create payment', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['amount', 'paymentDate', 'paymentMode'], properties: { transactionId: { type: 'string' }, tripBillingId: { type: 'string' }, accountId: { type: 'string' }, vendorId: { type: 'string' }, customerId: { type: 'string' }, amount: { type: 'number' }, paymentDate: { type: 'string', format: 'date-time' }, paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'CREDIT', 'OTHER'] }, referenceNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Payment created' } } },
+    },
+    '/finance/payments/{id}': {
+      get: { tags: ['Finance Payments'], summary: 'Get payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment' } } },
+      delete: { tags: ['Finance Payments'], summary: 'Delete payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment deleted' } } },
     },
   },
 };
