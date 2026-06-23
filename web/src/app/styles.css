@@ -1301,6 +1301,27 @@ input[type="radio"] {
   cursor: pointer;
 }
 
+input[type="date"],
+input[type="datetime-local"] {
+  cursor: pointer;
+  min-height: 38px;
+  position: relative;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
 label:has(input[type="checkbox"]),
 label:has(input[type="radio"]) {
   display: flex;
