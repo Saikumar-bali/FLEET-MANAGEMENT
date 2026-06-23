@@ -48,7 +48,8 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 | Phase 5 Deployment Gate Review | CI fix, branch protection docs, local verification | PR #16, CI PASS, final review pending |
 | Phase 6 | Maintenance and Repair | Completed, merged through PR #20 |
 | Phase 6 Post-Merge Smoke | Post-merge verification and staging deploy | Completed |
-| Phase 6.1 | India Vehicle Compliance & Document Metadata | Hardened, PR ready |
+| Phase 6.1 | India Vehicle Compliance & Document Metadata | Completed, merged through PR #22 |
+| Phase 6.1 Post-Merge Smoke | Post-merge verification and staging deploy | Completed |
 | Phase 7 | Finance and P&L | Not Started |
 | Phase 8 | React Native Driver App | Not Started |
 | Phase 9 | Reports, Notifications, Deployment | Not Started |
@@ -1068,4 +1069,4 @@ UI AI Studio Redesign branch `ui-aistudio-redesign` created from main. Complete 
 
 ## Next Step
 
-Phase 6.1 India Vehicle Compliance & Document Metadata is next.
+Phase 7 Finance and P&L is next.
