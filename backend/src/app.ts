@@ -19,6 +19,7 @@ import expenseRoutes from './modules/expenses/expenses.routes';
 import maintenanceRoutes from './modules/maintenance/maintenance.routes';
 import repairRoutes from './modules/repairs/repairs.routes';
 import vehicleComplianceRoutes from './modules/vehicle-compliance/vehicle-compliance.routes';
+import financeRoutes from './modules/finance/finance.routes';
 import docsRoutes from './modules/docs/docs.routes';
 import { sendError } from './utils/response';
 
@@ -59,6 +60,7 @@ app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/repairs', repairRoutes);
 app.use('/api/v1', vehicleComplianceRoutes);
+app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/docs', docsRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));

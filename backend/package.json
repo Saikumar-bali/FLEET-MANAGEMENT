@@ -14,6 +14,7 @@
     "test:fuel-expenses": "ts-node scripts/fuel-expense-workflow-test.ts",
     "test:maintenance-repair": "ts-node scripts/maintenance-repair-workflow-test.ts",
     "test:vehicle-compliance": "ts-node scripts/vehicle-compliance-workflow-test.ts",
+    "test:finance": "ts-node scripts/finance-workflow-test.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",

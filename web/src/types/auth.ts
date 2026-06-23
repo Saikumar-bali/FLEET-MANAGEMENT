@@ -500,3 +500,137 @@ export type ComplianceDashboard = {
   pendingVerification: number;
   totalDocuments: number;
 };
+
+// Finance Types
+export interface FinanceAccount {
+  id: string;
+  name: string;
+  type: 'CASH' | 'BANK' | 'WALLET' | 'CREDIT' | 'OTHER';
+  accountNumberMasked?: string | null;
+  bankName?: string | null;
+  openingBalance: number;
+  currentBalance: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceCategory {
+  id: string;
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  module: string;
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  vendorType: string;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  address?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  billingAddress?: string | null;
+  shippingAddress?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TripBilling {
+  id: string;
+  tripId: string;
+  customerId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceDate: string;
+  billingAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  paymentStatus: 'UNBILLED' | 'BILLED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  dueDate?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer?: Customer | null;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  transactionNumber: string;
+  transactionType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'ADJUSTMENT';
+  sourceModule: string;
+  sourceId?: string | null;
+  vehicleId?: string | null;
+  tripId?: string | null;
+  driverId?: string | null;
+  vendorId?: string | null;
+  customerId?: string | null;
+  accountId?: string | null;
+  categoryId?: string | null;
+  amount: number;
+  taxAmount: number;
+  totalAmount: number;
+  transactionDate: string;
+  paymentMode: string;
+  paymentStatus: 'PENDING' | 'PAID' | 'PARTIAL' | 'FAILED' | 'CANCELLED';
+  referenceNumber?: string | null;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vendor?: Vendor | null;
+  customer?: Customer | null;
+}
+
+export interface PaymentRecord {
+  id: string;
+  transactionId?: string | null;
+  tripBillingId?: string | null;
+  accountId?: string | null;
+  vendorId?: string | null;
+  customerId?: string | null;
+  amount: number;
+  paymentDate: string;
+  paymentMode: string;
+  referenceNumber?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface FinanceDashboardSummary {
+  currentMonthIncome: number;
+  currentMonthExpenses: number;
+  pendingPayments: number;
+  overduePayments: number;
+  totalReceivable: number;
+  totalPayable: number;
+  recentTransactions: FinanceTransaction[];
+}
+
+export interface PnlSummary {
+  totalIncome: number;
+  totalExpenses: number;
+  netProfit: number;
+  breakdown: Array<{
+    category: string;
+    type: 'INCOME' | 'EXPENSE';
+    total: number;
+  }>;
+}

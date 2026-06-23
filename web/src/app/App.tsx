@@ -21,6 +21,16 @@ import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
+import { lazy } from 'react';
+
+const FinancePage = lazy(() => import('../pages/FinancePage'));
+const FinanceTransactionsPage = lazy(() => import('../pages/FinanceTransactionsPage'));
+const FinanceAccountsPage = lazy(() => import('../pages/FinanceAccountsPage'));
+const FinanceCategoriesPage = lazy(() => import('../pages/FinanceCategoriesPage'));
+const FinanceVendorsPage = lazy(() => import('../pages/FinanceVendorsPage'));
+const FinanceCustomersPage = lazy(() => import('../pages/FinanceCustomersPage'));
+const FinanceTripBillingsPage = lazy(() => import('../pages/FinanceTripBillingsPage'));
+const FinancePaymentsPage = lazy(() => import('../pages/FinancePaymentsPage'));
 
 function App() {
   return (
@@ -68,6 +78,14 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
+                <Route path="/finance" element={<FinancePage />} />
+                <Route path="/finance/transactions" element={<FinanceTransactionsPage />} />
+                <Route path="/finance/accounts" element={<FinanceAccountsPage />} />
+                <Route path="/finance/categories" element={<FinanceCategoriesPage />} />
+                <Route path="/finance/vendors" element={<FinanceVendorsPage />} />
+                <Route path="/finance/customers" element={<FinanceCustomersPage />} />
+                <Route path="/finance/trip-billings" element={<FinanceTripBillingsPage />} />
+                <Route path="/finance/payments" element={<FinancePaymentsPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />
                 </Route>

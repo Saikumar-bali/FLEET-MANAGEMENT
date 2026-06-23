@@ -49,6 +49,12 @@ model User {
   repairsClosed            Repair[]          @relation("RepairClosedBy")
   complianceDocsVerified   VehicleComplianceDocument[] @relation("ComplianceDocVerifiedBy")
   complianceHistoryCreated VehicleComplianceHistory[]  @relation("ComplianceHistoryCreatedBy")
+  tripBillingsCreated      TripBilling[]               @relation("TripBillingCreatedBy")
+  tripBillingsUpdated      TripBilling[]               @relation("TripBillingUpdatedBy")
+  financeTxnsCreated       FinanceTransaction[]        @relation("FinanceTxnCreatedBy")
+  financeTxnsUpdated       FinanceTransaction[]        @relation("FinanceTxnUpdatedBy")
+  paymentsCreated          PaymentRecord[]             @relation("PaymentRecordCreatedBy")
+  financeHistoryCreated    FinanceHistory[]            @relation("FinanceHistoryCreatedBy")
 
   @@map("users")
 }
@@ -221,8 +227,9 @@ model Vehicle {
   trips           Trip[]
   fuelEntries     FuelEntry[]
   expenses        Expense[]
-  maintenance     MaintenanceRequest[]
-  repairs         Repair[]
+  maintenance       MaintenanceRequest[]
+  repairs           Repair[]
+  financeTransactions FinanceTransaction[]
   registrationDetail    VehicleRegistrationDetail?
   insuranceDetails      VehicleInsuranceDetail[]
   permitDetails         VehiclePermitDetail[]
@@ -257,6 +264,7 @@ model Driver {
   expenses          Expense[]
   maintenance       MaintenanceRequest[]
   repairs           Repair[]
+  financeTransactions FinanceTransaction[]
 
   @@map("drivers")
 }
@@ -364,6 +372,8 @@ model Trip {
   expenses          Expense[]
   maintenance       MaintenanceRequest[]
   repairs           Repair[]
+  billing           TripBilling?
+  financeTransactions FinanceTransaction[]
 
   @@index([vehicleId, status])
   @@index([driverId, status])
@@ -640,6 +650,106 @@ enum ComplianceHistoryAction {
   DELETED
 }
 
+// ─── Phase 7: Finance & Billing ───
+
+enum FinanceAccountType {
+  CASH
+  BANK
+  WALLET
+  CREDIT
+  OTHER
+}
+
+enum FinanceCategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceCategoryModule {
+  TRIP
+  FUEL
+  EXPENSE
+  MAINTENANCE
+  REPAIR
+  COMPLIANCE
+  DRIVER
+  GENERAL
+}
+
+enum VendorType {
+  FUEL_STATION
+  WORKSHOP
+  INSURANCE
+  PERMIT_AGENT
+  RTO_AGENT
+  GPS_VENDOR
+  GENERAL
+}
+
+enum TripBillingPaymentStatus {
+  UNBILLED
+  BILLED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum FinanceTransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  ADJUSTMENT
+}
+
+enum FinanceSourceModule {
+  TRIP
+  FUEL
+  EXPENSE
+  MAINTENANCE
+  REPAIR
+  COMPLIANCE
+  DRIVER
+  MANUAL
+}
+
+enum PaymentMode {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  CHEQUE
+  CREDIT
+  OTHER
+}
+
+enum FinancePaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum FinanceHistoryEntityType {
+  TRANSACTION
+  TRIP_BILLING
+  PAYMENT
+  VENDOR
+  CUSTOMER
+  ACCOUNT
+}
+
+enum FinanceHistoryAction {
+  CREATED
+  UPDATED
+  PAID
+  PARTIALLY_PAID
+  CANCELLED
+  DELETED
+  STATUS_CHANGED
+}
+
 model VehicleRegistrationDetail {
   id                String   @id @default(cuid())
   vehicleId         String   @unique @map("vehicle_id")
@@ -858,6 +968,194 @@ model VehicleComplianceHistory {
   @@index([complianceType])
   @@index([action])
   @@map("vehicle_compliance_history")
+}
+
+model FinanceAccount {
+  id                  String               @id @default(cuid())
+  name                String
+  type                FinanceAccountType
+  accountNumberMasked String?              @map("account_number_masked")
+  bankName            String?              @map("bank_name")
+  openingBalance      Decimal              @default(0) @map("opening_balance")
+  currentBalance      Decimal              @default(0) @map("current_balance")
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  transactions        FinanceTransaction[]
+  payments            PaymentRecord[]
+
+  @@map("finance_accounts")
+}
+
+model FinanceCategory {
+  id           String               @id @default(cuid())
+  name         String
+  type         FinanceCategoryType
+  module       FinanceCategoryModule
+  isSystem     Boolean              @default(false) @map("is_system")
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  transactions FinanceTransaction[]
+
+  @@map("finance_categories")
+}
+
+model Vendor {
+  id           String               @id @default(cuid())
+  name         String
+  vendorType   VendorType           @map("vendor_type")
+  phone        String?
+  email        String?
+  gstin        String?
+  address      String?
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  transactions FinanceTransaction[]
+  payments     PaymentRecord[]
+
+  @@map("vendors")
+}
+
+model Customer {
+  id              String              @id @default(cuid())
+  name            String
+  phone           String?
+  email           String?
+  gstin           String?
+  billingAddress  String?             @map("billing_address")
+  shippingAddress String?             @map("shipping_address")
+  isActive        Boolean             @default(true) @map("is_active")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  tripBillings    TripBilling[]
+  transactions    FinanceTransaction[]
+  payments        PaymentRecord[]
+
+  @@map("customers")
+}
+
+model TripBilling {
+  id              String                   @id @default(cuid())
+  tripId          String                   @unique @map("trip_id")
+  customerId      String?                  @map("customer_id")
+  invoiceNumber   String?                  @map("invoice_number")
+  invoiceDate     DateTime                 @map("invoice_date")
+  billingAmount   Decimal                  @default(0) @map("billing_amount")
+  taxAmount       Decimal                  @default(0) @map("tax_amount")
+  discountAmount  Decimal                  @default(0) @map("discount_amount")
+  totalAmount     Decimal                  @default(0) @map("total_amount")
+  paidAmount      Decimal                  @default(0) @map("paid_amount")
+  balanceAmount   Decimal                  @default(0) @map("balance_amount")
+  paymentStatus   TripBillingPaymentStatus @default(UNBILLED) @map("payment_status")
+  dueDate         DateTime?                @map("due_date")
+  notes           String?
+  createdById     String?                  @map("created_by_id")
+  updatedById     String?                  @map("updated_by_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  trip            Trip                     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  customer        Customer?                @relation(fields: [customerId], references: [id])
+  createdBy       User?                    @relation("TripBillingCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?                    @relation("TripBillingUpdatedBy", fields: [updatedById], references: [id])
+  payments        PaymentRecord[]
+
+  @@index([tripId])
+  @@index([customerId])
+  @@index([paymentStatus])
+  @@map("trip_billings")
+}
+
+model FinanceTransaction {
+  id                String                 @id @default(cuid())
+  transactionNumber String                 @unique @map("transaction_number")
+  transactionType   FinanceTransactionType @map("transaction_type")
+  sourceModule      FinanceSourceModule    @map("source_module")
+  sourceId          String?                @map("source_id")
+  vehicleId         String?                @map("vehicle_id")
+  tripId            String?                @map("trip_id")
+  driverId          String?                @map("driver_id")
+  vendorId          String?                @map("vendor_id")
+  customerId        String?                @map("customer_id")
+  accountId         String?                @map("account_id")
+  categoryId        String?                @map("category_id")
+  amount            Decimal
+  taxAmount         Decimal                @default(0) @map("tax_amount")
+  totalAmount       Decimal                @default(0) @map("total_amount")
+  transactionDate   DateTime               @map("transaction_date")
+  paymentMode       PaymentMode            @map("payment_mode")
+  paymentStatus     FinancePaymentStatus   @default(PENDING) @map("payment_status")
+  referenceNumber   String?                @map("reference_number")
+  description       String?
+  createdById       String?                @map("created_by_id")
+  updatedById       String?                @map("updated_by_id")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  updatedAt         DateTime               @updatedAt @map("updated_at")
+  vehicle           Vehicle?               @relation(fields: [vehicleId], references: [id])
+  trip              Trip?                  @relation(fields: [tripId], references: [id])
+  driver            Driver?                @relation(fields: [driverId], references: [id])
+  vendor            Vendor?                @relation(fields: [vendorId], references: [id])
+  customer          Customer?              @relation(fields: [customerId], references: [id])
+  account           FinanceAccount?        @relation(fields: [accountId], references: [id])
+  category          FinanceCategory?       @relation(fields: [categoryId], references: [id])
+  createdBy         User?                  @relation("FinanceTxnCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?                  @relation("FinanceTxnUpdatedBy", fields: [updatedById], references: [id])
+  payments          PaymentRecord[]
+
+  @@index([transactionDate])
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([driverId])
+  @@index([vendorId])
+  @@index([customerId])
+  @@index([sourceModule])
+  @@index([paymentStatus])
+  @@map("finance_transactions")
+}
+
+model PaymentRecord {
+  id              String              @id @default(cuid())
+  transactionId   String?             @map("transaction_id")
+  tripBillingId   String?             @map("trip_billing_id")
+  accountId       String?             @map("account_id")
+  vendorId        String?             @map("vendor_id")
+  customerId      String?             @map("customer_id")
+  amount          Decimal
+  paymentDate     DateTime            @map("payment_date")
+  paymentMode     PaymentMode         @map("payment_mode")
+  referenceNumber String?             @map("reference_number")
+  notes           String?
+  createdById     String?             @map("created_by_id")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  transaction     FinanceTransaction? @relation(fields: [transactionId], references: [id])
+  tripBilling     TripBilling?        @relation(fields: [tripBillingId], references: [id])
+  account         FinanceAccount?     @relation(fields: [accountId], references: [id])
+  vendor          Vendor?             @relation(fields: [vendorId], references: [id])
+  customer        Customer?           @relation(fields: [customerId], references: [id])
+  createdBy       User?               @relation("PaymentRecordCreatedBy", fields: [createdById], references: [id])
+
+  @@index([transactionId])
+  @@index([tripBillingId])
+  @@index([paymentDate])
+  @@map("payment_records")
+}
+
+model FinanceHistory {
+  id          String                  @id @default(cuid())
+  entityType  FinanceHistoryEntityType @map("entity_type")
+  entityId    String                  @map("entity_id")
+  action      FinanceHistoryAction
+  oldValues   Json?                   @map("old_values")
+  newValues   Json?                   @map("new_values")
+  remarks     String?
+  createdById String?                 @map("created_by_id")
+  createdAt   DateTime                @default(now()) @map("created_at")
+  createdBy   User?                   @relation("FinanceHistoryCreatedBy", fields: [createdById], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("finance_history")
 }
 
 model AuditLog {

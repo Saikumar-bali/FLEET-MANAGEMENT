@@ -32,6 +32,15 @@ import type {
   VehicleComplianceDocument,
   VehicleComplianceHistory,
   ComplianceDashboard,
+  FinanceAccount,
+  FinanceCategory,
+  Vendor,
+  Customer,
+  TripBilling,
+  FinanceTransaction,
+  PaymentRecord,
+  FinanceDashboardSummary,
+  PnlSummary,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -736,3 +745,46 @@ export function listComplianceHistory(token: string, vehicleId: string, params?:
   const q = workflowQuery(params);
   return request<PaginatedResponse<VehicleComplianceHistory>>(`/vehicle/${vehicleId}/compliance/history${q ? `?${q}` : ''}`, { token });
 }
+
+// Finance API
+export function getFinanceAccounts(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<FinanceAccount>>(`/finance/accounts${q ? `?${q}` : ''}`, { token }); }
+export function getFinanceAccount(token: string, id: string) { return request<FinanceAccount>(`/finance/accounts/${id}`, { token }); }
+export function createFinanceAccount(token: string, data: Record<string, unknown>) { return request<FinanceAccount>('/finance/accounts', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateFinanceAccount(token: string, id: string, data: Record<string, unknown>) { return request<FinanceAccount>(`/finance/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
+export function deleteFinanceAccount(token: string, id: string) { return request<null>(`/finance/accounts/${id}`, { method: 'DELETE', token }); }
+
+export function getFinanceCategories(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<FinanceCategory>>(`/finance/categories${q ? `?${q}` : ''}`, { token }); }
+export function getFinanceCategory(token: string, id: string) { return request<FinanceCategory>(`/finance/categories/${id}`, { token }); }
+export function createFinanceCategory(token: string, data: Record<string, unknown>) { return request<FinanceCategory>('/finance/categories', { method: 'POST', body: JSON.stringify(data), token }); }
+export function deleteFinanceCategory(token: string, id: string) { return request<null>(`/finance/categories/${id}`, { method: 'DELETE', token }); }
+
+export function getVendors(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<Vendor>>(`/finance/vendors${q ? `?${q}` : ''}`, { token }); }
+export function getVendor(token: string, id: string) { return request<Vendor>(`/finance/vendors/${id}`, { token }); }
+export function createVendor(token: string, data: Record<string, unknown>) { return request<Vendor>('/finance/vendors', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateVendor(token: string, id: string, data: Record<string, unknown>) { return request<Vendor>(`/finance/vendors/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
+export function deleteVendor(token: string, id: string) { return request<null>(`/finance/vendors/${id}`, { method: 'DELETE', token }); }
+
+export function getFinanceCustomers(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<Customer>>(`/finance/customers${q ? `?${q}` : ''}`, { token }); }
+export function getFinanceCustomer(token: string, id: string) { return request<Customer>(`/finance/customers/${id}`, { token }); }
+export function createFinanceCustomer(token: string, data: Record<string, unknown>) { return request<Customer>('/finance/customers', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateFinanceCustomer(token: string, id: string, data: Record<string, unknown>) { return request<Customer>(`/finance/customers/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
+export function deleteFinanceCustomer(token: string, id: string) { return request<null>(`/finance/customers/${id}`, { method: 'DELETE', token }); }
+
+export function getTripBillings(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<TripBilling>>(`/finance/trip-billings${q ? `?${q}` : ''}`, { token }); }
+export function getTripBilling(token: string, id: string) { return request<TripBilling>(`/finance/trip-billings/${id}`, { token }); }
+export function createTripBilling(token: string, data: Record<string, unknown>) { return request<TripBilling>('/finance/trip-billings', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateTripBilling(token: string, id: string, data: Record<string, unknown>) { return request<TripBilling>(`/finance/trip-billings/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
+export function deleteTripBilling(token: string, id: string) { return request<null>(`/finance/trip-billings/${id}`, { method: 'DELETE', token }); }
+
+export function getFinanceTransactions(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<FinanceTransaction>>(`/finance/transactions${q ? `?${q}` : ''}`, { token }); }
+export function getFinanceTransaction(token: string, id: string) { return request<FinanceTransaction>(`/finance/transactions/${id}`, { token }); }
+export function createFinanceTransaction(token: string, data: Record<string, unknown>) { return request<FinanceTransaction>('/finance/transactions', { method: 'POST', body: JSON.stringify(data), token }); }
+export function deleteFinanceTransaction(token: string, id: string) { return request<null>(`/finance/transactions/${id}`, { method: 'DELETE', token }); }
+
+export function getPayments(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<PaymentRecord>>(`/finance/payments${q ? `?${q}` : ''}`, { token }); }
+export function getPayment(token: string, id: string) { return request<PaymentRecord>(`/finance/payments/${id}`, { token }); }
+export function createPayment(token: string, data: Record<string, unknown>) { return request<PaymentRecord>('/finance/payments', { method: 'POST', body: JSON.stringify(data), token }); }
+export function deletePayment(token: string, id: string) { return request<null>(`/finance/payments/${id}`, { method: 'DELETE', token }); }
+
+export function getFinanceDashboardSummary(token: string) { return request<FinanceDashboardSummary>('/finance/dashboard-summary', { token }); }
+export function getFinancePnl(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PnlSummary>(`/finance/pnl${q ? `?${q}` : ''}`, { token }); }
