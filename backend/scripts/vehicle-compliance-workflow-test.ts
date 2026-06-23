@@ -167,6 +167,20 @@ async function main() {
   check('create doc with DRAFT status accepted (201)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'DRAFT', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 201);
   check('create doc with ACTIVE status accepted (201)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'ACTIVE', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 201);
 
+  // ─── Update document status restriction tests ───
+  check('update doc with VERIFIED status rejected (422)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'VERIFIED' }), 422);
+  check('update doc with REJECTED status rejected (422)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'REJECTED' }), 422);
+  check('update doc with EXPIRED status rejected (422)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'EXPIRED' }), 422);
+  check('update doc with RENEWAL_DUE status rejected (422)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'RENEWAL_DUE' }), 422);
+  check('update doc with ACTIVE status accepted (200)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'ACTIVE' }), 200);
+  check('update doc with DRAFT status accepted (200)', await call(`/compliance/documents/${docId}`, admin, 'PUT', { status: 'DRAFT' }), 200);
+
+  // Verify endpoint still works after update restriction
+  check('verify doc still works via verify endpoint (200)', await call(`/compliance/documents/${docId}/verify`, admin, 'PUT', { status: 'VERIFIED', notes: 'Re-verified' }), 200);
+  // Confirmed verified doc still appears in alerts
+  const verifiedDocInExpiring = asItems(await call('/compliance/alerts/expiring?days=365', admin)).some((d: any) => d.id === docId);
+  results.push({ name: 'verified doc still in expiring alerts after update restriction', ok: !!verifiedDocInExpiring, status: verifiedDocInExpiring ? 200 : 500 });
+
   // ─── Permission tests ───
   check('viewer create insurance denied', await call(`/vehicle/${vid}/compliance/insurance`, viewer, 'POST', { policyNumber: 'X', insurerName: 'X', policyType: 'COMPREHENSIVE', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 403);
   check('viewer update insurance denied', await call(`/vehicle/${vid}/compliance/insurance/${insId}`, viewer, 'PUT', { premiumAmount: 99999 }), 403);
