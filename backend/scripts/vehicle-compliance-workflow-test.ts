@@ -159,6 +159,14 @@ async function main() {
   check('create PUC validation error (missing fields)', await call(`/vehicle/${vid}/compliance/puc`, admin, 'POST', {}), 422);
   check('create road tax validation error (missing fields)', await call(`/vehicle/${vid}/compliance/road-tax`, admin, 'POST', {}), 422);
 
+  // ─── Create document status restriction tests ───
+  check('create doc with VERIFIED status rejected (422)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'VERIFIED', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 422);
+  check('create doc with REJECTED status rejected (422)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'REJECTED', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 422);
+  check('create doc with EXPIRED status rejected (422)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'EXPIRED', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 422);
+  check('create doc with RENEWAL_DUE status rejected (422)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'RENEWAL_DUE', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 422);
+  check('create doc with DRAFT status accepted (201)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'DRAFT', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 201);
+  check('create doc with ACTIVE status accepted (201)', await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'OTHER', status: 'ACTIVE', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 201);
+
   // ─── Permission tests ───
   check('viewer create insurance denied', await call(`/vehicle/${vid}/compliance/insurance`, viewer, 'POST', { policyNumber: 'X', insurerName: 'X', policyType: 'COMPREHENSIVE', validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-01-01T00:00:00.000Z' }), 403);
   check('viewer update insurance denied', await call(`/vehicle/${vid}/compliance/insurance/${insId}`, viewer, 'PUT', { premiumAmount: 99999 }), 403);

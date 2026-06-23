@@ -4,6 +4,7 @@ export const vehicleIdParamsSchema = z.object({ vehicleId: z.string().min(1) });
 export const complianceIdParamsSchema = z.object({ vehicleId: z.string().min(1), id: z.string().min(1) });
 
 const complianceDocStatusEnum = z.enum(['DRAFT', 'ACTIVE', 'EXPIRED', 'RENEWAL_DUE', 'VERIFIED', 'REJECTED']);
+const createComplianceDocStatusEnum = z.enum(['DRAFT', 'ACTIVE']);
 const complianceTypeEnum = z.enum(['RC', 'INSURANCE', 'PERMIT', 'FITNESS', 'PUC', 'ROAD_TAX', 'FASTAG', 'GPS_AIS140', 'HYPOTHECATION', 'OTHER']);
 const insurancePolicyTypeEnum = z.enum(['THIRD_PARTY', 'COMPREHENSIVE', 'OWN_DAMAGE', 'PACKAGE']);
 const permitTypeEnum = z.enum(['NATIONAL', 'STATE', 'GOODS_CARRIAGE', 'CONTRACT_CARRIAGE', 'TOURIST', 'STAGE_CARRIAGE', 'PRIVATE_SERVICE', 'OTHER']);
@@ -198,7 +199,7 @@ export const createComplianceDocumentSchema = z.object({
   mimeType: z.string().optional(),
   sizeBytes: z.number().int().min(0).optional().nullable(),
   notes: z.string().optional(),
-  status: complianceDocStatusEnum.optional(),
+  status: createComplianceDocStatusEnum.optional(),
 });
 export const updateComplianceDocumentSchema = z.object({
   complianceType: complianceTypeEnum.optional(),
