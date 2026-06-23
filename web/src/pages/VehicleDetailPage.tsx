@@ -80,6 +80,12 @@ const emptyGps: GpsForm = { deviceId: '', imei: '', vendorName: '', ais140Certif
 type DocForm = { complianceType: string; documentNumber: string; validFrom: string; validTo: string; issuingAuthority: string; notes: string };
 const emptyDoc: DocForm = { complianceType: 'INSURANCE', documentNumber: '', validFrom: '', validTo: '', issuingAuthority: '', notes: '' };
 
+function toIsoDateTime(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 export function VehicleDetailPage() {
   const { id } = useParams();
   const isNew = id === 'new';
@@ -216,37 +222,72 @@ export function VehicleDetailPage() {
   async function handleCreateInsurance(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
     try {
-      await createInsurance(auth.accessToken, id, { ...insuranceForm, premiumAmount: insuranceForm.premiumAmount ? parseFloat(insuranceForm.premiumAmount) : undefined });
+      await createInsurance(auth.accessToken, id, {
+        ...insuranceForm,
+        validFrom: toIsoDateTime(insuranceForm.validFrom)!,
+        validTo: toIsoDateTime(insuranceForm.validTo)!,
+        premiumAmount: insuranceForm.premiumAmount ? parseFloat(insuranceForm.premiumAmount) : undefined,
+      });
       setShowInsuranceForm(false); setInsuranceForm(emptyInsurance); void loadCompliance();
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create insurance.'); }
   }
   async function handleUpdateInsurance(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id || !editingInsuranceId) return;
     try {
-      await updateInsurance(auth.accessToken, id, editingInsuranceId, { ...insuranceForm, premiumAmount: insuranceForm.premiumAmount ? parseFloat(insuranceForm.premiumAmount) : undefined });
+      await updateInsurance(auth.accessToken, id, editingInsuranceId, {
+        ...insuranceForm,
+        validFrom: toIsoDateTime(insuranceForm.validFrom)!,
+        validTo: toIsoDateTime(insuranceForm.validTo)!,
+        premiumAmount: insuranceForm.premiumAmount ? parseFloat(insuranceForm.premiumAmount) : undefined,
+      });
       setShowInsuranceForm(false); setEditingInsuranceId(null); setInsuranceForm(emptyInsurance); void loadCompliance();
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to update insurance.'); }
   }
   async function handleCreatePermit(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
-    try { await createPermit(auth.accessToken, id, permitForm); setShowPermitForm(false); setPermitForm(emptyPermit); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create permit.'); }
+    try {
+      await createPermit(auth.accessToken, id, {
+        ...permitForm,
+        validFrom: toIsoDateTime(permitForm.validFrom)!,
+        validTo: toIsoDateTime(permitForm.validTo)!,
+      });
+      setShowPermitForm(false); setPermitForm(emptyPermit); void loadCompliance();
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create permit.'); }
   }
   async function handleCreateFitness(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
-    try { await createFitness(auth.accessToken, id, fitnessForm); setShowFitnessForm(false); setFitnessForm(emptyFitness); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create fitness record.'); }
+    try {
+      await createFitness(auth.accessToken, id, {
+        ...fitnessForm,
+        inspectionDate: toIsoDateTime(fitnessForm.inspectionDate)!,
+        validFrom: toIsoDateTime(fitnessForm.validFrom)!,
+        validTo: toIsoDateTime(fitnessForm.validTo)!,
+      });
+      setShowFitnessForm(false); setFitnessForm(emptyFitness); void loadCompliance();
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create fitness record.'); }
   }
   async function handleCreatePuc(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
-    try { await createPuc(auth.accessToken, id, pucForm); setShowPucForm(false); setPucForm(emptyPuc); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create PUC record.'); }
+    try {
+      await createPuc(auth.accessToken, id, {
+        ...pucForm,
+        validFrom: toIsoDateTime(pucForm.validFrom)!,
+        validTo: toIsoDateTime(pucForm.validTo)!,
+      });
+      setShowPucForm(false); setPucForm(emptyPuc); void loadCompliance();
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create PUC record.'); }
   }
   async function handleCreateRoadTax(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
-    const payload = { ...roadTaxForm, amount: roadTaxForm.amount ? parseFloat(roadTaxForm.amount) : undefined };
-    try { await createRoadTax(auth.accessToken, id, payload); setShowRoadTaxForm(false); setRoadTaxForm(emptyRoadTax); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create road tax record.'); }
+    try {
+      await createRoadTax(auth.accessToken, id, {
+        ...roadTaxForm,
+        paidFrom: toIsoDateTime(roadTaxForm.paidFrom)!,
+        paidTo: toIsoDateTime(roadTaxForm.paidTo)!,
+        amount: roadTaxForm.amount ? parseFloat(roadTaxForm.amount) : undefined,
+      });
+      setShowRoadTaxForm(false); setRoadTaxForm(emptyRoadTax); void loadCompliance();
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create road tax record.'); }
   }
   async function handleUpsertFastag(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
@@ -261,8 +302,14 @@ export function VehicleDetailPage() {
   }
   async function handleCreateDoc(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
-    try { await createComplianceDocument(auth.accessToken, id, docForm); setShowDocForm(false); setDocForm(emptyDoc); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create document.'); }
+    try {
+      await createComplianceDocument(auth.accessToken, id, {
+        ...docForm,
+        validFrom: toIsoDateTime(docForm.validFrom),
+        validTo: toIsoDateTime(docForm.validTo),
+      });
+      setShowDocForm(false); setDocForm(emptyDoc); void loadCompliance();
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create document.'); }
   }
   async function handleVerifyDoc(docId: string, status: string) {
     if (!auth.accessToken) return;
@@ -331,18 +378,25 @@ export function VehicleDetailPage() {
             </div>
           </div>
         ) : null}
-        {!isNew && activeSection === 'compliance' ? (
-          <div className="card form-section-grid">
+        {isNew ? (
+          <div className="action-panel">
+            <button type="submit" className="primary-button" disabled={isSaving}>{isSaving ? 'Creating...' : 'Create Vehicle'}</button>
+            <button type="button" className="secondary-button" onClick={() => navigate('/vehicles')}>Cancel</button>
+          </div>
+        ) : null}
+      </form>
+      {!isNew && activeSection === 'compliance' ? (
+          <div className="card form-section-grid compliance-card">
             <h4 className="role-edit-h4">Vehicle Compliance</h4>
             {complianceLoading ? <p className="compliance-empty">Loading compliance data...</p> : !canViewCompliance ? <p className="compliance-empty">You do not have permission to view compliance data.</p> : (
               <>
                 {/* Insurance */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>Insurance</h5>
+                  <h5 className="compliance-section-title compliance-section-header">Insurance</h5>
                   {canCreateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowInsuranceForm(!showInsuranceForm); setEditingInsuranceId(null); setInsuranceForm(emptyInsurance); }}>+ Add</button>}
                 </div>
                 {showInsuranceForm && !editingInsuranceId ? (
-                  <form onSubmit={handleCreateInsurance} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleCreateInsurance} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Policy # *</span><input value={insuranceForm.policyNumber} onChange={(e) => setInsuranceForm((f) => ({ ...f, policyNumber: e.target.value }))} required /></label>
                       <label><span className="field-label">Insurer *</span><input value={insuranceForm.insurerName} onChange={(e) => setInsuranceForm((f) => ({ ...f, insurerName: e.target.value }))} required /></label>
@@ -363,7 +417,7 @@ export function VehicleDetailPage() {
                     </tr>))}</tbody></table>
                 )}
                 {editingInsuranceId && showInsuranceForm ? (
-                  <form onSubmit={handleUpdateInsurance} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleUpdateInsurance} className="compliance-form-card">
                     <h5 className="compliance-section-title">Edit Insurance</h5>
                     <div className="compliance-form-row">
                       <label><span className="field-label">Policy #</span><input value={insuranceForm.policyNumber} onChange={(e) => setInsuranceForm((f) => ({ ...f, policyNumber: e.target.value }))} /></label>
@@ -376,11 +430,11 @@ export function VehicleDetailPage() {
 
                 {/* Permits */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>Permits</h5>
+                  <h5 className="compliance-section-title compliance-section-header">Permits</h5>
                   {canCreateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowPermitForm(!showPermitForm); setEditingPermitId(null); setPermitForm(emptyPermit); }}>+ Add</button>}
                 </div>
                 {showPermitForm && !editingPermitId ? (
-                  <form onSubmit={handleCreatePermit} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleCreatePermit} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Permit # *</span><input value={permitForm.permitNumber} onChange={(e) => setPermitForm((f) => ({ ...f, permitNumber: e.target.value }))} required /></label>
                       <label><span className="field-label">Type *</span><select value={permitForm.permitType} onChange={(e) => setPermitForm((f) => ({ ...f, permitType: e.target.value }))}><option value="NATIONAL">National</option><option value="STATE">State</option><option value="GOODS_CARRIAGE">Goods Carriage</option></select></label>
@@ -401,11 +455,11 @@ export function VehicleDetailPage() {
 
                 {/* Fitness */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>Fitness Certificates</h5>
+                  <h5 className="compliance-section-title compliance-section-header">Fitness Certificates</h5>
                   {canCreateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowFitnessForm(!showFitnessForm); setEditingFitnessId(null); setFitnessForm(emptyFitness); }}>+ Add</button>}
                 </div>
                 {showFitnessForm && !editingFitnessId ? (
-                  <form onSubmit={handleCreateFitness} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleCreateFitness} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Certificate # *</span><input value={fitnessForm.certificateNumber} onChange={(e) => setFitnessForm((f) => ({ ...f, certificateNumber: e.target.value }))} required /></label>
                       <label><span className="field-label">Inspection Date *</span><input type="datetime-local" value={fitnessForm.inspectionDate} onChange={(e) => setFitnessForm((f) => ({ ...f, inspectionDate: e.target.value }))} required /></label>
@@ -425,11 +479,11 @@ export function VehicleDetailPage() {
 
                 {/* PUC */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>PUC Certificates</h5>
+                  <h5 className="compliance-section-title compliance-section-header">PUC Certificates</h5>
                   {canCreateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowPucForm(!showPucForm); setEditingPucId(null); setPucForm(emptyPuc); }}>+ Add</button>}
                 </div>
                 {showPucForm && !editingPucId ? (
-                  <form onSubmit={handleCreatePuc} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleCreatePuc} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Certificate # *</span><input value={pucForm.certificateNumber} onChange={(e) => setPucForm((f) => ({ ...f, certificateNumber: e.target.value }))} required /></label>
                       <label><span className="field-label">Norm *</span><select value={pucForm.emissionNorm} onChange={(e) => setPucForm((f) => ({ ...f, emissionNorm: e.target.value }))}><option value="BSVI">BS-VI</option><option value="BSIV">BS-IV</option><option value="BSIII">BS-III</option></select></label>
@@ -449,11 +503,11 @@ export function VehicleDetailPage() {
 
                 {/* Road Tax */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>Road Tax</h5>
+                  <h5 className="compliance-section-title compliance-section-header">Road Tax</h5>
                   {canCreateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowRoadTaxForm(!showRoadTaxForm); setEditingRoadTaxId(null); setRoadTaxForm(emptyRoadTax); }}>+ Add</button>}
                 </div>
                 {showRoadTaxForm && !editingRoadTaxId ? (
-                  <form onSubmit={handleCreateRoadTax} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleCreateRoadTax} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Receipt # *</span><input value={roadTaxForm.taxReceiptNumber} onChange={(e) => setRoadTaxForm((f) => ({ ...f, taxReceiptNumber: e.target.value }))} required /></label>
                       <label><span className="field-label">Type *</span><select value={roadTaxForm.taxType} onChange={(e) => setRoadTaxForm((f) => ({ ...f, taxType: e.target.value }))}><option value="LIFETIME">Lifetime</option><option value="ANNUAL">Annual</option><option value="QUARTERLY">Quarterly</option></select></label>
@@ -474,11 +528,11 @@ export function VehicleDetailPage() {
 
                 {/* FASTag */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>FASTag</h5>
+                  <h5 className="compliance-section-title compliance-section-header">FASTag</h5>
                   {canUpdateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowFastagForm(!showFastagForm); setFastagForm(fastag ? { fastagId: fastag.fastagId, issuerBank: fastag.issuerBank ?? '', status: fastag.status, lastKnownBalance: fastag.lastKnownBalance?.toString() ?? '' } : emptyFastag); }}>{fastag ? 'Edit' : '+ Add'}</button>}
                 </div>
                 {showFastagForm ? (
-                  <form onSubmit={handleUpsertFastag} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleUpsertFastag} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">FASTag ID *</span><input value={fastagForm.fastagId} onChange={(e) => setFastagForm((f) => ({ ...f, fastagId: e.target.value }))} required /></label>
                       <label><span className="field-label">Issuer Bank</span><input value={fastagForm.issuerBank} onChange={(e) => setFastagForm((f) => ({ ...f, issuerBank: e.target.value }))} /></label>
@@ -499,11 +553,11 @@ export function VehicleDetailPage() {
 
                 {/* GPS Device */}
                 <div className="compliance-actions">
-                  <h5 className="compliance-section-title" style={{ margin: 0 }}>GPS Device (AIS-140)</h5>
+                  <h5 className="compliance-section-title compliance-section-header">GPS Device (AIS-140)</h5>
                   {canUpdateCompliance && <button type="button" className="secondary-button" onClick={() => { setShowGpsForm(!showGpsForm); setGpsForm(gpsDevice ? { deviceId: gpsDevice.deviceId, imei: gpsDevice.imei ?? '', vendorName: gpsDevice.vendorName ?? '', ais140Certified: gpsDevice.ais140Certified, status: gpsDevice.status } : emptyGps); }}>{gpsDevice ? 'Edit' : '+ Add'}</button>}
                 </div>
                 {showGpsForm ? (
-                  <form onSubmit={handleUpsertGps} className="card" style={{ marginBottom: 16, padding: 16 }}>
+                  <form onSubmit={handleUpsertGps} className="compliance-form-card">
                     <div className="compliance-form-row">
                       <label><span className="field-label">Device ID *</span><input value={gpsForm.deviceId} onChange={(e) => setGpsForm((f) => ({ ...f, deviceId: e.target.value }))} required /></label>
                       <label><span className="field-label">IMEI</span><input value={gpsForm.imei} onChange={(e) => setGpsForm((f) => ({ ...f, imei: e.target.value }))} /></label>
@@ -527,14 +581,14 @@ export function VehicleDetailPage() {
             )}
           </div>
         ) : null}
-        {!isNew && activeSection === 'documents' ? (
-          <div className="card form-section-grid">
+      {!isNew && activeSection === 'documents' ? (
+          <div className="card form-section-grid compliance-card">
             <div className="compliance-actions">
-              <h4 className="role-edit-h4" style={{ margin: 0 }}>Compliance Documents</h4>
+              <h4 className="role-edit-h4 compliance-section-header">Compliance Documents</h4>
               {canCreateDoc && <button type="button" className="secondary-button" onClick={() => { setShowDocForm(!showDocForm); setDocForm(emptyDoc); }}>+ Add Document</button>}
             </div>
             {showDocForm ? (
-              <form onSubmit={handleCreateDoc} className="card" style={{ marginBottom: 16, padding: 16 }}>
+              <form onSubmit={handleCreateDoc} className="compliance-form-card">
                 <div className="compliance-form-row">
                   <label><span className="field-label">Type *</span><select value={docForm.complianceType} onChange={(e) => setDocForm((f) => ({ ...f, complianceType: e.target.value }))}><option value="RC">RC</option><option value="INSURANCE">Insurance</option><option value="PERMIT">Permit</option><option value="FITNESS">Fitness</option><option value="PUC">PUC</option><option value="ROAD_TAX">Road Tax</option><option value="FASTAG">FASTag</option><option value="GPS_AIS140">GPS AIS-140</option><option value="OTHER">Other</option></select></label>
                   <label><span className="field-label">Document #</span><input value={docForm.documentNumber} onChange={(e) => setDocForm((f) => ({ ...f, documentNumber: e.target.value }))} /></label>
@@ -556,8 +610,8 @@ export function VehicleDetailPage() {
             )}
           </div>
         ) : null}
-        {!isNew && activeSection === 'history' ? (
-          <div className="card form-section-grid">
+      {!isNew && activeSection === 'history' ? (
+          <div className="card form-section-grid compliance-card">
             <h4 className="role-edit-h4">Compliance History</h4>
             {complianceLoading ? <p className="compliance-empty">Loading history...</p> : history.length === 0 ? <div className="info-banner">No compliance history found for this vehicle.</div> : (
               <table className="data-table"><thead><tr><th>Date</th><th>Type</th><th>Action</th><th>From</th><th>To</th><th>By</th><th>Remarks</th></tr></thead>
@@ -565,8 +619,8 @@ export function VehicleDetailPage() {
             )}
           </div>
         ) : null}
-        {!isNew && activeSection === 'status' ? (
-          <div className="card form-section-grid">
+      {!isNew && activeSection === 'status' ? (
+          <div className="card form-section-grid compliance-card">
             <h4 className="role-edit-h4">Status Management</h4>
             {canChangeStatus ? (
               <div className="action-panel">
@@ -582,13 +636,6 @@ export function VehicleDetailPage() {
             ) : null}
           </div>
         ) : null}
-        {isNew ? (
-          <div className="action-panel">
-            <button type="submit" className="primary-button" disabled={isSaving}>{isSaving ? 'Creating...' : 'Create Vehicle'}</button>
-            <button type="button" className="secondary-button" onClick={() => navigate('/vehicles')}>Cancel</button>
-          </div>
-        ) : null}
-      </form>
     </section>
   );
 }

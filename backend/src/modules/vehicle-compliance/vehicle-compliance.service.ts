@@ -454,6 +454,8 @@ export async function listComplianceHistory(vehicleId: string, query: any) {
 
 // ─── Dashboard / Alerts ───
 
+const ALERTABLE_DOCUMENT_STATUSES = ['ACTIVE', 'VERIFIED'] as const;
+
 export async function getComplianceDashboard() {
   const now = new Date();
   const in7Days = new Date(now);
@@ -461,10 +463,12 @@ export async function getComplianceDashboard() {
   const in30Days = new Date(now);
   in30Days.setDate(in30Days.getDate() + 30);
 
+  const alertable = { status: { in: [...ALERTABLE_DOCUMENT_STATUSES] } };
+
   const [expired, expiring7Days, expiring30Days, pendingVerification, totalDocuments] = await Promise.all([
-    prisma.vehicleComplianceDocument.count({ where: { status: 'ACTIVE', validTo: { lt: now } } }),
-    prisma.vehicleComplianceDocument.count({ where: { status: 'ACTIVE', validTo: { gte: now, lte: in7Days } } }),
-    prisma.vehicleComplianceDocument.count({ where: { status: 'ACTIVE', validTo: { gte: now, lte: in30Days } } }),
+    prisma.vehicleComplianceDocument.count({ where: { ...alertable, validTo: { lt: now } } }),
+    prisma.vehicleComplianceDocument.count({ where: { ...alertable, validTo: { gte: now, lte: in7Days } } }),
+    prisma.vehicleComplianceDocument.count({ where: { ...alertable, validTo: { gte: now, lte: in30Days } } }),
     prisma.vehicleComplianceDocument.count({ where: { status: 'DRAFT' } }),
     prisma.vehicleComplianceDocument.count(),
   ]);
@@ -475,7 +479,7 @@ export async function getComplianceDashboard() {
     expiring30Days,
     pendingVerification,
     totalDocuments,
-    label: 'Document compliance counts — tracks compliance documents (RC, insurance, permit, fitness, PUC, road tax, FASTag, GPS). Structured model counts (per-vehicle insurance/permit/etc.) are tracked separately.',
+    label: 'Document compliance counts — tracks compliance documents (RC, insurance, permit, fitness, PUC, road tax, FASTag, GPS). Includes ACTIVE and VERIFIED documents.',
   };
 }
 
@@ -484,7 +488,7 @@ export async function listExpiringSoon(days: number = 30) {
   const futureDate = new Date(now);
   futureDate.setDate(futureDate.getDate() + days);
   return prisma.vehicleComplianceDocument.findMany({
-    where: { status: 'ACTIVE', validTo: { gte: now, lte: futureDate } },
+    where: { status: { in: [...ALERTABLE_DOCUMENT_STATUSES] }, validTo: { gte: now, lte: futureDate } },
     include: { vehicle: { select: { id: true, vehicleNumber: true } } },
     orderBy: { validTo: 'asc' },
   });
@@ -493,7 +497,7 @@ export async function listExpiringSoon(days: number = 30) {
 export async function listExpired() {
   const now = new Date();
   return prisma.vehicleComplianceDocument.findMany({
-    where: { status: 'ACTIVE', validTo: { lt: now } },
+    where: { status: { in: [...ALERTABLE_DOCUMENT_STATUSES] }, validTo: { lt: now } },
     include: { vehicle: { select: { id: true, vehicleNumber: true } } },
     orderBy: { validTo: 'asc' },
   });
