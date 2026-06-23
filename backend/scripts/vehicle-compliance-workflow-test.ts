@@ -25,6 +25,7 @@ async function login(role: 'admin' | 'viewer' | 'driver') {
 async function main() {
   const admin = await login('admin');
   const viewer = await login('viewer');
+  function asItems(r: ApiResult): any[] { return r.ok ? (Array.isArray(r.data.data) ? r.data.data : r.data.data.items ?? []) : []; }
   let driver: string | null = null;
   try { driver = await login('driver'); } catch { /* driver credentials optional */ }
   const stamp = Date.now();
@@ -110,13 +111,13 @@ async function main() {
   const soonDocId = soonDoc.data.data.id;
   // Confirm it appears in expiring alerts
   const expiringBefore = await call('/compliance/alerts/expiring?days=30', admin);
-  const soonInExpiringBefore = expiringBefore.ok && expiringBefore.data.data.items.some((d: any) => d.id === soonDocId);
+  const soonInExpiringBefore = asItems(expiringBefore).some((d: any) => d.id === soonDocId);
   results.push({ name: 'soon-expiring doc in alerts before verify', ok: !!soonInExpiringBefore, status: soonInExpiringBefore ? 200 : 500 });
   // Verify the doc
   check('verify soon-expiring doc', await call(`/compliance/documents/${soonDocId}/verify`, admin, 'PUT', { status: 'VERIFIED' }), 200);
   // Confirm it STILL appears in expiring alerts after verify
   const expiringAfter = await call('/compliance/alerts/expiring?days=30', admin);
-  const soonInExpiringAfter = expiringAfter.ok && expiringAfter.data.data.items.some((d: any) => d.id === soonDocId);
+  const soonInExpiringAfter = asItems(expiringAfter).some((d: any) => d.id === soonDocId);
   results.push({ name: 'verified doc still in expiring alerts', ok: !!soonInExpiringAfter, status: soonInExpiringAfter ? 200 : 500 });
 
   // Create an expired doc
@@ -125,13 +126,13 @@ async function main() {
   const expiredDocId = expiredDoc.data.data.id;
   // Confirm it appears in expired alerts
   const expiredBefore = await call('/compliance/alerts/expired', admin);
-  const expiredInAlertsBefore = expiredBefore.ok && expiredBefore.data.data.items.some((d: any) => d.id === expiredDocId);
+  const expiredInAlertsBefore = asItems(expiredBefore).some((d: any) => d.id === expiredDocId);
   results.push({ name: 'expired doc in alerts before verify', ok: !!expiredInAlertsBefore, status: expiredInAlertsBefore ? 200 : 500 });
   // Verify the expired doc
   check('verify expired doc', await call(`/compliance/documents/${expiredDocId}/verify`, admin, 'PUT', { status: 'VERIFIED' }), 200);
   // Confirm it STILL appears in expired alerts after verify
   const expiredAfter = await call('/compliance/alerts/expired', admin);
-  const expiredInAlertsAfter = expiredAfter.ok && expiredAfter.data.data.items.some((d: any) => d.id === expiredDocId);
+  const expiredInAlertsAfter = asItems(expiredAfter).some((d: any) => d.id === expiredDocId);
   results.push({ name: 'verified expired doc still in expired alerts', ok: !!expiredInAlertsAfter, status: expiredInAlertsAfter ? 200 : 500 });
 
   // ─── Dashboard & Alerts ───
