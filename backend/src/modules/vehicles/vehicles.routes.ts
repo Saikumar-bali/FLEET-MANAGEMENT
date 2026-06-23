@@ -9,6 +9,7 @@ import {
   listVehiclesController,
   updateVehicleController,
   updateVehicleStatusController,
+  deleteVehicleController,
 } from './vehicles.controller';
 import {
   createVehicleSchema,
@@ -51,6 +52,12 @@ router.patch(
   requireAnyPermission(['vehicle_update', 'vehicle_delete']),
   validateRequest({ params: vehicleIdParamsSchema, body: updateVehicleStatusSchema }),
   asyncHandler(updateVehicleStatusController),
+);
+router.delete(
+  '/:id',
+  requirePermission('vehicle_delete'),
+  validateRequest({ params: vehicleIdParamsSchema }),
+  asyncHandler(deleteVehicleController),
 );
 
 export default router;
