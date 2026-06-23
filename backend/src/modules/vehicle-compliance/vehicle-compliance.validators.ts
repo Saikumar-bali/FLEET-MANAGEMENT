@@ -219,6 +219,14 @@ export const verifyDocumentSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Renew
+export const renewDocumentSchema = z.object({
+  validFrom: z.string().datetime(),
+  validTo: z.string().datetime(),
+  documentNumber: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 // Compliance query
 export const complianceQuerySchema = z.object({
   vehicleId: z.string().optional(),
@@ -228,3 +236,19 @@ export const complianceQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+// History query
+export const historyQuerySchema = z.object({
+  complianceType: complianceTypeEnum.optional(),
+  action: z.enum(['CREATED', 'UPDATED', 'RENEWED', 'VERIFIED', 'STATUS_CHANGED', 'DOCUMENT_UPLOADED']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// Alerts query
+export const alertsQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(365).default(30),
+});
+
+// Document ID params
+export const documentIdParamsSchema = z.object({ id: z.string().min(1) });

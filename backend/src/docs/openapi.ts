@@ -1448,6 +1448,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/compliance/documents/{id}/verify': {
       put: { tags: ['Compliance Documents'], summary: 'Verify or reject compliance document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Document verified or rejected' } } },
     },
+    '/compliance/documents/{id}/renew': {
+      put: { tags: ['Compliance Documents'], summary: 'Renew compliance document validity', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['validFrom', 'validTo'], properties: { validFrom: { type: 'string', format: 'date-time' }, validTo: { type: 'string', format: 'date-time' }, documentNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Document renewed' } } },
+    },
     '/vehicle/{vehicleId}/compliance/history': {
       get: { tags: ['Compliance History'], summary: 'List compliance history for vehicle', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'complianceType', in: 'query', schema: { type: 'string' } }, { name: 'action', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated compliance history' } } },
     },

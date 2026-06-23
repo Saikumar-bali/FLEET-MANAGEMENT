@@ -132,6 +132,10 @@ export async function verifyComplianceDocumentController(req: Request, res: Resp
   return sendSuccess(res, await complianceService.verifyComplianceDocument(String(req.params.id), req.body.status, req.body.notes, req.authUser!.id));
 }
 
+export async function renewComplianceDocumentController(req: Request, res: Response) {
+  return sendSuccess(res, await complianceService.renewComplianceDocument(String(req.params.id), req.body, req.authUser!.id));
+}
+
 export async function listComplianceHistoryController(req: Request, res: Response) {
   return sendSuccess(res, await complianceService.listComplianceHistory(String(req.params.vehicleId), { ...req.query, page: Number(req.query.page) || 1, limit: Number(req.query.limit) || 20 }));
 }

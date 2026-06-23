@@ -424,6 +424,21 @@ export async function verifyComplianceDocument(id: string, status: 'VERIFIED' | 
   return result;
 }
 
+export async function renewComplianceDocument(id: string, input: Record<string, unknown>, userId: string) {
+  const existing = await prisma.vehicleComplianceDocument.findUnique({ where: { id } });
+  if (!existing) throw new AppError('Compliance document not found', 404);
+  const data: Record<string, unknown> = {
+    validFrom: new Date(input.validFrom as string),
+    validTo: new Date(input.validTo as string),
+    status: 'ACTIVE',
+  };
+  if (input.documentNumber !== undefined) data.documentNumber = input.documentNumber;
+  if (input.notes !== undefined) data.notes = input.notes;
+  const result = await prisma.vehicleComplianceDocument.update({ where: { id }, data });
+  await logHistory({ vehicleId: existing.vehicleId, complianceType: existing.complianceType, entityType: 'VehicleComplianceDocument', entityId: id, action: 'RENEWED', fromStatus: existing.status, toStatus: 'ACTIVE', oldValues: { validFrom: existing.validFrom, validTo: existing.validTo } as unknown as Record<string, unknown>, newValues: { validFrom: data.validFrom, validTo: data.validTo } as unknown as Record<string, unknown>, remarks: input.notes as string | undefined, createdById: userId });
+  return result;
+}
+
 // ─── History ───
 
 export async function listComplianceHistory(vehicleId: string, query: any) {
@@ -454,7 +469,14 @@ export async function getComplianceDashboard() {
     prisma.vehicleComplianceDocument.count(),
   ]);
 
-  return { expired, expiring7Days, expiring30Days, pendingVerification, totalDocuments };
+  return {
+    expired,
+    expiring7Days,
+    expiring30Days,
+    pendingVerification,
+    totalDocuments,
+    label: 'Document compliance counts — tracks compliance documents (RC, insurance, permit, fitness, PUC, road tax, FASTag, GPS). Structured model counts (per-vehicle insurance/permit/etc.) are tracked separately.',
+  };
 }
 
 export async function listExpiringSoon(days: number = 30) {
