@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { getAdminCredential, getApiBase } from './test-helpers/credentials';
 
-const BASE_URL = process.env.BACKEND_URL || 'http://localhost:4000';
+const BASE_URL = getApiBase();
 const prisma = new PrismaClient();
 
 interface TestResult {
@@ -56,9 +57,10 @@ async function main() {
   console.log('─'.repeat(60));
 
   // Login
+  const adminCred = getAdminCredential();
   const loginRes = await apiCall('POST', '/api/v1/auth/login', '', {
-    identifier: 'admin@fleet.com',
-    password: 'admin123',
+    identifier: adminCred.identifier,
+    password: adminCred.password,
   });
   expect(loginRes.status === 200, `Login failed: ${loginRes.status} ${loginRes.data?.message || ''}`);
   const token = loginRes.data.data.accessToken;
@@ -83,7 +85,7 @@ async function main() {
   await runTest('List finance accounts', async () => {
     const res = await apiCall('GET', '/api/v1/finance/accounts', token);
     expect(res.status === 200, `Expected 200, got ${res.status}`);
-    expect(Array.isArray(res.data.data), 'Expected array');
+    expect(Array.isArray(res.data.data?.data ?? res.data.data), 'Expected array in response');
   });
 
   await runTest('Update finance account', async () => {
