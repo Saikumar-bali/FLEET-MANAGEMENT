@@ -2255,6 +2255,78 @@ textarea:focus {
   align-items: center;
 }
 
+.compliance-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.04));
+  color: var(--text-secondary, rgba(255, 255, 255, 0.55));
+  padding: 0;
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
+  position: relative;
+}
+
+.compliance-action-icon.verify {
+  color: var(--green, #34d399);
+}
+
+.compliance-action-icon.verify:hover {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: var(--green, #34d399);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.15);
+}
+
+.compliance-action-icon.reject {
+  color: var(--red, #f87171);
+}
+
+.compliance-action-icon.reject:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: var(--red, #f87171);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.15);
+}
+
+.compliance-action-icon:hover {
+  transform: scale(1.08);
+}
+
+.compliance-action-icon svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.compliance-action-icon::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg-elevated, rgba(30, 30, 30, 0.95));
+  color: var(--text-primary, rgba(255, 255, 255, 0.87));
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast, 150ms ease);
+  z-index: 10;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+
+.compliance-action-icon:hover::after {
+  opacity: 1;
+}
+
 .compliance-section-header {
   margin: 0;
 }
