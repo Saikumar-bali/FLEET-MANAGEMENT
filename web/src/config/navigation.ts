@@ -142,6 +142,15 @@ export const navigationItems: NavigationItem[] = [
     pageDescription: 'Repair tracking workflow',
   },
   {
+    label: 'Compliance',
+    path: '/compliance',
+    description: 'India vehicle compliance dashboard',
+    permissionKeys: ['vehicle_compliance_view'],
+    section: 'MANAGE',
+    pageTitle: 'Compliance Dashboard',
+    pageDescription: 'Insurance, permits, fitness, PUC, road tax, FASTag, and AIS-140 GPS tracking',
+  },
+  {
     label: 'Roles',
     path: '/roles',
     description: 'Roles and permission assignments',
