@@ -47,6 +47,8 @@ model User {
   maintenanceApproved      MaintenanceRequest[] @relation("MaintenanceApprovedBy")
   repairsCreated           Repair[]          @relation("RepairCreatedBy")
   repairsClosed            Repair[]          @relation("RepairClosedBy")
+  complianceDocsVerified   VehicleComplianceDocument[] @relation("ComplianceDocVerifiedBy")
+  complianceHistoryCreated VehicleComplianceHistory[]  @relation("ComplianceHistoryCreatedBy")
 
   @@map("users")
 }
@@ -221,6 +223,16 @@ model Vehicle {
   expenses        Expense[]
   maintenance     MaintenanceRequest[]
   repairs         Repair[]
+  registrationDetail    VehicleRegistrationDetail?
+  insuranceDetails      VehicleInsuranceDetail[]
+  permitDetails         VehiclePermitDetail[]
+  fitnessDetails        VehicleFitnessDetail[]
+  pucDetails            VehiclePucDetail[]
+  roadTaxDetails        VehicleRoadTaxDetail[]
+  fastagDetail          VehicleFastagDetail?
+  gpsDeviceDetail       VehicleGpsDeviceDetail?
+  complianceDocuments   VehicleComplianceDocument[]
+  complianceHistory     VehicleComplianceHistory[]
 
   @@map("vehicles")
 }
@@ -542,6 +554,310 @@ model Repair {
   @@index([driverId])
   @@index([status])
   @@map("repairs")
+}
+
+// ─── Phase 6.1: India Vehicle Compliance & Document Metadata ───
+
+enum InsurancePolicyType {
+  THIRD_PARTY
+  COMPREHENSIVE
+  OWN_DAMAGE
+  PACKAGE
+}
+
+enum PermitType {
+  NATIONAL
+  STATE
+  GOODS_CARRIAGE
+  CONTRACT_CARRIAGE
+  TOURIST
+  STAGE_CARRIAGE
+  PRIVATE_SERVICE
+  OTHER
+}
+
+enum EmissionNorm {
+  BSIII
+  BSIV
+  BSVI
+  OTHER
+}
+
+enum RoadTaxType {
+  LIFETIME
+  ANNUAL
+  QUARTERLY
+  MONTHLY
+  OTHER
+}
+
+enum FastagStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+  LOW_BALANCE
+  CLOSED
+}
+
+enum GpsDeviceStatus {
+  ACTIVE
+  INACTIVE
+  FAULTY
+  REMOVED
+}
+
+enum ComplianceType {
+  RC
+  INSURANCE
+  PERMIT
+  FITNESS
+  PUC
+  ROAD_TAX
+  FASTAG
+  GPS_AIS140
+  HYPOTHECATION
+  OTHER
+}
+
+enum ComplianceDocStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  RENEWAL_DUE
+  VERIFIED
+  REJECTED
+}
+
+enum ComplianceHistoryAction {
+  CREATED
+  UPDATED
+  RENEWED
+  VERIFIED
+  EXPIRED
+  REMINDER_DUE
+  DOCUMENT_LINKED
+  STATUS_CHANGED
+  DELETED
+}
+
+model VehicleRegistrationDetail {
+  id                String   @id @default(cuid())
+  vehicleId         String   @unique @map("vehicle_id")
+  registrationNumber String? @map("registration_number")
+  registrationDate  DateTime? @map("registration_date")
+  ownerName         String?  @map("owner_name")
+  rtoCode           String?  @map("rto_code")
+  rtoName           String?  @map("rto_name")
+  vehicleClass      String?  @map("vehicle_class")
+  transportCategory String?  @map("transport_category")
+  bodyType          String?  @map("body_type")
+  seatingCapacity   Int?     @map("seating_capacity")
+  grossVehicleWeight Int?    @map("gross_vehicle_weight")
+  unladenWeight     Int?     @map("unladen_weight")
+  hypothecationName String?  @map("hypothecation_name")
+  hypothecationType String?  @map("hypothecation_type")
+  status            String   @default("ACTIVE")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  vehicle           Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_registration_details")
+}
+
+model VehicleInsuranceDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  policyNumber        String              @map("policy_number")
+  insurerName         String              @map("insurer_name")
+  policyType          InsurancePolicyType @map("policy_type")
+  validFrom           DateTime            @map("valid_from")
+  validTo             DateTime            @map("valid_to")
+  premiumAmount       Decimal?            @map("premium_amount") @db.Decimal(14, 2)
+  idvAmount           Decimal?            @map("idv_amount") @db.Decimal(14, 2)
+  renewalReminderDays Int?                @default(30) @map("renewal_reminder_days")
+  status              ComplianceDocStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([validTo])
+  @@index([status])
+  @@map("vehicle_insurance_details")
+}
+
+model VehiclePermitDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  permitNumber        String              @map("permit_number")
+  permitType          PermitType          @map("permit_type")
+  issuingAuthority    String?             @map("issuing_authority")
+  coveredStates       String?             @map("covered_states")
+  coveredRoutes       String?             @map("covered_routes")
+  validFrom           DateTime            @map("valid_from")
+  validTo             DateTime            @map("valid_to")
+  renewalReminderDays Int?                @default(30) @map("renewal_reminder_days")
+  status              ComplianceDocStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([validTo])
+  @@index([status])
+  @@map("vehicle_permit_details")
+}
+
+model VehicleFitnessDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  certificateNumber   String              @map("certificate_number")
+  inspectionDate      DateTime            @map("inspection_date")
+  validFrom           DateTime            @map("valid_from")
+  validTo             DateTime            @map("valid_to")
+  inspectionCenter    String?             @map("inspection_center")
+  remarks             String?
+  renewalReminderDays Int?                @default(30) @map("renewal_reminder_days")
+  status              ComplianceDocStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([validTo])
+  @@index([status])
+  @@map("vehicle_fitness_details")
+}
+
+model VehiclePucDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  certificateNumber   String              @map("certificate_number")
+  emissionNorm        EmissionNorm        @map("emission_norm")
+  testingCenter       String?             @map("testing_center")
+  validFrom           DateTime            @map("valid_from")
+  validTo             DateTime            @map("valid_to")
+  renewalReminderDays Int?                @default(30) @map("renewal_reminder_days")
+  status              ComplianceDocStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([validTo])
+  @@index([status])
+  @@map("vehicle_puc_details")
+}
+
+model VehicleRoadTaxDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  taxReceiptNumber    String              @map("tax_receipt_number")
+  taxType             RoadTaxType         @map("tax_type")
+  paidFrom            DateTime            @map("paid_from")
+  paidTo              DateTime            @map("paid_to")
+  amount              Decimal?            @map("amount") @db.Decimal(14, 2)
+  issuingState        String?             @map("issuing_state")
+  renewalReminderDays Int?                @default(30) @map("renewal_reminder_days")
+  status              ComplianceDocStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([paidTo])
+  @@index([status])
+  @@map("vehicle_road_tax_details")
+}
+
+model VehicleFastagDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @unique @map("vehicle_id")
+  fastagId            String              @map("fastag_id")
+  issuerBank          String?             @map("issuer_bank")
+  linkedMobileMasked  String?             @map("linked_mobile_masked")
+  status              FastagStatus        @default(ACTIVE)
+  lastRechargeDate    DateTime?           @map("last_recharge_date")
+  lastKnownBalance    Decimal?            @map("last_known_balance") @db.Decimal(12, 2)
+  notes               String?
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_fastag_details")
+}
+
+model VehicleGpsDeviceDetail {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @unique @map("vehicle_id")
+  deviceId            String              @map("device_id")
+  imei                String?
+  simNumberMasked     String?             @map("sim_number_masked")
+  vendorName          String?             @map("vendor_name")
+  installedAt         DateTime?           @map("installed_at")
+  ais140Certified     Boolean             @default(false) @map("ais140_certified")
+  certificateNumber   String?             @map("certificate_number")
+  status              GpsDeviceStatus     @default(ACTIVE)
+  notes               String?
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_gps_device_details")
+}
+
+model VehicleComplianceDocument {
+  id                  String              @id @default(cuid())
+  vehicleId           String              @map("vehicle_id")
+  complianceType      ComplianceType      @map("compliance_type")
+  documentNumber      String?             @map("document_number")
+  validFrom           DateTime?           @map("valid_from")
+  validTo             DateTime?           @map("valid_to")
+  issuingAuthority    String?             @map("issuing_authority")
+  externalFileUrl     String?             @map("external_file_url")
+  fileName            String?             @map("file_name")
+  mimeType            String?             @map("mime_type")
+  sizeBytes           Int?                @map("size_bytes")
+  verifiedById        String?             @map("verified_by_id")
+  verifiedAt          DateTime?           @map("verified_at")
+  status              ComplianceDocStatus @default(DRAFT)
+  notes               String?
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  vehicle             Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  verifiedBy          User?               @relation("ComplianceDocVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([complianceType])
+  @@index([validTo])
+  @@index([status])
+  @@map("vehicle_compliance_documents")
+}
+
+model VehicleComplianceHistory {
+  id              String                  @id @default(cuid())
+  vehicleId       String                  @map("vehicle_id")
+  complianceType  ComplianceType          @map("compliance_type")
+  entityType      String                  @map("entity_type")
+  entityId        String?                 @map("entity_id")
+  action          ComplianceHistoryAction
+  fromStatus      String?                 @map("from_status")
+  toStatus        String?                 @map("to_status")
+  oldValues       Json?                   @map("old_values")
+  newValues       Json?                   @map("new_values")
+  remarks         String?
+  createdById     String?                 @map("created_by_id")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  vehicle         Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdBy       User?                   @relation("ComplianceHistoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, createdAt])
+  @@index([complianceType])
+  @@index([action])
+  @@map("vehicle_compliance_history")
 }
 
 model AuditLog {

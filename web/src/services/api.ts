@@ -21,6 +21,17 @@ import type {
   ExpenseRecord,
   MaintenanceRecord,
   RepairRecord,
+  VehicleRegistrationDetail,
+  VehicleInsuranceDetail,
+  VehiclePermitDetail,
+  VehicleFitnessDetail,
+  VehiclePucDetail,
+  VehicleRoadTaxDetail,
+  VehicleFastagDetail,
+  VehicleGpsDeviceDetail,
+  VehicleComplianceDocument,
+  VehicleComplianceHistory,
+  ComplianceDashboard,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -669,3 +680,59 @@ export function getRepair(token: string, id: string) { return request<RepairReco
 export function createRepair(token: string, payload: Record<string, unknown>) { return request<RepairRecord>('/repairs', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function updateRepair(token: string, id: string, payload: Record<string, unknown>) { return request<RepairRecord>(`/repairs/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
 export function repairAction(token: string, id: string, action: string) { return request<RepairRecord>(`/repairs/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+
+// ─── Phase 6.1: Vehicle Compliance API ───
+
+export function getComplianceDashboard(token: string) { return request<ComplianceDashboard>('/compliance/dashboard', { token }); }
+export function getExpiringSoon(token: string, days = 30) { return request<VehicleComplianceDocument[]>(`/compliance/alerts/expiring?days=${days}`, { token }); }
+export function getExpired(token: string) { return request<VehicleComplianceDocument[]>('/compliance/alerts/expired', { token }); }
+
+export function getRegistration(token: string, vehicleId: string) { return request<VehicleRegistrationDetail>(`/vehicle/${vehicleId}/compliance/registration`, { token }); }
+export function upsertRegistration(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleRegistrationDetail>(`/vehicle/${vehicleId}/compliance/registration`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function listInsurance(token: string, vehicleId: string) { return request<VehicleInsuranceDetail[]>(`/vehicle/${vehicleId}/compliance/insurance`, { token }); }
+export function getInsurance(token: string, vehicleId: string, id: string) { return request<VehicleInsuranceDetail>(`/vehicle/${vehicleId}/compliance/insurance/${id}`, { token }); }
+export function createInsurance(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleInsuranceDetail>(`/vehicle/${vehicleId}/compliance/insurance`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateInsurance(token: string, vehicleId: string, id: string, payload: Record<string, unknown>) { return request<VehicleInsuranceDetail>(`/vehicle/${vehicleId}/compliance/insurance/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function listPermits(token: string, vehicleId: string) { return request<VehiclePermitDetail[]>(`/vehicle/${vehicleId}/compliance/permits`, { token }); }
+export function getPermit(token: string, vehicleId: string, id: string) { return request<VehiclePermitDetail>(`/vehicle/${vehicleId}/compliance/permits/${id}`, { token }); }
+export function createPermit(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehiclePermitDetail>(`/vehicle/${vehicleId}/compliance/permits`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updatePermit(token: string, vehicleId: string, id: string, payload: Record<string, unknown>) { return request<VehiclePermitDetail>(`/vehicle/${vehicleId}/compliance/permits/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function listFitness(token: string, vehicleId: string) { return request<VehicleFitnessDetail[]>(`/vehicle/${vehicleId}/compliance/fitness`, { token }); }
+export function getFitness(token: string, vehicleId: string, id: string) { return request<VehicleFitnessDetail>(`/vehicle/${vehicleId}/compliance/fitness/${id}`, { token }); }
+export function createFitness(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleFitnessDetail>(`/vehicle/${vehicleId}/compliance/fitness`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateFitness(token: string, vehicleId: string, id: string, payload: Record<string, unknown>) { return request<VehicleFitnessDetail>(`/vehicle/${vehicleId}/compliance/fitness/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function listPuc(token: string, vehicleId: string) { return request<VehiclePucDetail[]>(`/vehicle/${vehicleId}/compliance/puc`, { token }); }
+export function getPuc(token: string, vehicleId: string, id: string) { return request<VehiclePucDetail>(`/vehicle/${vehicleId}/compliance/puc/${id}`, { token }); }
+export function createPuc(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehiclePucDetail>(`/vehicle/${vehicleId}/compliance/puc`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updatePuc(token: string, vehicleId: string, id: string, payload: Record<string, unknown>) { return request<VehiclePucDetail>(`/vehicle/${vehicleId}/compliance/puc/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function listRoadTax(token: string, vehicleId: string) { return request<VehicleRoadTaxDetail[]>(`/vehicle/${vehicleId}/compliance/road-tax`, { token }); }
+export function getRoadTax(token: string, vehicleId: string, id: string) { return request<VehicleRoadTaxDetail>(`/vehicle/${vehicleId}/compliance/road-tax/${id}`, { token }); }
+export function createRoadTax(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleRoadTaxDetail>(`/vehicle/${vehicleId}/compliance/road-tax`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateRoadTax(token: string, vehicleId: string, id: string, payload: Record<string, unknown>) { return request<VehicleRoadTaxDetail>(`/vehicle/${vehicleId}/compliance/road-tax/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function getFastag(token: string, vehicleId: string) { return request<VehicleFastagDetail | null>(`/vehicle/${vehicleId}/compliance/fastag`, { token }); }
+export function upsertFastag(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleFastagDetail>(`/vehicle/${vehicleId}/compliance/fastag`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+export function getGpsDevice(token: string, vehicleId: string) { return request<VehicleGpsDeviceDetail | null>(`/vehicle/${vehicleId}/compliance/gps-device`, { token }); }
+export function upsertGpsDevice(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleGpsDeviceDetail>(`/vehicle/${vehicleId}/compliance/gps-device`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+
+type ComplianceDocQuery = { vehicleId?: string; complianceType?: string; status?: string; expiringWithinDays?: number; page?: number; limit?: number };
+export function listComplianceDocuments(token: string, params?: ComplianceDocQuery) {
+  const q = workflowQuery(params);
+  return request<PaginatedResponse<VehicleComplianceDocument>>(`/compliance/documents${q ? `?${q}` : ''}`, { token });
+}
+export function getComplianceDocument(token: string, id: string) { return request<VehicleComplianceDocument>(`/compliance/documents/${id}`, { token }); }
+export function createComplianceDocument(token: string, vehicleId: string, payload: Record<string, unknown>) { return request<VehicleComplianceDocument>(`/vehicle/${vehicleId}/compliance/documents`, { method: 'POST', body: JSON.stringify(payload), token }); }
+export function updateComplianceDocument(token: string, id: string, payload: Record<string, unknown>) { return request<VehicleComplianceDocument>(`/compliance/documents/${id}`, { method: 'PUT', body: JSON.stringify(payload), token }); }
+export function verifyComplianceDocument(token: string, id: string, status: string, notes?: string) { return request<VehicleComplianceDocument>(`/compliance/documents/${id}/verify`, { method: 'PUT', body: JSON.stringify({ status, notes }), token }); }
+
+type HistoryQuery = { complianceType?: string; action?: string; page?: number; limit?: number };
+export function listComplianceHistory(token: string, vehicleId: string, params?: HistoryQuery) {
+  const q = workflowQuery(params);
+  return request<PaginatedResponse<VehicleComplianceHistory>>(`/vehicle/${vehicleId}/compliance/history${q ? `?${q}` : ''}`, { token });
+}

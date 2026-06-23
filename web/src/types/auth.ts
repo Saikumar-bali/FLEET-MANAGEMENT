@@ -316,3 +316,187 @@ export type RepairRecord = {
   closedById: string | null;
   closedAt: string | null;
 };
+
+// ─── Phase 6.1: India Vehicle Compliance Types ───
+
+export type InsurancePolicyType = 'COMPREHENSIVE' | 'THIRD_PARTY' | 'OWN_DAMAGE' | 'BUNDLED';
+export type PermitType = 'NATIONAL_PERMIT' | 'STATE_PERMIT' | 'TEMPORARY_PERMIT' | 'FLEET_PERMIT' | 'LOCAL_PERMIT';
+export type EmissionNorm = 'BS4' | 'BS6' | 'BS3' | 'PRE_BS3';
+export type RoadTaxType = 'LIFETIME' | 'ANNUAL' | 'QUARTERLY';
+export type FastagStatus = 'ACTIVE' | 'INACTIVE' | 'BLACKLISTED' | 'LOST' | 'EXPIRED';
+export type GpsDeviceStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE' | 'FAULTY' | 'REMOVED';
+export type ComplianceType = 'RC' | 'INSURANCE' | 'PERMIT' | 'FITNESS' | 'PUC' | 'ROAD_TAX' | 'FASTAG' | 'GPS_AIS140' | 'HYPOTHECATION' | 'OTHER';
+export type ComplianceDocStatus = 'ACTIVE' | 'EXPIRED' | 'SUSPENDED' | 'REVOKED' | 'PENDING' | 'DRAFT' | 'VERIFIED' | 'REJECTED';
+export type ComplianceHistoryAction = 'CREATED' | 'UPDATED' | 'RENEWED' | 'VERIFIED' | 'STATUS_CHANGED' | 'DOCUMENT_UPLOADED';
+
+export type VehicleRegistrationDetail = {
+  id: string;
+  vehicleId: string;
+  registrationNumber: string | null;
+  registrationDate: string | null;
+  ownerName: string | null;
+  rtoCode: string | null;
+  rtoName: string | null;
+  vehicleClass: string | null;
+  transportCategory: string | null;
+  bodyType: string | null;
+  seatingCapacity: number | null;
+  grossVehicleWeight: number | null;
+  unladenWeight: number | null;
+  hypothecationName: string | null;
+  hypothecationType: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleInsuranceDetail = {
+  id: string;
+  vehicleId: string;
+  policyNumber: string;
+  insurerName: string;
+  policyType: InsurancePolicyType;
+  validFrom: string;
+  validTo: string;
+  premiumAmount: number | null;
+  idvAmount: number | null;
+  renewalReminderDays: number;
+  status: ComplianceDocStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehiclePermitDetail = {
+  id: string;
+  vehicleId: string;
+  permitNumber: string;
+  permitType: PermitType;
+  issuingAuthority: string | null;
+  coveredStates: string | null;
+  coveredRoutes: string | null;
+  validFrom: string;
+  validTo: string;
+  renewalReminderDays: number;
+  status: ComplianceDocStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleFitnessDetail = {
+  id: string;
+  vehicleId: string;
+  certificateNumber: string;
+  inspectionDate: string;
+  validFrom: string;
+  validTo: string;
+  inspectionCenter: string | null;
+  remarks: string | null;
+  renewalReminderDays: number;
+  status: ComplianceDocStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehiclePucDetail = {
+  id: string;
+  vehicleId: string;
+  certificateNumber: string;
+  emissionNorm: EmissionNorm;
+  testingCenter: string | null;
+  validFrom: string;
+  validTo: string;
+  renewalReminderDays: number;
+  status: ComplianceDocStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleRoadTaxDetail = {
+  id: string;
+  vehicleId: string;
+  taxReceiptNumber: string;
+  taxType: RoadTaxType;
+  paidFrom: string;
+  paidTo: string;
+  amount: number | null;
+  issuingState: string | null;
+  renewalReminderDays: number;
+  status: ComplianceDocStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleFastagDetail = {
+  id: string;
+  vehicleId: string;
+  fastagId: string;
+  issuerBank: string | null;
+  linkedMobileMasked: string | null;
+  status: FastagStatus;
+  lastRechargeDate: string | null;
+  lastKnownBalance: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleGpsDeviceDetail = {
+  id: string;
+  vehicleId: string;
+  deviceId: string;
+  imei: string | null;
+  simNumberMasked: string | null;
+  vendorName: string | null;
+  installedAt: string | null;
+  ais140Certified: boolean;
+  certificateNumber: string | null;
+  status: GpsDeviceStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleComplianceDocument = {
+  id: string;
+  vehicleId: string;
+  complianceType: ComplianceType;
+  documentNumber: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  issuingAuthority: string | null;
+  externalFileUrl: string | null;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  status: ComplianceDocStatus;
+  notes: string | null;
+  verifiedById: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  verifiedBy: { id: string; name: string } | null;
+  vehicle: { id: string; vehicleNumber: string };
+};
+
+export type VehicleComplianceHistory = {
+  id: string;
+  vehicleId: string;
+  complianceType: ComplianceType;
+  entityType: string;
+  entityId: string | null;
+  action: ComplianceHistoryAction;
+  fromStatus: string | null;
+  toStatus: string | null;
+  oldValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  remarks: string | null;
+  createdAt: string;
+  createdBy: { id: string; name: string } | null;
+};
+
+export type ComplianceDashboard = {
+  expired: number;
+  expiring7Days: number;
+  expiring30Days: number;
+  pendingVerification: number;
+  totalDocuments: number;
+};

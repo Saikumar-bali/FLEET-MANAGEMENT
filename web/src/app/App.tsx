@@ -19,6 +19,7 @@ import { WorkflowListPage } from '../pages/WorkflowListPage';
 import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
 import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
+import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 
 function App() {
@@ -63,6 +64,9 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['repair_view']} />}>
                   <Route path="/repairs" element={<RepairListPage />} />
                   <Route path="/repairs/:id" element={<RepairDetailPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
+                  <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />

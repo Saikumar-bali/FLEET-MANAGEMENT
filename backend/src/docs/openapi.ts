@@ -45,6 +45,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Expenses' },
     { name: 'Maintenance' },
     { name: 'Repairs' },
+    { name: 'Vehicle Compliance' },
+    { name: 'Compliance Documents' },
+    { name: 'Compliance History' },
   ],
   components: {
     securitySchemes: {
@@ -1377,5 +1380,79 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/repairs/{id}/start': { post: { tags: ['Repairs'], summary: 'Start repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair started' } } } },
     '/repairs/{id}/complete': { post: { tags: ['Repairs'], summary: 'Complete repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair completed' } } } },
     '/repairs/{id}/cancel': { post: { tags: ['Repairs'], summary: 'Cancel repair', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Repair cancelled' } } } },
+    '/compliance/dashboard': { get: { tags: ['Vehicle Compliance'], summary: 'Compliance dashboard counts', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Dashboard summary' } } } },
+    '/compliance/alerts/expiring': { get: { tags: ['Vehicle Compliance'], summary: 'List documents expiring soon', security: [{ bearerAuth: [] }], parameters: [{ name: 'days', in: 'query', schema: { type: 'integer', default: 30 } }], responses: { '200': { description: 'Expiring documents' } } } },
+    '/compliance/alerts/expired': { get: { tags: ['Vehicle Compliance'], summary: 'List expired documents', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Expired documents' } } } },
+    '/vehicle/{vehicleId}/compliance/registration': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get vehicle registration', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Registration detail' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Upsert vehicle registration', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Registration detail upserted' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/insurance': {
+      get: { tags: ['Vehicle Compliance'], summary: 'List insurance records', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Insurance records' } } },
+      post: { tags: ['Vehicle Compliance'], summary: 'Create insurance record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'Insurance created' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/insurance/{id}': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get insurance record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Insurance record' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Update insurance record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Insurance updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/permits': {
+      get: { tags: ['Vehicle Compliance'], summary: 'List permits', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permit records' } } },
+      post: { tags: ['Vehicle Compliance'], summary: 'Create permit', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'Permit created' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/permits/{id}': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get permit', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permit record' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Update permit', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permit updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/fitness': {
+      get: { tags: ['Vehicle Compliance'], summary: 'List fitness records', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fitness records' } } },
+      post: { tags: ['Vehicle Compliance'], summary: 'Create fitness record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'Fitness created' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/fitness/{id}': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get fitness record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fitness record' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Update fitness record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fitness updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/puc': {
+      get: { tags: ['Vehicle Compliance'], summary: 'List PUC records', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'PUC records' } } },
+      post: { tags: ['Vehicle Compliance'], summary: 'Create PUC record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'PUC created' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/puc/{id}': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get PUC record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'PUC record' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Update PUC record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'PUC updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/road-tax': {
+      get: { tags: ['Vehicle Compliance'], summary: 'List road tax records', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Road tax records' } } },
+      post: { tags: ['Vehicle Compliance'], summary: 'Create road tax record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'Road tax created' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/road-tax/{id}': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get road tax record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Road tax record' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Update road tax record', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Road tax updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/fastag': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get FASTag details', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'FASTag details' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Upsert FASTag details', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'FASTag upserted' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/gps-device': {
+      get: { tags: ['Vehicle Compliance'], summary: 'Get GPS device details', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'GPS device details' } } },
+      put: { tags: ['Vehicle Compliance'], summary: 'Upsert GPS device details', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'GPS device upserted' } } },
+    },
+    '/compliance/documents': {
+      get: { tags: ['Compliance Documents'], summary: 'List compliance documents', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'complianceType', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'expiringWithinDays', in: 'query', schema: { type: 'integer' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated compliance documents' } } },
+    },
+    '/compliance/documents/{id}': {
+      get: { tags: ['Compliance Documents'], summary: 'Get compliance document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Compliance document' } } },
+      put: { tags: ['Compliance Documents'], summary: 'Update compliance document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Compliance document updated' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/documents': {
+      post: { tags: ['Compliance Documents'], summary: 'Create compliance document', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '201': { description: 'Compliance document created' } } },
+    },
+    '/compliance/documents/{id}/verify': {
+      put: { tags: ['Compliance Documents'], summary: 'Verify or reject compliance document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Document verified or rejected' } } },
+    },
+    '/compliance/documents/{id}/renew': {
+      put: { tags: ['Compliance Documents'], summary: 'Renew compliance document validity', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['validFrom', 'validTo'], properties: { validFrom: { type: 'string', format: 'date-time' }, validTo: { type: 'string', format: 'date-time' }, documentNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Document renewed' } } },
+    },
+    '/vehicle/{vehicleId}/compliance/history': {
+      get: { tags: ['Compliance History'], summary: 'List compliance history for vehicle', security: [{ bearerAuth: [] }], parameters: [{ name: 'vehicleId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'complianceType', in: 'query', schema: { type: 'string' } }, { name: 'action', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated compliance history' } } },
+    },
   },
 };
