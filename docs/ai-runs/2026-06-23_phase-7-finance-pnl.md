@@ -3,8 +3,9 @@
 **Date:** 2026-06-23
 **Branch:** `phase-7-finance-pnl`
 **Base:** `0e97299` (main after Phase 6.1 merge)
-**Commit:** `ddff11e`
+**Commits:** `ddff11e` → `c62bca1` → `44896c4` → `3f775e8` → `b6d2191` (latest)
 **PR:** #23
+**CI:** ✅ PASS (all 23 steps green, run #28024175961)
 
 ## Summary
 
@@ -77,13 +78,14 @@ Implemented the full Finance & P&L foundation including backend models, API endp
 
 ## Files Changed (24 files)
 
-### New Files (13)
+### New Files (15)
 - `backend/src/modules/finance/finance.types.ts`
 - `backend/src/modules/finance/finance.validators.ts`
 - `backend/src/modules/finance/finance.service.ts`
 - `backend/src/modules/finance/finance.controller.ts`
 - `backend/src/modules/finance/finance.routes.ts`
 - `backend/scripts/finance-workflow-test.ts`
+- `backend/scripts/api-seed.ts`
 - `web/src/pages/FinancePage.tsx`
 - `web/src/pages/FinanceTransactionsPage.tsx`
 - `web/src/pages/FinanceAccountsPage.tsx`
@@ -93,13 +95,14 @@ Implemented the full Finance & P&L foundation including backend models, API endp
 - `web/src/pages/FinanceTripBillingsPage.tsx`
 - `web/src/pages/FinancePaymentsPage.tsx`
 
-### Modified Files (10)
+### Modified Files (12)
 - `backend/prisma/schema.prisma` — 8 models, 12 enums, relations
 - `backend/src/constants/rbac.ts` — 28 permissions, role grants
 - `backend/src/app.ts` — finance route registration
-- `backend/package.json` — test:finance script
+- `backend/package.json` — test:finance + seed:api scripts
 - `backend/src/docs/openapi.ts` — finance endpoint documentation
 - `backend/scripts/api-docs-coverage-test.ts` — finance coverage
+- `backend/scripts/finance-workflow-test.ts` — env-based credentials
 - `web/src/config/navigation.ts` — 8 finance nav items
 - `web/src/types/auth.ts` — finance TypeScript types
 - `web/src/services/api.ts` — finance API functions
