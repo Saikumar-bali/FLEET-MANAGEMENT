@@ -106,7 +106,7 @@ async function main() {
 
   // ─── Fix 5 regression: verified docs remain in alerts ───
   // Create a doc expiring within 30 days
-  const soonDoc = await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'FITNESS', documentNumber: `SOON-${stamp}`, validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-07-15T00:00:00.000Z', issuingAuthority: 'TEST' });
+  const soonDoc = await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'FITNESS', documentNumber: `SOON-${stamp}`, validFrom: '2025-01-01T00:00:00.000Z', validTo: '2026-07-15T00:00:00.000Z', issuingAuthority: 'TEST', status: 'ACTIVE' });
   check('create soon-expiring doc', soonDoc, 201);
   const soonDocId = soonDoc.data.data.id;
   // Confirm it appears in expiring alerts
@@ -121,7 +121,7 @@ async function main() {
   results.push({ name: 'verified doc still in expiring alerts', ok: !!soonInExpiringAfter, status: soonInExpiringAfter ? 200 : 500 });
 
   // Create an expired doc
-  const expiredDoc = await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'PUC', documentNumber: `EXP-${stamp}`, validFrom: '2024-01-01T00:00:00.000Z', validTo: '2025-06-01T00:00:00.000Z', issuingAuthority: 'TEST' });
+  const expiredDoc = await call(`/vehicle/${vid}/compliance/documents`, admin, 'POST', { complianceType: 'PUC', documentNumber: `EXP-${stamp}`, validFrom: '2024-01-01T00:00:00.000Z', validTo: '2025-06-01T00:00:00.000Z', issuingAuthority: 'TEST', status: 'ACTIVE' });
   check('create expired doc', expiredDoc, 201);
   const expiredDocId = expiredDoc.data.data.id;
   // Confirm it appears in expired alerts
