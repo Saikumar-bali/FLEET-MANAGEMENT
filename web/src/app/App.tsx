@@ -21,7 +21,7 @@ import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 
 const FinancePage = lazy(() => import('../pages/FinancePage'));
 const FinanceTransactionsPage = lazy(() => import('../pages/FinanceTransactionsPage'));
@@ -78,14 +78,14 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
-                <Route path="/finance" element={<FinancePage />} />
-                <Route path="/finance/transactions" element={<FinanceTransactionsPage />} />
-                <Route path="/finance/accounts" element={<FinanceAccountsPage />} />
-                <Route path="/finance/categories" element={<FinanceCategoriesPage />} />
-                <Route path="/finance/vendors" element={<FinanceVendorsPage />} />
-                <Route path="/finance/customers" element={<FinanceCustomersPage />} />
-                <Route path="/finance/trip-billings" element={<FinanceTripBillingsPage />} />
-                <Route path="/finance/payments" element={<FinancePaymentsPage />} />
+                <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
+                <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
+                <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
+                <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
+                <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
+                <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
+                <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
+                <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />
                 </Route>
