@@ -48,9 +48,10 @@ export function FinanceCategoriesPage() {
       setError(null);
       try {
         const response = await getFinanceCategories(auth.accessToken);
-        setCategories(response.data.items);
-        if (response.data.items.length > 0) {
-          const first = response.data.items[0];
+        const items = response.data?.items ?? [];
+        setCategories(items);
+        if (items.length > 0) {
+          const first = items[0];
           setSelectedId(first.id);
           setForm({ name: first.name, type: first.type, module: first.module });
         }

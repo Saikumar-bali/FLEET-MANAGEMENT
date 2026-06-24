@@ -17,6 +17,11 @@ type PaymentForm = {
   amount: string;
   paymentDate: string;
   paymentMode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CHEQUE' | 'CREDIT' | 'OTHER';
+  upiReference: string;
+  bankUtrNumber: string;
+  chequeNumber: string;
+  chequeDate: string;
+  collectedByDriverId: string;
   referenceNumber: string;
   notes: string;
 };
@@ -30,6 +35,11 @@ const initialForm: PaymentForm = {
   amount: '',
   paymentDate: '',
   paymentMode: 'CASH',
+  upiReference: '',
+  bankUtrNumber: '',
+  chequeNumber: '',
+  chequeDate: '',
+  collectedByDriverId: '',
   referenceNumber: '',
   notes: '',
 };
@@ -54,7 +64,7 @@ export function FinancePaymentsPage() {
       setError(null);
       try {
         const response = await getPayments(auth.accessToken);
-        setItems(response.data.items);
+        setItems(response.data?.items ?? []);
       } catch (caughtError) {
         if (caughtError instanceof ApiError) setError(caughtError.message);
         else setError('Failed to load payments.');
@@ -77,6 +87,11 @@ export function FinancePaymentsPage() {
         amount: selected.amount.toString(),
         paymentDate: selected.paymentDate.split('T')[0],
         paymentMode: (selected.paymentMode as PaymentForm['paymentMode']) || 'CASH',
+        upiReference: selected.upiReference ?? '',
+        bankUtrNumber: selected.bankUtrNumber ?? '',
+        chequeNumber: selected.chequeNumber ?? '',
+        chequeDate: selected.chequeDate?.split('T')[0] ?? '',
+        collectedByDriverId: selected.collectedByDriverId ?? '',
         referenceNumber: selected.referenceNumber ?? '',
         notes: selected.notes ?? '',
       });
@@ -107,6 +122,11 @@ export function FinancePaymentsPage() {
         amount: parseFloat(form.amount) || 0,
         paymentDate: form.paymentDate || undefined,
         paymentMode: form.paymentMode,
+        upiReference: form.upiReference || undefined,
+        bankUtrNumber: form.bankUtrNumber || undefined,
+        chequeNumber: form.chequeNumber || undefined,
+        chequeDate: form.chequeDate || undefined,
+        collectedByDriverId: form.collectedByDriverId || undefined,
         referenceNumber: form.referenceNumber || undefined,
         notes: form.notes || undefined,
       };
@@ -181,10 +201,11 @@ export function FinancePaymentsPage() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Payment#</th>
                   <th>Amount</th>
-                  <th>Payment Date</th>
-                  <th>Payment Mode</th>
-                  <th>Reference#</th>
+                  <th>Date</th>
+                  <th>Mode</th>
+                  <th>Reference</th>
                   <th>Vendor/Customer</th>
                   <th>Notes</th>
                   <th></th>
@@ -197,6 +218,7 @@ export function FinancePaymentsPage() {
                     className={item.id === selectedId ? 'row-active' : ''}
                     onClick={() => setSelectedId(item.id)}
                   >
+                    <td>{item.paymentNumber ?? '—'}</td>
                     <td>{item.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td>{new Date(item.paymentDate).toLocaleDateString('en-IN')}</td>
                     <td>{item.paymentMode}</td>
@@ -273,6 +295,26 @@ export function FinancePaymentsPage() {
                   <option value="CREDIT">Credit</option>
                   <option value="OTHER">Other</option>
                 </select>
+              </label>
+              <label>
+                <span className="field-label">UPI Reference</span>
+                <input value={form.upiReference} onChange={(e) => setForm((f) => ({ ...f, upiReference: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Bank UTR Number</span>
+                <input value={form.bankUtrNumber} onChange={(e) => setForm((f) => ({ ...f, bankUtrNumber: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Cheque Number</span>
+                <input value={form.chequeNumber} onChange={(e) => setForm((f) => ({ ...f, chequeNumber: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Cheque Date</span>
+                <input type="date" value={form.chequeDate} onChange={(e) => setForm((f) => ({ ...f, chequeDate: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Collected By Driver ID</span>
+                <input value={form.collectedByDriverId} onChange={(e) => setForm((f) => ({ ...f, collectedByDriverId: e.target.value }))} />
               </label>
               <label>
                 <span className="field-label">Reference Number</span>

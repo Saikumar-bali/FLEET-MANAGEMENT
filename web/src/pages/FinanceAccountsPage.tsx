@@ -44,9 +44,10 @@ export function FinanceAccountsPage() {
       setError(null);
       try {
         const response = await getFinanceAccounts(auth.accessToken);
-        setAccounts(response.data.items);
-        if (response.data.items.length > 0) {
-          const first = response.data.items[0];
+        const items = response.data?.items ?? [];
+        setAccounts(items);
+        if (items.length > 0) {
+          const first = items[0];
           setSelectedId(first.id);
           setForm({
             name: first.name,

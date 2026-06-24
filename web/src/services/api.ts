@@ -661,7 +661,7 @@ export function getTripHistory(token: string, tripId: string) {
   return request<TripHistoryRecord[]>(`/trips/${tripId}/history`, { token });
 }
 
-type WorkflowQuery = { search?: string; status?: string; vehicleId?: string; tripId?: string; driverId?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number };
+type WorkflowQuery = { search?: string; status?: string; vehicleId?: string; tripId?: string; driverId?: string; customerId?: string; vendorId?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number };
 function workflowQuery(params?: WorkflowQuery) {
   const query = new URLSearchParams();
   Object.entries(params ?? {}).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)); });

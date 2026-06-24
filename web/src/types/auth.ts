@@ -528,11 +528,24 @@ export interface FinanceCategory {
 
 export interface Vendor {
   id: string;
+  vendorCode?: string | null;
   name: string;
+  legalName?: string | null;
+  tradeName?: string | null;
   vendorType: string;
   phone?: string | null;
   email?: string | null;
   gstin?: string | null;
+  pan?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  pincode?: string | null;
+  contactPersonName?: string | null;
+  contactPersonPhone?: string | null;
+  paymentTermsDays?: number | null;
+  bankAccountMasked?: string | null;
+  ifscCode?: string | null;
+  upiId?: string | null;
   address?: string | null;
   isActive: boolean;
   createdAt: string;
@@ -541,12 +554,25 @@ export interface Vendor {
 
 export interface Customer {
   id: string;
+  customerCode?: string | null;
   name: string;
+  legalName?: string | null;
+  tradeName?: string | null;
+  customerType?: string | null;
   phone?: string | null;
   email?: string | null;
   gstin?: string | null;
+  pan?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  pincode?: string | null;
   billingAddress?: string | null;
   shippingAddress?: string | null;
+  contactPersonName?: string | null;
+  contactPersonPhone?: string | null;
+  paymentTermsDays?: number | null;
+  creditLimit?: number | null;
+  isGstRegistered: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -556,12 +582,32 @@ export interface TripBilling {
   id: string;
   tripId: string;
   customerId?: string | null;
+  vehicleId?: string | null;
+  driverId?: string | null;
   invoiceNumber?: string | null;
   invoiceDate: string;
-  billingAmount: number;
-  taxAmount: number;
+  lrNumber?: string | null;
+  challanNumber?: string | null;
+  ewayBillNumber?: string | null;
+  customerPoNumber?: string | null;
+  placeOfSupplyState?: string | null;
+  originState?: string | null;
+  destinationState?: string | null;
+  freightAmount: number;
+  loadingCharges: number;
+  unloadingCharges: number;
+  detentionCharges: number;
+  tollCharges: number;
+  permitCharges: number;
+  otherCharges: number;
   discountAmount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
   totalAmount: number;
+  tdsAmount: number;
+  netReceivable: number;
   paidAmount: number;
   balanceAmount: number;
   paymentStatus: 'UNBILLED' | 'BILLED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
@@ -570,6 +616,8 @@ export interface TripBilling {
   createdAt: string;
   updatedAt: string;
   customer?: Customer | null;
+  vehicle?: VehicleRecord | null;
+  driver?: DriverRecord | null;
 }
 
 export interface FinanceTransaction {
@@ -601,6 +649,7 @@ export interface FinanceTransaction {
 
 export interface PaymentRecord {
   id: string;
+  paymentNumber?: string | null;
   transactionId?: string | null;
   tripBillingId?: string | null;
   accountId?: string | null;
@@ -609,6 +658,13 @@ export interface PaymentRecord {
   amount: number;
   paymentDate: string;
   paymentMode: string;
+  upiReference?: string | null;
+  bankUtrNumber?: string | null;
+  chequeNumber?: string | null;
+  chequeDate?: string | null;
+  collectedByDriverId?: string | null;
+  reconciledStatus?: string | null;
+  reconciledAt?: string | null;
   referenceNumber?: string | null;
   notes?: string | null;
   createdAt: string;

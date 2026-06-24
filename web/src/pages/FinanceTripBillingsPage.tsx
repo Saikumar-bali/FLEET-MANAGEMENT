@@ -17,11 +17,29 @@ import { PageHeader } from '../components/PageHeader';
 type TripBillingForm = {
   tripId: string;
   customerId: string;
+  vehicleId: string;
+  driverId: string;
   invoiceNumber: string;
   invoiceDate: string;
-  billingAmount: string;
-  taxAmount: string;
+  lrNumber: string;
+  challanNumber: string;
+  ewayBillNumber: string;
+  customerPoNumber: string;
+  placeOfSupplyState: string;
+  originState: string;
+  destinationState: string;
+  freightAmount: string;
+  loadingCharges: string;
+  unloadingCharges: string;
+  detentionCharges: string;
+  tollCharges: string;
+  permitCharges: string;
+  otherCharges: string;
   discountAmount: string;
+  cgstAmount: string;
+  sgstAmount: string;
+  igstAmount: string;
+  tdsAmount: string;
   dueDate: string;
   notes: string;
 };
@@ -29,11 +47,29 @@ type TripBillingForm = {
 const initialForm: TripBillingForm = {
   tripId: '',
   customerId: '',
+  vehicleId: '',
+  driverId: '',
   invoiceNumber: '',
   invoiceDate: '',
-  billingAmount: '',
-  taxAmount: '',
-  discountAmount: '',
+  lrNumber: '',
+  challanNumber: '',
+  ewayBillNumber: '',
+  customerPoNumber: '',
+  placeOfSupplyState: '',
+  originState: '',
+  destinationState: '',
+  freightAmount: '0',
+  loadingCharges: '0',
+  unloadingCharges: '0',
+  detentionCharges: '0',
+  tollCharges: '0',
+  permitCharges: '0',
+  otherCharges: '0',
+  discountAmount: '0',
+  cgstAmount: '0',
+  sgstAmount: '0',
+  igstAmount: '0',
+  tdsAmount: '0',
   dueDate: '',
   notes: '',
 };
@@ -68,9 +104,10 @@ export function FinanceTripBillingsPage() {
         const response = await getTripBillings(auth.accessToken, {
           ...(filterPaymentStatus ? { status: filterPaymentStatus } : {}),
         });
-        setItems(response.data.items);
-        if (response.data.items.length > 0 && !selectedId) {
-          const first = response.data.items[0];
+        const items = response.data?.items ?? [];
+        setItems(items);
+        if (items.length > 0 && !selectedId) {
+          const first = items[0];
           setSelectedId(first.id);
         }
       } catch (caughtError) {
@@ -88,11 +125,29 @@ export function FinanceTripBillingsPage() {
       setForm({
         tripId: selected.tripId,
         customerId: selected.customerId ?? '',
+        vehicleId: selected.vehicleId ?? '',
+        driverId: selected.driverId ?? '',
         invoiceNumber: selected.invoiceNumber ?? '',
         invoiceDate: selected.invoiceDate.split('T')[0],
-        billingAmount: selected.billingAmount.toString(),
-        taxAmount: selected.taxAmount.toString(),
+        lrNumber: selected.lrNumber ?? '',
+        challanNumber: selected.challanNumber ?? '',
+        ewayBillNumber: selected.ewayBillNumber ?? '',
+        customerPoNumber: selected.customerPoNumber ?? '',
+        placeOfSupplyState: selected.placeOfSupplyState ?? '',
+        originState: selected.originState ?? '',
+        destinationState: selected.destinationState ?? '',
+        freightAmount: selected.freightAmount.toString(),
+        loadingCharges: selected.loadingCharges.toString(),
+        unloadingCharges: selected.unloadingCharges.toString(),
+        detentionCharges: selected.detentionCharges.toString(),
+        tollCharges: selected.tollCharges.toString(),
+        permitCharges: selected.permitCharges.toString(),
+        otherCharges: selected.otherCharges.toString(),
         discountAmount: selected.discountAmount.toString(),
+        cgstAmount: selected.cgstAmount.toString(),
+        sgstAmount: selected.sgstAmount.toString(),
+        igstAmount: selected.igstAmount.toString(),
+        tdsAmount: selected.tdsAmount.toString(),
         dueDate: selected.dueDate?.split('T')[0] ?? '',
         notes: selected.notes ?? '',
       });
@@ -118,11 +173,29 @@ export function FinanceTripBillingsPage() {
       const payload: Record<string, unknown> = {
         tripId: form.tripId,
         customerId: form.customerId || undefined,
+        vehicleId: form.vehicleId || undefined,
+        driverId: form.driverId || undefined,
         invoiceNumber: form.invoiceNumber || undefined,
         invoiceDate: form.invoiceDate || undefined,
-        billingAmount: parseFloat(form.billingAmount) || 0,
-        taxAmount: parseFloat(form.taxAmount) || 0,
+        lrNumber: form.lrNumber || undefined,
+        challanNumber: form.challanNumber || undefined,
+        ewayBillNumber: form.ewayBillNumber || undefined,
+        customerPoNumber: form.customerPoNumber || undefined,
+        placeOfSupplyState: form.placeOfSupplyState || undefined,
+        originState: form.originState || undefined,
+        destinationState: form.destinationState || undefined,
+        freightAmount: parseFloat(form.freightAmount) || 0,
+        loadingCharges: parseFloat(form.loadingCharges) || 0,
+        unloadingCharges: parseFloat(form.unloadingCharges) || 0,
+        detentionCharges: parseFloat(form.detentionCharges) || 0,
+        tollCharges: parseFloat(form.tollCharges) || 0,
+        permitCharges: parseFloat(form.permitCharges) || 0,
+        otherCharges: parseFloat(form.otherCharges) || 0,
         discountAmount: parseFloat(form.discountAmount) || 0,
+        cgstAmount: parseFloat(form.cgstAmount) || 0,
+        sgstAmount: parseFloat(form.sgstAmount) || 0,
+        igstAmount: parseFloat(form.igstAmount) || 0,
+        tdsAmount: parseFloat(form.tdsAmount) || 0,
         dueDate: form.dueDate || undefined,
         notes: form.notes || undefined,
       };
@@ -220,11 +293,11 @@ export function FinanceTripBillingsPage() {
               <thead>
                 <tr>
                   <th>Invoice#</th>
-                  <th>Trip ID</th>
                   <th>Customer</th>
-                  <th>Invoice Date</th>
+                  <th>Freight Amount</th>
                   <th>Total Amount</th>
-                  <th>Paid Amount</th>
+                  <th>Net Receivable</th>
+                  <th>Paid</th>
                   <th>Balance</th>
                   <th>Payment Status</th>
                   <th>Due Date</th>
@@ -239,10 +312,10 @@ export function FinanceTripBillingsPage() {
                     onClick={() => setSelectedId(item.id)}
                   >
                     <td>{item.invoiceNumber ?? '—'}</td>
-                    <td>{item.tripId}</td>
                     <td>{item.customer?.name ?? '—'}</td>
-                    <td>{new Date(item.invoiceDate).toLocaleDateString('en-IN')}</td>
+                    <td>{item.freightAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                    <td>{item.netReceivable.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td>{item.paidAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td>{item.balanceAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td><StatusBadge status={item.paymentStatus} /></td>
@@ -289,6 +362,14 @@ export function FinanceTripBillingsPage() {
                 <input value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))} />
               </label>
               <label>
+                <span className="field-label">Vehicle ID</span>
+                <input value={form.vehicleId} onChange={(e) => setForm((f) => ({ ...f, vehicleId: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Driver ID</span>
+                <input value={form.driverId} onChange={(e) => setForm((f) => ({ ...f, driverId: e.target.value }))} />
+              </label>
+              <label>
                 <span className="field-label">Invoice Number</span>
                 <input value={form.invoiceNumber} onChange={(e) => setForm((f) => ({ ...f, invoiceNumber: e.target.value }))} />
               </label>
@@ -297,16 +378,80 @@ export function FinanceTripBillingsPage() {
                 <input type="date" value={form.invoiceDate} onChange={(e) => setForm((f) => ({ ...f, invoiceDate: e.target.value }))} required />
               </label>
               <label>
-                <span className="field-label">Billing Amount</span>
-                <input type="number" step="0.01" value={form.billingAmount} onChange={(e) => setForm((f) => ({ ...f, billingAmount: e.target.value }))} required />
+                <span className="field-label">LR Number</span>
+                <input value={form.lrNumber} onChange={(e) => setForm((f) => ({ ...f, lrNumber: e.target.value }))} />
               </label>
               <label>
-                <span className="field-label">Tax Amount</span>
-                <input type="number" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
+                <span className="field-label">Challan Number</span>
+                <input value={form.challanNumber} onChange={(e) => setForm((f) => ({ ...f, challanNumber: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">E-Way Bill Number</span>
+                <input value={form.ewayBillNumber} onChange={(e) => setForm((f) => ({ ...f, ewayBillNumber: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Customer PO Number</span>
+                <input value={form.customerPoNumber} onChange={(e) => setForm((f) => ({ ...f, customerPoNumber: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Place of Supply State</span>
+                <input value={form.placeOfSupplyState} onChange={(e) => setForm((f) => ({ ...f, placeOfSupplyState: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Origin State</span>
+                <input value={form.originState} onChange={(e) => setForm((f) => ({ ...f, originState: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Destination State</span>
+                <input value={form.destinationState} onChange={(e) => setForm((f) => ({ ...f, destinationState: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Freight Amount</span>
+                <input type="number" step="0.01" value={form.freightAmount} onChange={(e) => setForm((f) => ({ ...f, freightAmount: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Loading Charges</span>
+                <input type="number" step="0.01" value={form.loadingCharges} onChange={(e) => setForm((f) => ({ ...f, loadingCharges: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Unloading Charges</span>
+                <input type="number" step="0.01" value={form.unloadingCharges} onChange={(e) => setForm((f) => ({ ...f, unloadingCharges: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Detention Charges</span>
+                <input type="number" step="0.01" value={form.detentionCharges} onChange={(e) => setForm((f) => ({ ...f, detentionCharges: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Toll Charges</span>
+                <input type="number" step="0.01" value={form.tollCharges} onChange={(e) => setForm((f) => ({ ...f, tollCharges: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Permit Charges</span>
+                <input type="number" step="0.01" value={form.permitCharges} onChange={(e) => setForm((f) => ({ ...f, permitCharges: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Other Charges</span>
+                <input type="number" step="0.01" value={form.otherCharges} onChange={(e) => setForm((f) => ({ ...f, otherCharges: e.target.value }))} />
               </label>
               <label>
                 <span className="field-label">Discount Amount</span>
                 <input type="number" step="0.01" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">CGST Amount</span>
+                <input type="number" step="0.01" value={form.cgstAmount} onChange={(e) => setForm((f) => ({ ...f, cgstAmount: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">SGST Amount</span>
+                <input type="number" step="0.01" value={form.sgstAmount} onChange={(e) => setForm((f) => ({ ...f, sgstAmount: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">IGST Amount</span>
+                <input type="number" step="0.01" value={form.igstAmount} onChange={(e) => setForm((f) => ({ ...f, igstAmount: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">TDS Amount</span>
+                <input type="number" step="0.01" value={form.tdsAmount} onChange={(e) => setForm((f) => ({ ...f, tdsAmount: e.target.value }))} />
               </label>
               <label>
                 <span className="field-label">Due Date</span>

@@ -12,6 +12,7 @@ export interface FinanceQuery {
   driverId?: string;
   vendorId?: string;
   customerId?: string;
+  tripBillingId?: string;
   dateFrom?: string;
   dateTo?: string;
   paymentMode?: string;
@@ -23,4 +24,6 @@ export interface PnlQuery {
   dateTo?: string;
   vehicleId?: string;
   driverId?: string;
+  tripId?: string;
+  customerId?: string;
 }

@@ -16,9 +16,42 @@ type VendorForm = {
   email: string;
   gstin: string;
   address: string;
+  vendorCode: string;
+  legalName: string;
+  tradeName: string;
+  pan: string;
+  state: string;
+  stateCode: string;
+  pincode: string;
+  contactPersonName: string;
+  contactPersonPhone: string;
+  paymentTermsDays: number;
+  bankAccountMasked: string;
+  ifscCode: string;
+  upiId: string;
 };
 
-const initialForm: VendorForm = { name: '', vendorType: 'GENERAL', phone: '', email: '', gstin: '', address: '' };
+const initialForm: VendorForm = {
+  name: '',
+  vendorType: 'GENERAL',
+  phone: '',
+  email: '',
+  gstin: '',
+  address: '',
+  vendorCode: '',
+  legalName: '',
+  tradeName: '',
+  pan: '',
+  state: '',
+  stateCode: '',
+  pincode: '',
+  contactPersonName: '',
+  contactPersonPhone: '',
+  paymentTermsDays: 0,
+  bankAccountMasked: '',
+  ifscCode: '',
+  upiId: '',
+};
 
 const VENDOR_TYPE_OPTIONS = [
   { value: 'FUEL_STATION', label: 'Fuel Station' },
@@ -55,9 +88,10 @@ export function FinanceVendorsPage() {
       setError(null);
       try {
         const response = await getVendors(auth.accessToken);
-        setVendors(response.data.items);
-        if (response.data.items.length > 0) {
-          const first = response.data.items[0];
+        const items = response.data?.items ?? [];
+        setVendors(items);
+        if (items.length > 0) {
+          const first = items[0];
           setSelectedId(first.id);
           setForm({
             name: first.name,
@@ -66,6 +100,19 @@ export function FinanceVendorsPage() {
             email: first.email ?? '',
             gstin: first.gstin ?? '',
             address: first.address ?? '',
+            vendorCode: first.vendorCode ?? '',
+            legalName: first.legalName ?? '',
+            tradeName: first.tradeName ?? '',
+            pan: first.pan ?? '',
+            state: first.state ?? '',
+            stateCode: first.stateCode ?? '',
+            pincode: first.pincode ?? '',
+            contactPersonName: first.contactPersonName ?? '',
+            contactPersonPhone: first.contactPersonPhone ?? '',
+            paymentTermsDays: first.paymentTermsDays ?? 0,
+            bankAccountMasked: first.bankAccountMasked ?? '',
+            ifscCode: first.ifscCode ?? '',
+            upiId: first.upiId ?? '',
           });
         }
       } catch (caughtError) {
@@ -87,6 +134,19 @@ export function FinanceVendorsPage() {
       email: selected.email ?? '',
       gstin: selected.gstin ?? '',
       address: selected.address ?? '',
+      vendorCode: selected.vendorCode ?? '',
+      legalName: selected.legalName ?? '',
+      tradeName: selected.tradeName ?? '',
+      pan: selected.pan ?? '',
+      state: selected.state ?? '',
+      stateCode: selected.stateCode ?? '',
+      pincode: selected.pincode ?? '',
+      contactPersonName: selected.contactPersonName ?? '',
+      contactPersonPhone: selected.contactPersonPhone ?? '',
+      paymentTermsDays: selected.paymentTermsDays ?? 0,
+      bankAccountMasked: selected.bankAccountMasked ?? '',
+      ifscCode: selected.ifscCode ?? '',
+      upiId: selected.upiId ?? '',
     });
     setMessage(null);
   }, [selected]);
@@ -112,6 +172,19 @@ export function FinanceVendorsPage() {
       email: form.email || null,
       gstin: form.gstin || null,
       address: form.address || null,
+      vendorCode: form.vendorCode || null,
+      legalName: form.legalName || null,
+      tradeName: form.tradeName || null,
+      pan: form.pan || null,
+      state: form.state || null,
+      stateCode: form.stateCode || null,
+      pincode: form.pincode || null,
+      contactPersonName: form.contactPersonName || null,
+      contactPersonPhone: form.contactPersonPhone || null,
+      paymentTermsDays: form.paymentTermsDays || null,
+      bankAccountMasked: form.bankAccountMasked || null,
+      ifscCode: form.ifscCode || null,
+      upiId: form.upiId || null,
     };
 
     try {
@@ -193,12 +266,13 @@ export function FinanceVendorsPage() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Code</th>
                   <th>Name</th>
-                  <th>Type</th>
-                  <th>Phone</th>
-                  <th>Email</th>
+                  <th>State</th>
                   <th>GSTIN</th>
+                  <th>PAN</th>
                   <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -208,11 +282,11 @@ export function FinanceVendorsPage() {
                     className={vendor.id === selectedId ? 'row-active' : ''}
                     onClick={() => setSelectedId(vendor.id)}
                   >
+                    <td>{vendor.vendorCode ?? '-'}</td>
                     <td><strong>{vendor.name}</strong></td>
-                    <td>{vendor.vendorType}</td>
-                    <td>{vendor.phone ?? '-'}</td>
-                    <td>{vendor.email ?? '-'}</td>
+                    <td>{vendor.state ?? '-'}</td>
                     <td>{vendor.gstin ?? '-'}</td>
+                    <td>{vendor.pan ?? '-'}</td>
                     <td><StatusBadge status={vendor.isActive ? 'ACTIVE' : 'INACTIVE'} /></td>
                     <td>
                       {canDelete ? (
@@ -271,6 +345,58 @@ export function FinanceVendorsPage() {
               <label>
                 <span className="field-label">Address</span>
                 <textarea value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} rows={3} />
+              </label>
+              <label>
+                <span className="field-label">Vendor Code</span>
+                <input value={form.vendorCode} onChange={(e) => setForm((f) => ({ ...f, vendorCode: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Legal Name</span>
+                <input value={form.legalName} onChange={(e) => setForm((f) => ({ ...f, legalName: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Trade Name</span>
+                <input value={form.tradeName} onChange={(e) => setForm((f) => ({ ...f, tradeName: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">PAN</span>
+                <input value={form.pan} onChange={(e) => setForm((f) => ({ ...f, pan: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">State</span>
+                <input value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">State Code</span>
+                <input value={form.stateCode} onChange={(e) => setForm((f) => ({ ...f, stateCode: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Pincode</span>
+                <input value={form.pincode} onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Contact Person Name</span>
+                <input value={form.contactPersonName} onChange={(e) => setForm((f) => ({ ...f, contactPersonName: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Contact Person Phone</span>
+                <input value={form.contactPersonPhone} onChange={(e) => setForm((f) => ({ ...f, contactPersonPhone: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">Payment Terms (Days)</span>
+                <input type="number" value={form.paymentTermsDays} onChange={(e) => setForm((f) => ({ ...f, paymentTermsDays: Number(e.target.value) }))} />
+              </label>
+              <label>
+                <span className="field-label">Bank Account (Masked)</span>
+                <input value={form.bankAccountMasked} onChange={(e) => setForm((f) => ({ ...f, bankAccountMasked: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">IFSC Code</span>
+                <input value={form.ifscCode} onChange={(e) => setForm((f) => ({ ...f, ifscCode: e.target.value }))} />
+              </label>
+              <label>
+                <span className="field-label">UPI ID</span>
+                <input value={form.upiId} onChange={(e) => setForm((f) => ({ ...f, upiId: e.target.value }))} />
               </label>
 
               {error ? <div className="error-banner">{error}</div> : null}

@@ -10,6 +10,57 @@ function generateTransactionNumber(): string {
   return `TXN-${timestamp}-${random}`;
 }
 
+function generatePaymentNumber(): string {
+  const timestamp = Date.now();
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `PAY-${timestamp}-${random}`;
+}
+
+function calculateTripBillingTotals(data: Record<string, unknown>) {
+  const freightAmount = new Decimal((data.freightAmount as number) ?? 0);
+  const loadingCharges = new Decimal((data.loadingCharges as number) ?? 0);
+  const unloadingCharges = new Decimal((data.unloadingCharges as number) ?? 0);
+  const detentionCharges = new Decimal((data.detentionCharges as number) ?? 0);
+  const tollCharges = new Decimal((data.tollCharges as number) ?? 0);
+  const permitCharges = new Decimal((data.permitCharges as number) ?? 0);
+  const otherCharges = new Decimal((data.otherCharges as number) ?? 0);
+  const discountAmount = new Decimal((data.discountAmount as number) ?? 0);
+  const cgstAmount = new Decimal((data.cgstAmount as number) ?? 0);
+  const sgstAmount = new Decimal((data.sgstAmount as number) ?? 0);
+  const igstAmount = new Decimal((data.igstAmount as number) ?? 0);
+  const tdsAmount = new Decimal((data.tdsAmount as number) ?? 0);
+
+  const totalCharges = freightAmount
+    .plus(loadingCharges)
+    .plus(unloadingCharges)
+    .plus(detentionCharges)
+    .plus(tollCharges)
+    .plus(permitCharges)
+    .plus(otherCharges);
+
+  const taxableAmount = totalCharges.minus(discountAmount);
+  const totalAmount = taxableAmount.plus(cgstAmount).plus(sgstAmount).plus(igstAmount);
+  const netReceivable = totalAmount.minus(tdsAmount);
+
+  return {
+    freightAmount,
+    loadingCharges,
+    unloadingCharges,
+    detentionCharges,
+    tollCharges,
+    permitCharges,
+    otherCharges,
+    discountAmount,
+    taxableAmount,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
+    totalAmount,
+    tdsAmount,
+    netReceivable,
+  };
+}
+
 export class FinanceService {
   private prisma = prisma;
 
@@ -169,11 +220,24 @@ export class FinanceService {
   async createVendor(data: Record<string, unknown>) {
     return this.prisma.vendor.create({
       data: {
+        vendorCode: data.vendorCode as string | undefined,
         name: data.name as string,
+        legalName: data.legalName as string | undefined,
+        tradeName: data.tradeName as string | undefined,
         vendorType: data.vendorType as any,
         phone: data.phone as string | undefined,
         email: data.email as string | undefined,
         gstin: data.gstin as string | undefined,
+        pan: data.pan as string | undefined,
+        state: data.state as string | undefined,
+        stateCode: data.stateCode as string | undefined,
+        pincode: data.pincode as string | undefined,
+        contactPersonName: data.contactPersonName as string | undefined,
+        contactPersonPhone: data.contactPersonPhone as string | undefined,
+        paymentTermsDays: data.paymentTermsDays as number | undefined,
+        bankAccountMasked: data.bankAccountMasked as string | undefined,
+        ifscCode: data.ifscCode as string | undefined,
+        upiId: data.upiId as string | undefined,
         address: data.address as string | undefined,
       },
     });
@@ -184,11 +248,24 @@ export class FinanceService {
     return this.prisma.vendor.update({
       where: { id },
       data: {
+        vendorCode: data.vendorCode as string | undefined,
         name: data.name as string | undefined,
+        legalName: data.legalName as string | undefined,
+        tradeName: data.tradeName as string | undefined,
         vendorType: data.vendorType as any,
         phone: data.phone as string | undefined,
         email: data.email as string | undefined,
         gstin: data.gstin as string | undefined,
+        pan: data.pan as string | undefined,
+        state: data.state as string | undefined,
+        stateCode: data.stateCode as string | undefined,
+        pincode: data.pincode as string | undefined,
+        contactPersonName: data.contactPersonName as string | undefined,
+        contactPersonPhone: data.contactPersonPhone as string | undefined,
+        paymentTermsDays: data.paymentTermsDays as number | undefined,
+        bankAccountMasked: data.bankAccountMasked as string | undefined,
+        ifscCode: data.ifscCode as string | undefined,
+        upiId: data.upiId as string | undefined,
         address: data.address as string | undefined,
       },
     });
@@ -239,12 +316,25 @@ export class FinanceService {
   async createCustomer(data: Record<string, unknown>) {
     return this.prisma.customer.create({
       data: {
+        customerCode: data.customerCode as string | undefined,
         name: data.name as string,
+        legalName: data.legalName as string | undefined,
+        tradeName: data.tradeName as string | undefined,
+        customerType: data.customerType as string | undefined,
         phone: data.phone as string | undefined,
         email: data.email as string | undefined,
         gstin: data.gstin as string | undefined,
+        pan: data.pan as string | undefined,
+        state: data.state as string | undefined,
+        stateCode: data.stateCode as string | undefined,
+        pincode: data.pincode as string | undefined,
         billingAddress: data.billingAddress as string | undefined,
         shippingAddress: data.shippingAddress as string | undefined,
+        contactPersonName: data.contactPersonName as string | undefined,
+        contactPersonPhone: data.contactPersonPhone as string | undefined,
+        paymentTermsDays: data.paymentTermsDays as number | undefined,
+        creditLimit: data.creditLimit != null ? new Decimal(data.creditLimit as number) : undefined,
+        isGstRegistered: (data.isGstRegistered as boolean) ?? false,
       },
     });
   }
@@ -254,12 +344,25 @@ export class FinanceService {
     return this.prisma.customer.update({
       where: { id },
       data: {
+        customerCode: data.customerCode as string | undefined,
         name: data.name as string | undefined,
+        legalName: data.legalName as string | undefined,
+        tradeName: data.tradeName as string | undefined,
+        customerType: data.customerType as string | undefined,
         phone: data.phone as string | undefined,
         email: data.email as string | undefined,
         gstin: data.gstin as string | undefined,
+        pan: data.pan as string | undefined,
+        state: data.state as string | undefined,
+        stateCode: data.stateCode as string | undefined,
+        pincode: data.pincode as string | undefined,
         billingAddress: data.billingAddress as string | undefined,
         shippingAddress: data.shippingAddress as string | undefined,
+        contactPersonName: data.contactPersonName as string | undefined,
+        contactPersonPhone: data.contactPersonPhone as string | undefined,
+        paymentTermsDays: data.paymentTermsDays as number | undefined,
+        creditLimit: data.creditLimit != null ? new Decimal(data.creditLimit as number) : undefined,
+        isGstRegistered: data.isGstRegistered as boolean | undefined,
       },
     });
   }
@@ -277,13 +380,15 @@ export class FinanceService {
   // ─── Trip Billings ───
 
   async listTripBillings(query: FinanceQuery) {
-    const { page = 1, limit = 20, search, sort, order, status, customerId, dateFrom, dateTo } = query;
+    const { page = 1, limit = 20, search, sort, order, status, customerId, vehicleId, driverId, dateFrom, dateTo } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.TripBillingWhereInput = {
       ...(search && { invoiceNumber: { contains: search, mode: 'insensitive' } }),
       ...(status && { paymentStatus: status as any }),
       ...(customerId && { customerId }),
+      ...(vehicleId && { vehicleId }),
+      ...(driverId && { driverId }),
       ...(dateFrom || dateTo
         ? {
             invoiceDate: {
@@ -300,7 +405,7 @@ export class FinanceService {
         skip,
         take: limit,
         orderBy: { [sort || 'createdAt']: order || 'desc' },
-        include: { trip: true, customer: true },
+        include: { trip: true, customer: true, vehicle: true, driver: true },
       }),
       this.prisma.tripBilling.count({ where }),
     ]);
@@ -314,67 +419,102 @@ export class FinanceService {
   async getTripBilling(id: string) {
     const billing = await this.prisma.tripBilling.findUnique({
       where: { id },
-      include: { trip: true, customer: true, payments: true },
+      include: { trip: true, customer: true, vehicle: true, driver: true, payments: true },
     });
     if (!billing) throw new AppError('Trip billing not found', 404);
     return billing;
   }
 
   async createTripBilling(data: Record<string, unknown>, userId?: string) {
-    const billingAmount = new Decimal(data.billingAmount as number);
-    const taxAmount = new Decimal((data.taxAmount as number) ?? 0);
-    const discountAmount = new Decimal((data.discountAmount as number) ?? 0);
-    const totalAmount = billingAmount.plus(taxAmount).minus(discountAmount);
+    const totals = calculateTripBillingTotals(data);
+    const balanceAmount = totals.netReceivable;
 
     return this.prisma.tripBilling.create({
       data: {
         tripId: data.tripId as string,
         customerId: data.customerId as string | undefined,
+        vehicleId: data.vehicleId as string | undefined,
+        driverId: data.driverId as string | undefined,
         invoiceNumber: data.invoiceNumber as string | undefined,
         invoiceDate: new Date(data.invoiceDate as string),
-        billingAmount,
-        taxAmount,
-        discountAmount,
-        totalAmount,
-        balanceAmount: totalAmount,
+        lrNumber: data.lrNumber as string | undefined,
+        challanNumber: data.challanNumber as string | undefined,
+        ewayBillNumber: data.ewayBillNumber as string | undefined,
+        customerPoNumber: data.customerPoNumber as string | undefined,
+        placeOfSupplyState: data.placeOfSupplyState as string | undefined,
+        originState: data.originState as string | undefined,
+        destinationState: data.destinationState as string | undefined,
+        ...totals,
+        balanceAmount,
         dueDate: data.dueDate ? new Date(data.dueDate as string) : undefined,
         notes: data.notes as string | undefined,
         createdById: userId,
       },
-      include: { trip: true, customer: true },
+      include: { trip: true, customer: true, vehicle: true, driver: true },
     });
   }
 
   async updateTripBilling(id: string, data: Record<string, unknown>, userId?: string) {
     await this.getTripBilling(id);
 
+    const existing = await this.prisma.tripBilling.findUnique({ where: { id } });
+
+    const merged = {
+      freightAmount: data.freightAmount != null ? (data.freightAmount as number) : Number(existing!.freightAmount),
+      loadingCharges: data.loadingCharges != null ? (data.loadingCharges as number) : Number(existing!.loadingCharges),
+      unloadingCharges: data.unloadingCharges != null ? (data.unloadingCharges as number) : Number(existing!.unloadingCharges),
+      detentionCharges: data.detentionCharges != null ? (data.detentionCharges as number) : Number(existing!.detentionCharges),
+      tollCharges: data.tollCharges != null ? (data.tollCharges as number) : Number(existing!.tollCharges),
+      permitCharges: data.permitCharges != null ? (data.permitCharges as number) : Number(existing!.permitCharges),
+      otherCharges: data.otherCharges != null ? (data.otherCharges as number) : Number(existing!.otherCharges),
+      discountAmount: data.discountAmount != null ? (data.discountAmount as number) : Number(existing!.discountAmount),
+      cgstAmount: data.cgstAmount != null ? (data.cgstAmount as number) : Number(existing!.cgstAmount),
+      sgstAmount: data.sgstAmount != null ? (data.sgstAmount as number) : Number(existing!.sgstAmount),
+      igstAmount: data.igstAmount != null ? (data.igstAmount as number) : Number(existing!.igstAmount),
+      tdsAmount: data.tdsAmount != null ? (data.tdsAmount as number) : Number(existing!.tdsAmount),
+    };
+
+    const totals = calculateTripBillingTotals(merged);
+    const balanceAmount = totals.netReceivable.minus(existing!.paidAmount);
+
     const updateData: Prisma.TripBillingUpdateInput = {
       ...(data.customerId != null && { customer: { connect: { id: data.customerId as string } } }),
+      ...(data.vehicleId != null && { vehicle: { connect: { id: data.vehicleId as string } } }),
+      ...(data.driverId != null && { driver: { connect: { id: data.driverId as string } } }),
       ...(data.invoiceNumber != null && { invoiceNumber: data.invoiceNumber as string }),
       ...(data.invoiceDate != null && { invoiceDate: new Date(data.invoiceDate as string) }),
+      ...(data.lrNumber != null && { lrNumber: data.lrNumber as string }),
+      ...(data.challanNumber != null && { challanNumber: data.challanNumber as string }),
+      ...(data.ewayBillNumber != null && { ewayBillNumber: data.ewayBillNumber as string }),
+      ...(data.customerPoNumber != null && { customerPoNumber: data.customerPoNumber as string }),
+      ...(data.placeOfSupplyState != null && { placeOfSupplyState: data.placeOfSupplyState as string }),
+      ...(data.originState != null && { originState: data.originState as string }),
+      ...(data.destinationState != null && { destinationState: data.destinationState as string }),
       ...(data.notes != null && { notes: data.notes as string }),
       ...(data.dueDate != null && { dueDate: data.dueDate ? new Date(data.dueDate as string) : null }),
       ...(userId && { updatedBy: { connect: { id: userId } } }),
+      freightAmount: totals.freightAmount,
+      loadingCharges: totals.loadingCharges,
+      unloadingCharges: totals.unloadingCharges,
+      detentionCharges: totals.detentionCharges,
+      tollCharges: totals.tollCharges,
+      permitCharges: totals.permitCharges,
+      otherCharges: totals.otherCharges,
+      discountAmount: totals.discountAmount,
+      taxableAmount: totals.taxableAmount,
+      cgstAmount: totals.cgstAmount,
+      sgstAmount: totals.sgstAmount,
+      igstAmount: totals.igstAmount,
+      totalAmount: totals.totalAmount,
+      tdsAmount: totals.tdsAmount,
+      netReceivable: totals.netReceivable,
+      balanceAmount,
     };
-
-    if (data.billingAmount != null || data.taxAmount != null || data.discountAmount != null) {
-      const existing = await this.prisma.tripBilling.findUnique({ where: { id } });
-      const billingAmount = data.billingAmount != null ? new Decimal(data.billingAmount as number) : existing!.billingAmount;
-      const taxAmount = data.taxAmount != null ? new Decimal(data.taxAmount as number) : existing!.taxAmount;
-      const discountAmount = data.discountAmount != null ? new Decimal(data.discountAmount as number) : existing!.discountAmount;
-      const totalAmount = billingAmount.plus(taxAmount).minus(discountAmount);
-
-      updateData.billingAmount = billingAmount;
-      updateData.taxAmount = taxAmount;
-      updateData.discountAmount = discountAmount;
-      updateData.totalAmount = totalAmount;
-      updateData.balanceAmount = totalAmount.minus(existing!.paidAmount);
-    }
 
     return this.prisma.tripBilling.update({
       where: { id },
       data: updateData,
-      include: { trip: true, customer: true },
+      include: { trip: true, customer: true, vehicle: true, driver: true },
     });
   }
 
@@ -490,12 +630,13 @@ export class FinanceService {
   // ─── Payments ───
 
   async listPayments(query: FinanceQuery) {
-    const { page = 1, limit = 20, sort, order, vendorId, customerId, dateFrom, dateTo, paymentMode } = query;
+    const { page = 1, limit = 20, sort, order, vendorId, customerId, tripBillingId, dateFrom, dateTo, paymentMode } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.PaymentRecordWhereInput = {
       ...(vendorId && { vendorId }),
       ...(customerId && { customerId }),
+      ...(tripBillingId && { tripBillingId }),
       ...(paymentMode && { paymentMode: paymentMode as any }),
       ...(dateFrom || dateTo
         ? {
@@ -536,8 +677,21 @@ export class FinanceService {
   async createPayment(data: Record<string, unknown>, userId?: string) {
     const amount = new Decimal(data.amount as number);
 
+    if (data.tripBillingId) {
+      const billing = await this.prisma.tripBilling.findUnique({ where: { id: data.tripBillingId as string } });
+      if (!billing) throw new AppError('Trip billing not found', 404);
+      if (billing.paymentStatus === 'CANCELLED') {
+        throw new AppError('Cannot create payment for cancelled billing', 409);
+      }
+      const newPaidAmount = billing.paidAmount.plus(amount);
+      if (newPaidAmount.greaterThan(billing.netReceivable)) {
+        throw new AppError(`Payment amount exceeds balance. Balance: ${billing.netReceivable}, Payment: ${amount}`, 409);
+      }
+    }
+
     const payment = await this.prisma.paymentRecord.create({
       data: {
+        paymentNumber: generatePaymentNumber(),
         transactionId: data.transactionId as string | undefined,
         tripBillingId: data.tripBillingId as string | undefined,
         accountId: data.accountId as string | undefined,
@@ -546,6 +700,11 @@ export class FinanceService {
         amount,
         paymentDate: new Date(data.paymentDate as string),
         paymentMode: data.paymentMode as any,
+        upiReference: data.upiReference as string | undefined,
+        bankUtrNumber: data.bankUtrNumber as string | undefined,
+        chequeNumber: data.chequeNumber as string | undefined,
+        chequeDate: data.chequeDate ? new Date(data.chequeDate as string) : undefined,
+        collectedByDriverId: data.collectedByDriverId as string | undefined,
         referenceNumber: data.referenceNumber as string | undefined,
         notes: data.notes as string | undefined,
         createdById: userId,
@@ -566,7 +725,7 @@ export class FinanceService {
       const billing = await this.prisma.tripBilling.findUnique({ where: { id: data.tripBillingId as string } });
       if (billing) {
         const newPaidAmount = billing.paidAmount.plus(amount);
-        const newBalanceAmount = billing.totalAmount.minus(newPaidAmount);
+        const newBalanceAmount = billing.netReceivable.minus(newPaidAmount);
         let newStatus: any = 'PARTIALLY_PAID';
         if (newBalanceAmount.lte(0)) {
           newStatus = 'PAID';
@@ -601,13 +760,13 @@ export class FinanceService {
       const billing = await this.prisma.tripBilling.findUnique({ where: { id: payment.tripBillingId } });
       if (billing) {
         const newPaidAmount = billing.paidAmount.minus(payment.amount);
-        const newBalanceAmount = billing.totalAmount.minus(newPaidAmount);
+        const newBalanceAmount = billing.netReceivable.minus(newPaidAmount);
         await this.prisma.tripBilling.update({
           where: { id: payment.tripBillingId },
           data: {
             paidAmount: newPaidAmount,
             balanceAmount: newBalanceAmount,
-            paymentStatus: newBalanceAmount.equals(0) ? 'PAID' : newPaidAmount.equals(0) ? 'UNBILLED' : 'PARTIALLY_PAID',
+            paymentStatus: newBalanceAmount.equals(0) && newPaidAmount.equals(0) ? 'BILLED' : newPaidAmount.equals(0) ? 'UNBILLED' : newBalanceAmount.lte(0) ? 'PAID' : 'PARTIALLY_PAID',
           },
         });
       }
@@ -620,11 +779,13 @@ export class FinanceService {
   // ─── P&L ───
 
   async getPnl(query: PnlQuery) {
-    const { dateFrom, dateTo, vehicleId, driverId } = query;
+    const { dateFrom, dateTo, vehicleId, driverId, tripId, customerId } = query;
 
-    const where: Prisma.FinanceTransactionWhereInput = {
+    const txnWhere: Prisma.FinanceTransactionWhereInput = {
       ...(vehicleId && { vehicleId }),
       ...(driverId && { driverId }),
+      ...(tripId && { tripId }),
+      ...(customerId && { customerId }),
       ...(dateFrom || dateTo
         ? {
             transactionDate: {
@@ -635,36 +796,189 @@ export class FinanceService {
         : {}),
     };
 
-    const transactions = await this.prisma.financeTransaction.findMany({
-      where,
-      include: { category: true },
-    });
+    const billingWhere: Prisma.TripBillingWhereInput = {
+      ...(vehicleId && { vehicleId }),
+      ...(driverId && { driverId }),
+      ...(tripId && { tripId }),
+      ...(customerId && { customerId }),
+      ...(dateFrom || dateTo
+        ? {
+            invoiceDate: {
+              ...(dateFrom && { gte: new Date(dateFrom) }),
+              ...(dateTo && { lte: new Date(dateTo) }),
+            },
+          }
+        : {}),
+    };
+
+    const fuelWhere: any = {
+      ...(vehicleId && { vehicleId }),
+      ...(dateFrom || dateTo
+        ? {
+            fuelDate: {
+              ...(dateFrom && { gte: new Date(dateFrom) }),
+              ...(dateTo && { lte: new Date(dateTo) }),
+            },
+          }
+        : {}),
+    };
+
+    const expenseWhere: any = {
+      ...(vehicleId && { vehicleId }),
+      ...(driverId && { driverId }),
+      ...(dateFrom || dateTo
+        ? {
+            expenseDate: {
+              ...(dateFrom && { gte: new Date(dateFrom) }),
+              ...(dateTo && { lte: new Date(dateTo) }),
+            },
+          }
+        : {}),
+    };
+
+    const maintenanceWhere: any = {
+      ...(vehicleId && { vehicleId }),
+      ...(dateFrom || dateTo
+        ? {
+            requestDate: {
+              ...(dateFrom && { gte: new Date(dateFrom) }),
+              ...(dateTo && { lte: new Date(dateTo) }),
+            },
+          }
+        : {}),
+    };
+
+    const repairWhere: any = {
+      ...(vehicleId && { vehicleId }),
+      ...(dateFrom || dateTo
+        ? {
+            repairDate: {
+              ...(dateFrom && { gte: new Date(dateFrom) }),
+              ...(dateTo && { lte: new Date(dateTo) }),
+            },
+          }
+        : {}),
+    };
+
+    const [transactions, tripBillings, fuelEntries, expenses, maintenanceRequests, repairs] = await Promise.all([
+      this.prisma.financeTransaction.findMany({
+        where: txnWhere,
+        include: { category: true },
+      }),
+      this.prisma.tripBilling.findMany({
+        where: billingWhere,
+        select: { netReceivable: true, totalAmount: true, paymentStatus: true },
+      }),
+      this.prisma.fuelEntry.findMany({
+        where: fuelWhere,
+        select: { totalAmount: true },
+      }).catch(() => []),
+      this.prisma.expense.findMany({
+        where: expenseWhere,
+        select: { amount: true },
+      }).catch(() => []),
+      this.prisma.maintenanceRequest.findMany({
+        where: maintenanceWhere,
+        select: { estimatedCost: true, actualCost: true },
+      }).catch(() => []),
+      this.prisma.repair.findMany({
+        where: repairWhere,
+        select: { estimatedCost: true, actualCost: true },
+      }).catch(() => []),
+    ]);
 
     let totalIncome = new Decimal(0);
     let totalExpenses = new Decimal(0);
 
     const categoryBreakdown: Record<string, { income: Decimal; expense: Decimal }> = {};
 
-    for (const txn of transactions) {
-      const categoryName = txn.category?.name || 'Uncategorized';
+    function addToBreakdown(categoryName: string, type: 'income' | 'expense', amount: Decimal) {
       if (!categoryBreakdown[categoryName]) {
         categoryBreakdown[categoryName] = { income: new Decimal(0), expense: new Decimal(0) };
       }
+      categoryBreakdown[categoryName][type] = categoryBreakdown[categoryName][type].plus(amount);
+    }
 
+    // Income from FinanceTransactions
+    for (const txn of transactions) {
       if (txn.transactionType === 'INCOME') {
-        totalIncome = totalIncome.plus(txn.amount);
-        categoryBreakdown[categoryName].income = categoryBreakdown[categoryName].income.plus(txn.amount);
-      } else if (txn.transactionType === 'EXPENSE') {
-        totalExpenses = totalExpenses.plus(txn.amount);
-        categoryBreakdown[categoryName].expense = categoryBreakdown[categoryName].expense.plus(txn.amount);
+        const amount = txn.amount;
+        totalIncome = totalIncome.plus(amount);
+        addToBreakdown(txn.category?.name || 'Uncategorized', 'income', amount);
       }
     }
 
+    // Income from TripBillings (non-cancelled)
+    for (const billing of tripBillings) {
+      if (billing.paymentStatus !== 'CANCELLED') {
+        const amount = billing.netReceivable.greaterThan(0) ? billing.netReceivable : billing.totalAmount;
+        totalIncome = totalIncome.plus(amount);
+        addToBreakdown('Trip Billing', 'income', amount);
+      }
+    }
+
+    // Expenses from FinanceTransactions
+    for (const txn of transactions) {
+      if (txn.transactionType === 'EXPENSE') {
+        const amount = txn.amount;
+        totalExpenses = totalExpenses.plus(amount);
+        addToBreakdown(txn.category?.name || 'Uncategorized', 'expense', amount);
+      }
+    }
+
+    // Fuel costs
+    let fuelTotal = new Decimal(0);
+    for (const fuel of fuelEntries) {
+      fuelTotal = fuelTotal.plus(fuel.totalAmount);
+    }
+    if (fuelTotal.greaterThan(0)) {
+      totalExpenses = totalExpenses.plus(fuelTotal);
+      addToBreakdown('Fuel', 'expense', fuelTotal);
+    }
+
+    // Expense module costs
+    let expenseTotal = new Decimal(0);
+    for (const exp of expenses) {
+      expenseTotal = expenseTotal.plus(exp.amount);
+    }
+    if (expenseTotal.greaterThan(0)) {
+      totalExpenses = totalExpenses.plus(expenseTotal);
+      addToBreakdown('Expenses', 'expense', expenseTotal);
+    }
+
+    // Maintenance costs
+    let maintenanceTotal = new Decimal(0);
+    for (const m of maintenanceRequests) {
+      const cost = m.actualCost ?? m.estimatedCost ?? new Decimal(0);
+      maintenanceTotal = maintenanceTotal.plus(cost);
+    }
+    if (maintenanceTotal.greaterThan(0)) {
+      totalExpenses = totalExpenses.plus(maintenanceTotal);
+      addToBreakdown('Maintenance', 'expense', maintenanceTotal);
+    }
+
+    // Repair costs
+    let repairTotal = new Decimal(0);
+    for (const r of repairs) {
+      const cost = r.actualCost ?? r.estimatedCost ?? new Decimal(0);
+      repairTotal = repairTotal.plus(cost);
+    }
+    if (repairTotal.greaterThan(0)) {
+      totalExpenses = totalExpenses.plus(repairTotal);
+      addToBreakdown('Repairs', 'expense', repairTotal);
+    }
+
+    const breakdown = Object.entries(categoryBreakdown).map(([category, amounts]) => ({
+      category,
+      type: amounts.income.greaterThan(0) ? 'INCOME' as const : 'EXPENSE' as const,
+      total: amounts.income.greaterThan(0) ? Number(amounts.income) : Number(amounts.expense),
+    }));
+
     return {
-      totalIncome,
-      totalExpenses,
-      netProfit: totalIncome.minus(totalExpenses),
-      breakdown: categoryBreakdown,
+      totalIncome: Number(totalIncome),
+      totalExpenses: Number(totalExpenses),
+      netProfit: Number(totalIncome.minus(totalExpenses)),
+      breakdown,
     };
   }
 

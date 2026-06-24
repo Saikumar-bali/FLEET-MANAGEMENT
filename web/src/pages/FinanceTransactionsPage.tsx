@@ -70,7 +70,7 @@ export function FinanceTransactionsPage() {
         const response = await getFinanceTransactions(auth.accessToken, {
           ...(filterType ? { status: filterType } : {}),
         });
-        setItems(response.data.items);
+        setItems(response.data?.items ?? []);
       } catch (caughtError) {
         if (caughtError instanceof ApiError) setError(caughtError.message);
         else setError('Failed to load transactions.');

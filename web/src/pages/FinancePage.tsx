@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import {
   getFinanceDashboardSummary,
   getFinancePnl,
@@ -24,6 +24,12 @@ export function FinancePage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const [pnlDateFrom, setPnlDateFrom] = useState('');
+  const [pnlDateTo, setPnlDateTo] = useState('');
+  const [pnlVehicleId, setPnlVehicleId] = useState('');
+  const [pnlDriverId, setPnlDriverId] = useState('');
+  const [pnlCustomerId, setPnlCustomerId] = useState('');
+
   const canViewPnl = auth.hasPermission('pnl_view');
   const canDeleteTransaction = auth.hasPermission('finance_transactions_delete');
 
@@ -48,6 +54,24 @@ export function FinancePage() {
     };
     void load();
   }, [auth.accessToken]);
+
+  async function loadPnl(e?: FormEvent) {
+    e?.preventDefault();
+    if (!auth.accessToken || !canViewPnl) return;
+    try {
+      const params: Record<string, string> = {};
+      if (pnlDateFrom) params.dateFrom = pnlDateFrom;
+      if (pnlDateTo) params.dateTo = pnlDateTo;
+      if (pnlVehicleId) params.vehicleId = pnlVehicleId;
+      if (pnlDriverId) params.driverId = pnlDriverId;
+      if (pnlCustomerId) params.customerId = pnlCustomerId;
+      const res = await getFinancePnl(auth.accessToken, params);
+      setPnl(res.data);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) setError(caughtError.message);
+      else setError('Failed to load P&L report.');
+    }
+  }
 
   async function handleDeleteTransaction(id: string) {
     if (!auth.accessToken) return;
@@ -111,10 +135,39 @@ export function FinancePage() {
             <div className="card">
               <div className="table-toolbar">
                 <div>
-                  <h3 className="table-toolbar-title">Profit & Loss</h3>
+                  <h3 className="table-toolbar-title">Profit &amp; Loss</h3>
                   <p className="table-toolbar-copy">Overall financial performance</p>
                 </div>
               </div>
+
+              {canViewPnl ? (
+                <form className="filter-bar" onSubmit={loadPnl}>
+                  <label>
+                    <span className="field-label">Date From</span>
+                    <input type="date" value={pnlDateFrom} onChange={(e) => setPnlDateFrom(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="field-label">Date To</span>
+                    <input type="date" value={pnlDateTo} onChange={(e) => setPnlDateTo(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="field-label">Vehicle ID</span>
+                    <input value={pnlVehicleId} onChange={(e) => setPnlVehicleId(e.target.value)} placeholder="Optional" />
+                  </label>
+                  <label>
+                    <span className="field-label">Driver ID</span>
+                    <input value={pnlDriverId} onChange={(e) => setPnlDriverId(e.target.value)} placeholder="Optional" />
+                  </label>
+                  <label>
+                    <span className="field-label">Customer ID</span>
+                    <input value={pnlCustomerId} onChange={(e) => setPnlCustomerId(e.target.value)} placeholder="Optional" />
+                  </label>
+                  <div className="button-row">
+                    <button type="submit" className="secondary-button">Apply Filters</button>
+                  </div>
+                </form>
+              ) : null}
+
               <div className="stat-cards-row">
                 <div className="stat-card-inline">
                   <span className="stat-card-label">Total Income</span>

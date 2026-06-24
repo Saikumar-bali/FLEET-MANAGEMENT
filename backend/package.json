@@ -21,8 +21,8 @@
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
+    "prisma:migrate:create": "prisma migrate dev --create-only",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:db:push": "prisma db push",
     "prisma:seed": "prisma db seed"
   },
   "keywords": [],
