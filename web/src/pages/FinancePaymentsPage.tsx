@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { PaymentRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 import { LoadingState } from '../components/LoadingState';
@@ -46,6 +47,7 @@ const initialForm: PaymentForm = {
 
 export function FinancePaymentsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [items, setItems] = useState<PaymentRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<PaymentForm>(initialForm);
@@ -66,8 +68,9 @@ export function FinancePaymentsPage() {
         const response = await getPayments(auth.accessToken);
         setItems(response.data?.items ?? []);
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load payments.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load payments.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -134,9 +137,11 @@ export function FinancePaymentsPage() {
       setItems((prev) => [response.data, ...prev]);
       setSelectedId(response.data.id);
       setMessage('Payment created.');
+      showToast('Payment created.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save payment.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save payment.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -153,9 +158,11 @@ export function FinancePaymentsPage() {
         setForm(initialForm);
       }
       setMessage('Payment deleted.');
+      showToast('Payment deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete payment.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete payment.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

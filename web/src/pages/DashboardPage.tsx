@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { getDashboardOverview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { DashboardOverview } from '../types/auth';
 import { PageShell } from '../components/ui/PageShell';
 import { StatCard } from '../components/ui/StatCard';
@@ -56,6 +57,7 @@ interface ExpenseRow {
 export function DashboardPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,7 @@ export function DashboardPage() {
       setLastUpdated(new Date().toLocaleTimeString('en-IN'));
     } catch {
       setError('Failed to load dashboard data.');
+      showToast('Failed to load dashboard data.', 'error');
     } finally {
       setIsLoading(false);
     }

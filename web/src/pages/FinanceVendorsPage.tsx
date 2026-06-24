@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { getVendors, createVendor, updateVendor, deleteVendor } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { Vendor } from '../types/auth';
 import { ApiError } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -65,6 +66,7 @@ const VENDOR_TYPE_OPTIONS = [
 
 export function FinanceVendorsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<VendorForm>(initialForm);
@@ -116,8 +118,9 @@ export function FinanceVendorsPage() {
           });
         }
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load vendors.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load vendors.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -192,15 +195,18 @@ export function FinanceVendorsPage() {
         const response = await updateVendor(auth.accessToken, selectedId, payload);
         setVendors((items) => items.map((v) => (v.id === selectedId ? response.data : v)));
         setMessage('Vendor updated.');
+        showToast('Vendor updated.', 'success');
       } else {
         const response = await createVendor(auth.accessToken, payload);
         setVendors((items) => [...items, response.data]);
         setSelectedId(response.data.id);
         setMessage('Vendor created.');
+        showToast('Vendor created.', 'success');
       }
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save vendor.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save vendor.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -216,9 +222,11 @@ export function FinanceVendorsPage() {
         setForm(initialForm);
       }
       setMessage('Vendor deleted.');
+      showToast('Vendor deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete vendor.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete vendor.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

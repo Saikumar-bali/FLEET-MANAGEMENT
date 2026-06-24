@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { getFinanceAccounts, createFinanceAccount, updateFinanceAccount, deleteFinanceAccount } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { FinanceAccount } from '../types/auth';
 import { ApiError } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -21,6 +22,7 @@ const initialForm: AccountForm = { name: '', type: 'BANK', bankName: '', account
 
 export function FinanceAccountsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<AccountForm>(initialForm);
@@ -58,8 +60,9 @@ export function FinanceAccountsPage() {
           });
         }
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load accounts.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load accounts.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -106,15 +109,18 @@ export function FinanceAccountsPage() {
         const response = await updateFinanceAccount(auth.accessToken, selectedId, payload);
         setAccounts((items) => items.map((a) => (a.id === selectedId ? response.data : a)));
         setMessage('Account updated.');
+        showToast('Account updated.', 'success');
       } else {
         const response = await createFinanceAccount(auth.accessToken, payload);
         setAccounts((items) => [...items, response.data]);
         setSelectedId(response.data.id);
         setMessage('Account created.');
+        showToast('Account created.', 'success');
       }
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save account.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save account.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -130,9 +136,11 @@ export function FinanceAccountsPage() {
         setForm(initialForm);
       }
       setMessage('Account deleted.');
+      showToast('Account deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete account.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete account.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

@@ -5,6 +5,7 @@ import {
   deleteFinanceTransaction,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { FinanceTransaction } from '../types/auth';
 import { ApiError } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -45,6 +46,7 @@ const initialForm: TransactionForm = {
 
 export function FinanceTransactionsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [items, setItems] = useState<FinanceTransaction[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<TransactionForm>(initialForm);
@@ -72,8 +74,9 @@ export function FinanceTransactionsPage() {
         });
         setItems(response.data?.items ?? []);
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load transactions.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load transactions.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -134,9 +137,11 @@ export function FinanceTransactionsPage() {
       setItems((prev) => [response.data, ...prev]);
       setSelectedId(response.data.id);
       setMessage('Transaction created.');
+      showToast('Transaction created.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save transaction.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save transaction.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -153,9 +158,11 @@ export function FinanceTransactionsPage() {
         setForm(initialForm);
       }
       setMessage('Transaction deleted.');
+      showToast('Transaction deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete transaction.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete transaction.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

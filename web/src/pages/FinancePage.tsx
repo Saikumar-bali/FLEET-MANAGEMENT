@@ -4,6 +4,7 @@ import {
   getFinancePnl,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ApiError } from '../types/api';
 import { PageShell } from '../components/ui/PageShell';
 import type { FinanceDashboardSummary, PnlSummary } from '../types/auth';
@@ -42,6 +43,7 @@ interface TxRow {
 
 export function FinancePage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [summary, setSummary] = useState<FinanceDashboardSummary | null>(null);
   const [pnl, setPnl] = useState<PnlSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,8 +68,9 @@ export function FinancePage() {
       setSummary(summaryRes.data);
       if (pnlRes) setPnl(pnlRes.data);
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to load finance dashboard.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load finance dashboard.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +88,9 @@ export function FinancePage() {
       const res = await getFinancePnl(auth.accessToken, params);
       setPnl(res.data);
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to load P&L report.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load P&L report.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

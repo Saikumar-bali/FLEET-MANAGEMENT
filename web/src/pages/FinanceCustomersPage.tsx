@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { getFinanceCustomers, createFinanceCustomer, updateFinanceCustomer, deleteFinanceCustomer } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { Customer } from '../types/auth';
 import { ApiError } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -55,6 +56,7 @@ const initialForm: CustomerForm = {
 
 export function FinanceCustomersPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<CustomerForm>(initialForm);
@@ -106,8 +108,9 @@ export function FinanceCustomersPage() {
           });
         }
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load customers.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load customers.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -182,15 +185,18 @@ export function FinanceCustomersPage() {
         const response = await updateFinanceCustomer(auth.accessToken, selectedId, payload);
         setCustomers((items) => items.map((c) => (c.id === selectedId ? response.data : c)));
         setMessage('Customer updated.');
+        showToast('Customer updated.', 'success');
       } else {
         const response = await createFinanceCustomer(auth.accessToken, payload);
         setCustomers((items) => [...items, response.data]);
         setSelectedId(response.data.id);
         setMessage('Customer created.');
+        showToast('Customer created.', 'success');
       }
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save customer.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save customer.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -206,9 +212,11 @@ export function FinanceCustomersPage() {
         setForm(initialForm);
       }
       setMessage('Customer deleted.');
+      showToast('Customer deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete customer.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete customer.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

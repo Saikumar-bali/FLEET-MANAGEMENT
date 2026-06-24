@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getComplianceDashboard, getExpiringSoon, getExpired } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { ComplianceDashboard, VehicleComplianceDocument } from '../types/auth';
 import { PageShell } from '../components/ui/PageShell';
 import { StatCard } from '../components/ui/StatCard';
@@ -35,6 +36,7 @@ interface ExpiryRow {
 
 export function ComplianceDashboardPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [dashboard, setDashboard] = useState<ComplianceDashboard | null>(null);
   const [expiring, setExpiring] = useState<VehicleComplianceDocument[]>([]);
   const [expired, setExpired] = useState<VehicleComplianceDocument[]>([]);
@@ -55,7 +57,9 @@ export function ComplianceDashboardPage() {
       setExpiring((exp7.data as VehicleComplianceDocument[]) ?? []);
       setExpired((exp.data as VehicleComplianceDocument[]) ?? []);
     } catch {
-      setError('Failed to load compliance dashboard.');
+      const msg = 'Failed to load compliance dashboard.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }

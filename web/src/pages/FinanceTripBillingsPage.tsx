@@ -6,6 +6,7 @@ import {
   deleteTripBilling,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { TripBilling } from '../types/auth';
 import { ApiError } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
@@ -76,6 +77,7 @@ const initialForm: TripBillingForm = {
 
 export function FinanceTripBillingsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [items, setItems] = useState<TripBilling[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<TripBillingForm>(initialForm);
@@ -111,8 +113,9 @@ export function FinanceTripBillingsPage() {
           setSelectedId(first.id);
         }
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load trip billings.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load trip billings.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -204,15 +207,18 @@ export function FinanceTripBillingsPage() {
         const response = await updateTripBilling(auth.accessToken, selectedId, payload);
         setItems((prev) => prev.map((i) => (i.id === selectedId ? response.data : i)));
         setMessage('Trip billing updated.');
+        showToast('Trip billing updated.', 'success');
       } else {
         const response = await createTripBilling(auth.accessToken, payload);
         setItems((prev) => [response.data, ...prev]);
         setSelectedId(response.data.id);
         setMessage('Trip billing created.');
+        showToast('Trip billing created.', 'success');
       }
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to save trip billing.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save trip billing.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -229,9 +235,11 @@ export function FinanceTripBillingsPage() {
         setForm(initialForm);
       }
       setMessage('Trip billing deleted.');
+      showToast('Trip billing deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete trip billing.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete trip billing.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 

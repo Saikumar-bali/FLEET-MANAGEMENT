@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { getFinanceCategories, createFinanceCategory, deleteFinanceCategory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { FinanceCategory } from '../types/auth';
 import { ApiError } from '../types/api';
 import { LoadingState } from '../components/LoadingState';
@@ -29,6 +30,7 @@ const MODULE_OPTIONS = [
 
 export function FinanceCategoriesPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [categories, setCategories] = useState<FinanceCategory[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryForm>(initialForm);
@@ -56,8 +58,9 @@ export function FinanceCategoriesPage() {
           setForm({ name: first.name, type: first.type, module: first.module });
         }
       } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load categories.');
+        const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to load categories.';
+        setError(msg);
+        showToast(msg, 'error');
       } finally {
         setIsLoading(false);
       }
@@ -90,9 +93,11 @@ export function FinanceCategoriesPage() {
       setCategories((cats) => [...cats, response.data]);
       setSelectedId(response.data.id);
       setMessage('Category created.');
+      showToast('Category created.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to create category.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to create category.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -114,9 +119,11 @@ export function FinanceCategoriesPage() {
         setForm(initialForm);
       }
       setMessage('Category deleted.');
+      showToast('Category deleted.', 'success');
     } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete category.');
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete category.';
+      setError(msg);
+      showToast(msg, 'error');
     }
   }
 
