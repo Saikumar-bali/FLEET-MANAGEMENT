@@ -125,7 +125,7 @@ export function FinanceTransactionsPage() {
         categoryId: form.categoryId || undefined,
         amount: parseFloat(form.amount) || 0,
         taxAmount: parseFloat(form.taxAmount) || 0,
-        transactionDate: form.transactionDate || undefined,
+        transactionDate: form.transactionDate ? new Date(form.transactionDate).toISOString() : undefined,
         paymentMode: form.paymentMode,
         referenceNumber: form.referenceNumber || undefined,
         description: form.description || undefined,

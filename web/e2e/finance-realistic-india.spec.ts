@@ -190,7 +190,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     const trip = tRes.data?.items?.find((t) => true);
     const customer = cRes.data?.items?.find((c) => c.name.includes(PREFIX));
 
-    const dueDate = new Date(Date.now() + 45 * 86400000).toISOString().split('T')[0];
+    const dueDate = new Date(Date.now() + 45 * 86400000).toISOString();
 
     const billing = await apiPost(base, token, '/api/v1/finance/trip-billings', {
       tripId: trip?.id,
@@ -198,7 +198,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
       vehicleId: vehicle?.id,
       driverId: driver?.id,
       invoiceNumber: `${PREFIX}_INV-001`,
-      invoiceDate: new Date().toISOString().split('T')[0],
+      invoiceDate: new Date().toISOString(),
       lrNumber: 'LR-2026-001',
       challanNumber: 'CH-2026-001',
       ewayBillNumber: 'EWB-2026-001',

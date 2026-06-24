@@ -176,7 +176,7 @@ export function FinanceTripBillingsPage() {
         vehicleId: form.vehicleId || undefined,
         driverId: form.driverId || undefined,
         invoiceNumber: form.invoiceNumber || undefined,
-        invoiceDate: form.invoiceDate || undefined,
+        invoiceDate: form.invoiceDate ? new Date(form.invoiceDate).toISOString() : undefined,
         lrNumber: form.lrNumber || undefined,
         challanNumber: form.challanNumber || undefined,
         ewayBillNumber: form.ewayBillNumber || undefined,
@@ -196,7 +196,7 @@ export function FinanceTripBillingsPage() {
         sgstAmount: parseFloat(form.sgstAmount) || 0,
         igstAmount: parseFloat(form.igstAmount) || 0,
         tdsAmount: parseFloat(form.tdsAmount) || 0,
-        dueDate: form.dueDate || undefined,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
         notes: form.notes || undefined,
       };
 
