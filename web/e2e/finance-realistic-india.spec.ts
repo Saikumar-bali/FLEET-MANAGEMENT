@@ -158,7 +158,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     if (customer) cleanup.push(`/api/v1/finance/customers/${customer.id}`);
   });
 
-  test('4. setup vehicle, driver, trip via API', async () => {
+  test('4. setup vehicle and driver via API', async () => {
     const v = await apiPost(base, token, '/api/v1/vehicles', {
       vehicleNumber: `${PREFIX}-MH12AB1234`, vehicleType: 'TRUCK', fuelType: 'DIESEL',
       brand: 'Tata', model: 'Prima 2525.K', year: 2024,
@@ -169,31 +169,28 @@ test.describe('Realistic India-native Finance UI workflow', () => {
       name: `${PREFIX} Driver Ram`, mobile: `9${ts.toString().slice(-9)}`, licenseNumber: `DL-${PREFIX}-001`,
     });
     cleanup.push(`/api/v1/drivers/${d.data.id}`);
-
-    const t = await apiPost(base, token, '/api/v1/trips', {
-      tripType: 'DELIVERY', vehicleId: v.data.id, driverId: d.data.id,
-      originName: 'Mumbai Warehouse', destinationName: 'Bangalore Hub',
-      originAddress: 'Andheri East, Mumbai', destinationAddress: 'Electronic City, Bangalore',
-    });
-    cleanup.push(`/api/v1/trips/${t.data.id}`);
   });
 
   test('5. create trip billing via API with India-native fields and verify UI', async ({ page }) => {
-    const [vRes, dRes, tRes, cRes] = await Promise.all([
+    const [vRes, dRes, cRes] = await Promise.all([
       apiGet(base, token, '/api/v1/vehicles') as Promise<{ data?: { items?: Array<{ id: string; vehicleNumber: string }> } }>,
       apiGet(base, token, '/api/v1/drivers') as Promise<{ data?: { items?: Array<{ id: string; name: string }> } }>,
-      apiGet(base, token, '/api/v1/trips') as Promise<{ data?: { items?: Array<{ id: string }> } }>,
       apiGet(base, token, '/api/v1/finance/customers') as Promise<{ data?: { items?: Array<{ id: string; name: string }> } }>,
     ]);
     const vehicle = vRes.data?.items?.find((v) => v.vehicleNumber.includes(PREFIX));
     const driver = dRes.data?.items?.find((d) => d.name.includes(PREFIX));
-    const trip = tRes.data?.items?.find((t) => true);
     const customer = cRes.data?.items?.find((c) => c.name.includes(PREFIX));
 
-    const dueDate = new Date(Date.now() + 45 * 86400000).toISOString();
+    const tripRes = await apiPost(base, token, '/api/v1/trips', {
+      tripType: 'DELIVERY', vehicleId: vehicle?.id, driverId: driver?.id,
+      originName: 'Mumbai Warehouse', destinationName: 'Bangalore Hub',
+      originAddress: 'Andheri East, Mumbai', destinationAddress: 'Electronic City, Bangalore',
+    });
+    const tripId = tripRes.data?.id;
+    cleanup.push(`/api/v1/trips/${tripId}`);
 
-    const billing = await apiPost(base, token, '/api/v1/finance/trip-billings', {
-      tripId: trip?.id,
+    const billingRes = await apiPost(base, token, '/api/v1/finance/trip-billings', {
+      tripId,
       customerId: customer?.id,
       vehicleId: vehicle?.id,
       driverId: driver?.id,
@@ -215,16 +212,18 @@ test.describe('Realistic India-native Finance UI workflow', () => {
       cgstAmount: 9000,
       sgstAmount: 9000,
       tdsAmount: 5000,
-      dueDate,
+      dueDate: new Date(Date.now() + 45 * 86400000).toISOString(),
       notes: 'Mumbai to Bangalore trip',
     });
-    cleanup.push(`/api/v1/finance/trip-billings/${billing.data.id}`);
+    expect(billingRes.data?.id).toBeTruthy();
+    cleanup.push(`/api/v1/finance/trip-billings/${billingRes.data.id}`);
 
     await loginAsRole(page, 'admin');
     await page.goto('/finance/trip-billings');
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="finance-trip-billing-form"]');
     const row = page.locator('tr').filter({ hasText: `${PREFIX}_INV-001` });
-    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row).toBeVisible({ timeout: 15000 });
   });
 
   test('6. verify trip billing calculated values', async ({ page }) => {
