@@ -592,19 +592,52 @@ export class FinanceService {
     const taxAmount = new Decimal((data.taxAmount as number) ?? 0);
     const totalAmount = amount.plus(taxAmount);
 
+    const vendorId = data.vendorId ? String(data.vendorId) : undefined;
+    const customerId = data.customerId ? String(data.customerId) : undefined;
+    const accountId = data.accountId ? String(data.accountId) : undefined;
+    const categoryId = data.categoryId ? String(data.categoryId) : undefined;
+    const vehicleId = data.vehicleId ? String(data.vehicleId) : undefined;
+    const driverId = data.driverId ? String(data.driverId) : undefined;
+    const tripId = data.tripId ? String(data.tripId) : undefined;
+
+    if (vendorId) {
+      const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
+      if (!vendor) throw new AppError('Vendor not found', 404);
+    }
+    if (customerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+      if (!customer) throw new AppError('Customer not found', 404);
+    }
+    if (accountId) {
+      const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
+      if (!account) throw new AppError('Account not found', 404);
+    }
+    if (categoryId) {
+      const category = await this.prisma.financeCategory.findUnique({ where: { id: categoryId } });
+      if (!category) throw new AppError('Category not found', 404);
+    }
+    if (vehicleId) {
+      const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+      if (!vehicle) throw new AppError('Vehicle not found', 404);
+    }
+    if (driverId) {
+      const driver = await this.prisma.driver.findUnique({ where: { id: driverId } });
+      if (!driver) throw new AppError('Driver not found', 404);
+    }
+
     return this.prisma.financeTransaction.create({
       data: {
         transactionNumber: generateTransactionNumber(),
         transactionType: data.transactionType as any,
         sourceModule: data.sourceModule as any,
         sourceId: data.sourceId as string | undefined,
-        vehicleId: data.vehicleId as string | undefined,
-        tripId: data.tripId as string | undefined,
-        driverId: data.driverId as string | undefined,
-        vendorId: data.vendorId as string | undefined,
-        customerId: data.customerId as string | undefined,
-        accountId: data.accountId as string | undefined,
-        categoryId: data.categoryId as string | undefined,
+        vehicleId,
+        tripId,
+        driverId,
+        vendorId,
+        customerId,
+        accountId,
+        categoryId,
         amount,
         taxAmount,
         totalAmount,
@@ -677,8 +710,31 @@ export class FinanceService {
   async createPayment(data: Record<string, unknown>, userId?: string) {
     const amount = new Decimal(data.amount as number);
 
-    if (data.tripBillingId) {
-      const billing = await this.prisma.tripBilling.findUnique({ where: { id: data.tripBillingId as string } });
+    const vendorId = data.vendorId ? String(data.vendorId) : undefined;
+    const customerId = data.customerId ? String(data.customerId) : undefined;
+    const accountId = data.accountId ? String(data.accountId) : undefined;
+    const transactionId = data.transactionId ? String(data.transactionId) : undefined;
+    const tripBillingId = data.tripBillingId ? String(data.tripBillingId) : undefined;
+    const collectedByDriverId = data.collectedByDriverId ? String(data.collectedByDriverId) : undefined;
+
+    if (vendorId) {
+      const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
+      if (!vendor) throw new AppError('Vendor not found', 404);
+    }
+    if (customerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+      if (!customer) throw new AppError('Customer not found', 404);
+    }
+    if (accountId) {
+      const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
+      if (!account) throw new AppError('Account not found', 404);
+    }
+    if (transactionId) {
+      const txn = await this.prisma.financeTransaction.findUnique({ where: { id: transactionId } });
+      if (!txn) throw new AppError('Transaction not found', 404);
+    }
+    if (tripBillingId) {
+      const billing = await this.prisma.tripBilling.findUnique({ where: { id: tripBillingId } });
       if (!billing) throw new AppError('Trip billing not found', 404);
       if (billing.paymentStatus === 'CANCELLED') {
         throw new AppError('Cannot create payment for cancelled billing', 409);
@@ -688,15 +744,19 @@ export class FinanceService {
         throw new AppError(`Payment amount exceeds balance. Balance: ${billing.netReceivable}, Payment: ${amount}`, 409);
       }
     }
+    if (collectedByDriverId) {
+      const driver = await this.prisma.driver.findUnique({ where: { id: collectedByDriverId } });
+      if (!driver) throw new AppError('Driver not found', 404);
+    }
 
     const payment = await this.prisma.paymentRecord.create({
       data: {
         paymentNumber: generatePaymentNumber(),
-        transactionId: data.transactionId as string | undefined,
-        tripBillingId: data.tripBillingId as string | undefined,
-        accountId: data.accountId as string | undefined,
-        vendorId: data.vendorId as string | undefined,
-        customerId: data.customerId as string | undefined,
+        transactionId,
+        tripBillingId,
+        accountId,
+        vendorId,
+        customerId,
         amount,
         paymentDate: new Date(data.paymentDate as string),
         paymentMode: data.paymentMode as any,
@@ -704,7 +764,7 @@ export class FinanceService {
         bankUtrNumber: data.bankUtrNumber as string | undefined,
         chequeNumber: data.chequeNumber as string | undefined,
         chequeDate: data.chequeDate ? new Date(data.chequeDate as string) : undefined,
-        collectedByDriverId: data.collectedByDriverId as string | undefined,
+        collectedByDriverId,
         referenceNumber: data.referenceNumber as string | undefined,
         notes: data.notes as string | undefined,
         createdById: userId,
