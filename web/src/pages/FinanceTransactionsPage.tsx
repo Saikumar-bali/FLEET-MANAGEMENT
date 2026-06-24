@@ -281,7 +281,7 @@ export function FinanceTransactionsPage() {
         </article>
 
         <aside className="detail-panel">
-          <article className="card detail-card">
+          <article className="card detail-card" data-testid="finance-transaction-form">
             <div className="table-toolbar">
               <div>
                 <h3 className="table-toolbar-title">Create Transaction</h3>
@@ -352,12 +352,12 @@ export function FinanceTransactionsPage() {
                 <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
               </label>
 
-              {error ? <div className="error-banner">{error}</div> : null}
-              {message ? <div className="success-banner">{message}</div> : null}
+              {error ? <div className="error-banner" data-testid="finance-error-message">{error}</div> : null}
+              {message ? <div className="success-banner" data-testid="finance-success-message">{message}</div> : null}
 
               <div className="button-row">
                 {canCreate ? (
-                  <button type="submit" className="primary-button" disabled={isSaving}>
+                  <button type="submit" className="primary-button" data-testid="finance-save-button" disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Create Transaction'}
                   </button>
                 ) : null}

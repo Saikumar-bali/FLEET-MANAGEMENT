@@ -84,6 +84,9 @@ test.describe('Realistic India-native Finance UI workflow', () => {
   let tripId = '';
   let billingId = '';
   let vendorId = '';
+  let accountId = '';
+  let incomeCategoryId = '';
+  let expenseCategoryId = '';
 
   test.beforeAll(async () => {
     token = await apiLogin();
@@ -121,10 +124,37 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     });
     tripId = t.data.id;
     cleanup.push(`/api/v1/trips/${tripId}`);
+
+    // Create finance account (bank) and categories for transaction test
+    const a = await apiPost(base, token, '/api/v1/finance/accounts', {
+      name: `${PREFIX}_HDFC_MAIN`,
+      type: 'BANK',
+      bankName: 'HDFC Bank',
+      accountNumberMasked: '****5678',
+      openingBalance: 500000,
+    });
+    accountId = a.data.id;
+    cleanup.push(`/api/v1/finance/accounts/${accountId}`);
+
+    const ic = await apiPost(base, token, '/api/v1/finance/categories', {
+      name: `${PREFIX}_Trip_Revenue`,
+      type: 'INCOME',
+      module: 'TRIP',
+    });
+    incomeCategoryId = ic.data.id;
+    cleanup.push(`/api/v1/finance/categories/${incomeCategoryId}`);
+
+    const ec = await apiPost(base, token, '/api/v1/finance/categories', {
+      name: `${PREFIX}_Fuel_Cost`,
+      type: 'EXPENSE',
+      module: 'FUEL',
+    });
+    expenseCategoryId = ec.data.id;
+    cleanup.push(`/api/v1/finance/categories/${expenseCategoryId}`);
   });
 
   test.afterAll(async () => {
-    // Delete payments first, then trip billings, then trips, customer, vendor, driver, vehicle
+    // Delete payments first, then trip billings, transactions, customers, vendors, categories, accounts, trips, drivers, vehicles
     for (const p of [...cleanup].reverse()) {
       try {
         await apiDelete(base, token, p);
@@ -226,7 +256,45 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     }
   });
 
-  test('4. create trip billing through UI using real trip/customer/vehicle', async ({ page }) => {
+  test('4. create income transaction through UI and verify', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+    await page.goto('/finance/transactions');
+    await page.waitForSelector('[data-testid="finance-transaction-form"]');
+
+    // Create income transaction for the trip revenue
+    const txnDesc = `${PREFIX} Trip revenue - Mumbai to Bangalore`;
+
+    await fillFormByLabels(page.locator('[data-testid="finance-transaction-form"]'), {
+      'Transaction Type': 'INCOME',
+      'Source Module': 'TRIP',
+      'Vendor ID': vendorId,
+      'Customer ID': customerId,
+      'Account ID': accountId,
+      'Category ID': incomeCategoryId,
+      'Amount': '100000',
+      'Tax Amount': '18000',
+      'Transaction Date': new Date().toISOString().split('T')[0],
+      'Payment Mode': 'BANK_TRANSFER',
+      'Reference Number': `TXN-${PREFIX}-001`,
+      'Description': txnDesc,
+    });
+
+    await page.click('[data-testid="finance-save-button"]');
+
+    // Verify success banner
+    const successBanner = page.locator('[data-testid="finance-success-message"]');
+    await expect(successBanner).toBeVisible({ timeout: 15000 });
+
+    // Track for cleanup via API (description not rendered as table column)
+    const txnRes = await apiGet(base, token, '/api/v1/finance/transactions') as Record<string, unknown>;
+    const txnItems = ((txnRes.data as Record<string, unknown>)?.items ?? []) as Array<Record<string, unknown>>;
+    const txn = txnItems.find((t) => t.description === txnDesc);
+    if (txn) {
+      cleanup.push(`/api/v1/finance/transactions/${String(txn.id)}`);
+    }
+  });
+
+  test('5. create trip billing through UI using real trip/customer/vehicle', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance/trip-billings');
     await page.waitForSelector('[data-testid="finance-trip-billing-form"]');
@@ -292,7 +360,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     }
   });
 
-  test('5. create partial payment through UI and verify status', async ({ page }) => {
+  test('6. create partial payment through UI and verify status', async ({ page }) => {
     // Get netReceivable to calculate 60%
     const billingRes = await apiGet(base, token, `/api/v1/finance/trip-billings/${billingId}`) as { data?: Record<string, unknown> };
     const netReceivable = Number(billingRes.data?.netReceivable ?? 117000);
@@ -335,7 +403,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(row.locator('text=PARTIALLY PAID').first()).toBeVisible({ timeout: 15000 });
   });
 
-  test('6. create second payment through UI and verify status becomes PAID', async ({ page }) => {
+  test('7. create second payment through UI and verify status becomes PAID', async ({ page }) => {
     // Get remaining balance
     const billingRes = await apiGet(base, token, `/api/v1/finance/trip-billings/${billingId}`) as { data?: Record<string, unknown> };
     const balanceAmount = Number(billingRes.data?.balanceAmount ?? 46800);
@@ -378,7 +446,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(row.locator('text=PAID').first()).toBeVisible({ timeout: 15000 });
   });
 
-  test('7. negative validation - invalid GSTIN vendor', async ({ page }) => {
+  test('8. negative validation - invalid GSTIN vendor', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance/vendors');
     await page.waitForSelector('[data-testid="finance-vendor-form"]');
@@ -396,7 +464,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(errorBanner).toContainText(/validation|GSTIN/i);
   });
 
-  test('8. negative validation - invalid PAN customer', async ({ page }) => {
+  test('9. negative validation - invalid PAN customer', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance/customers');
     await page.waitForSelector('[data-testid="finance-customer-form"]');
@@ -414,7 +482,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(errorBanner).toContainText(/validation|PAN/i);
   });
 
-  test('9. negative validation - payment amount <= 0', async ({ page }) => {
+  test('10. negative validation - payment amount <= 0', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance/payments');
     await page.waitForSelector('[data-testid="finance-payment-form"]');
@@ -433,7 +501,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(errorBanner).toContainText(/validation|amount/i);
   });
 
-  test('10. negative validation - overpayment', async ({ page }) => {
+  test('11. negative validation - overpayment', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance/payments');
     await page.waitForSelector('[data-testid="finance-payment-form"]');
@@ -452,7 +520,7 @@ test.describe('Realistic India-native Finance UI workflow', () => {
     await expect(errorBanner).toContainText(/validation|exceeds|balance/i);
   });
 
-  test('11. P&L dashboard loads and shows financial data', async ({ page }) => {
+  test('12. P&L dashboard loads and shows financial data', async ({ page }) => {
     await loginAsRole(page, 'admin');
     await page.goto('/finance');
     await page.waitForLoadState('networkidle');
