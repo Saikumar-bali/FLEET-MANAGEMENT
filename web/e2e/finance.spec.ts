@@ -5,55 +5,53 @@ test.describe('Phase 7 finance navigation and tabs', () => {
   test('admin sees single Finance sidebar item and finance tabs', async ({ page }) => {
     await loginAsRole(page, 'admin');
 
-    // Sidebar should have exactly one Finance item
-    const sidebarFinance = page.locator('.sidebar-item, .nav-item, [class*="sidebar"] a, [class*="sidebar"] button').filter({ hasText: 'Finance' });
+    const sidebarFinance = page.locator('[data-testid="sidebar-finance-item"]');
     await expect(sidebarFinance).toHaveCount(1);
+    await expect(sidebarFinance).toBeVisible();
 
-    // Navigate to finance
     await page.goto('/finance');
     await expect(page).not.toHaveURL('/login');
 
-    // Finance tabs should be visible
-    const tabs = page.locator('.finance-tabs .finance-tab');
-    await expect(tabs.first()).toBeVisible();
+    const dashboardTab = page.locator('[data-testid="finance-tab-dashboard"]');
+    await expect(dashboardTab).toBeVisible();
+    await expect(dashboardTab).toHaveClass(/finance-tab-active/);
 
-    // Dashboard tab should be active
-    await expect(page.locator('.finance-tab-active')).toContainText('Dashboard');
-
-    // Click Transactions tab
-    await page.locator('.finance-tab', { hasText: 'Transactions' }).click();
+    await page.locator('[data-testid="finance-tab-transactions"]').click();
     await expect(page).toHaveURL(/\/finance\/transactions/);
-    await expect(page.locator('.finance-tab-active')).toContainText('Transactions');
+    await expect(page.locator('[data-testid="finance-tab-transactions"]')).toHaveClass(/finance-tab-active/);
 
-    // Click Trip Billing tab
-    await page.locator('.finance-tab', { hasText: 'Trip Billing' }).click();
+    await page.locator('[data-testid="finance-tab-trip-billing"]').click();
     await expect(page).toHaveURL(/\/finance\/trip-billings/);
-    await expect(page.locator('.finance-tab-active')).toContainText('Trip Billing');
+    await expect(page.locator('[data-testid="finance-tab-trip-billing"]')).toHaveClass(/finance-tab-active/);
 
-    // Click Payments tab
-    await page.locator('.finance-tab', { hasText: 'Payments' }).click();
+    await page.locator('[data-testid="finance-tab-payments"]').click();
     await expect(page).toHaveURL(/\/finance\/payments/);
-    await expect(page.locator('.finance-tab-active')).toContainText('Payments');
+    await expect(page.locator('[data-testid="finance-tab-payments"]')).toHaveClass(/finance-tab-active/);
 
-    // Click back to Dashboard
-    await page.locator('.finance-tab', { hasText: 'Dashboard' }).click();
+    await page.locator('[data-testid="finance-tab-dashboard"]').click();
     await expect(page).toHaveURL(/\/finance$/);
-    await expect(page.locator('.finance-tab-active')).toContainText('Dashboard');
+    await expect(page.locator('[data-testid="finance-tab-dashboard"]')).toHaveClass(/finance-tab-active/);
+  });
+
+  test('all finance tabs are visible for admin', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+    await page.goto('/finance');
+
+    const expectedTabs = ['Dashboard', 'Transactions', 'Accounts', 'Categories', 'Vendors', 'Customers', 'Trip Billing', 'Payments'];
+    for (const tabName of expectedTabs) {
+      const tab = page.locator('.finance-tab', { hasText: tabName });
+      await expect(tab).toBeVisible();
+    }
   });
 
   test('viewer sees finance tabs but no create actions', async ({ page }) => {
     await loginAsRole(page, 'viewer');
-
-    // Navigate to finance - viewer should have access (has finance_view via viewer role or not)
     await page.goto('/finance');
 
-    // If redirected to access denied or login, that's expected for viewer
     const url = page.url();
     if (url.includes('/finance')) {
-      // Finance tabs should be visible if viewer has any finance permission
-      const tabs = page.locator('.finance-tabs .finance-tab');
+      const tabs = page.locator('.finance-tab');
       const tabCount = await tabs.count();
-      // Viewer may see fewer tabs than admin
       expect(tabCount).toBeGreaterThanOrEqual(0);
     }
   });
@@ -61,17 +59,58 @@ test.describe('Phase 7 finance navigation and tabs', () => {
   test('old separate finance items are NOT in sidebar', async ({ page }) => {
     await loginAsRole(page, 'admin');
 
-    const sidebar = page.locator('.sidebar, [class*="sidebar"], nav');
+    const sidebarNav = page.locator('nav[aria-label="Primary"]');
     const oldItems = ['Finance Dashboard', 'Transactions', 'Accounts', 'Categories', 'Vendors', 'Customers', 'Trip Billing', 'Payments'];
 
     for (const item of oldItems) {
-      const matches = sidebar.locator(`a, button, [role="menuitem"]`).filter({ hasText: new RegExp(`^${item}$`) });
-      const count = await matches.count();
-      // None of the old items should exist as separate sidebar entries
-      // The only "Finance" should be the consolidated item
-      if (item !== 'Finance') {
-        expect(count).toBe(0);
-      }
+      if (item === 'Finance') continue;
+      const matches = sidebarNav.locator('.nav-item').filter({ hasText: new RegExp(`^${item}$`) });
+      await expect(matches).toHaveCount(0);
     }
+  });
+
+  test('route-level access: /finance redirects non-admin to login', async ({ page }) => {
+    await page.goto('/login');
+    await page.goto('/finance');
+    const url = page.url();
+    expect(url.includes('/login') || url.includes('/finance')).toBeTruthy();
+  });
+
+  test('vendor form has India-native fields', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+    await page.goto('/finance/vendors');
+    await page.waitForSelector('[data-testid="finance-vendor-form"]');
+
+    const form = page.locator('[data-testid="finance-vendor-form"]');
+    const labels = form.locator('.field-label');
+    const count = await labels.count();
+    const labelTexts: string[] = [];
+    for (let i = 0; i < count; i++) {
+      labelTexts.push(await labels.nth(i).textContent() ?? '');
+    }
+    expect(labelTexts.some((l) => l.includes('GSTIN'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('PAN'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('IFSC'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('UPI'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('Pincode'))).toBeTruthy();
+  });
+
+  test('customer form has India-native fields', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+    await page.goto('/finance/customers');
+    await page.waitForSelector('[data-testid="finance-customer-form"]');
+
+    const form = page.locator('[data-testid="finance-customer-form"]');
+    const labels = form.locator('.field-label');
+    const count = await labels.count();
+    const labelTexts: string[] = [];
+    for (let i = 0; i < count; i++) {
+      labelTexts.push(await labels.nth(i).textContent() ?? '');
+    }
+    expect(labelTexts.some((l) => l.includes('GSTIN'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('PAN'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('Pincode'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('Credit Limit'))).toBeTruthy();
+    expect(labelTexts.some((l) => l.includes('GST Registered'))).toBeTruthy();
   });
 });

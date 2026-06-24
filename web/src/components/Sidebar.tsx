@@ -115,6 +115,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
                     key={`${section.key}-${item.path}-${item.label}`}
                     to={item.path}
                     onClick={onClose}
+                    data-testid={item.label === 'Finance' ? 'sidebar-finance-item' : undefined}
                     className={`nav-item${isActive(item.path) && item.label === (section.key === 'EXPLORE' && item.label === 'Overview' ? 'Overview' : item.label) ? ' nav-item-active' : ''}`}
                   >
                     <span className="nav-item-icon">

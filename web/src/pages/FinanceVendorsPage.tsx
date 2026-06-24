@@ -317,7 +317,7 @@ export function FinanceVendorsPage() {
               </div>
             </div>
 
-            <form className="stack-form" onSubmit={handleSubmit}>
+            <form data-testid="finance-vendor-form" className="stack-form" onSubmit={handleSubmit}>
               <label>
                 <span className="field-label">Name</span>
                 <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
@@ -399,12 +399,12 @@ export function FinanceVendorsPage() {
                 <input value={form.upiId} onChange={(e) => setForm((f) => ({ ...f, upiId: e.target.value }))} />
               </label>
 
-              {error ? <div className="error-banner">{error}</div> : null}
-              {message ? <div className="success-banner">{message}</div> : null}
+              {error ? <div data-testid="finance-error" className="error-banner">{error}</div> : null}
+              {message ? <div data-testid="finance-success" className="success-banner">{message}</div> : null}
 
               <div className="button-row">
                 {canSubmit ? (
-                  <button type="submit" className="primary-button" disabled={isSaving}>
+                  <button data-testid="finance-save-button" type="submit" className="primary-button" disabled={isSaving}>
                     {isSaving ? 'Saving...' : submitLabel}
                   </button>
                 ) : null}

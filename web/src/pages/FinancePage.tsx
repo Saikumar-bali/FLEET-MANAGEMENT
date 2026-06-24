@@ -132,7 +132,7 @@ export function FinancePage() {
           </div>
 
           {pnl ? (
-            <div className="card">
+            <div data-testid="finance-pnl-section" className="card">
               <div className="table-toolbar">
                 <div>
                   <h3 className="table-toolbar-title">Profit &amp; Loss</h3>
@@ -168,7 +168,7 @@ export function FinancePage() {
                 </form>
               ) : null}
 
-              <div className="stat-cards-row">
+              <div data-testid="finance-pnl-summary" className="stat-cards-row">
                 <div className="stat-card-inline">
                   <span className="stat-card-label">Total Income</span>
                   <span className="stat-card-value">{formatCurrency(pnl.totalIncome)}</span>

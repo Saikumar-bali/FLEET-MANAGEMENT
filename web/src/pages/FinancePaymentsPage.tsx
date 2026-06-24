@@ -255,7 +255,7 @@ export function FinancePaymentsPage() {
               </div>
             </div>
 
-            <form className="stack-form" onSubmit={handleSubmit}>
+            <form data-testid="finance-payment-form" className="stack-form" onSubmit={handleSubmit}>
               <label>
                 <span className="field-label">Transaction ID</span>
                 <input value={form.transactionId} onChange={(e) => setForm((f) => ({ ...f, transactionId: e.target.value }))} />
@@ -325,12 +325,12 @@ export function FinancePaymentsPage() {
                 <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={3} />
               </label>
 
-              {error ? <div className="error-banner">{error}</div> : null}
-              {message ? <div className="success-banner">{message}</div> : null}
+              {error ? <div data-testid="finance-error" className="error-banner">{error}</div> : null}
+              {message ? <div data-testid="finance-success" className="success-banner">{message}</div> : null}
 
               <div className="button-row">
                 {canCreate ? (
-                  <button type="submit" className="primary-button" disabled={isSaving}>
+                  <button data-testid="finance-save-button" type="submit" className="primary-button" disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Create Payment'}
                   </button>
                 ) : null}

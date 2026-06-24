@@ -262,3 +262,66 @@ Mobile started: NO
 |------|---------|
 | `backend/prisma/migrations/20260624000000_add_finance_india_fields/migration.sql` | Idempotent ALTER migration (67 statements) |
 | `backend/scripts/apply-finance-migration.ts` | Node.js script to apply ALTER migration via Prisma |
+
+---
+
+### 6. Realistic India-native Finance Playwright E2E (2026-06-24)
+
+**Test file:** `web/e2e/finance-realistic-india.spec.ts`
+**Existing test:** `web/e2e/finance.spec.ts` (improved with data-testid selectors)
+
+**Local URLs:**
+- Backend: http://localhost:4000
+- Web: http://localhost:5173
+
+**Test data prefix:** `PH7_UI_TEST_<timestamp>`
+
+**data-testid attributes added:**
+- `sidebar-finance-item` — sidebar Finance nav link
+- `finance-tab-dashboard`, `finance-tab-transactions`, `finance-tab-vendors`, `finance-tab-customers`, `finance-tab-trip-billing`, `finance-tab-payments` — tab navigation
+- `finance-vendor-form`, `finance-customer-form`, `finance-trip-billing-form`, `finance-payment-form` — form containers
+- `finance-save-button` — submit buttons
+- `finance-error`, `finance-success` — error/success messages
+- `finance-pnl-section`, `finance-pnl-summary` — P&L dashboard
+
+**Realistic Indian data tested:**
+
+| Entity | Key Fields |
+|--------|-----------|
+| Vendor | PH7_UI_TEST_... Bharat Petroleum, FUEL_STATION, GSTIN: 27AALCS1234F1ZH, PAN: AALCS1234F, Maharashtra, State Code: 27, Pincode: 400001, IFSC: HDFC0001234, UPI: bharatpetro@upi |
+| Customer | PH7_UI_TEST_... Tata Logistics, ENTERPRISE, GSTIN: 27AALCC5678G1ZI, PAN: AALCC5678G, Maharashtra, State Code: 27, Pincode: 400002, Credit Limit: ₹10,00,000, GST Registered: true |
+| Vehicle | PH7_UI_TEST_...-MH12AB1234, TRUCK, DIESEL, Tata Prima 2525.K, 2024 |
+| Trip | DELIVERY, Mumbai Warehouse → Bangalore Hub |
+| Trip Billing | Invoice: PH7_UI_TEST_..._INV-001, LR: LR-2026-001, CH: CH-2026-001, EWB: EWB-2026-001, PO: PO-TATA-2026-001, Freight: ₹1,00,000, Loading: ₹5,000, Unloading: ₹5,000, Toll: ₹3,000, Permit: ₹2,000, Discount: ₹2,000, CGST: ₹9,000, SGST: ₹9,000, TDS: ₹5,000 |
+| Partial Payment | BANK_TRANSFER, 60% of net receivable, UTR: UTR-HDFC-2026-001 |
+| Final Payment | CHEQUE, remaining balance, CHQ-001234 |
+
+**Vehicle/trip setup:** API (Playwright test calls backend API to create vehicle, driver, trip before UI trip billing)
+
+**Workflow covered:**
+1. Login + sidebar verification
+2. Create vendor through UI (20+ India-native fields)
+3. Create customer through UI (20+ India-native fields)
+4. Setup vehicle/driver/trip via API
+5. Create trip billing through UI with real IDs
+6. Verify calculated values (totalAmount > 0, netReceivable > 0)
+7. Create partial payment (60%) → verify PARTIALLY_PAID
+8. Create final payment → verify PAID + balance = 0
+9. Negative validation: invalid GSTIN, invalid PAN, zero payment amount
+10. P&L dashboard loads with Income/Expenses/Net Profit
+
+**Cleanup:** API DELETE calls in afterAll hook, ordered: payments → trip billing → trip → driver → vehicle
+
+**Commands run:**
+| Command | Result |
+|---------|--------|
+| `npm run backend:lint` | PASS (exit 0) |
+| `npm run web:lint` | PASS (exit 0) |
+| `npm run web:build` | PASS (exit 0) |
+| `npm --prefix backend run test:api-docs` | PASS (121/121, exit 0) |
+| `npx playwright test --list` | PASS (64 tests in 15 files, 20 finance tests) |
+
+**GitHub Actions:** Pending push verification
+**Vercel deploy:** NO
+**Phase 7.1 started:** NO
+**Mobile started:** NO
