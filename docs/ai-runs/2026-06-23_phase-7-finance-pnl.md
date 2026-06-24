@@ -1,10 +1,10 @@
 # Phase 7: Finance & P&L Foundation — Implementation Evidence
 
-**Date:** 2026-06-23 (hardened 2026-06-24)
+**Date:** 2026-06-23 (hardened 2026-06-24, review fix 2026-06-24)
 **Branch:** `phase-7-finance-pnl`
-**Base:** `19d1a4a` (latest user-reviewed commit)
+**Base:** `80df781` → `79f52ba` (review fix commit)
 **PR:** #23
-**Status:** BLOCKED — hardened for India-native workflows
+**Status:** Review fix applied — CI migration + finance nav consolidation
 
 ## Summary
 
@@ -152,3 +152,32 @@ Updated `backend/scripts/finance-workflow-test.ts`:
 Vercel deploy run: NO
 Phase 7.1 started: NO
 Mobile started: NO
+
+## Review Fix (2026-06-24 — commit `79f52ba`)
+
+### What Was Fixed
+1. **CI workflow** — replaced broken `npm --prefix backend run prisma:db:push` (script was removed) with `npm --prefix backend run prisma:migrate:deploy`
+2. **Baseline Prisma migration** — generated SQL via `prisma migrate diff --from-empty --to-schema-datamodel` and committed to `backend/prisma/migrations/20260623000000_baseline/migration.sql`
+3. **Finance navigation consolidated** — replaced 8 separate sidebar items (Dashboard, Transactions, Accounts, Categories, Vendors, Customers, Trip Billing, Payments) with single "Finance" item with tabbed sub-navigation
+4. **FinanceLayout.tsx** — new component with permission-aware tab bar using `<NavLink>` with `end` prop for correct active states
+5. **Finance tab CSS** — horizontal tab bar with active state, hover, scroll on overflow
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `.github/workflows/ci.yml` | Line 185: `prisma:db:push` → `prisma:migrate:deploy` |
+| `backend/prisma/migrations/20260623000000_baseline/migration.sql` | New: baseline migration SQL (~1500 lines) |
+| `web/src/layouts/FinanceLayout.tsx` | New: tabbed finance layout with permission-aware tabs |
+| `web/src/config/navigation.ts` | Replaced 8 finance items with single "Finance" item |
+| `web/src/app/App.tsx` | Imported FinanceLayout, nested finance routes under it |
+| `web/src/app/styles.css` | Added `.finance-tabs`, `.finance-tab`, `.finance-tab-active`, `.finance-tab-content` CSS |
+
+### Verification After Fix
+| Check | Result |
+|-------|--------|
+| `prisma validate` | PASS |
+| `backend:lint` | PASS |
+| `web:lint` | PASS |
+| `backend:build` | PASS |
+| `web:build` | PASS |
+| `test:api-docs` | PASS (121/121) |
