@@ -517,7 +517,7 @@ async function main() {
       });
     } else {
       await runTest(`Delete ${item.type} ${item.id}`, async () => {
-        const res = await apiCall('DELETE', item.path, token);
+        const res = await apiCall('DELETE', `${item.path}/${item.id}`, token);
         expect(res.status === 200, `Expected 200, got ${res.status}: ${res.data?.message || ''}`);
       });
     }
