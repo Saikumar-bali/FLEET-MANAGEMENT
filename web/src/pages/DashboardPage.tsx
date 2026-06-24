@@ -1,139 +1,307 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getHealth } from '../services/api';
+import { getDashboardOverview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { EmptyState } from '../components/EmptyState';
+import type { DashboardOverview } from '../types/auth';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
+import { LoadingState } from '../components/LoadingState';
+import { ErrorState } from '../components/ErrorState';
+
+function formatCurrency(value: number) {
+  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-IN');
+}
 
 export function DashboardPage() {
   const auth = useAuth();
-  const [healthLabel, setHealthLabel] = useState('Checking backend health...');
-  const [healthState, setHealthState] = useState<'checking' | 'ok' | 'unavailable'>('checking');
+  const [data, setData] = useState<DashboardOverview | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const run = async () => {
+    const load = async () => {
+      if (!auth.accessToken) return;
+      setIsLoading(true);
+      setError(null);
       try {
-        const response = await getHealth();
-        setHealthLabel(`API ${response.data.status}, database ${response.data.database}`);
-        setHealthState(response.data.database === 'connected' ? 'ok' : 'unavailable');
+        const res = await getDashboardOverview(auth.accessToken);
+        setData(res.data);
       } catch {
-        setHealthLabel('Backend health check is currently unavailable.');
-        setHealthState('unavailable');
+        setError('Failed to load dashboard data.');
+      } finally {
+        setIsLoading(false);
       }
     };
+    void load();
+  }, [auth.accessToken]);
 
-    void run();
-  }, []);
+  if (isLoading) return <LoadingState message="Loading dashboard..." />;
+  if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
     <section className="page-content">
       <PageHeader
         eyebrow="Workspace"
-        title="Overview"
-        description="Current user context, role coverage, and quick checks before access changes."
+        title="Fleet Dashboard"
+        description="Real-time fleet operations overview."
       />
 
-      <article className="card">
-        <div className="dashboard-grid">
-          <div className="content-span-5 metric-card">
-            <p className="metric-label">Current user</p>
-            <p className="metric-value">{auth.user?.name ?? 'Unknown user'}</p>
-            <p className="table-secondary">
-              {auth.user?.username ? `@${auth.user.username} • ` : ''}
-              {auth.user?.email}
-            </p>
-          </div>
-          <div className="content-span-3 metric-card">
-            <p className="metric-label">Current role</p>
-            <p className="metric-value">{auth.user?.role.name ?? 'No role'}</p>
-            <StatusBadge status={auth.user?.role.key === 'super_admin' ? 'SYSTEM' : auth.user?.role.status ?? 'ACTIVE'} />
-          </div>
-          <div className="content-span-2 metric-card">
-            <p className="metric-label">Permissions</p>
-            <p className="metric-value">{auth.permissions.length}</p>
-            <p className="table-secondary">Active permission keys</p>
-          </div>
-          <div className="content-span-2 metric-card">
-            <p className="metric-label">Backend status</p>
-            <p className="metric-value">{healthState === 'ok' ? 'Healthy' : healthState === 'checking' ? 'Checking' : 'Attention'}</p>
-            <p className="table-secondary">{healthLabel}</p>
-          </div>
-        </div>
-      </article>
+      {data ? (
+        <>
+          <div className="dashboard-grid-sections">
+            <article className="card">
+              <div className="table-toolbar">
+                <div>
+                  <h3 className="table-toolbar-title">Fleet Health</h3>
+                  <p className="table-toolbar-copy">Vehicles, drivers, and compliance status</p>
+                </div>
+              </div>
+              <div className="metric-grid">
+                <div className="metric-item">
+                  <span className="metric-label">Total Vehicles</span>
+                  <span className="metric-value">{data.totalVehicles}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Active</span>
+                  <span className="metric-value" style={{ color: '#059669' }}>{data.activeVehicles}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Inactive</span>
+                  <span className="metric-value" style={{ color: data.inactiveVehicles > 0 ? '#dc2626' : undefined }}>{data.inactiveVehicles}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Drivers</span>
+                  <span className="metric-value">{data.driversCount}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Active Trips</span>
+                  <span className="metric-value" style={{ color: '#059669' }}>{data.activeTrips}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Completed (MTD)</span>
+                  <span className="metric-value">{data.completedTripsThisMonth}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Pending Trips</span>
+                  <span className="metric-value" style={{ color: data.pendingTrips > 0 ? '#f59e0b' : undefined }}>{data.pendingTrips}</span>
+                </div>
+              </div>
+            </article>
 
-      <article className="card">
+            <article className="card">
+              <div className="table-toolbar">
+                <div>
+                  <h3 className="table-toolbar-title">Financial (MTD)</h3>
+                  <p className="table-toolbar-copy">Fuel and expense costs this month</p>
+                </div>
+              </div>
+              <div className="metric-grid">
+                <div className="metric-item">
+                  <span className="metric-label">Fuel Cost</span>
+                  <span className="metric-value" style={{ color: '#dc2626' }}>{formatCurrency(Number(data.fuelCostThisMonth))}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Expenses</span>
+                  <span className="metric-value" style={{ color: '#dc2626' }}>{formatCurrency(Number(data.expensesThisMonth))}</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="card">
+              <div className="table-toolbar">
+                <div>
+                  <h3 className="table-toolbar-title">Maintenance &amp; Repairs</h3>
+                  <p className="table-toolbar-copy">Open work orders</p>
+                </div>
+              </div>
+              <div className="metric-grid">
+                <div className="metric-item">
+                  <span className="metric-label">Open Maintenance</span>
+                  <span className="metric-value" style={{ color: data.maintenanceOpen > 0 ? '#f59e0b' : undefined }}>{data.maintenanceOpen}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">In Progress Repairs</span>
+                  <span className="metric-value" style={{ color: data.repairsOpen > 0 ? '#f59e0b' : undefined }}>{data.repairsOpen}</span>
+                </div>
+              </div>
+            </article>
+
+            <article className="card">
+              <div className="table-toolbar">
+                <div>
+                  <h3 className="table-toolbar-title">Compliance Risk</h3>
+                  <p className="table-toolbar-copy">Document expiry summary</p>
+                </div>
+              </div>
+              <div className="metric-grid">
+                <div className="metric-item">
+                  <span className="metric-label">Expired</span>
+                  <span className="metric-value" style={{ color: data.complianceExpired > 0 ? '#dc2626' : undefined }}>{data.complianceExpired}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Expiring in 7 Days</span>
+                  <span className="metric-value" style={{ color: data.complianceExpiring7 > 0 ? '#fd7e14' : undefined }}>{data.complianceExpiring7}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="metric-label">Expiring in 30 Days</span>
+                  <span className="metric-value" style={{ color: data.complianceExpiring30 > 0 ? '#f59e0b' : undefined }}>{data.complianceExpiring30}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div className="dashboard-lower-grid">
+            {data.recentTrips.length > 0 && (
+              <article className="card table-card">
+                <div className="table-toolbar">
+                  <div>
+                    <h3 className="table-toolbar-title">Recent Trips</h3>
+                    <p className="table-toolbar-copy">Latest trip activity</p>
+                  </div>
+                </div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Route</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentTrips.map((trip) => (
+                      <tr key={trip.id}>
+                        <td>{trip.tripType}</td>
+                        <td>{trip.originName} &rarr; {trip.destinationName}</td>
+                        <td><StatusBadge status={trip.status} /></td>
+                        <td>{formatDate(trip.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </article>
+            )}
+
+            {data.recentFuel.length > 0 && (
+              <article className="card table-card">
+                <div className="table-toolbar">
+                  <div>
+                    <h3 className="table-toolbar-title">Recent Fuel Entries</h3>
+                    <p className="table-toolbar-copy">Latest fuel records</p>
+                  </div>
+                </div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Vehicle</th>
+                      <th>Qty (L)</th>
+                      <th>Cost</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentFuel.map((f) => (
+                      <tr key={f.id}>
+                        <td>
+                          <Link to={`/vehicles/${f.vehicleId}`} className="table-link">{f.vehicleId.slice(0, 8)}</Link>
+                        </td>
+                        <td>{Number(f.quantityLiters).toFixed(1)}</td>
+                        <td>{formatCurrency(Number(f.totalAmount))}</td>
+                        <td>{formatDate(f.fuelDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </article>
+            )}
+
+            {data.recentExpenses.length > 0 && (
+              <article className="card table-card">
+                <div className="table-toolbar">
+                  <div>
+                    <h3 className="table-toolbar-title">Recent Expenses</h3>
+                    <p className="table-toolbar-copy">Latest expense records</p>
+                  </div>
+                </div>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Vehicle</th>
+                      <th>Category</th>
+                      <th>Amount</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentExpenses.map((exp) => (
+                      <tr key={exp.id}>
+                        <td>
+                          <Link to={`/vehicles/${exp.vehicleId}`} className="table-link">{exp.vehicleId.slice(0, 8)}</Link>
+                        </td>
+                        <td>{exp.category}</td>
+                        <td>{formatCurrency(Number(exp.amount))}</td>
+                        <td>{formatDate(exp.expenseDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </article>
+            )}
+          </div>
+        </>
+      ) : null}
+
+      <article className="card" style={{ marginTop: 24 }}>
         <div className="table-toolbar">
           <div>
-            <h3 className="table-toolbar-title">Quick links</h3>
-            <p className="table-toolbar-copy">Jump straight into the areas people touch most.</p>
+            <h3 className="table-toolbar-title">Quick Links</h3>
+            <p className="table-toolbar-copy">Jump to key areas</p>
           </div>
         </div>
         <div className="quick-link-grid">
-          {auth.hasPermission('user_view') ? (
-            <Link className="quick-link-card" to="/users">
-              <strong>Users</strong>
-              <span>Create, edit, and review team access</span>
-            </Link>
-          ) : null}
-          {auth.hasPermission('role_view') ? (
-            <Link className="quick-link-card" to="/roles">
-              <strong>Roles</strong>
-              <span>Review system and custom roles</span>
-            </Link>
-          ) : null}
-          {auth.hasAnyPermission(['vehicle_view']) ? (
+          {auth.hasPermission('vehicle_view') ? (
             <Link className="quick-link-card" to="/vehicles">
               <strong>Vehicles</strong>
               <span>Manage vehicle master data</span>
             </Link>
           ) : null}
-          {auth.hasAnyPermission(['trip_view']) ? (
+          {auth.hasPermission('trip_view') ? (
             <Link className="quick-link-card" to="/trips">
               <strong>Trips</strong>
               <span>Manage trips and transfers</span>
             </Link>
           ) : null}
+          {auth.hasPermission('fuel_view') ? (
+            <Link className="quick-link-card" to="/fuel">
+              <strong>Fuel</strong>
+              <span>Fuel entry workflow</span>
+            </Link>
+          ) : null}
+          {auth.hasPermission('expense_view') ? (
+            <Link className="quick-link-card" to="/expenses">
+              <strong>Expenses</strong>
+              <span>Expense workflow</span>
+            </Link>
+          ) : null}
+          {auth.hasPermission('vehicle_compliance_view') ? (
+            <Link className="quick-link-card" to="/compliance">
+              <strong>Compliance</strong>
+              <span>Vehicle compliance dashboard</span>
+            </Link>
+          ) : null}
+          {auth.hasPermission('finance_view') ? (
+            <Link className="quick-link-card" to="/finance">
+              <strong>Finance</strong>
+              <span>Finance management</span>
+            </Link>
+          ) : null}
         </div>
       </article>
-
-      <article className="card">
-        <div className="table-toolbar">
-          <div>
-            <h3 className="table-toolbar-title">Session detail</h3>
-            <p className="table-toolbar-copy">Useful context before you change users or roles.</p>
-          </div>
-        </div>
-        <div className="detail-grid">
-          <div>
-            <p className="detail-label">Authentication</p>
-            <p className="detail-value">{auth.accessToken ? 'Authenticated' : 'Signed out'}</p>
-          </div>
-          <div>
-            <p className="detail-label">Username</p>
-            <p className="detail-value">{auth.user?.username ? `@${auth.user.username}` : 'Not set'}</p>
-          </div>
-          <div>
-            <p className="detail-label">Mobile</p>
-            <p className="detail-value">{auth.user?.mobile || 'Not set'}</p>
-          </div>
-          <div>
-            <p className="detail-label">Role key</p>
-            <p className="detail-value">{auth.user?.role.key}</p>
-          </div>
-          <div>
-            <p className="detail-label">Route protection</p>
-            <p className="detail-value">Permission-enforced</p>
-          </div>
-        </div>
-      </article>
-
-      {auth.permissions.length === 0 ? (
-        <EmptyState
-          title="This account has no active permissions"
-          message="Check role assignments before trying to manage any secured area."
-        />
-      ) : null}
     </section>
   );
 }
+

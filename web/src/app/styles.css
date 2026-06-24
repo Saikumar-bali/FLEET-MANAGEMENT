@@ -934,6 +934,23 @@ nav.sidebar-nav::-webkit-scrollbar-track {
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
+.dashboard-grid-sections {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dashboard-lower-grid {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .metric-card {
   display: grid;
   gap: var(--space-1);

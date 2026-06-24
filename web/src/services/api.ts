@@ -8,6 +8,7 @@ import type {
   AssetHolderType,
   AssetRecord,
   AuthPayload,
+  DashboardOverview,
   DocumentRecord,
   DriverRecord,
   PaginatedResponse,
@@ -93,6 +94,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
 export function getHealth() {
   return request<{ status: string; timestamp: string; uptime: number; database: string }>('/health');
+}
+
+export function getDashboardOverview(accessToken: string) {
+  return request<DashboardOverview>('/dashboard/overview', { method: 'GET', token: accessToken });
 }
 
 export function login(identifier: string, password: string) {

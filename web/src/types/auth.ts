@@ -680,6 +680,46 @@ export interface FinanceDashboardSummary {
   recentTransactions: FinanceTransaction[];
 }
 
+export type DashboardOverview = {
+  totalVehicles: number;
+  activeVehicles: number;
+  inactiveVehicles: number;
+  driversCount: number;
+  activeTrips: number;
+  completedTripsThisMonth: number;
+  pendingTrips: number;
+  fuelCostThisMonth: number;
+  expensesThisMonth: number;
+  maintenanceOpen: number;
+  repairsOpen: number;
+  complianceExpired: number;
+  complianceExpiring7: number;
+  complianceExpiring30: number;
+  recentTrips: Array<{
+    id: string;
+    tripType: string;
+    status: string;
+    originName: string;
+    destinationName: string;
+    createdAt: string;
+  }>;
+  recentFuel: Array<{
+    id: string;
+    vehicleId: string;
+    quantityLiters: number;
+    totalAmount: number;
+    fuelDate: string;
+  }>;
+  recentExpenses: Array<{
+    id: string;
+    vehicleId: string;
+    category: string;
+    amount: number;
+    notes: string | null;
+    expenseDate: string;
+  }>;
+};
+
 export interface PnlSummary {
   totalIncome: number;
   totalExpenses: number;
