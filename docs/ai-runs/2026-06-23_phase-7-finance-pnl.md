@@ -310,18 +310,33 @@ Mobile started: NO
 9. Negative validation: invalid GSTIN, invalid PAN, zero payment amount
 10. P&L dashboard loads with Income/Expenses/Net Profit
 
-**Cleanup:** API DELETE calls in afterAll hook, ordered: payments → trip billing → trip → driver → vehicle
+**Cleanup:** API DELETE calls in afterAll hook, ordered: payments → trip billing → customer → vendor → trip → driver → vehicle
 
-**Commands run:**
+**Backend fix:** Finance list APIs (`listAccounts`, `listCategories`, `listVendors`, `listCustomers`, `listTripBillings`, `listTransactions`, `listPayments`) were returning `{data, meta}` instead of `{items, pagination}`. Fixed to match the standard format used by all other modules (fuel, expenses, maintenance, repairs, vehicle-compliance).
+
+**Commands run (local):**
 | Command | Result |
 |---------|--------|
 | `npm run backend:lint` | PASS (exit 0) |
 | `npm run web:lint` | PASS (exit 0) |
+| `npm run backend:build` | PASS (exit 0) |
 | `npm run web:build` | PASS (exit 0) |
 | `npm --prefix backend run test:api-docs` | PASS (121/121, exit 0) |
-| `npx playwright test --list` | PASS (64 tests in 15 files, 20 finance tests) |
+| `npx playwright test web/e2e/finance.spec.ts web/e2e/finance-realistic-india.spec.ts --headed` | **19/19 PASS** (18 finance tests including both spec files; all 11 realistic India tests pass) |
+| **Individual test results** | |
+| test 1: login + sidebar | PASS |
+| test 2: create vendor UI | PASS |
+| test 3: create customer UI | PASS |
+| test 4: create trip billing UI | PASS |
+| test 5: partial payment + PARTIALLY_PAID status | PASS |
+| test 6: final payment + PAID status | PASS |
+| test 7: invalid GSTIN validation | PASS |
+| test 8: invalid PAN validation | PASS |
+| test 9: zero payment amount validation | PASS |
+| test 10: overpayment rejection | PASS |
+| test 11: P&L dashboard with Income/Expenses/Net Profit | PASS |
 
-**GitHub Actions:** Pending push verification
+**GitHub Actions:** Pending push verification (will update after push)
 **Vercel deploy:** NO
 **Phase 7.1 started:** NO
 **Mobile started:** NO

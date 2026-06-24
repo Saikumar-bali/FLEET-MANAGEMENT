@@ -390,8 +390,8 @@ export function FinanceCustomersPage() {
                 <span className="field-label">GST Registered</span>
               </label>
 
-              {error ? <div data-testid="finance-error" className="error-banner">{error}</div> : null}
-              {message ? <div data-testid="finance-success" className="success-banner">{message}</div> : null}
+              {error ? <div data-testid="finance-error-message" className="error-banner">{error}</div> : null}
+              {message ? <div data-testid="finance-success-message" className="success-banner">{message}</div> : null}
 
               <div className="button-row">
                 {canSubmit ? (

@@ -86,8 +86,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -153,8 +153,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -206,8 +206,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -302,8 +302,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -411,8 +411,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -573,8 +573,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -660,8 +660,8 @@ export class FinanceService {
     ]);
 
     return {
-      data,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      items: data,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
 

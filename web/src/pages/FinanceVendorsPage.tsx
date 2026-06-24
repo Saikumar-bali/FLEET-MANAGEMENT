@@ -399,8 +399,8 @@ export function FinanceVendorsPage() {
                 <input value={form.upiId} onChange={(e) => setForm((f) => ({ ...f, upiId: e.target.value }))} />
               </label>
 
-              {error ? <div data-testid="finance-error" className="error-banner">{error}</div> : null}
-              {message ? <div data-testid="finance-success" className="success-banner">{message}</div> : null}
+              {error ? <div data-testid="finance-error-message" className="error-banner">{error}</div> : null}
+              {message ? <div data-testid="finance-success-message" className="success-banner">{message}</div> : null}
 
               <div className="button-row">
                 {canSubmit ? (
