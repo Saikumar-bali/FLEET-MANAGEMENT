@@ -1,10 +1,10 @@
 # Phase 7: Finance & P&L Foundation — Implementation Evidence
 
-**Date:** 2026-06-23 (hardened 2026-06-24, review fix 2026-06-24, review fix 2: 2026-06-24)
+**Date:** 2026-06-23 (hardened 2026-06-24, review fix 2026-06-24, review fix 2: 2026-06-24, migration fix: 2026-06-24)
 **Branch:** `phase-7-finance-pnl`
-**Base:** `80df781` → `79f52ba` → latest (review fix 2)
+**Base:** `80df781` → `79f52ba` → latest (migration fix)
 **PR:** #23
-**Status:** Review fix 2 applied — finance API test fix, route permissions, sidebar permissions
+**Status:** Migration fix applied — incremental ALTER migration for existing databases
 
 ## Summary
 
@@ -237,3 +237,28 @@ Mobile started: NO
 | `npm run backend:build` | PASS (exit 0) |
 | `npm run web:build` | PASS (exit 0) |
 | `npm --prefix backend run test:api-docs` | PASS (121/121, exit 0) |
+
+---
+
+### 5. Migration Fix for Existing Databases (2026-06-24)
+
+**Problem:** The `--from-empty` baseline migration (`20260623000000_baseline`) creates all tables from scratch (CI works), but cannot be applied to existing databases (Neon, local, staging, production) where tables already exist without the India-native columns. Running `prisma migrate dev` detected drift and wanted to `migrate reset`.
+
+**Solution:** Created an incremental migration (`20260624000000_add_finance_india_fields`) with idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` statements.
+
+**What was done:**
+1. Marked baseline as applied via `prisma migrate resolve --applied` (registers it in `_prisma_migrations`)
+2. Created incremental migration SQL with `IF NOT EXISTS` for all new columns, indexes, and FK constraints
+3. Applied the incremental migration to the Neon DB via `apply-finance-migration.ts` script (67 ALTER statements, 0 errors)
+4. Marked the incremental migration as applied via `prisma migrate resolve --applied`
+5. Verified `prisma migrate status` shows "Database schema is up to date!"
+
+**Migration chain:**
+- CI (fresh PostgreSQL): baseline runs (creates all tables with all columns) → incremental runs (all `IF NOT EXISTS` are no-ops) ✓
+- Existing databases (Neon/local): baseline marked as applied → incremental adds missing columns → both marked as applied ✓
+
+**Files added:**
+| File | Purpose |
+|------|---------|
+| `backend/prisma/migrations/20260624000000_add_finance_india_fields/migration.sql` | Idempotent ALTER migration (67 statements) |
+| `backend/scripts/apply-finance-migration.ts` | Node.js script to apply ALTER migration via Prisma |
