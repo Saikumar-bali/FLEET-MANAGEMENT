@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { DashboardOverview } from '../types/auth';
 import { PageShell } from '../components/ui/PageShell';
+import { PageHeader } from '../components/PageHeader';
 import { StatCard } from '../components/ui/StatCard';
 import { KpiGrid } from '../components/ui/KpiGrid';
 import { ChartCard } from '../components/ui/ChartCard';
@@ -178,6 +179,7 @@ export function DashboardPage() {
 
   return (
     <PageShell>
+      <PageHeader title="Overview" />
       <div className="dashboard-command-header">
         <div className="dashboard-command-header-main">
           <h1>Fleet Operations Command Center</h1>

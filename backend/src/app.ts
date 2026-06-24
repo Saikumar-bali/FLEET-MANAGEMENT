@@ -60,10 +60,10 @@ app.use('/api/v1/fuel', fuelRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/repairs', repairRoutes);
+app.use('/api/v1/docs', docsRoutes);
 app.use('/api/v1', vehicleComplianceRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
-app.use('/api/v1/docs', docsRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 

@@ -252,7 +252,7 @@ export function FinancePage() {
           </div>
 
           {pnl ? (
-            <div className="dashboard-table-card">
+            <div className="dashboard-table-card" data-testid="finance-pnl-section">
               <div className="chart-card-header">
                 <div>
                   <h3 className="chart-card-title">Profit &amp; Loss</h3>
@@ -274,7 +274,7 @@ export function FinancePage() {
                 </form>
               ) : null}
 
-              <div className="kpi-grid kpi-cols-3" style={{ padding: 'var(--space-4) var(--space-5)' }}>
+              <div className="kpi-grid kpi-cols-3" style={{ padding: 'var(--space-4) var(--space-5)' }} data-testid="finance-pnl-summary">
                 <StatCard label="Total Income" value={formatCurrency(pnl.totalIncome)} variant="success" icon={<TrendUpIcon />} />
                 <StatCard label="Total Expenses" value={formatCurrency(pnl.totalExpenses)} variant="danger" icon={<TrendDownIcon />} />
                 <StatCard
