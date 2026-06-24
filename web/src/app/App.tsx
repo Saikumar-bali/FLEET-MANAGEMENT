@@ -1,7 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
+import { ToastProvider } from '../context/ToastContext';
+import { ToastContainer } from '../components/ui/Toast';
 import { AppLayout } from '../layouts/AppLayout';
+import { FinanceLayout } from '../layouts/FinanceLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
@@ -21,13 +24,24 @@ import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
+import { lazy, Suspense } from 'react';
+
+const FinancePage = lazy(() => import('../pages/FinancePage'));
+const FinanceTransactionsPage = lazy(() => import('../pages/FinanceTransactionsPage'));
+const FinanceAccountsPage = lazy(() => import('../pages/FinanceAccountsPage'));
+const FinanceCategoriesPage = lazy(() => import('../pages/FinanceCategoriesPage'));
+const FinanceVendorsPage = lazy(() => import('../pages/FinanceVendorsPage'));
+const FinanceCustomersPage = lazy(() => import('../pages/FinanceCustomersPage'));
+const FinanceTripBillingsPage = lazy(() => import('../pages/FinanceTripBillingsPage'));
+const FinancePaymentsPage = lazy(() => import('../pages/FinancePaymentsPage'));
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
@@ -68,6 +82,32 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
+                <Route element={<FinanceLayout />}>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>
+                    <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_transactions_view']} />}>
+                    <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view']} />}>
+                    <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view']} />}>
+                    <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['vendors_view']} />}>
+                    <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['customers_view']} />}>
+                    <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['trip_billing_view']} />}>
+                    <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['payments_view']} />}>
+                    <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
+                  </Route>
+                </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />
                 </Route>
@@ -79,6 +119,8 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        <ToastContainer />
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

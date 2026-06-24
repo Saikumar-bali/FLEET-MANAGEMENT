@@ -11,7 +11,7 @@ function fail(results: CheckResult[], name: string, detail?: string) {
   results.push({ name, status: 'FAIL', detail });
 }
 
-const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips', 'Fuel', 'Expenses'];
+const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips', 'Fuel', 'Expenses', 'Finance'];
 
 const REQUIRED_PATHS: Record<string, string[]> = {
   'Health': ['GET /health'],
@@ -36,6 +36,16 @@ const REQUIRED_PATHS: Record<string, string[]> = {
   ],
   'Fuel': ['GET /fuel', 'POST /fuel', 'GET /fuel/{id}', 'PATCH /fuel/{id}', 'DELETE /fuel/{id}', 'POST /fuel/{id}/submit', 'POST /fuel/{id}/approve', 'POST /fuel/{id}/reject', 'POST /fuel/{id}/cancel'],
   'Expenses': ['GET /expenses', 'POST /expenses', 'GET /expenses/{id}', 'PATCH /expenses/{id}', 'DELETE /expenses/{id}', 'POST /expenses/{id}/submit', 'POST /expenses/{id}/approve', 'POST /expenses/{id}/reject', 'POST /expenses/{id}/cancel'],
+  'Finance': [
+    'GET /finance/dashboard-summary', 'GET /finance/pnl',
+    'GET /finance/accounts', 'POST /finance/accounts', 'GET /finance/accounts/{id}', 'PUT /finance/accounts/{id}', 'DELETE /finance/accounts/{id}',
+    'GET /finance/categories', 'POST /finance/categories', 'GET /finance/categories/{id}', 'DELETE /finance/categories/{id}',
+    'GET /finance/vendors', 'POST /finance/vendors', 'GET /finance/vendors/{id}', 'PUT /finance/vendors/{id}', 'DELETE /finance/vendors/{id}',
+    'GET /finance/customers', 'POST /finance/customers', 'GET /finance/customers/{id}', 'PUT /finance/customers/{id}', 'DELETE /finance/customers/{id}',
+    'GET /finance/trip-billings', 'POST /finance/trip-billings', 'GET /finance/trip-billings/{id}', 'PUT /finance/trip-billings/{id}', 'DELETE /finance/trip-billings/{id}',
+    'GET /finance/transactions', 'POST /finance/transactions', 'GET /finance/transactions/{id}', 'DELETE /finance/transactions/{id}',
+    'GET /finance/payments', 'POST /finance/payments', 'GET /finance/payments/{id}', 'DELETE /finance/payments/{id}',
+  ],
 };
 
 function normalizePath(path: string): string {

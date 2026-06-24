@@ -151,6 +151,23 @@ export const navigationItems: NavigationItem[] = [
     pageDescription: 'Insurance, permits, fitness, PUC, road tax, FASTag, and AIS-140 GPS tracking',
   },
   {
+    label: 'Finance',
+    path: '/finance',
+    description: 'Finance management, P&L, transactions, and billing',
+    permissionKeys: [
+      'finance_view',
+      'pnl_view',
+      'finance_transactions_view',
+      'vendors_view',
+      'customers_view',
+      'trip_billing_view',
+      'payments_view',
+    ],
+    section: 'MANAGE',
+    pageTitle: 'Finance',
+    pageDescription: 'Financial management, P&L, transactions, vendors, customers, billing, and payments',
+  },
+  {
     label: 'Roles',
     path: '/roles',
     description: 'Roles and permission assignments',

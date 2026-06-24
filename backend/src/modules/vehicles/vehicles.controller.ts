@@ -7,6 +7,7 @@ import {
   listVehicles,
   updateVehicle,
   updateVehicleStatus,
+  deleteVehicle,
 } from './vehicles.service';
 
 export async function listVehiclesController(req: Request, res: Response) {
@@ -64,4 +65,17 @@ export async function updateVehicleStatusController(req: Request, res: Response)
   });
 
   return sendSuccess(res, vehicle, 'Vehicle status updated successfully');
+}
+
+export async function deleteVehicleController(req: Request, res: Response) {
+  await deleteVehicle(String(req.params.id));
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'vehicle.delete',
+    entityType: 'vehicle',
+    entityId: String(req.params.id),
+  });
+
+  return sendSuccess(res, { deleted: true }, 'Vehicle deleted successfully');
 }

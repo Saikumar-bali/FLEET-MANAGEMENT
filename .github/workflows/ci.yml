@@ -182,7 +182,7 @@ jobs:
 
       - name: Prepare isolated CI database
         run: |
-          npm --prefix backend run prisma:db:push
+          npm --prefix backend run prisma:migrate:deploy
           npm --prefix backend run prisma:seed
 
       - name: Backend lint
@@ -227,6 +227,9 @@ jobs:
 
       - name: Local backend vehicle compliance API tests
         run: npm --prefix backend run test:vehicle-compliance
+
+      - name: Local backend finance API tests
+        run: npm --prefix backend run test:finance
 
       - name: Local Playwright tests
         run: npm --prefix web run test:e2e

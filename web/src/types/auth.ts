@@ -500,3 +500,233 @@ export type ComplianceDashboard = {
   pendingVerification: number;
   totalDocuments: number;
 };
+
+// Finance Types
+export interface FinanceAccount {
+  id: string;
+  name: string;
+  type: 'CASH' | 'BANK' | 'WALLET' | 'CREDIT' | 'OTHER';
+  accountNumberMasked?: string | null;
+  bankName?: string | null;
+  openingBalance: number;
+  currentBalance: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceCategory {
+  id: string;
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  module: string;
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Vendor {
+  id: string;
+  vendorCode?: string | null;
+  name: string;
+  legalName?: string | null;
+  tradeName?: string | null;
+  vendorType: string;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  pincode?: string | null;
+  contactPersonName?: string | null;
+  contactPersonPhone?: string | null;
+  paymentTermsDays?: number | null;
+  bankAccountMasked?: string | null;
+  ifscCode?: string | null;
+  upiId?: string | null;
+  address?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Customer {
+  id: string;
+  customerCode?: string | null;
+  name: string;
+  legalName?: string | null;
+  tradeName?: string | null;
+  customerType?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  pincode?: string | null;
+  billingAddress?: string | null;
+  shippingAddress?: string | null;
+  contactPersonName?: string | null;
+  contactPersonPhone?: string | null;
+  paymentTermsDays?: number | null;
+  creditLimit?: number | null;
+  isGstRegistered: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TripBilling {
+  id: string;
+  tripId: string;
+  customerId?: string | null;
+  vehicleId?: string | null;
+  driverId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceDate: string;
+  lrNumber?: string | null;
+  challanNumber?: string | null;
+  ewayBillNumber?: string | null;
+  customerPoNumber?: string | null;
+  placeOfSupplyState?: string | null;
+  originState?: string | null;
+  destinationState?: string | null;
+  freightAmount: number;
+  loadingCharges: number;
+  unloadingCharges: number;
+  detentionCharges: number;
+  tollCharges: number;
+  permitCharges: number;
+  otherCharges: number;
+  discountAmount: number;
+  taxableAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  tdsAmount: number;
+  netReceivable: number;
+  paidAmount: number;
+  balanceAmount: number;
+  paymentStatus: 'UNBILLED' | 'BILLED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  dueDate?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  customer?: Customer | null;
+  vehicle?: VehicleRecord | null;
+  driver?: DriverRecord | null;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  transactionNumber: string;
+  transactionType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'ADJUSTMENT';
+  sourceModule: string;
+  sourceId?: string | null;
+  vehicleId?: string | null;
+  tripId?: string | null;
+  driverId?: string | null;
+  vendorId?: string | null;
+  customerId?: string | null;
+  accountId?: string | null;
+  categoryId?: string | null;
+  amount: number;
+  taxAmount: number;
+  totalAmount: number;
+  transactionDate: string;
+  paymentMode: string;
+  paymentStatus: 'PENDING' | 'PAID' | 'PARTIAL' | 'FAILED' | 'CANCELLED';
+  referenceNumber?: string | null;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  vendor?: Vendor | null;
+  customer?: Customer | null;
+}
+
+export interface PaymentRecord {
+  id: string;
+  paymentNumber?: string | null;
+  transactionId?: string | null;
+  tripBillingId?: string | null;
+  accountId?: string | null;
+  vendorId?: string | null;
+  customerId?: string | null;
+  amount: number;
+  paymentDate: string;
+  paymentMode: string;
+  upiReference?: string | null;
+  bankUtrNumber?: string | null;
+  chequeNumber?: string | null;
+  chequeDate?: string | null;
+  collectedByDriverId?: string | null;
+  reconciledStatus?: string | null;
+  reconciledAt?: string | null;
+  referenceNumber?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface FinanceDashboardSummary {
+  currentMonthIncome: number;
+  currentMonthExpenses: number;
+  pendingPayments: number;
+  overduePayments: number;
+  totalReceivable: number;
+  totalPayable: number;
+  recentTransactions: FinanceTransaction[];
+}
+
+export type DashboardOverview = {
+  totalVehicles: number;
+  activeVehicles: number;
+  inactiveVehicles: number;
+  driversCount: number;
+  activeTrips: number;
+  completedTripsThisMonth: number;
+  pendingTrips: number;
+  fuelCostThisMonth: number;
+  expensesThisMonth: number;
+  maintenanceOpen: number;
+  repairsOpen: number;
+  complianceExpired: number;
+  complianceExpiring7: number;
+  complianceExpiring30: number;
+  recentTrips: Array<{
+    id: string;
+    tripType: string;
+    status: string;
+    originName: string;
+    destinationName: string;
+    createdAt: string;
+  }>;
+  recentFuel: Array<{
+    id: string;
+    vehicleId: string;
+    quantityLiters: number;
+    totalAmount: number;
+    fuelDate: string;
+  }>;
+  recentExpenses: Array<{
+    id: string;
+    vehicleId: string;
+    category: string;
+    amount: number;
+    notes: string | null;
+    expenseDate: string;
+  }>;
+};
+
+export interface PnlSummary {
+  totalIncome: number;
+  totalExpenses: number;
+  netProfit: number;
+  breakdown: Array<{
+    category: string;
+    type: 'INCOME' | 'EXPENSE';
+    total: number;
+  }>;
+}

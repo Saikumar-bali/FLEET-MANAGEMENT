@@ -232,3 +232,11 @@ export async function updateVehicleStatus(vehicleId: string, status: string) {
     include: vehicleInclude,
   });
 }
+
+export async function deleteVehicle(vehicleId: string) {
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle) throw new AppError('Vehicle not found', 404);
+
+  await prisma.vehicle.delete({ where: { id: vehicleId } });
+  return { deleted: true };
+}
