@@ -80,14 +80,30 @@ function App() {
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
                 <Route element={<FinanceLayout />}>
-                  <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
-                  <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
-                  <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
-                  <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
-                  <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
-                  <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
-                  <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
-                  <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>
+                    <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_transactions_view']} />}>
+                    <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view']} />}>
+                    <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view']} />}>
+                    <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['vendors_view']} />}>
+                    <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['customers_view']} />}>
+                    <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['trip_billing_view']} />}>
+                    <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
+                  </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['payments_view']} />}>
+                    <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
+                  </Route>
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />

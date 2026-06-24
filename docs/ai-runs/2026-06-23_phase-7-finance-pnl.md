@@ -1,10 +1,10 @@
 # Phase 7: Finance & P&L Foundation — Implementation Evidence
 
-**Date:** 2026-06-23 (hardened 2026-06-24, review fix 2026-06-24)
+**Date:** 2026-06-23 (hardened 2026-06-24, review fix 2026-06-24, review fix 2: 2026-06-24)
 **Branch:** `phase-7-finance-pnl`
-**Base:** `80df781` → `79f52ba` (review fix commit)
+**Base:** `80df781` → `79f52ba` → latest (review fix 2)
 **PR:** #23
-**Status:** Review fix applied — CI migration + finance nav consolidation
+**Status:** Review fix 2 applied — finance API test fix, route permissions, sidebar permissions
 
 ## Summary
 
@@ -181,3 +181,59 @@ Mobile started: NO
 | `backend:build` | PASS |
 | `web:build` | PASS |
 | `test:api-docs` | PASS (121/121) |
+
+## Review Fix 2 (2026-06-24 — finance API test + permissions)
+
+### CI Failure Root Cause
+`finance-workflow-test.ts` used hardcoded `tripId: 'test-trip-for-billing'` which does not exist in CI database. TripBilling requires a real Trip FK. The test failed with a foreign key constraint violation.
+
+### What Was Fixed
+
+1. **Finance API test (`backend/scripts/finance-workflow-test.ts`)**
+   - Creates real vehicle via `POST /api/v1/vehicles` with test prefix
+   - Creates real trip via `POST /api/v1/trips` using that vehicle
+   - Uses real `tripId`, `vehicleId` in trip billing creation
+   - Added P&L filter tests for `tripId` and `customerId`
+   - Cleanup deletes all test records including trip (via Prisma, no DELETE API) and vehicle
+
+2. **Route-level permissions (`web/src/app/App.tsx`)**
+   - `/finance` → `ProtectedRoute(['finance_view', 'pnl_view'])`
+   - `/finance/transactions` → `ProtectedRoute(['finance_transactions_view'])`
+   - `/finance/accounts` → `ProtectedRoute(['finance_view'])`
+   - `/finance/categories` → `ProtectedRoute(['finance_view'])`
+   - `/finance/vendors` → `ProtectedRoute(['vendors_view'])`
+   - `/finance/customers` → `ProtectedRoute(['customers_view'])`
+   - `/finance/trip-billings` → `ProtectedRoute(['trip_billing_view'])`
+   - `/finance/payments` → `ProtectedRoute(['payments_view'])`
+
+3. **Finance sidebar permission (`web/src/config/navigation.ts`)**
+   - Finance item visible if user has ANY of: `finance_view`, `pnl_view`, `finance_transactions_view`, `vendors_view`, `customers_view`, `trip_billing_view`, `payments_view`
+   - Uses OR semantics via existing `hasAnyPermission` (Sidebar already uses OR)
+
+4. **Finance tabs (`web/src/layouts/FinanceLayout.tsx`)**
+   - Dashboard tab visible for `finance_view` OR `pnl_view`
+   - Other tabs: individual permissions (unchanged)
+
+5. **Playwright E2E test (`web/e2e/finance.spec.ts`)**
+   - Tests single Finance sidebar item
+   - Tests finance tab navigation (Dashboard → Transactions → Trip Billing → Payments → Dashboard)
+   - Tests old separate finance items NOT in sidebar
+   - Tests viewer role tab visibility
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `backend/scripts/finance-workflow-test.ts` | Real vehicle + trip setup, P&L filter tests, Prisma cleanup for trips |
+| `web/src/app/App.tsx` | Added ProtectedRoute wrappers for each finance route |
+| `web/src/config/navigation.ts` | Finance sidebar: 7 OR permissions |
+| `web/src/layouts/FinanceLayout.tsx` | Dashboard tab: finance_view OR pnl_view |
+| `web/e2e/finance.spec.ts` | New: Playwright finance navigation test |
+
+### Verification After Fix
+| Check | Result |
+|-------|--------|
+| `npm run backend:lint` | PASS (exit 0) |
+| `npm run web:lint` | PASS (exit 0) |
+| `npm run backend:build` | PASS (exit 0) |
+| `npm run web:build` | PASS (exit 0) |
+| `npm --prefix backend run test:api-docs` | PASS (121/121, exit 0) |

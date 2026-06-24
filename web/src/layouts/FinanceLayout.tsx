@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const financeTabs = [
-  { label: 'Dashboard', path: '/finance', permissionKeys: ['finance_view'] },
+  { label: 'Dashboard', path: '/finance', permissionKeys: ['finance_view', 'pnl_view'] },
   { label: 'Transactions', path: '/finance/transactions', permissionKeys: ['finance_transactions_view'] },
   { label: 'Accounts', path: '/finance/accounts', permissionKeys: ['finance_view'] },
   { label: 'Categories', path: '/finance/categories', permissionKeys: ['finance_view'] },

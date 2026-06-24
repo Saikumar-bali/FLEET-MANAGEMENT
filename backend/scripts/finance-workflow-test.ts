@@ -13,7 +13,7 @@ interface TestResult {
 }
 
 const results: TestResult[] = [];
-const createdIds: { type: string; id: string }[] = [];
+const createdIds: { type: string; id: string; path: string }[] = [];
 
 async function apiCall(
   method: string,
@@ -54,6 +54,10 @@ function expect(condition: boolean, msg: string) {
   if (!condition) throw new Error(msg);
 }
 
+function track(type: string, id: string, path: string) {
+  createdIds.push({ type, id, path });
+}
+
 async function main() {
   console.log('\n📋 Finance & P&L Workflow Test Suite\n');
   console.log('─'.repeat(60));
@@ -83,7 +87,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     accountId = res.data.data.id;
-    createdIds.push({ type: 'account', id: accountId });
+    track('account', accountId, '/api/v1/finance/accounts');
   });
 
   await runTest('List finance accounts', async () => {
@@ -104,7 +108,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}`);
     incomeCategoryId = res.data.data.id;
-    createdIds.push({ type: 'category', id: incomeCategoryId });
+    track('category', incomeCategoryId, '/api/v1/finance/categories');
   });
 
   await runTest('Create expense category', async () => {
@@ -115,7 +119,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}`);
     expenseCategoryId = res.data.data.id;
-    createdIds.push({ type: 'category', id: expenseCategoryId });
+    track('category', expenseCategoryId, '/api/v1/finance/categories');
   });
 
   await runTest('Reject invalid category type', async () => {
@@ -151,7 +155,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     vendorId = res.data.data.id;
-    createdIds.push({ type: 'vendor', id: vendorId });
+    track('vendor', vendorId, '/api/v1/finance/vendors');
     expect(res.data.data.gstin === '27AALCS1234F1ZH', 'GSTIN stored correctly');
     expect(res.data.data.pan === 'AALCS1234F', 'PAN stored correctly');
     expect(res.data.data.stateCode === '27', 'State code stored correctly');
@@ -205,7 +209,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     customerId = res.data.data.id;
-    createdIds.push({ type: 'customer', id: customerId });
+    track('customer', customerId, '/api/v1/finance/customers');
     expect(res.data.data.gstin === '27AALCC5678G1ZI', 'GSTIN stored correctly');
     expect(res.data.data.pan === 'AALCC5678G', 'PAN stored correctly');
     expect(res.data.data.isGstRegistered === true, 'isGstRegistered stored correctly');
@@ -225,7 +229,41 @@ async function main() {
     expect(res.status === 200, `Expected 200, got ${res.status}`);
   });
 
-  // ─── 5. Transactions ───
+  // ─── 5. Vehicle (for trip billing) ───
+  console.log('\nVehicle for Trip Billing');
+  let vehicleId: string;
+  await runTest('Create test vehicle for billing trip', async () => {
+    const res = await apiCall('POST', '/api/v1/vehicles', token, {
+      vehicleNumber: `${PREFIX}-MH12AB1234`,
+      vehicleType: 'TRUCK',
+      fuelType: 'DIESEL',
+      brand: 'Tata',
+      model: 'Prima 2525.K',
+      year: 2024,
+    });
+    expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
+    vehicleId = res.data.data.id;
+    track('vehicle', vehicleId, '/api/v1/vehicles');
+  });
+
+  // ─── 6. Trip (for trip billing) ───
+  console.log('\nTrip for Trip Billing');
+  let tripId: string;
+  await runTest('Create test trip for billing', async () => {
+    const res = await apiCall('POST', '/api/v1/trips', token, {
+      tripType: 'DELIVERY',
+      vehicleId,
+      originName: 'Mumbai Warehouse',
+      destinationName: 'Bangalore Hub',
+      originAddress: 'Andheri East, Mumbai',
+      destinationAddress: 'Electronic City, Bangalore',
+    });
+    expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
+    tripId = res.data.data.id;
+    track('trip', tripId, '/api/v1/trips');
+  });
+
+  // ─── 7. Transactions ───
   console.log('\nTransactions');
   let incomeTxnId: string;
   let expenseTxnId: string;
@@ -245,7 +283,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     incomeTxnId = res.data.data.id;
-    createdIds.push({ type: 'transaction', id: incomeTxnId });
+    track('transaction', incomeTxnId, '/api/v1/finance/transactions');
     expect(res.data.data.transactionNumber.startsWith('TXN-'), 'Transaction number format');
   });
 
@@ -264,7 +302,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     expenseTxnId = res.data.data.id;
-    createdIds.push({ type: 'transaction', id: expenseTxnId });
+    track('transaction', expenseTxnId, '/api/v1/finance/transactions');
   });
 
   await runTest('List transactions', async () => {
@@ -283,13 +321,14 @@ async function main() {
     expect(res.status >= 400, `Expected 4xx, got ${res.status}`);
   });
 
-  // ─── 6. Trip Billing ───
+  // ─── 8. Trip Billing ───
   console.log('\nTrip Billing');
   let tripBillingId: string;
   await runTest('Create trip billing with India-native charges', async () => {
     const res = await apiCall('POST', '/api/v1/finance/trip-billings', token, {
-      tripId: 'test-trip-for-billing',
+      tripId,
       customerId,
+      vehicleId,
       invoiceNumber: `${PREFIX}_INV-001`,
       invoiceDate: new Date().toISOString(),
       lrNumber: 'LR-2026-001',
@@ -316,7 +355,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     tripBillingId = res.data.data.id;
-    createdIds.push({ type: 'tripBilling', id: tripBillingId });
+    track('tripBilling', tripBillingId, '/api/v1/finance/trip-billings');
     expect(res.data.data.invoiceNumber === `${PREFIX}_INV-001`, 'Invoice number stored');
     expect(Number(res.data.data.totalAmount) > 0, 'Total amount computed');
     expect(Number(res.data.data.netReceivable) > 0, 'Net receivable computed');
@@ -328,7 +367,7 @@ async function main() {
     expect(res.status === 200, `Expected 200, got ${res.status}`);
   });
 
-  // ─── 7. Payments ───
+  // ─── 9. Payments ───
   console.log('\nPayments');
   let paymentId1: string;
   let paymentId2: string;
@@ -352,7 +391,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     paymentId1 = res.data.data.id;
-    createdIds.push({ type: 'payment', id: paymentId1 });
+    track('payment', paymentId1, '/api/v1/finance/payments');
     expect(res.data.data.paymentNumber.startsWith('PAY-'), 'Payment number format');
     expect(res.data.data.bankUtrNumber === 'UTR-HDFC-2026-001', 'Bank UTR stored');
   });
@@ -381,7 +420,7 @@ async function main() {
     });
     expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
     paymentId2 = res.data.data.id;
-    createdIds.push({ type: 'payment', id: paymentId2 });
+    track('payment', paymentId2, '/api/v1/finance/payments');
   });
 
   await runTest('Confirm billing status is PAID', async () => {
@@ -422,7 +461,7 @@ async function main() {
     expect(res.status === 200, `Expected 200, got ${res.status}`);
   });
 
-  // ─── 8. Dashboard & P&L ───
+  // ─── 10. Dashboard & P&L ───
   console.log('\nDashboard & P&L');
   await runTest('Get dashboard summary', async () => {
     const res = await apiCall('GET', '/api/v1/finance/dashboard-summary', token);
@@ -449,32 +488,39 @@ async function main() {
     expect(typeof res.data.data.totalIncome === 'number', 'totalIncome is number');
   });
 
-  // ─── 9. RBAC Negative Tests ───
+  await runTest('Get P&L with tripId filter', async () => {
+    const res = await apiCall('GET', `/api/v1/finance/pnl?tripId=${tripId}`, token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect('totalIncome' in res.data.data, 'Has totalIncome with tripId filter');
+  });
+
+  await runTest('Get P&L with customerId filter', async () => {
+    const res = await apiCall('GET', `/api/v1/finance/pnl?customerId=${customerId}`, token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect('totalIncome' in res.data.data, 'Has totalIncome with customerId filter');
+  });
+
+  // ─── 11. RBAC Negative Tests ───
   console.log('\nRBAC Negative Tests');
   await runTest('Verify unauthenticated request is rejected', async () => {
     const res = await apiCall('GET', '/api/v1/finance/accounts', '');
     expect(res.status === 401, `Expected 401, got ${res.status}`);
   });
 
-  // Cleanup
+  // Cleanup - delete in reverse order of creation
+  // Trips have no DELETE API endpoint, so use Prisma directly
   console.log('\nCleanup');
-  // Delete in reverse order of creation
   for (const item of createdIds.reverse()) {
-    await runTest(`Delete ${item.type} ${item.id}`, async () => {
-      let path = '';
-      switch (item.type) {
-        case 'payment': path = `/api/v1/finance/payments/${item.id}`; break;
-        case 'tripBilling': path = `/api/v1/finance/trip-billings/${item.id}`; break;
-        case 'transaction': path = `/api/v1/finance/transactions/${item.id}`; break;
-        case 'vendor': path = `/api/v1/finance/vendors/${item.id}`; break;
-        case 'customer': path = `/api/v1/finance/customers/${item.id}`; break;
-        case 'category': path = `/api/v1/finance/categories/${item.id}`; break;
-        case 'account': path = `/api/v1/finance/accounts/${item.id}`; break;
-        default: return;
-      }
-      const res = await apiCall('DELETE', path, token);
-      expect(res.status === 200, `Expected 200, got ${res.status}: ${res.data?.message || ''}`);
-    });
+    if (item.type === 'trip') {
+      await runTest(`Delete trip ${item.id}`, async () => {
+        await prisma.trip.delete({ where: { id: item.id } });
+      });
+    } else {
+      await runTest(`Delete ${item.type} ${item.id}`, async () => {
+        const res = await apiCall('DELETE', item.path, token);
+        expect(res.status === 200, `Expected 200, got ${res.status}: ${res.data?.message || ''}`);
+      });
+    }
   }
 
   // Summary
