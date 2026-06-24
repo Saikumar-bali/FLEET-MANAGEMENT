@@ -1,25 +1,43 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState, useCallback } from 'react';
 import {
   getFinanceDashboardSummary,
   getFinancePnl,
-  deleteFinanceTransaction,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { FinanceDashboardSummary, PnlSummary } from '../types/auth';
 import { ApiError } from '../types/api';
-import { StatusBadge } from '../components/StatusBadge';
-import { LoadingState } from '../components/LoadingState';
-import { ErrorState } from '../components/ErrorState';
-import { PageHeader } from '../components/PageHeader';
+import { PageShell } from '../components/ui/PageShell';
+import type { FinanceDashboardSummary, PnlSummary } from '../types/auth';
+import { StatCard } from '../components/ui/StatCard';
+import { KpiGrid } from '../components/ui/KpiGrid';
+import { ChartCard } from '../components/ui/ChartCard';
+import { StatusPill } from '../components/ui/StatusPill';
+import { DataTable } from '../components/ui/DataTable';
+import type { ColumnDef } from '../components/ui/DataTable';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { ActionButton } from '../components/ui/ActionToolbar';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
 function formatCurrency(value: number) {
-  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
-const COLORS = ['#059669', '#dc2626', '#f59e0b', '#6366f1', '#8b5cf6', '#ec4899'];
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+const CHART_COLORS = ['#1e8e3e', '#d93025', '#f59e0b', '#6366f1', '#8b5cf6', '#ec4899', '#059669'];
+
+interface TxRow {
+  id: string;
+  number: string;
+  type: string;
+  amount: string;
+  paymentStatus: string;
+  date: string;
+  vendor: string;
+}
 
 export function FinancePage() {
   const auth = useAuth();
@@ -31,34 +49,30 @@ export function FinancePage() {
 
   const [pnlDateFrom, setPnlDateFrom] = useState('');
   const [pnlDateTo, setPnlDateTo] = useState('');
-  const [pnlVehicleId, setPnlVehicleId] = useState('');
-  const [pnlDriverId, setPnlDriverId] = useState('');
-  const [pnlCustomerId, setPnlCustomerId] = useState('');
 
   const canViewPnl = auth.hasPermission('pnl_view');
-  const canDeleteTransaction = auth.hasPermission('finance_transactions_delete');
 
-  useEffect(() => {
-    const load = async () => {
-      if (!auth.accessToken) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [summaryRes, pnlRes] = await Promise.all([
-          getFinanceDashboardSummary(auth.accessToken),
-          canViewPnl ? getFinancePnl(auth.accessToken) : null,
-        ]);
-        setSummary(summaryRes.data);
-        if (pnlRes) setPnl(pnlRes.data);
-      } catch (caughtError) {
-        if (caughtError instanceof ApiError) setError(caughtError.message);
-        else setError('Failed to load finance dashboard.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void load();
-  }, [auth.accessToken]);
+  const load = useCallback(async () => {
+    if (!auth.accessToken) return;
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const [summaryRes, pnlRes] = await Promise.all([
+        getFinanceDashboardSummary(auth.accessToken),
+        canViewPnl ? getFinancePnl(auth.accessToken) : null,
+      ]);
+      setSummary(summaryRes.data);
+      if (pnlRes) setPnl(pnlRes.data);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) setError(caughtError.message);
+      else setError('Failed to load finance dashboard.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [auth.accessToken, canViewPnl]);
+
+  useEffect(() => { void load(); }, [load]);
 
   async function loadPnl(e?: FormEvent) {
     e?.preventDefault();
@@ -67,9 +81,6 @@ export function FinancePage() {
       const params: Record<string, string> = {};
       if (pnlDateFrom) params.dateFrom = pnlDateFrom;
       if (pnlDateTo) params.dateTo = pnlDateTo;
-      if (pnlVehicleId) params.vehicleId = pnlVehicleId;
-      if (pnlDriverId) params.driverId = pnlDriverId;
-      if (pnlCustomerId) params.customerId = pnlCustomerId;
       const res = await getFinancePnl(auth.accessToken, params);
       setPnl(res.data);
     } catch (caughtError) {
@@ -78,69 +89,75 @@ export function FinancePage() {
     }
   }
 
-  async function handleDeleteTransaction(id: string) {
-    if (!auth.accessToken) return;
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
-    try {
-      await deleteFinanceTransaction(auth.accessToken, id);
-      setSummary((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          recentTransactions: prev.recentTransactions.filter((t) => t.id !== id),
-        };
-      });
-      setMessage('Transaction deleted.');
-    } catch (caughtError) {
-      if (caughtError instanceof ApiError) setError(caughtError.message);
-      else setError('Failed to delete transaction.');
-    }
+  if (isLoading) {
+    return (
+      <PageShell>
+        <LoadingSkeleton rows={4} columns={4} />
+      </PageShell>
+    );
   }
 
-  if (isLoading) return <LoadingState message="Loading finance dashboard..." />;
-  if (error && !summary) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  if (error && !summary) {
+    return (
+      <PageShell>
+        <div className="empty-state-panel">
+          <h3>Failed to load finance dashboard</h3>
+          <p>{error}</p>
+          <ActionButton label="Retry" variant="primary" onClick={load} />
+        </div>
+      </PageShell>
+    );
+  }
 
   const netProfit = pnl ? pnl.netProfit : summary ? summary.currentMonthIncome - summary.currentMonthExpenses : 0;
 
-  const summaryCards = summary ? [
-    { label: 'Total Receivable', value: summary.totalReceivable, color: '#059669' },
-    { label: 'Total Payable', value: summary.totalPayable, color: '#dc2626' },
-    { label: 'Current Month Income', value: summary.currentMonthIncome, color: '#059669' },
-    { label: 'Current Month Expenses', value: summary.currentMonthExpenses, color: '#dc2626' },
-    { label: 'Net Profit (MTD)', value: netProfit, color: netProfit >= 0 ? '#059669' : '#dc2626' },
-    { label: 'Pending Payments', value: summary.pendingPayments, color: '#f59e0b' },
-    { label: 'Overdue Payments', value: summary.overduePayments, color: '#dc2626' },
-  ] : [];
-
   const incomeExpenseData = pnl ? [
-    { name: 'Income', value: pnl.totalIncome, fill: '#059669' },
-    { name: 'Expenses', value: pnl.totalExpenses, fill: '#dc2626' },
-    { name: 'Net Profit', value: Math.max(0, pnl.netProfit), fill: '#6366f1' },
+    { name: 'Income', value: pnl.totalIncome },
+    { name: 'Expenses', value: pnl.totalExpenses },
   ] : summary ? [
-    { name: 'Income', value: summary.currentMonthIncome, fill: '#059669' },
-    { name: 'Expenses', value: summary.currentMonthExpenses, fill: '#dc2626' },
-    { name: 'Net Profit', value: Math.max(0, netProfit), fill: '#6366f1' },
+    { name: 'Income', value: summary.currentMonthIncome },
+    { name: 'Expenses', value: summary.currentMonthExpenses },
   ] : [];
 
   const receivablePieData = summary ? [
     { name: 'Pending', value: Math.max(0, summary.pendingPayments), color: '#f59e0b' },
-    { name: 'Overdue', value: Math.max(0, summary.overduePayments), color: '#dc2626' },
-    { name: 'Received', value: Math.max(0, summary.totalReceivable - summary.pendingPayments - summary.overduePayments), color: '#059669' },
+    { name: 'Overdue', value: Math.max(0, summary.overduePayments), color: '#d93025' },
   ].filter((d) => d.value > 0) : [];
 
   const expenseBreakdownData = pnl?.breakdown
     ?.filter((b) => b.type === 'EXPENSE')
     .map((b) => ({ name: b.category, value: b.total })) ?? [];
 
+  const txColumns: ColumnDef<TxRow>[] = [
+    { header: 'Transaction#', accessor: 'number' },
+    { header: 'Type', accessor: 'type' },
+    { header: 'Amount', accessor: 'amount', align: 'right' },
+    { header: 'Status', accessor: (row) => <StatusPill status={row.paymentStatus} /> },
+    { header: 'Date', accessor: 'date' },
+    { header: 'Vendor/Customer', accessor: 'vendor' },
+  ];
+
+  const txRows: TxRow[] = (summary?.recentTransactions ?? []).map((tx) => ({
+    id: tx.id,
+    number: tx.transactionNumber,
+    type: tx.transactionType,
+    amount: formatCurrency(tx.totalAmount),
+    paymentStatus: tx.paymentStatus,
+    date: formatDate(tx.transactionDate),
+    vendor: tx.vendor?.name ?? tx.customer?.name ?? '—',
+  }));
+
   return (
-    <section className="page-content">
-      <div className="section-header">
-        <div>
-          <PageHeader
-            eyebrow="Finance"
-            title="Finance Dashboard"
-            description="Overview of financial metrics, P&L, and recent activity."
-          />
+    <PageShell>
+      <div className="dashboard-command-header">
+        <div className="dashboard-command-header-main">
+          <h1>Finance Command Center</h1>
+          <p className="dashboard-command-subtitle">
+            Receivables, payments, and P&amp;L overview
+          </p>
+        </div>
+        <div className="dashboard-command-meta">
+          <ActionButton label="Refresh" variant="ghost" onClick={load} />
         </div>
       </div>
 
@@ -149,202 +166,157 @@ export function FinancePage() {
 
       {summary ? (
         <>
-          <div className="finance-summary-grid">
-            {summaryCards.map((card) => (
-              <div key={card.label} className="card finance-summary-card">
-                <p className="finance-summary-label">{card.label}</p>
-                <p className="finance-summary-value" style={{ color: card.color }}>
-                  {formatCurrency(card.value)}
-                </p>
-              </div>
-            ))}
-          </div>
+          <KpiGrid columns={4}>
+            <StatCard label="Total Receivable" value={formatCurrency(summary.totalReceivable)} variant="success" />
+            <StatCard label="Total Payable" value={formatCurrency(summary.totalPayable)} variant="danger" />
+            <StatCard label="Income MTD" value={formatCurrency(summary.currentMonthIncome)} variant="success" />
+            <StatCard label="Expenses MTD" value={formatCurrency(summary.currentMonthExpenses)} variant="danger" />
+          </KpiGrid>
 
-          <div className="finance-charts-row">
+          <KpiGrid columns={4}>
+            <StatCard
+              label="Net Profit MTD"
+              value={formatCurrency(netProfit)}
+              variant={netProfit >= 0 ? 'success' : 'danger'}
+            />
+            <StatCard
+              label="Pending Payments"
+              value={formatCurrency(summary.pendingPayments)}
+              variant={summary.pendingPayments > 0 ? 'warning' : 'muted'}
+            />
+            <StatCard
+              label="Overdue Payments"
+              value={formatCurrency(summary.overduePayments)}
+              variant={summary.overduePayments > 0 ? 'danger' : 'muted'}
+            />
+            <StatCard label="Total Transactions" value={summary.recentTransactions.length} subtext="Recent" variant="info" />
+          </KpiGrid>
+
+          <div className="dashboard-chart-grid">
             {incomeExpenseData.length > 0 && (
-              <div className="card finance-chart-card">
-                <h3 className="chart-title">Income vs Expenses</h3>
-                <ResponsiveContainer width="100%" height={250}>
+              <ChartCard title="Income vs Expenses" subtitle="Current month comparison">
+                <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={incomeExpenseData}>
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: any) => `₹${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {incomeExpenseData.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.fill} />
+                      {incomeExpenseData.map((_, idx) => (
+                        <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartCard>
             )}
 
             {receivablePieData.length > 0 && (
-              <div className="card finance-chart-card">
-                <h3 className="chart-title">Receivables by Status</h3>
-                <ResponsiveContainer width="100%" height={250}>
+              <ChartCard title="Receivables" subtitle="Pending vs overdue">
+                <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={receivablePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                       {receivablePieData.map((entry, idx) => (
                         <Cell key={idx} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} />
+                    <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartCard>
             )}
 
             {expenseBreakdownData.length > 0 && (
-              <div className="card finance-chart-card">
-                <h3 className="chart-title">Expense Breakdown</h3>
-                <ResponsiveContainer width="100%" height={250}>
+              <ChartCard title="Expense Breakdown" subtitle="By category">
+                <ResponsiveContainer width="100%" height={260}>
                   <PieChart>
                     <Pie data={expenseBreakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                       {expenseBreakdownData.map((_entry, idx) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                        <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: unknown) => formatCurrency(Number(v))} />
+                    <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartCard>
             )}
           </div>
 
           {pnl ? (
-            <div data-testid="finance-pnl-section" className="card">
-              <div className="table-toolbar">
+            <div className="dashboard-table-card">
+              <div className="chart-card-header">
                 <div>
-                  <h3 className="table-toolbar-title">Profit &amp; Loss</h3>
-                  <p className="table-toolbar-copy">Overall financial performance</p>
+                  <h3 className="chart-card-title">Profit &amp; Loss</h3>
+                  <p className="chart-card-subtitle">Overall financial performance</p>
                 </div>
               </div>
 
               {canViewPnl ? (
-                <form className="filter-bar" onSubmit={loadPnl}>
-                  <label>
+                <form className="finance-filters" onSubmit={loadPnl} style={{ padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border-light)' }}>
+                  <label className="field-group">
                     <span className="field-label">Date From</span>
-                    <input type="date" value={pnlDateFrom} onChange={(e) => setPnlDateFrom(e.target.value)} />
+                    <input className="finance-date-input" type="date" value={pnlDateFrom} onChange={(e) => setPnlDateFrom(e.target.value)} />
                   </label>
-                  <label>
+                  <label className="field-group">
                     <span className="field-label">Date To</span>
-                    <input type="date" value={pnlDateTo} onChange={(e) => setPnlDateTo(e.target.value)} />
+                    <input className="finance-date-input" type="date" value={pnlDateTo} onChange={(e) => setPnlDateTo(e.target.value)} />
                   </label>
-                  <label>
-                    <span className="field-label">Vehicle ID</span>
-                    <input value={pnlVehicleId} onChange={(e) => setPnlVehicleId(e.target.value)} placeholder="Optional" />
-                  </label>
-                  <label>
-                    <span className="field-label">Driver ID</span>
-                    <input value={pnlDriverId} onChange={(e) => setPnlDriverId(e.target.value)} placeholder="Optional" />
-                  </label>
-                  <label>
-                    <span className="field-label">Customer ID</span>
-                    <input value={pnlCustomerId} onChange={(e) => setPnlCustomerId(e.target.value)} placeholder="Optional" />
-                  </label>
-                  <div className="button-row">
-                    <button type="submit" className="secondary-button">Apply Filters</button>
-                  </div>
+                  <ActionButton label="Apply Filters" variant="primary" onClick={loadPnl} />
                 </form>
               ) : null}
 
-              <div data-testid="finance-pnl-summary" className="finance-pnl-cards">
-                <div className="finance-pnl-card">
-                  <span className="finance-pnl-label">Total Income</span>
-                  <span className="finance-pnl-value" style={{ color: '#059669' }}>{formatCurrency(pnl.totalIncome)}</span>
-                </div>
-                <div className="finance-pnl-card">
-                  <span className="finance-pnl-label">Total Expenses</span>
-                  <span className="finance-pnl-value" style={{ color: '#dc2626' }}>{formatCurrency(pnl.totalExpenses)}</span>
-                </div>
-                <div className="finance-pnl-card">
-                  <span className="finance-pnl-label">Net Profit</span>
-                  <span className={`finance-pnl-value${pnl.netProfit >= 0 ? ' text-success' : ' text-danger'}`}>
-                    {formatCurrency(pnl.netProfit)}
-                  </span>
-                </div>
+              <div className="kpi-grid kpi-cols-3" style={{ padding: 'var(--space-4) var(--space-5)' }}>
+                <StatCard label="Total Income" value={formatCurrency(pnl.totalIncome)} variant="success" />
+                <StatCard label="Total Expenses" value={formatCurrency(pnl.totalExpenses)} variant="danger" />
+                <StatCard
+                  label="Net Profit"
+                  value={formatCurrency(pnl.netProfit)}
+                  variant={pnl.netProfit >= 0 ? 'success' : 'danger'}
+                />
               </div>
 
-              {pnl.breakdown.length > 0 ? (
-                <div className="table-container">
+              {pnl.breakdown.length > 0 && (
+                <div className="data-table-scroll" style={{ borderTop: '1px solid var(--color-border-light)' }}>
                   <table className="data-table">
                     <thead>
                       <tr>
                         <th>Category</th>
                         <th>Type</th>
-                        <th>Total</th>
+                        <th align="right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pnl.breakdown.map((row, idx) => (
                         <tr key={idx}>
                           <td>{row.category}</td>
-                          <td><StatusBadge status={row.type} /></td>
-                          <td>{formatCurrency(row.total)}</td>
+                          <td><StatusPill status={row.type} /></td>
+                          <td align="right">{formatCurrency(row.total)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              ) : null}
+              )}
             </div>
           ) : null}
 
-          {summary.recentTransactions.length > 0 ? (
-            <div className="card table-card">
-              <div className="table-toolbar">
+          {txRows.length > 0 && (
+            <div className="dashboard-table-card">
+              <div className="chart-card-header">
                 <div>
-                  <h3 className="table-toolbar-title">Recent Transactions</h3>
-                  <p className="table-toolbar-copy">Last {summary.recentTransactions.length} transactions</p>
+                  <h3 className="chart-card-title">Recent Transactions</h3>
+                  <p className="chart-card-subtitle">Last {txRows.length} transactions</p>
                 </div>
               </div>
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Transaction#</th>
-                      <th>Type</th>
-                      <th>Amount</th>
-                      <th>Payment Status</th>
-                      <th>Date</th>
-                      <th>Vendor/Customer</th>
-                      {canDeleteTransaction ? <th></th> : null}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summary.recentTransactions.map((tx) => (
-                      <tr key={tx.id}>
-                        <td>{tx.transactionNumber}</td>
-                        <td>{tx.transactionType}</td>
-                        <td>{formatCurrency(tx.totalAmount)}</td>
-                        <td><StatusBadge status={tx.paymentStatus} /></td>
-                        <td>{new Date(tx.transactionDate).toLocaleDateString('en-IN')}</td>
-                        <td>{tx.vendor?.name ?? tx.customer?.name ?? '—'}</td>
-                        {canDeleteTransaction ? (
-                          <td>
-                            <button
-                              type="button"
-                              className="danger-button"
-                              onClick={() => void handleDeleteTransaction(tx.id)}
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable columns={txColumns} data={txRows} keyExtractor={(r) => r.id} />
             </div>
-          ) : null}
+          )}
         </>
       ) : null}
-    </section>
+    </PageShell>
   );
 }
 
 export default FinancePage;
+

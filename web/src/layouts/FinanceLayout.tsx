@@ -22,7 +22,7 @@ export function FinanceLayout() {
 
   return (
     <section className="page-content">
-      <nav className="finance-tabs" aria-label="Finance sections">
+      <div className="finance-tabs">
         {visibleTabs.map((tab) => {
           const isActive =
             tab.path === '/finance'
@@ -41,8 +41,8 @@ export function FinanceLayout() {
             </NavLink>
           );
         })}
-      </nav>
-      <div className="finance-tab-content">
+      </div>
+      <div className="finance-content">
         <Outlet />
       </div>
     </section>

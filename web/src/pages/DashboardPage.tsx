@@ -1,307 +1,448 @@
-import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback } from 'react';
 import { getDashboardOverview } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { DashboardOverview } from '../types/auth';
-import { PageHeader } from '../components/PageHeader';
-import { StatusBadge } from '../components/StatusBadge';
-import { LoadingState } from '../components/LoadingState';
-import { ErrorState } from '../components/ErrorState';
+import { PageShell } from '../components/ui/PageShell';
+import { StatCard } from '../components/ui/StatCard';
+import { KpiGrid } from '../components/ui/KpiGrid';
+import { ChartCard } from '../components/ui/ChartCard';
+import { DataTable } from '../components/ui/DataTable';
+import type { ColumnDef } from '../components/ui/DataTable';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { StatusPill } from '../components/ui/StatusPill';
+import { ActionButton } from '../components/ui/ActionToolbar';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function formatCurrency(value: number) {
-  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+  if (!value || value === 0) return '₹0';
+  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-IN');
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function pieChartColor(index: number): string {
+  const colors = ['#1a73e8', '#1e8e3e', '#e37400', '#d93025', '#8ab4f8', '#81c995', '#fdd663', '#f28b82'];
+  return colors[index % colors.length];
+}
+
+interface TripRow {
+  id: string;
+  tripType: string;
+  status: string;
+  route: string;
+  date: string;
+}
+
+interface FuelRow {
+  id: string;
+  vehicleId: string;
+  qty: string;
+  cost: string;
+  date: string;
+}
+
+interface ExpenseRow {
+  id: string;
+  vehicleId: string;
+  category: string;
+  amount: string;
+  date: string;
 }
 
 export function DashboardPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  useEffect(() => {
-    const load = async () => {
-      if (!auth.accessToken) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await getDashboardOverview(auth.accessToken);
-        setData(res.data);
-      } catch {
-        setError('Failed to load dashboard data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void load();
+  const load = useCallback(async () => {
+    if (!auth.accessToken) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await getDashboardOverview(auth.accessToken);
+      setData(res.data);
+      setLastUpdated(new Date().toLocaleTimeString('en-IN'));
+    } catch {
+      setError('Failed to load dashboard data.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [auth.accessToken]);
 
-  if (isLoading) return <LoadingState message="Loading dashboard..." />;
-  if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  useEffect(() => { void load(); }, [load]);
+
+  if (isLoading) {
+    return (
+      <PageShell>
+        <LoadingSkeleton rows={6} columns={4} />
+      </PageShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageShell>
+        <div className="empty-state-panel">
+          <h3>Failed to load dashboard</h3>
+          <p>{error}</p>
+          <ActionButton label="Retry" variant="primary" onClick={load} />
+        </div>
+      </PageShell>
+    );
+  }
+
+  const vehicleStatusData = [
+    { name: 'Active', value: data?.activeVehicles ?? 0 },
+    { name: 'Inactive', value: data?.inactiveVehicles ?? 0 },
+  ];
+
+  const tripStatusData = [
+    { name: 'Active', value: data?.activeTrips ?? 0 },
+    { name: 'Completed', value: data?.completedTripsThisMonth ?? 0 },
+    { name: 'Pending', value: data?.pendingTrips ?? 0 },
+  ];
+
+  const financeData = [
+    { name: 'Fuel Cost', amount: Number(data?.fuelCostThisMonth ?? 0) },
+    { name: 'Expenses', amount: Number(data?.expensesThisMonth ?? 0) },
+  ];
+
+  const complianceData = [
+    { name: 'Expired', value: data?.complianceExpired ?? 0 },
+    { name: 'Expiring 7d', value: data?.complianceExpiring7 ?? 0 },
+    { name: 'Expiring 30d', value: data?.complianceExpiring30 ?? 0 },
+  ];
+
+  const maintenanceData = [
+    { name: 'Open Work Orders', value: data?.maintenanceOpen ?? 0 },
+    { name: 'In Progress Repairs', value: data?.repairsOpen ?? 0 },
+  ];
+
+  const tripColumns: ColumnDef<TripRow>[] = [
+    { header: 'Type', accessor: 'tripType' },
+    { header: 'Route', accessor: 'route' },
+    { header: 'Status', accessor: (row) => <StatusPill status={row.status} /> },
+    { header: 'Date', accessor: 'date' },
+  ];
+
+  const fuelColumns: ColumnDef<FuelRow>[] = [
+    { header: 'Vehicle', accessor: 'vehicleId' },
+    { header: 'Qty (L)', accessor: 'qty', align: 'right' },
+    { header: 'Cost', accessor: 'cost', align: 'right' },
+    { header: 'Date', accessor: 'date' },
+  ];
+
+  const expenseColumns: ColumnDef<ExpenseRow>[] = [
+    { header: 'Vehicle', accessor: 'vehicleId' },
+    { header: 'Category', accessor: 'category' },
+    { header: 'Amount', accessor: 'amount', align: 'right' },
+    { header: 'Date', accessor: 'date' },
+  ];
+
+  const tripRows: TripRow[] = (data?.recentTrips ?? []).map((t) => ({
+    id: t.id,
+    tripType: t.tripType,
+    status: t.status,
+    route: `${t.originName} → ${t.destinationName}`,
+    date: formatDate(t.createdAt),
+  }));
+
+  const fuelRows: FuelRow[] = (data?.recentFuel ?? []).map((f) => ({
+    id: f.id,
+    vehicleId: f.vehicleId.slice(0, 8),
+    qty: Number(f.quantityLiters).toFixed(1),
+    cost: formatCurrency(Number(f.totalAmount)),
+    date: formatDate(f.fuelDate),
+  }));
+
+  const expenseRows: ExpenseRow[] = (data?.recentExpenses ?? []).map((e) => ({
+    id: e.id,
+    vehicleId: e.vehicleId.slice(0, 8),
+    category: e.category,
+    amount: formatCurrency(Number(e.amount)),
+    date: formatDate(e.expenseDate),
+  }));
+
+  const hasComplianceRisk = (data?.complianceExpired ?? 0) > 0;
+  const hasMaintenanceIssues = (data?.maintenanceOpen ?? 0) > 0;
 
   return (
-    <section className="page-content">
-      <PageHeader
-        eyebrow="Workspace"
-        title="Fleet Dashboard"
-        description="Real-time fleet operations overview."
-      />
-
-      {data ? (
-        <>
-          <div className="dashboard-grid-sections">
-            <article className="card">
-              <div className="table-toolbar">
-                <div>
-                  <h3 className="table-toolbar-title">Fleet Health</h3>
-                  <p className="table-toolbar-copy">Vehicles, drivers, and compliance status</p>
-                </div>
-              </div>
-              <div className="metric-grid">
-                <div className="metric-item">
-                  <span className="metric-label">Total Vehicles</span>
-                  <span className="metric-value">{data.totalVehicles}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Active</span>
-                  <span className="metric-value" style={{ color: '#059669' }}>{data.activeVehicles}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Inactive</span>
-                  <span className="metric-value" style={{ color: data.inactiveVehicles > 0 ? '#dc2626' : undefined }}>{data.inactiveVehicles}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Drivers</span>
-                  <span className="metric-value">{data.driversCount}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Active Trips</span>
-                  <span className="metric-value" style={{ color: '#059669' }}>{data.activeTrips}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Completed (MTD)</span>
-                  <span className="metric-value">{data.completedTripsThisMonth}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Pending Trips</span>
-                  <span className="metric-value" style={{ color: data.pendingTrips > 0 ? '#f59e0b' : undefined }}>{data.pendingTrips}</span>
-                </div>
-              </div>
-            </article>
-
-            <article className="card">
-              <div className="table-toolbar">
-                <div>
-                  <h3 className="table-toolbar-title">Financial (MTD)</h3>
-                  <p className="table-toolbar-copy">Fuel and expense costs this month</p>
-                </div>
-              </div>
-              <div className="metric-grid">
-                <div className="metric-item">
-                  <span className="metric-label">Fuel Cost</span>
-                  <span className="metric-value" style={{ color: '#dc2626' }}>{formatCurrency(Number(data.fuelCostThisMonth))}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Expenses</span>
-                  <span className="metric-value" style={{ color: '#dc2626' }}>{formatCurrency(Number(data.expensesThisMonth))}</span>
-                </div>
-              </div>
-            </article>
-
-            <article className="card">
-              <div className="table-toolbar">
-                <div>
-                  <h3 className="table-toolbar-title">Maintenance &amp; Repairs</h3>
-                  <p className="table-toolbar-copy">Open work orders</p>
-                </div>
-              </div>
-              <div className="metric-grid">
-                <div className="metric-item">
-                  <span className="metric-label">Open Maintenance</span>
-                  <span className="metric-value" style={{ color: data.maintenanceOpen > 0 ? '#f59e0b' : undefined }}>{data.maintenanceOpen}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">In Progress Repairs</span>
-                  <span className="metric-value" style={{ color: data.repairsOpen > 0 ? '#f59e0b' : undefined }}>{data.repairsOpen}</span>
-                </div>
-              </div>
-            </article>
-
-            <article className="card">
-              <div className="table-toolbar">
-                <div>
-                  <h3 className="table-toolbar-title">Compliance Risk</h3>
-                  <p className="table-toolbar-copy">Document expiry summary</p>
-                </div>
-              </div>
-              <div className="metric-grid">
-                <div className="metric-item">
-                  <span className="metric-label">Expired</span>
-                  <span className="metric-value" style={{ color: data.complianceExpired > 0 ? '#dc2626' : undefined }}>{data.complianceExpired}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Expiring in 7 Days</span>
-                  <span className="metric-value" style={{ color: data.complianceExpiring7 > 0 ? '#fd7e14' : undefined }}>{data.complianceExpiring7}</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Expiring in 30 Days</span>
-                  <span className="metric-value" style={{ color: data.complianceExpiring30 > 0 ? '#f59e0b' : undefined }}>{data.complianceExpiring30}</span>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div className="dashboard-lower-grid">
-            {data.recentTrips.length > 0 && (
-              <article className="card table-card">
-                <div className="table-toolbar">
-                  <div>
-                    <h3 className="table-toolbar-title">Recent Trips</h3>
-                    <p className="table-toolbar-copy">Latest trip activity</p>
-                  </div>
-                </div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Route</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentTrips.map((trip) => (
-                      <tr key={trip.id}>
-                        <td>{trip.tripType}</td>
-                        <td>{trip.originName} &rarr; {trip.destinationName}</td>
-                        <td><StatusBadge status={trip.status} /></td>
-                        <td>{formatDate(trip.createdAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </article>
+    <PageShell>
+      <div className="dashboard-command-header">
+        <div className="dashboard-command-header-main">
+          <h1>Fleet Operations Command Center</h1>
+          <p className="dashboard-command-subtitle">
+            Real-time fleet analytics &amp; operations overview
+          </p>
+        </div>
+        <div className="dashboard-command-meta">
+          <span className={`health-indicator ${hasComplianceRisk || hasMaintenanceIssues ? 'health-indicator-warning' : 'health-indicator-good'}`}>
+            {hasComplianceRisk || hasMaintenanceIssues ? 'Attention Required' : 'All Systems Normal'}
+          </span>
+          <span className="last-updated-text">Updated {lastUpdated}</span>
+          <ActionButton label="Refresh" variant="ghost" onClick={load} />
+          <div className="dashboard-quick-actions">
+            {auth.hasPermission('trip_create') && (
+              <ActionButton label="New Trip" variant="primary" onClick={() => navigate('/trips/new')} />
             )}
-
-            {data.recentFuel.length > 0 && (
-              <article className="card table-card">
-                <div className="table-toolbar">
-                  <div>
-                    <h3 className="table-toolbar-title">Recent Fuel Entries</h3>
-                    <p className="table-toolbar-copy">Latest fuel records</p>
-                  </div>
-                </div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Vehicle</th>
-                      <th>Qty (L)</th>
-                      <th>Cost</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentFuel.map((f) => (
-                      <tr key={f.id}>
-                        <td>
-                          <Link to={`/vehicles/${f.vehicleId}`} className="table-link">{f.vehicleId.slice(0, 8)}</Link>
-                        </td>
-                        <td>{Number(f.quantityLiters).toFixed(1)}</td>
-                        <td>{formatCurrency(Number(f.totalAmount))}</td>
-                        <td>{formatDate(f.fuelDate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </article>
+            {auth.hasPermission('fuel_create') && (
+              <ActionButton label="Add Fuel" variant="secondary" onClick={() => navigate('/fuel/new')} />
             )}
-
-            {data.recentExpenses.length > 0 && (
-              <article className="card table-card">
-                <div className="table-toolbar">
-                  <div>
-                    <h3 className="table-toolbar-title">Recent Expenses</h3>
-                    <p className="table-toolbar-copy">Latest expense records</p>
-                  </div>
-                </div>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Vehicle</th>
-                      <th>Category</th>
-                      <th>Amount</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentExpenses.map((exp) => (
-                      <tr key={exp.id}>
-                        <td>
-                          <Link to={`/vehicles/${exp.vehicleId}`} className="table-link">{exp.vehicleId.slice(0, 8)}</Link>
-                        </td>
-                        <td>{exp.category}</td>
-                        <td>{formatCurrency(Number(exp.amount))}</td>
-                        <td>{formatDate(exp.expenseDate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </article>
+            {auth.hasPermission('expense_create') && (
+              <ActionButton label="Add Expense" variant="secondary" onClick={() => navigate('/expenses/new')} />
+            )}
+            {auth.hasPermission('vehicle_compliance_view') && (
+              <ActionButton label="Compliance" variant="ghost" onClick={() => navigate('/compliance')} />
+            )}
+            {auth.hasPermission('finance_view') && (
+              <ActionButton label="Finance" variant="ghost" onClick={() => navigate('/finance')} />
             )}
           </div>
-        </>
-      ) : null}
+        </div>
+      </div>
 
-      <article className="card" style={{ marginTop: 24 }}>
-        <div className="table-toolbar">
+      <KpiGrid columns={5}>
+        <StatCard
+          label="Total Vehicles"
+          value={data?.totalVehicles ?? 0}
+          subtext={`${data?.activeVehicles ?? 0} active, ${data?.inactiveVehicles ?? 0} inactive`}
+          variant="default"
+        />
+        <StatCard
+          label="Active Trips"
+          value={data?.activeTrips ?? 0}
+          subtext={`${data?.completedTripsThisMonth ?? 0} completed this month`}
+          variant={data && data.activeTrips > 0 ? 'success' : 'muted'}
+        />
+        <StatCard
+          label="Pending Trips"
+          value={data?.pendingTrips ?? 0}
+          subtext="Awaiting scheduling"
+          variant={data && data.pendingTrips > 0 ? 'warning' : 'muted'}
+        />
+        <StatCard
+          label="Drivers"
+          value={data?.driversCount ?? 0}
+          subtext="Registered drivers"
+          variant="info"
+        />
+        <StatCard
+          label="Compliance Risk"
+          value={(data?.complianceExpired ?? 0) + (data?.complianceExpiring7 ?? 0)}
+          subtext={`${data?.complianceExpired ?? 0} expired, ${data?.complianceExpiring7 ?? 0} expiring soon`}
+          variant={hasComplianceRisk ? 'danger' : 'muted'}
+        />
+      </KpiGrid>
+
+      <KpiGrid columns={5}>
+        <StatCard
+          label="Fuel Cost MTD"
+          value={formatCurrency(Number(data?.fuelCostThisMonth ?? 0))}
+          variant="default"
+        />
+        <StatCard
+          label="Expenses MTD"
+          value={formatCurrency(Number(data?.expensesThisMonth ?? 0))}
+          variant="default"
+        />
+        <StatCard
+          label="Open Maintenance"
+          value={data?.maintenanceOpen ?? 0}
+          subtext="Work orders in progress"
+          variant={data && data.maintenanceOpen > 0 ? 'warning' : 'muted'}
+        />
+        <StatCard
+          label="Repairs in Progress"
+          value={data?.repairsOpen ?? 0}
+          subtext="Active repair orders"
+          variant={data && data.repairsOpen > 0 ? 'warning' : 'muted'}
+        />
+        <StatCard
+          label="Expired Documents"
+          value={data?.complianceExpired ?? 0}
+          subtext="Requires immediate action"
+          variant={hasComplianceRisk ? 'danger' : 'muted'}
+        />
+      </KpiGrid>
+
+      <div className="dashboard-chart-grid">
+        <ChartCard title="Vehicle Status" subtitle="Active vs inactive vehicles">
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie
+                data={vehicleStatusData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                dataKey="value"
+                label={({ name, value }) => `${name}: ${value}`}
+              >
+                {vehicleStatusData.map((_, i) => (
+                  <Cell key={i} fill={pieChartColor(i)} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Trip Status" subtitle="Active, completed, and pending trips">
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie
+                data={tripStatusData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={90}
+                dataKey="value"
+                label={({ name, value }) => `${name}: ${value}`}
+              >
+                {tripStatusData.map((_, i) => (
+                  <Cell key={i} fill={pieChartColor(i)} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Fuel vs Expenses MTD" subtitle="Month-to-date costs">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={financeData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `₹${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: any) => formatCurrency(Number(v))} />
+              <Bar dataKey="amount" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Compliance Risk" subtitle="Document expiry overview">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={complianceData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {complianceData.map((_, i) => (
+                  <Cell key={i} fill={pieChartColor(i)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div className="dashboard-chart-grid">
+        <ChartCard title="Maintenance & Repairs" subtitle="Open work order status">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={maintenanceData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="value" fill="var(--color-warning)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div className="dashboard-activity-grid">
+        {tripRows.length > 0 && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Recent Trips</h3>
+                <p className="chart-card-subtitle">Latest trip activity</p>
+              </div>
+            </div>
+            <DataTable columns={tripColumns} data={tripRows} keyExtractor={(r) => r.id} />
+          </div>
+        )}
+
+        {fuelRows.length > 0 && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Recent Fuel Entries</h3>
+                <p className="chart-card-subtitle">Latest fuel records</p>
+              </div>
+            </div>
+            <DataTable columns={fuelColumns} data={fuelRows} keyExtractor={(r) => r.id} />
+          </div>
+        )}
+
+        {expenseRows.length > 0 && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Recent Expenses</h3>
+                <p className="chart-card-subtitle">Latest expense records</p>
+              </div>
+            </div>
+            <DataTable columns={expenseColumns} data={expenseRows} keyExtractor={(r) => r.id} />
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="section-header" style={{ marginBottom: 'var(--space-4)' }}>
           <div>
-            <h3 className="table-toolbar-title">Quick Links</h3>
-            <p className="table-toolbar-copy">Jump to key areas</p>
+            <h3 className="chart-card-title">Quick Links</h3>
+            <p className="chart-card-subtitle">Navigate to key areas</p>
           </div>
         </div>
         <div className="quick-link-grid">
-          {auth.hasPermission('vehicle_view') ? (
-            <Link className="quick-link-card" to="/vehicles">
+          {auth.hasPermission('vehicle_view') && (
+            <Link to="/vehicles" className="quick-link-card">
               <strong>Vehicles</strong>
               <span>Manage vehicle master data</span>
             </Link>
-          ) : null}
-          {auth.hasPermission('trip_view') ? (
-            <Link className="quick-link-card" to="/trips">
+          )}
+          {auth.hasPermission('trip_view') && (
+            <Link to="/trips" className="quick-link-card">
               <strong>Trips</strong>
               <span>Manage trips and transfers</span>
             </Link>
-          ) : null}
-          {auth.hasPermission('fuel_view') ? (
-            <Link className="quick-link-card" to="/fuel">
+          )}
+          {auth.hasPermission('fuel_view') && (
+            <Link to="/fuel" className="quick-link-card">
               <strong>Fuel</strong>
               <span>Fuel entry workflow</span>
             </Link>
-          ) : null}
-          {auth.hasPermission('expense_view') ? (
-            <Link className="quick-link-card" to="/expenses">
+          )}
+          {auth.hasPermission('expense_view') && (
+            <Link to="/expenses" className="quick-link-card">
               <strong>Expenses</strong>
               <span>Expense workflow</span>
             </Link>
-          ) : null}
-          {auth.hasPermission('vehicle_compliance_view') ? (
-            <Link className="quick-link-card" to="/compliance">
+          )}
+          {auth.hasPermission('vehicle_compliance_view') && (
+            <Link to="/compliance" className="quick-link-card">
               <strong>Compliance</strong>
               <span>Vehicle compliance dashboard</span>
             </Link>
-          ) : null}
-          {auth.hasPermission('finance_view') ? (
-            <Link className="quick-link-card" to="/finance">
+          )}
+          {auth.hasPermission('finance_view') && (
+            <Link to="/finance" className="quick-link-card">
               <strong>Finance</strong>
               <span>Finance management</span>
             </Link>
-          ) : null}
+          )}
         </div>
-      </article>
-    </section>
+      </div>
+    </PageShell>
   );
 }
-
