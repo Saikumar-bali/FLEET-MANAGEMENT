@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { AppLayout } from '../layouts/AppLayout';
+import { FinanceLayout } from '../layouts/FinanceLayout';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
@@ -78,14 +79,16 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
                 </Route>
-                <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
-                <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
-                <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
-                <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
-                <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
-                <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
-                <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
-                <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
+                <Route element={<FinanceLayout />}>
+                  <Route path="/finance" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePage /></Suspense>} />
+                  <Route path="/finance/transactions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTransactionsPage /></Suspense>} />
+                  <Route path="/finance/accounts" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceAccountsPage /></Suspense>} />
+                  <Route path="/finance/categories" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCategoriesPage /></Suspense>} />
+                  <Route path="/finance/vendors" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceVendorsPage /></Suspense>} />
+                  <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
+                  <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
+                  <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
+                </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />
                 </Route>
