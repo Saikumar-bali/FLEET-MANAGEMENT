@@ -15,6 +15,7 @@ import { DataTable } from '../components/ui/DataTable';
 import type { ColumnDef } from '../components/ui/DataTable';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { ActionButton } from '../components/ui/ActionToolbar';
+import { ArrowDownCircleIcon, ArrowUpCircleIcon, TrendUpIcon, TrendDownIcon, ClockIcon, AlertIcon, FileTextIcon, RupeeIcon } from '../components/ui/icons';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
@@ -167,10 +168,10 @@ export function FinancePage() {
       {summary ? (
         <>
           <KpiGrid columns={4}>
-            <StatCard label="Total Receivable" value={formatCurrency(summary.totalReceivable)} variant="success" />
-            <StatCard label="Total Payable" value={formatCurrency(summary.totalPayable)} variant="danger" />
-            <StatCard label="Income MTD" value={formatCurrency(summary.currentMonthIncome)} variant="success" />
-            <StatCard label="Expenses MTD" value={formatCurrency(summary.currentMonthExpenses)} variant="danger" />
+            <StatCard label="Total Receivable" value={formatCurrency(summary.totalReceivable)} variant="success" icon={<ArrowDownCircleIcon />} />
+            <StatCard label="Total Payable" value={formatCurrency(summary.totalPayable)} variant="danger" icon={<ArrowUpCircleIcon />} />
+            <StatCard label="Income MTD" value={formatCurrency(summary.currentMonthIncome)} variant="success" icon={<TrendUpIcon />} />
+            <StatCard label="Expenses MTD" value={formatCurrency(summary.currentMonthExpenses)} variant="danger" icon={<TrendDownIcon />} />
           </KpiGrid>
 
           <KpiGrid columns={4}>
@@ -178,18 +179,21 @@ export function FinancePage() {
               label="Net Profit MTD"
               value={formatCurrency(netProfit)}
               variant={netProfit >= 0 ? 'success' : 'danger'}
+              icon={netProfit >= 0 ? <TrendUpIcon /> : <TrendDownIcon />}
             />
             <StatCard
               label="Pending Payments"
               value={formatCurrency(summary.pendingPayments)}
               variant={summary.pendingPayments > 0 ? 'warning' : 'muted'}
+              icon={<ClockIcon />}
             />
             <StatCard
               label="Overdue Payments"
               value={formatCurrency(summary.overduePayments)}
               variant={summary.overduePayments > 0 ? 'danger' : 'muted'}
+              icon={<AlertIcon />}
             />
-            <StatCard label="Total Transactions" value={summary.recentTransactions.length} subtext="Recent" variant="info" />
+            <StatCard label="Total Transactions" value={summary.recentTransactions.length} subtext="Recent" variant="info" icon={<FileTextIcon />} />
           </KpiGrid>
 
           <div className="dashboard-chart-grid">
@@ -267,12 +271,13 @@ export function FinancePage() {
               ) : null}
 
               <div className="kpi-grid kpi-cols-3" style={{ padding: 'var(--space-4) var(--space-5)' }}>
-                <StatCard label="Total Income" value={formatCurrency(pnl.totalIncome)} variant="success" />
-                <StatCard label="Total Expenses" value={formatCurrency(pnl.totalExpenses)} variant="danger" />
+                <StatCard label="Total Income" value={formatCurrency(pnl.totalIncome)} variant="success" icon={<TrendUpIcon />} />
+                <StatCard label="Total Expenses" value={formatCurrency(pnl.totalExpenses)} variant="danger" icon={<TrendDownIcon />} />
                 <StatCard
                   label="Net Profit"
                   value={formatCurrency(pnl.netProfit)}
                   variant={pnl.netProfit >= 0 ? 'success' : 'danger'}
+                  icon={pnl.netProfit >= 0 ? <RupeeIcon /> : <AlertIcon />}
                 />
               </div>
 

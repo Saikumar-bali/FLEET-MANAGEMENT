@@ -12,6 +12,7 @@ import type { ColumnDef } from '../components/ui/DataTable';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { StatusPill } from '../components/ui/StatusPill';
 import { ActionButton } from '../components/ui/ActionToolbar';
+import { TruckIcon, MapPinIcon, UsersIcon, FuelIcon, ShieldIcon, AlertIcon, WrenchIcon, ClockIcon } from '../components/ui/icons';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function formatCurrency(value: number) {
@@ -213,30 +214,35 @@ export function DashboardPage() {
           value={data?.totalVehicles ?? 0}
           subtext={`${data?.activeVehicles ?? 0} active, ${data?.inactiveVehicles ?? 0} inactive`}
           variant="default"
+          icon={<TruckIcon />}
         />
         <StatCard
           label="Active Trips"
           value={data?.activeTrips ?? 0}
           subtext={`${data?.completedTripsThisMonth ?? 0} completed this month`}
           variant={data && data.activeTrips > 0 ? 'success' : 'muted'}
+          icon={<MapPinIcon />}
         />
         <StatCard
           label="Pending Trips"
           value={data?.pendingTrips ?? 0}
           subtext="Awaiting scheduling"
           variant={data && data.pendingTrips > 0 ? 'warning' : 'muted'}
+          icon={<ClockIcon />}
         />
         <StatCard
           label="Drivers"
           value={data?.driversCount ?? 0}
           subtext="Registered drivers"
           variant="info"
+          icon={<UsersIcon />}
         />
         <StatCard
           label="Compliance Risk"
           value={(data?.complianceExpired ?? 0) + (data?.complianceExpiring7 ?? 0)}
           subtext={`${data?.complianceExpired ?? 0} expired, ${data?.complianceExpiring7 ?? 0} expiring soon`}
           variant={hasComplianceRisk ? 'danger' : 'muted'}
+          icon={hasComplianceRisk ? <AlertIcon /> : <ShieldIcon />}
         />
       </KpiGrid>
 
@@ -245,29 +251,34 @@ export function DashboardPage() {
           label="Fuel Cost MTD"
           value={formatCurrency(Number(data?.fuelCostThisMonth ?? 0))}
           variant="default"
+          icon={<FuelIcon />}
         />
         <StatCard
           label="Expenses MTD"
           value={formatCurrency(Number(data?.expensesThisMonth ?? 0))}
           variant="default"
+          icon={<FuelIcon />}
         />
         <StatCard
           label="Open Maintenance"
           value={data?.maintenanceOpen ?? 0}
           subtext="Work orders in progress"
           variant={data && data.maintenanceOpen > 0 ? 'warning' : 'muted'}
+          icon={<WrenchIcon />}
         />
         <StatCard
           label="Repairs in Progress"
           value={data?.repairsOpen ?? 0}
           subtext="Active repair orders"
           variant={data && data.repairsOpen > 0 ? 'warning' : 'muted'}
+          icon={<WrenchIcon />}
         />
         <StatCard
           label="Expired Documents"
           value={data?.complianceExpired ?? 0}
           subtext="Requires immediate action"
           variant={hasComplianceRisk ? 'danger' : 'muted'}
+          icon={<AlertIcon />}
         />
       </KpiGrid>
 

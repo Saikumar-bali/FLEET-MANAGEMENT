@@ -11,6 +11,7 @@ import { DataTable } from '../components/ui/DataTable';
 import type { ColumnDef } from '../components/ui/DataTable';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { ActionButton } from '../components/ui/ActionToolbar';
+import { ShieldIcon, AlertIcon, ClockIcon, AlertTriangleIcon, CheckCircleIcon } from '../components/ui/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 function formatDate(dateStr: string | Date | null | undefined) {
@@ -173,11 +174,11 @@ export function ComplianceDashboardPage() {
       {dashboard ? (
         <>
           <KpiGrid columns={5}>
-            <StatCard label="Total Documents" value={dashboard.totalDocuments} subtext="Compliance documents tracked" variant="default" />
-            <StatCard label="Expired" value={dashboard.expired} subtext="Past expiry date" variant={dashboard.expired > 0 ? 'danger' : 'muted'} />
-            <StatCard label="Expiring in 7 Days" value={dashboard.expiring7Days} subtext="Action required soon" variant={dashboard.expiring7Days > 0 ? 'warning' : 'muted'} />
-            <StatCard label="Expiring in 30 Days" value={dashboard.expiring30Days} subtext="Plan renewal" variant={dashboard.expiring30Days > 0 ? 'warning' : 'muted'} />
-            <StatCard label="Pending Verification" value={dashboard.pendingVerification} subtext="Awaiting admin review" variant={dashboard.pendingVerification > 0 ? 'info' : 'muted'} />
+            <StatCard label="Total Documents" value={dashboard.totalDocuments} subtext="Compliance documents tracked" variant="default" icon={<ShieldIcon />} />
+            <StatCard label="Expired" value={dashboard.expired} subtext="Past expiry date" variant={dashboard.expired > 0 ? 'danger' : 'muted'} icon={<AlertIcon />} />
+            <StatCard label="Expiring in 7 Days" value={dashboard.expiring7Days} subtext="Action required soon" variant={dashboard.expiring7Days > 0 ? 'warning' : 'muted'} icon={<ClockIcon />} />
+            <StatCard label="Expiring in 30 Days" value={dashboard.expiring30Days} subtext="Plan renewal" variant={dashboard.expiring30Days > 0 ? 'warning' : 'muted'} icon={<AlertTriangleIcon />} />
+            <StatCard label="Pending Verification" value={dashboard.pendingVerification} subtext="Awaiting admin review" variant={dashboard.pendingVerification > 0 ? 'info' : 'muted'} icon={<CheckCircleIcon />} />
           </KpiGrid>
 
           <div className="dashboard-chart-grid">
