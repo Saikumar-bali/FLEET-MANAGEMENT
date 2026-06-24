@@ -93,7 +93,7 @@ async function main() {
   await runTest('List finance accounts', async () => {
     const res = await apiCall('GET', '/api/v1/finance/accounts', token);
     expect(res.status === 200, `Expected 200, got ${res.status}`);
-    expect(Array.isArray(res.data.data?.data ?? res.data.data), 'Expected array in response');
+    expect(Array.isArray(res.data.data?.items), 'Expected array in response');
   });
 
   // ─── 2. Finance Categories ───
