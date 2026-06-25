@@ -40,6 +40,7 @@ function getLinkedLabel(doc: DocumentRecord) {
 export function DocumentTable({ documents, onView, onDownload, onArchive, onDelete, onVerify, canArchive, canDelete, canVerify }: Props) {
   return (
     <div className="doc-table-wrap">
+      <div className="doc-table-scroll">
       <table className="doc-table">
         <thead>
           <tr>
@@ -93,6 +94,7 @@ export function DocumentTable({ documents, onView, onDownload, onArchive, onDele
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
