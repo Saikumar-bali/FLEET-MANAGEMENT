@@ -3696,6 +3696,7 @@ fieldset.form-section {
 .doc-td-actions {
   padding: 0.75rem 1rem;
   text-align: right;
+  position: relative;
 }
 
 .doc-table-compact thead th {
@@ -4422,7 +4423,7 @@ fieldset.form-section {
   background: var(--color-bg-surface, #ffffff);
   border: 1px solid var(--color-border-light, #e8eaed);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .linked-doc-header {
