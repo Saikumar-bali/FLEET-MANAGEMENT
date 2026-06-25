@@ -184,18 +184,52 @@ export type AssetHistoryRecord = {
 
 export type DocumentRecord = {
   id: string;
-  entityType: 'VEHICLE' | 'DRIVER' | 'ASSET';
-  entityId: string;
-  documentType: string;
   documentNumber: string | null;
+  title: string;
+  description: string | null;
+  originalFileName: string;
+  storedFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  fileExtension: string | null;
+  storageProvider: string;
+  storageBucket: string | null;
+  storageKey: string;
+  checksumSha256: string | null;
+  documentType: string;
+  documentCategory: string;
+  linkedEntityType: string | null;
+  linkedEntityId: string | null;
+  vehicleId: string | null;
+  driverId: string | null;
+  tripId: string | null;
+  customerId: string | null;
+  vendorId: string | null;
+  financeTransactionId: string | null;
+  tripBillingId: string | null;
+  maintenanceRequestId: string | null;
+  repairId: string | null;
+  issueDate: string | null;
   expiryDate: string | null;
-  fileUrl: string | null;
-  fileName: string | null;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  uploadedById: string | null;
+  documentStatus: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  tags: string[];
+  metadata: Record<string, unknown> | null;
+  uploadedById: string;
+  verifiedById: string | null;
+  verifiedAt: string | null;
+  archivedAt: string | null;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  uploadedBy: { id: string; name: string; email: string } | null;
+  verifiedBy: { id: string; name: string } | null;
+  vehicle: { id: string; vehicleNumber: string } | null;
+  driver: { id: string; name: string } | null;
+  trip: { id: string; tripNumber: string } | null;
+  customer: { id: string; name: string } | null;
+  vendor: { id: string; name: string } | null;
+  fileUrl?: string | null;
 };
 
 export type TripRecord = {
@@ -269,11 +303,16 @@ export type FuelRecord = WorkflowRelated & {
   fuelDate: string;
   odometerReading: number | null;
   fuelType: string;
-  quantityLiters: number;
-  pricePerLiter: number;
+  entryMode: 'QUICK_AMOUNT' | 'FULL_DETAILS' | 'RECEIPT_ASSISTED';
+  quantityLiters: number | null;
+  pricePerLiter: number | null;
   totalAmount: number;
   stationName: string | null;
   receiptNumber: string | null;
+  paymentMode: string | null;
+  extractionStatus: string;
+  extractionConfidence: number | null;
+  documents?: Array<{ id: string; title: string; documentType: string; originalFileName: string }>;
 };
 export type ExpenseRecord = WorkflowRelated & {
   category: string;
@@ -717,6 +756,26 @@ export type DashboardOverview = {
     amount: number;
     notes: string | null;
     expenseDate: string;
+  }>;
+  totalDocuments: number;
+  activeDocuments: number;
+  archivedDocuments: number;
+  unverifiedDocuments: number;
+  rejectedDocuments: number;
+  expiringDocuments30: number;
+  expiredDocuments: number;
+  storageUsageBytes: number;
+  documentsByCategory: Array<{ category: string; count: number }>;
+  recentDocuments: Array<{
+    id: string;
+    title: string;
+    documentType: string;
+    documentCategory: string;
+    fileSizeBytes: number;
+    documentStatus: string;
+    verificationStatus: string;
+    createdAt: string;
+    uploadedBy: { name: string } | null;
   }>;
 };
 

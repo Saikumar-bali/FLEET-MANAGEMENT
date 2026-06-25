@@ -20,9 +20,11 @@ import { TripsPage } from '../pages/TripsPage';
 import { TripDetailPage } from '../pages/TripDetailPage';
 import { WorkflowListPage } from '../pages/WorkflowListPage';
 import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
+import { FuelEntryPage } from '../pages/FuelEntryPage';
 import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
+import { DocumentsPage } from '../pages/DocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { lazy, Suspense } from 'react';
 
@@ -65,7 +67,7 @@ function App() {
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['fuel_view']} />}>
                   <Route path="/fuel" element={<WorkflowListPage kind="fuel" />} />
-                  <Route path="/fuel/:id" element={<WorkflowDetailPage kind="fuel" />} />
+                  <Route path="/fuel/:id" element={<FuelEntryPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['expense_view']} />}>
                   <Route path="/expenses" element={<WorkflowListPage kind="expense" />} />
@@ -81,6 +83,9 @@ function App() {
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['documents_view']} />}>
+                  <Route path="/documents" element={<DocumentsPage />} />
                 </Route>
                 <Route element={<FinanceLayout />}>
                   <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>

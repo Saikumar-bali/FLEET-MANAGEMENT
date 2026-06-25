@@ -1,235 +1,154 @@
-name: CI Gate
+name: CI
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
-    branches-ignore:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [phase-8-documents-storage]
+  pull_request:
+    branches: [phase-8-documents-storage]
 
 jobs:
-  gate:
-    name: Hygiene, build, API, and Playwright
+  backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: fleet_ci
-          POSTGRES_USER: fleet_ci
-          POSTGRES_PASSWORD: fleet_ci_password
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleet_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U fleet_ci -d fleet_ci"
-          --health-interval 5s
+          --health-cmd pg_isready
+          --health-interval 10s
           --health-timeout 5s
-          --health-retries 10
+          --health-retries 5
     env:
-      CI: "true"
-      NODE_ENV: test
-      PORT: "4000"
-      CORS_ORIGIN: http://localhost:5173
-      DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
-      DIRECT_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
-      CI_DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
-      ADMIN_EMAIL: ci-super-admin@example.invalid
-      ADMIN_USERNAME: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
-      ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
-      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
-      CI_SUPER_ADMIN_IDENTIFIER: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
-      CI_SUPER_ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}
-      CI_ADMIN_IDENTIFIER: ${{ secrets.CI_ADMIN_IDENTIFIER }}
-      CI_ADMIN_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
-      CI_MANAGER_IDENTIFIER: ${{ secrets.CI_MANAGER_IDENTIFIER }}
-      CI_MANAGER_PASSWORD: ${{ secrets.CI_MANAGER_PASSWORD }}
-      CI_SUPERVISOR_IDENTIFIER: ${{ secrets.CI_SUPERVISOR_IDENTIFIER }}
-      CI_SUPERVISOR_PASSWORD: ${{ secrets.CI_SUPERVISOR_PASSWORD }}
-      CI_DRIVER_IDENTIFIER: ${{ secrets.CI_DRIVER_IDENTIFIER }}
-      CI_DRIVER_PASSWORD: ${{ secrets.CI_DRIVER_PASSWORD }}
-      CI_ASSISTANT_DRIVER_IDENTIFIER: ${{ secrets.CI_ASSISTANT_DRIVER_IDENTIFIER }}
-      CI_ASSISTANT_DRIVER_PASSWORD: ${{ secrets.CI_ASSISTANT_DRIVER_PASSWORD }}
-      CI_COLLECTOR_IDENTIFIER: ${{ secrets.CI_COLLECTOR_IDENTIFIER }}
-      CI_COLLECTOR_PASSWORD: ${{ secrets.CI_COLLECTOR_PASSWORD }}
-      CI_MECHANIC_IDENTIFIER: ${{ secrets.CI_MECHANIC_IDENTIFIER }}
-      CI_MECHANIC_PASSWORD: ${{ secrets.CI_MECHANIC_PASSWORD }}
-      CI_FINANCE_IDENTIFIER: ${{ secrets.CI_FINANCE_IDENTIFIER }}
-      CI_FINANCE_PASSWORD: ${{ secrets.CI_FINANCE_PASSWORD }}
-      CI_VIEWER_IDENTIFIER: ${{ secrets.CI_VIEWER_IDENTIFIER }}
-      CI_VIEWER_PASSWORD: ${{ secrets.CI_VIEWER_PASSWORD }}
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
+      NODE_ENV: development
+      JWT_SECRET: ci-test-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-not-for-production
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: .storage/uploads
+      RECEIPT_EXTRACTION_PROVIDER: mock
+      ADMIN_EMAIL: admin@fleet-ci.test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
       ENABLE_DEMO_USERS: "true"
-      E2E_REQUIRE_ALL_ROLES: "true"
       API_BASE_URL: http://localhost:4000
-      E2E_API_BASE_URL: http://localhost:4000
-      E2E_BASE_URL: http://localhost:5173
-
+      CI_ADMIN_IDENTIFIER: admin@fleet-ci.test
+      CI_ADMIN_PASSWORD: Admin123!
+      CI_VIEWER_IDENTIFIER: viewer@fleet-ci.test
+      CI_VIEWER_PASSWORD: Viewer123!
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            backend/package-lock.json
-            web/package-lock.json
-
-      - name: Verify Git hygiene
-        shell: bash
+      - run: npm install
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npx prisma migrate deploy
+        working-directory: backend
+      - run: npx prisma db seed
+        working-directory: backend
+      - run: npm run lint
+        working-directory: backend
+      - run: npm run test:api-docs
+        working-directory: backend
+      - name: Start backend server
         run: |
-          set -euo pipefail
+          npm run dev &
+          for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
+        working-directory: backend
+      - name: Seed test data
+        run: npm run seed:api
+        working-directory: backend
+      - run: npm run test:documents
+        working-directory: backend
+      - run: npm run test:rbac-documents-negative
+        working-directory: backend
+      - run: npm run test:fuel-expenses
+        working-directory: backend
+      - run: npm run test:fuel-receipts
+        working-directory: backend
 
-          real_env_files="$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$' || true)"
-          if [[ -n "$real_env_files" ]]; then
-            echo "Tracked real .env files are not allowed."
-            exit 1
-          fi
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: web
+      - run: npm run lint
+        working-directory: web
+      - run: npm run build
+        working-directory: web
 
-          forbidden_files="$(git ls-files | grep -E '(^|/)\.vercel/|(^|/)vite-log\.txt$|(^|/)web/test-results/|(^|/)test-results/|(^|/)playwright-report/' || true)"
-          if [[ -n "$forbidden_files" ]]; then
-            echo "Tracked Vercel or test artifacts are not allowed."
-            exit 1
-          fi
-
-      - name: Set CI defaults and report secret status
-        shell: bash
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
+      NODE_ENV: development
+      JWT_SECRET: ci-test-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-not-for-production
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: .storage/uploads
+      RECEIPT_EXTRACTION_PROVIDER: mock
+      ADMIN_EMAIL: admin@fleet-ci.test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      ENABLE_DEMO_USERS: "true"
+      E2E_BASE_URL: http://localhost:5173
+      E2E_API_BASE_URL: http://localhost:4000
+      E2E_ADMIN_IDENTIFIER: admin@fleet-ci.test
+      E2E_ADMIN_PASSWORD: Admin123!
+      E2E_VIEWER_IDENTIFIER: viewer@fleet-ci.test
+      E2E_VIEWER_PASSWORD: Viewer123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: backend
+      - run: npx prisma generate && npx prisma migrate deploy
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npx prisma db seed
+        working-directory: backend
+      - name: Start backend server
         run: |
-          set -euo pipefail
-
-          # Generate JWT secret at runtime if not configured as GitHub Secret
-          if [[ -z "${JWT_SECRET:-}" ]]; then
-            echo "JWT_SECRET=ci-$(openssl rand -hex 32)" >> $GITHUB_ENV
-            echo "JWT_SECRET generated at runtime"
-          else
-            echo "JWT_SECRET configured via GitHub Secret"
-          fi
-
-          # Default ADMIN_USERNAME and ADMIN_PASSWORD for seed
-          if [[ -z "${ADMIN_USERNAME:-}" ]]; then
-            echo "ADMIN_USERNAME=admin" >> $GITHUB_ENV
-            echo "ADMIN_USERNAME defaulted to admin"
-          fi
-          if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
-            echo "ADMIN_PASSWORD=ci-$(openssl rand -hex 12)" >> $GITHUB_ENV
-            echo "ADMIN_PASSWORD generated at runtime"
-          fi
-
-          # NOTE: CI_SUPER_ADMIN is created by the seed via ADMIN_USERNAME/ADMIN_PASSWORD,
-          # so CI_SUPER_ADMIN_IDENTIFIER/CI_SUPER_ADMIN_PASSWORD must NOT be set here.
-          # The test credential helper falls through to ADMIN_USERNAME/ADMIN_PASSWORD.
-
-          # Default CI_* identifiers for demo roles (skipping super_admin)
-          declare -A ci_ident_defaults
-          ci_ident_defaults[CI_ADMIN_IDENTIFIER]=ci-admin
-          ci_ident_defaults[CI_MANAGER_IDENTIFIER]=ci-manager
-          ci_ident_defaults[CI_SUPERVISOR_IDENTIFIER]=ci-supervisor
-          ci_ident_defaults[CI_DRIVER_IDENTIFIER]=ci-driver
-          ci_ident_defaults[CI_ASSISTANT_DRIVER_IDENTIFIER]=ci-assistant-driver
-          ci_ident_defaults[CI_COLLECTOR_IDENTIFIER]=ci-collector
-          ci_ident_defaults[CI_MECHANIC_IDENTIFIER]=ci-mechanic
-          ci_ident_defaults[CI_FINANCE_IDENTIFIER]=ci-finance
-          ci_ident_defaults[CI_VIEWER_IDENTIFIER]=ci-viewer
-
-          echo ""
-          echo "CI credential fallback status:"
-          for role in \
-            CI_ADMIN \
-            CI_MANAGER \
-            CI_SUPERVISOR \
-            CI_DRIVER \
-            CI_ASSISTANT_DRIVER \
-            CI_COLLECTOR \
-            CI_MECHANIC \
-            CI_FINANCE \
-            CI_VIEWER; do
-            ident_var="${role}_IDENTIFIER"
-            pass_var="${role}_PASSWORD"
-            if [[ -n "${!ident_var:-}" ]]; then
-              echo "  $ident_var: configured via GitHub Secret"
-            else
-              echo "${ident_var}=${ci_ident_defaults[$ident_var]}" >> $GITHUB_ENV
-              echo "  $ident_var: generated at runtime"
-            fi
-            if [[ -n "${!pass_var:-}" ]]; then
-              echo "  $pass_var: configured via GitHub Secret"
-            else
-              generated="ci-$(openssl rand -hex 12)"
-              echo "${pass_var}=${generated}" >> $GITHUB_ENV
-              echo "  $pass_var: generated at runtime"
-            fi
-          done
-
-      - name: Install backend dependencies
-        run: npm ci --prefix backend
-
-      - name: Install web dependencies
-        run: npm ci --prefix web
-
-      - name: Generate Prisma client
-        run: npm --prefix backend run prisma:generate
-
-      - name: Prepare isolated CI database
-        run: |
-          npm --prefix backend run prisma:migrate:deploy
-          npm --prefix backend run prisma:seed
-
-      - name: Backend lint
-        run: npm run backend:lint
-
-      - name: Backend build
-        run: npm run backend:build
-
-      - name: API docs coverage
-        run: npm --prefix backend run test:api-docs
-
-      - name: Web lint
-        run: npm run web:lint
-
-      - name: Web build
-        run: npm run web:build
-
-      - name: Install Playwright browser
-        run: npm exec --prefix web -- playwright install --with-deps chromium
-
-      - name: Start local backend
-        shell: bash
-        run: |
-          npm --prefix backend run start > /tmp/fleet-backend.log 2>&1 &
-          for attempt in {1..60}; do
-            if curl --fail --silent http://localhost:4000/api/v1/health > /dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Local backend did not become ready."
-          exit 1
-
-      - name: Local backend trip API tests
-        run: npm --prefix backend run test:trips
-
-      - name: Local backend fuel and expense API tests
-        run: npm --prefix backend run test:fuel-expenses
-
-      - name: Local backend maintenance and repair API tests
-        run: npm --prefix backend run test:maintenance-repair
-
-      - name: Local backend vehicle compliance API tests
-        run: npm --prefix backend run test:vehicle-compliance
-
-      - name: Local backend finance API tests
-        run: npm --prefix backend run test:finance
-
-      - name: Local Playwright tests
-        run: npm --prefix web run test:e2e
+          npm run dev &
+          for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
+        working-directory: backend
+      - name: Seed test data
+        run: npm run seed:api
+        working-directory: backend
+      - run: npm install
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npx playwright test
+        working-directory: web

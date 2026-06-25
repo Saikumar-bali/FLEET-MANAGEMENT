@@ -8,6 +8,7 @@ import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
+import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
 
 type DriverForm = {
   name: string;
@@ -249,12 +250,22 @@ export function DriverDetailPage() {
           </div>
         ) : null}
 
-        {!isNew && activeSection === 'documents' ? (
+        {!isNew && activeSection === 'documents' && driver ? (
           <div className="card form-section-grid">
-            <h4 className="role-edit-h4">Documents</h4>
-            <div className="info-banner">
-              Documents section placeholder. Add license, ID, and other documents here.
-            </div>
+            <LinkedDocumentsPanel
+              linkedEntityType="DRIVER"
+              linkedEntityId={driver.id}
+              driverId={driver.id}
+              defaultDocumentCategory="DRIVER"
+              allowedDocumentTypes={['DRIVER_LICENSE', 'DRIVER_ID_PROOF', 'GENERAL']}
+              title={`Documents — ${driver.name}`}
+              subtitle={`${driver.licenseNumber ? `License: ${driver.licenseNumber}` : 'Upload license, ID proof, and other driver documents'}`}
+              canUpload={auth.hasPermission('documents_upload')}
+              canDownload={auth.hasPermission('documents_download')}
+              canArchive={auth.hasPermission('documents_archive')}
+              canDelete={auth.hasPermission('documents_delete')}
+              canVerify={auth.hasPermission('documents_verify')}
+            />
           </div>
         ) : null}
 

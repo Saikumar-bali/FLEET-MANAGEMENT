@@ -1,13 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceDocuments, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice, createComplianceDocument, verifyComplianceDocument } from '../services/api';
+import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { VehicleRecord, VehicleInsuranceDetail, VehiclePermitDetail, VehicleFitnessDetail, VehiclePucDetail, VehicleRoadTaxDetail, VehicleFastagDetail, VehicleGpsDeviceDetail, VehicleComplianceDocument, VehicleComplianceHistory } from '../types/auth';
+import type { VehicleRecord, VehicleInsuranceDetail, VehiclePermitDetail, VehicleFitnessDetail, VehiclePucDetail, VehicleRoadTaxDetail, VehicleFastagDetail, VehicleGpsDeviceDetail, VehicleComplianceHistory } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
+import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
 
 type VehicleForm = {
   vehicleNumber: string;
@@ -43,14 +44,6 @@ const sectionTabs: { key: SectionTab; label: string }[] = [
   { key: 'status', label: 'Status' },
 ];
 
-function DaysUntil({ date }: { date: string | null }) {
-  if (!date) return <span className="compliance-empty">--</span>;
-  const diff = Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return <span className="days-badge days-expired">Expired {Math.abs(diff)}d ago</span>;
-  if (diff <= 30) return <span className="days-badge days-soon">{diff}d left</span>;
-  return <span className="days-badge days-ok">{diff}d left</span>;
-}
-
 function getStatusDotClass(status: string): string {
   const map: Record<string, string> = { ACTIVE: 'status-dot-active', EXPIRED: 'status-dot-expired', PENDING: 'status-dot-pending', SUSPENDED: 'status-dot-suspended', REVOKED: 'status-dot-revoked', DRAFT: 'status-dot-draft', VERIFIED: 'status-dot-verified', REJECTED: 'status-dot-rejected' };
   return map[status] ?? 'status-dot-default';
@@ -76,9 +69,6 @@ const emptyFastag: FastagForm = { fastagId: '', issuerBank: '', status: 'ACTIVE'
 
 type GpsForm = { deviceId: string; imei: string; vendorName: string; ais140Certified: boolean; status: string };
 const emptyGps: GpsForm = { deviceId: '', imei: '', vendorName: '', ais140Certified: false, status: 'ACTIVE' };
-
-type DocForm = { complianceType: string; documentNumber: string; validFrom: string; validTo: string; issuingAuthority: string; notes: string };
-const emptyDoc: DocForm = { complianceType: 'INSURANCE', documentNumber: '', validFrom: '', validTo: '', issuingAuthority: '', notes: '' };
 
 function toIsoDateTime(value: string): string | undefined {
   if (!value) return undefined;
@@ -107,7 +97,6 @@ export function VehicleDetailPage() {
   const [roadTaxRecords, setRoadTaxRecords] = useState<VehicleRoadTaxDetail[]>([]);
   const [fastag, setFastag] = useState<VehicleFastagDetail | null>(null);
   const [gpsDevice, setGpsDevice] = useState<VehicleGpsDeviceDetail | null>(null);
-  const [documents, setDocuments] = useState<VehicleComplianceDocument[]>([]);
   const [history, setHistory] = useState<VehicleComplianceHistory[]>([]);
   const [complianceLoading, setComplianceLoading] = useState(false);
 
@@ -130,8 +119,6 @@ export function VehicleDetailPage() {
   const [fastagForm, setFastagForm] = useState<FastagForm>(emptyFastag);
   const [showGpsForm, setShowGpsForm] = useState(false);
   const [gpsForm, setGpsForm] = useState<GpsForm>(emptyGps);
-  const [showDocForm, setShowDocForm] = useState(false);
-  const [docForm, setDocForm] = useState<DocForm>(emptyDoc);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -170,9 +157,6 @@ export function VehicleDetailPage() {
         setFitnessRecords(fit.data as VehicleFitnessDetail[]); setPucRecords(puc.data as VehiclePucDetail[]);
         setRoadTaxRecords(rt.data as VehicleRoadTaxDetail[]); setFastag(ftg.data as VehicleFastagDetail | null);
         setGpsDevice(gps.data as VehicleGpsDeviceDetail | null);
-      } else if (activeSection === 'documents') {
-        const docs = await listComplianceDocuments(auth.accessToken, { vehicleId: id, limit: 50 });
-        setDocuments(docs.data.items as VehicleComplianceDocument[]);
       } else if (activeSection === 'history') {
         const hist = await listComplianceHistory(auth.accessToken, id, { limit: 50 });
         setHistory(hist.data.items as VehicleComplianceHistory[]);
@@ -216,8 +200,6 @@ export function VehicleDetailPage() {
   const canViewCompliance = auth.hasPermission('vehicle_compliance_view');
   const canCreateCompliance = auth.hasPermission('vehicle_compliance_create');
   const canUpdateCompliance = auth.hasPermission('vehicle_compliance_update');
-  const canCreateDoc = auth.hasPermission('document_metadata_create');
-  const canVerifyDoc = auth.hasPermission('document_metadata_verify');
 
   async function handleCreateInsurance(e: FormEvent) {
     e.preventDefault(); if (!auth.accessToken || !id) return;
@@ -300,22 +282,7 @@ export function VehicleDetailPage() {
     try { await upsertGpsDevice(auth.accessToken, id, gpsForm); setShowGpsForm(false); setGpsForm(emptyGps); void loadCompliance(); }
     catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to save GPS device.'); }
   }
-  async function handleCreateDoc(e: FormEvent) {
-    e.preventDefault(); if (!auth.accessToken || !id) return;
-    try {
-      await createComplianceDocument(auth.accessToken, id, {
-        ...docForm,
-        validFrom: toIsoDateTime(docForm.validFrom),
-        validTo: toIsoDateTime(docForm.validTo),
-      });
-      setShowDocForm(false); setDocForm(emptyDoc); void loadCompliance();
-    } catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to create document.'); }
-  }
-  async function handleVerifyDoc(docId: string, status: string) {
-    if (!auth.accessToken) return;
-    try { await verifyComplianceDocument(auth.accessToken, docId, status); void loadCompliance(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to verify document.'); }
-  }
+
 
   return (
     <section className="page-content">
@@ -581,33 +548,22 @@ export function VehicleDetailPage() {
             )}
           </div>
         ) : null}
-      {!isNew && activeSection === 'documents' ? (
-          <div className="card form-section-grid compliance-card">
-            <div className="compliance-actions">
-              <h4 className="role-edit-h4 compliance-section-header">Compliance Documents</h4>
-              {canCreateDoc && <button type="button" className="secondary-button" onClick={() => { setShowDocForm(!showDocForm); setDocForm(emptyDoc); }}>+ Add Document</button>}
-            </div>
-            {showDocForm ? (
-              <form onSubmit={handleCreateDoc} className="compliance-form-card">
-                <div className="compliance-form-row">
-                  <label><span className="field-label">Type *</span><select value={docForm.complianceType} onChange={(e) => setDocForm((f) => ({ ...f, complianceType: e.target.value }))}><option value="RC">RC</option><option value="INSURANCE">Insurance</option><option value="PERMIT">Permit</option><option value="FITNESS">Fitness</option><option value="PUC">PUC</option><option value="ROAD_TAX">Road Tax</option><option value="FASTAG">FASTag</option><option value="GPS_AIS140">GPS AIS-140</option><option value="OTHER">Other</option></select></label>
-                  <label><span className="field-label">Document #</span><input value={docForm.documentNumber} onChange={(e) => setDocForm((f) => ({ ...f, documentNumber: e.target.value }))} /></label>
-                  <label><span className="field-label">Authority</span><input value={docForm.issuingAuthority} onChange={(e) => setDocForm((f) => ({ ...f, issuingAuthority: e.target.value }))} /></label>
-                </div>
-                <div className="compliance-form-row">
-                  <label><span className="field-label">Valid From</span><input type="datetime-local" value={docForm.validFrom} onChange={(e) => setDocForm((f) => ({ ...f, validFrom: e.target.value }))} /></label>
-                  <label><span className="field-label">Valid To</span><input type="datetime-local" value={docForm.validTo} onChange={(e) => setDocForm((f) => ({ ...f, validTo: e.target.value }))} /></label>
-                  <label><span className="field-label">Notes</span><input value={docForm.notes} onChange={(e) => setDocForm((f) => ({ ...f, notes: e.target.value }))} /></label>
-                </div>
-                <div className="compliance-actions"><button type="submit" className="primary-button">Create</button><button type="button" className="secondary-button" onClick={() => setShowDocForm(false)}>Cancel</button></div>
-              </form>
-            ) : null}
-            {complianceLoading ? <p className="compliance-empty">Loading documents...</p> : documents.length === 0 ? <div className="info-banner">No compliance documents found for this vehicle.</div> : (
-              <table className="data-table"><thead><tr><th>Type</th><th>Document #</th><th>Authority</th><th>Valid From</th><th>Valid To</th><th>Status</th><th>Verified</th>{canVerifyDoc && <th>Actions</th>}</tr></thead>
-                <tbody>{documents.map((doc) => (<tr key={doc.id}><td>{doc.complianceType.replace(/_/g, ' ')}</td><td>{doc.documentNumber ?? '--'}</td><td>{doc.issuingAuthority ?? '--'}</td><td>{doc.validFrom ? new Date(doc.validFrom).toLocaleDateString() : '--'}</td><td>{doc.validTo ? <><span>{new Date(doc.validTo).toLocaleDateString()}</span> <DaysUntil date={doc.validTo} /></> : '--'}</td><td><span className={`status-dot ${getStatusDotClass(doc.status)}`} />{doc.status}</td><td>{doc.verifiedBy ? `✓ ${doc.verifiedBy.name}` : doc.status === 'VERIFIED' ? '✓' : 'Pending'}</td>
-                  {canVerifyDoc && <td>{doc.status !== 'VERIFIED' && doc.status !== 'REJECTED' ? (<span className="compliance-actions"><button type="button" className="compliance-action-icon verify" title="Verify" onClick={() => void handleVerifyDoc(doc.id, 'VERIFIED')}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg></button><button type="button" className="compliance-action-icon reject" title="Reject" onClick={() => void handleVerifyDoc(doc.id, 'REJECTED')}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button></span>) : null}</td>}
-                </tr>))}</tbody></table>
-            )}
+      {!isNew && activeSection === 'documents' && vehicle ? (
+          <div className="card form-section-grid">
+            <LinkedDocumentsPanel
+              linkedEntityType="VEHICLE"
+              linkedEntityId={vehicle.id}
+              vehicleId={vehicle.id}
+              defaultDocumentCategory="VEHICLE"
+              allowedDocumentTypes={['VEHICLE_RC', 'VEHICLE_INSURANCE', 'VEHICLE_PERMIT', 'VEHICLE_FITNESS', 'VEHICLE_PUC', 'ROAD_TAX', 'FASTAG', 'AIS140_GPS', 'GENERAL']}
+              title={`Documents — ${vehicle.vehicleNumber}`}
+              subtitle="Upload and manage vehicle documents, insurance, permits, and compliance files"
+              canUpload={auth.hasPermission('documents_upload')}
+              canDownload={auth.hasPermission('documents_download')}
+              canArchive={auth.hasPermission('documents_archive')}
+              canDelete={auth.hasPermission('documents_delete')}
+              canVerify={auth.hasPermission('documents_verify')}
+            />
           </div>
         ) : null}
       {!isNew && activeSection === 'history' ? (

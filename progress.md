@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 7 Finance and P&L is in progress on branch `phase-7-finance-pnl`. Commit `c62bca1737f9922b9a208f893a8f0d4a3d9b0a13` added Phase 7 OpenAPI documentation, API coverage updates, and implementation evidence. GitHub Actions CI was still in progress when the roadmap was updated.
+Phase 7 Finance and P&L is **Completed and Deployed**. Merged through PR #23 into main on 2026-06-24. Frontend deployed manually via Vercel CLI to https://web-virid-ten-53.vercel.app. Backend runs independently (Node.js/Express). All 98 Playwright E2E tests pass. Swagger/OpenAPI documentation verified with 121 endpoints.
 
 Mobile app work is intentionally deferred. The product direction is now backend + web completion first: driver operations, assignment workflows, notifications, dispatch, reporting, document storage, integrations, India-region hardening, privacy, and production readiness before React Native/mobile work.
 
@@ -54,17 +54,49 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 6 Post-Merge Smoke | Post-merge verification and staging deploy | Completed |
 | Phase 6.1 | India Vehicle Compliance & Document Metadata | Completed, merged through PR #22 |
 | Phase 6.1 Post-Merge Smoke | Post-merge verification and staging deploy | Completed |
-| Phase 7 | Finance and P&L | In Progress on `phase-7-finance-pnl` |
+| Phase 7 | Finance and P&L | Completed and Deployed — merged through PR #23, Vercel manual deploy |
+| Phase 7 Swagger/API Docs | Completed — 121 endpoints verified in OpenAPI |
+| Phase 7 Post-Deploy Smoke | Completed — 98 Playwright tests pass, RBAC enforced |
 | Phase 7.1 | Driver Operations, Assignment, and Web Notifications | Not Started - next backend/web phase after Phase 7 |
 | Phase 7.2 | Dispatch, Route Planning, Customer Ops, and Proof of Delivery | Not Started |
 | Phase 7.3 | Reports, Analytics, and Generalized Timeline | Not Started |
-| Phase 7.4 | Real Document Storage and File Security | Not Started |
+| Phase 7.4 | Real Document Storage and File Security | Completed as Phase 8 Documents & Storage Foundation |
 | Phase 7.5 | Integrations Hub: GPS, FASTag, WhatsApp/SMS/Email, Tally-ready exports | Not Started |
 | Phase 7.6 | India Enterprise Hardening, Privacy, and Multi-branch Operations | Not Started |
-| Phase 8 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
-| Phase 9 | Production Readiness and Final Release Gate | Not Started |
+| Phase 8 | Documents & Storage Foundation | Submitted for Review |
+| Phase 8.1 | OCR/AI Document Extraction | Not Started |
+| Phase 9 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log
+
+### 2026-06-25
+
+- Phase 8 Documents & Storage Foundation: **Submitted for Review**.
+- Implemented storage abstraction with local provider and S3 stub.
+- Created comprehensive Document model with 35+ fields, 15 indexes, 10 relations.
+- Added 7 RBAC document permissions with role-based assignments.
+- Built full backend module: upload, list, view, download, update, verify, archive, delete.
+- Created frontend Documents Vault page with upload panel, filters, tabs, cards, preview modal.
+- Updated Swagger/OpenAPI with 9 document endpoints.
+- Added backend workflow test and RBAC negative test.
+- Added Playwright E2E tests for documents and RBAC.
+- Updated CI workflow with documents tests.
+- Vercel deploy: NO. Phase 8.1: NOT STARTED. Mobile: DEFERRED.
+
+### 2026-06-24
+
+- Phase 7 Finance & P&L: **Completed and Deployed**.
+- Fixed 4 Playwright CI failures:
+  - Added `data-testid="finance-pnl-section"` and `data-testid="finance-pnl-summary"` to `FinancePage.tsx`
+  - Added `<PageHeader title="Overview" />` to `DashboardPage.tsx`
+  - Moved docs routes before vehicle-compliance routes in `backend/src/app.ts` to fix Swagger UI auth intercept
+- Verified Swagger/OpenAPI locally: 121 endpoints documented, all tags covered.
+- CI Gate passed on `phase-7-finance-pnl` branch (run 28100862663).
+- PR #23 merged to main (commit `13e233c`).
+- Frontend deployed via Vercel CLI: https://web-virid-ten-53.vercel.app
+- Post-merge smoke test: 98 Playwright tests pass, RBAC enforced (driver/viewer cannot see Finance).
+- Created `docs/PHASE_7_MERGE_DEPLOY_EVIDENCE.md` with full deployment evidence.
+- Phase 7.1 not started. Mobile deferred.
 
 ### 2026-06-23
 

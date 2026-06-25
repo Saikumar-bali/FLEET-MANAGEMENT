@@ -28,7 +28,11 @@ const REQUIRED_PATHS: Record<string, string[]> = {
     'POST /assets/{id}/assign', 'POST /assets/{id}/return', 'POST /assets/{id}/transfer',
     'POST /assets/{id}/mark-damaged', 'POST /assets/{id}/mark-lost',
   ],
-  'Documents': ['GET /documents', 'POST /documents', 'PATCH /documents/{id}', 'DELETE /documents/{id}'],
+  'Documents': [
+    'GET /documents', 'POST /documents/upload', 'GET /documents/{id}', 'PUT /documents/{id}',
+    'DELETE /documents/{id}', 'GET /documents/{id}/view', 'GET /documents/{id}/download',
+    'POST /documents/{id}/verify', 'POST /documents/{id}/archive',
+  ],
   'Trips': [
     'GET /trips', 'POST /trips', 'GET /trips/{id}', 'PATCH /trips/{id}',
     'POST /trips/{id}/schedule', 'POST /trips/{id}/start', 'POST /trips/{id}/complete',

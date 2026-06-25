@@ -50,7 +50,10 @@ type RequestOptions = RequestInit & {
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
+
+  if (!(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (options.token) {
     headers.set('Authorization', `Bearer ${options.token}`);
@@ -492,41 +495,62 @@ export function markAssetLost(
 // Documents
 export function getDocuments(
   token: string,
-  params?: { entityType?: string; entityId?: string; documentType?: string },
+  params?: Record<string, string>,
 ) {
   const query = new URLSearchParams();
-  if (params?.entityType) query.set('entityType', params.entityType);
-  if (params?.entityId) query.set('entityId', params.entityId);
-  if (params?.documentType) query.set('documentType', params.documentType);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) query.set(key, value);
+    });
+  }
   const qs = query.toString();
   return request<PaginatedResponse<DocumentRecord>>(`/documents${qs ? `?${qs}` : ''}`, { token });
 }
 
-export function createDocument(
+export function getDocument(token: string, documentId: string) {
+  return request<DocumentRecord>(`/documents/${documentId}`, { token });
+}
+
+export function uploadDocument(
   token: string,
-  payload: {
-    entityType: 'VEHICLE' | 'DRIVER' | 'ASSET';
-    entityId: string;
-    documentType: string;
-    documentNumber?: string;
-    expiryDate?: string;
-    fileUrl?: string;
-    fileName?: string;
-    mimeType?: string;
-    sizeBytes?: number;
-  },
+  formData: FormData,
 ) {
-  return request<DocumentRecord>('/documents', {
+  const headers = new Headers();
+  headers.set('Authorization', `Bearer ${token}`);
+  return request<DocumentRecord>('/documents/upload', {
     method: 'POST',
+    headers,
+    body: formData,
+  });
+}
+
+export function downloadDocument(token: string, documentId: string) {
+  return request<{ url: string; document: DocumentRecord }>(`/documents/${documentId}/download`, { token });
+}
+
+export function viewDocument(token: string, documentId: string) {
+  return request<{ url: string; document: DocumentRecord }>(`/documents/${documentId}/view`, { token });
+}
+
+export function updateDocumentMetadata(token: string, documentId: string, payload: Record<string, unknown>) {
+  return request<DocumentRecord>(`/documents/${documentId}`, {
+    method: 'PUT',
     body: JSON.stringify(payload),
     token,
   });
 }
 
-export function updateDocument(token: string, documentId: string, payload: Partial<DocumentRecord>) {
-  return request<DocumentRecord>(`/documents/${documentId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
+export function verifyDocument(token: string, documentId: string, verificationStatus: string, notes?: string) {
+  return request<DocumentRecord>(`/documents/${documentId}/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ verificationStatus, notes }),
+    token,
+  });
+}
+
+export function archiveDocument(token: string, documentId: string) {
+  return request<DocumentRecord>(`/documents/${documentId}/archive`, {
+    method: 'POST',
     token,
   });
 }
@@ -677,6 +701,7 @@ export function getFuelEntry(token: string, id: string) { return request<FuelRec
 export function createFuelEntry(token: string, payload: Record<string, unknown>) { return request<FuelRecord>('/fuel', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function updateFuelEntry(token: string, id: string, payload: Record<string, unknown>) { return request<FuelRecord>(`/fuel/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
 export function fuelAction(token: string, id: string, action: string) { return request<FuelRecord>(`/fuel/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+export function extractReceipt(token: string, payload: { storageKey: string; mimeType: string }) { return request<any>('/fuel/extract-receipt', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function getExpenses(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<ExpenseRecord>>(`/expenses${q ? `?${q}` : ''}`, { token }); }
 export function getExpense(token: string, id: string) { return request<ExpenseRecord>(`/expenses/${id}`, { token }); }
 export function createExpense(token: string, payload: Record<string, unknown>) { return request<ExpenseRecord>('/expenses', { method: 'POST', body: JSON.stringify(payload), token }); }
