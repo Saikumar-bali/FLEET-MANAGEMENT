@@ -139,7 +139,7 @@ export async function updateFuel(id: string, input: Partial<FuelInput>, canAppro
     entryMode: input.entryMode ?? existing.entryMode,
     quantityLiters: input.quantityLiters !== undefined ? input.quantityLiters : existing.quantityLiters != null ? Number(existing.quantityLiters) : null,
     pricePerLiter: input.pricePerLiter !== undefined ? input.pricePerLiter : existing.pricePerLiter != null ? Number(existing.pricePerLiter) : null,
-    totalAmount: input.totalAmount !== undefined ? input.totalAmount : Number(existing.totalAmount),
+    totalAmount: input.totalAmount !== undefined ? input.totalAmount : (input.quantityLiters !== undefined || input.pricePerLiter !== undefined) ? undefined : Number(existing.totalAmount),
     stationName: input.stationName !== undefined ? input.stationName : existing.stationName,
     receiptNumber: input.receiptNumber !== undefined ? input.receiptNumber : existing.receiptNumber,
     paymentMode: input.paymentMode !== undefined ? input.paymentMode : existing.paymentMode,
