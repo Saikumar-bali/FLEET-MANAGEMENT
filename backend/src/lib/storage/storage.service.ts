@@ -1,6 +1,7 @@
 import * as path from 'path';
 import type { StorageProvider, StorageConfig } from './storage.types';
 import { LocalStorageProvider } from './local-storage.provider';
+import { S3StorageProvider } from './s3-storage.provider';
 
 let storageInstance: StorageProvider | null = null;
 
@@ -23,6 +24,10 @@ export function getStorageProvider(): StorageProvider {
   const config = getStorageConfig();
 
   switch (config.provider) {
+    case 's3':
+    case 'r2':
+      storageInstance = new S3StorageProvider(config);
+      break;
     case 'local':
     default:
       storageInstance = new LocalStorageProvider(config.localPath!);
