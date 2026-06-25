@@ -19,6 +19,7 @@
     "test:rbac-finance-negative": "ts-node scripts/rbac-finance-negative-test.ts",
     "test:documents": "ts-node scripts/documents-workflow-test.ts",
     "test:rbac-documents-negative": "ts-node scripts/rbac-documents-negative-test.ts",
+    "test:fuel-receipts": "ts-node scripts/fuel-receipt-workflow-test.ts",
     "repair:rbac-finance": "ts-node scripts/repair-rbac-finance-permissions.ts",
     "seed:api": "ts-node scripts/api-seed.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",

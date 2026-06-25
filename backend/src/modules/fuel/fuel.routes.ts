@@ -17,4 +17,5 @@ router.post('/:id/approve', requirePermission('fuel_approve'), validateRequest({
 router.post('/:id/reject', requirePermission('fuel_approve'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.rejectFuelController));
 router.post('/:id/cancel', requirePermission('fuel_delete'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.cancelFuelController));
 router.delete('/:id', requirePermission('fuel_delete'), validateRequest({ params: v.fuelIdParamsSchema, body: v.fuelActionSchema }), asyncHandler(c.cancelFuelController));
+router.post('/extract-receipt', requirePermission('fuel_create'), asyncHandler(c.extractReceiptController));
 export default router;

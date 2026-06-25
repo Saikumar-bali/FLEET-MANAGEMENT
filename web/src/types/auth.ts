@@ -303,11 +303,16 @@ export type FuelRecord = WorkflowRelated & {
   fuelDate: string;
   odometerReading: number | null;
   fuelType: string;
-  quantityLiters: number;
-  pricePerLiter: number;
+  entryMode: 'QUICK_AMOUNT' | 'FULL_DETAILS' | 'RECEIPT_ASSISTED';
+  quantityLiters: number | null;
+  pricePerLiter: number | null;
   totalAmount: number;
   stationName: string | null;
   receiptNumber: string | null;
+  paymentMode: string | null;
+  extractionStatus: string;
+  extractionConfidence: number | null;
+  documents?: Array<{ id: string; title: string; documentType: string; originalFileName: string }>;
 };
 export type ExpenseRecord = WorkflowRelated & {
   category: string;

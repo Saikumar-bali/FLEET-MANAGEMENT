@@ -255,7 +255,22 @@ enum LinkedEntityType {
   TRIP_BILLING
   MAINTENANCE_REQUEST
   REPAIR
+  FUEL_ENTRY
   GENERAL
+}
+
+enum FuelEntryMode {
+  QUICK_AMOUNT
+  FULL_DETAILS
+  RECEIPT_ASSISTED
+}
+
+enum ExtractionStatus {
+  NOT_REQUIRED
+  PENDING
+  EXTRACTED
+  CONFIRMED
+  FAILED
 }
 
 enum DocumentStatus {
@@ -493,30 +508,36 @@ enum RepairStatus {
 }
 
 model FuelEntry {
-  id               String               @id @default(cuid())
-  vehicleId        String               @map("vehicle_id")
-  tripId           String?              @map("trip_id")
-  driverId         String?              @map("driver_id")
-  fuelDate         DateTime             @map("fuel_date")
-  odometerReading  Int?                 @map("odometer_reading")
-  fuelType         String               @map("fuel_type")
-  quantityLiters   Decimal              @map("quantity_liters") @db.Decimal(12, 3)
-  pricePerLiter    Decimal              @map("price_per_liter") @db.Decimal(12, 2)
-  totalAmount      Decimal              @map("total_amount") @db.Decimal(14, 2)
-  stationName      String?              @map("station_name")
-  receiptNumber    String?              @map("receipt_number")
-  notes            String?
-  status           WorkflowRecordStatus @default(DRAFT)
-  createdById      String?              @map("created_by")
-  approvedById     String?              @map("approved_by")
-  approvedAt       DateTime?            @map("approved_at")
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
-  vehicle          Vehicle              @relation(fields: [vehicleId], references: [id])
-  trip             Trip?                @relation(fields: [tripId], references: [id])
-  driver           Driver?              @relation(fields: [driverId], references: [id])
-  createdBy        User?                @relation("FuelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  approvedBy       User?                @relation("FuelApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  id                   String               @id @default(cuid())
+  vehicleId            String               @map("vehicle_id")
+  tripId               String?              @map("trip_id")
+  driverId             String?              @map("driver_id")
+  fuelDate             DateTime             @map("fuel_date")
+  odometerReading      Int?                 @map("odometer_reading")
+  fuelType             String               @map("fuel_type")
+  entryMode            FuelEntryMode        @default(FULL_DETAILS) @map("entry_mode")
+  quantityLiters       Decimal?             @map("quantity_liters") @db.Decimal(12, 3)
+  pricePerLiter        Decimal?             @map("price_per_liter") @db.Decimal(12, 2)
+  totalAmount          Decimal              @map("total_amount") @db.Decimal(14, 2)
+  stationName          String?              @map("station_name")
+  receiptNumber        String?              @map("receipt_number")
+  paymentMode          String?              @map("payment_mode")
+  extractionStatus     ExtractionStatus     @default(NOT_REQUIRED) @map("extraction_status")
+  extractionConfidence Decimal?             @map("extraction_confidence") @db.Decimal(5, 4)
+  extractionRawText    String?              @map("extraction_raw_text") @db.Text
+  notes                String?
+  status               WorkflowRecordStatus @default(DRAFT)
+  createdById          String?              @map("created_by")
+  approvedById         String?              @map("approved_by")
+  approvedAt           DateTime?            @map("approved_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  vehicle              Vehicle              @relation(fields: [vehicleId], references: [id])
+  trip                 Trip?                @relation(fields: [tripId], references: [id])
+  driver               Driver?              @relation(fields: [driverId], references: [id])
+  createdBy            User?                @relation("FuelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy           User?                @relation("FuelApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  documents            Document[]           @relation("FuelLinkedDocuments")
 
   @@index([vehicleId, fuelDate])
   @@index([tripId])
@@ -584,6 +605,7 @@ model Document {
   tripBillingId           String?                  @map("trip_billing_id")
   maintenanceRequestId    String?                  @map("maintenance_request_id")
   repairId                String?                  @map("repair_id")
+  fuelEntryId             String?                  @map("fuel_entry_id")
 
   issueDate               DateTime?                @map("issue_date")
   expiryDate              DateTime?                @map("expiry_date")
@@ -611,6 +633,7 @@ model Document {
   tripBilling             TripBilling?             @relation(fields: [tripBillingId], references: [id])
   maintenanceRequest      MaintenanceRequest?      @relation(fields: [maintenanceRequestId], references: [id])
   repair                  Repair?                  @relation(fields: [repairId], references: [id])
+  fuelEntry               FuelEntry?               @relation("FuelLinkedDocuments", fields: [fuelEntryId], references: [id], onDelete: SetNull)
 
   @@index([documentNumber])
   @@index([documentType])
@@ -625,6 +648,7 @@ model Document {
   @@index([uploadedById])
   @@index([documentStatus])
   @@index([verificationStatus])
+  @@index([fuelEntryId])
   @@index([createdAt])
   @@map("documents")
 }

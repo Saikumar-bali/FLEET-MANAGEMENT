@@ -701,6 +701,7 @@ export function getFuelEntry(token: string, id: string) { return request<FuelRec
 export function createFuelEntry(token: string, payload: Record<string, unknown>) { return request<FuelRecord>('/fuel', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function updateFuelEntry(token: string, id: string, payload: Record<string, unknown>) { return request<FuelRecord>(`/fuel/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token }); }
 export function fuelAction(token: string, id: string, action: string) { return request<FuelRecord>(`/fuel/${id}/${action}`, { method: 'POST', body: '{}', token }); }
+export function extractReceipt(token: string, payload: { storageKey: string; mimeType: string }) { return request<any>('/fuel/extract-receipt', { method: 'POST', body: JSON.stringify(payload), token }); }
 export function getExpenses(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<ExpenseRecord>>(`/expenses${q ? `?${q}` : ''}`, { token }); }
 export function getExpense(token: string, id: string) { return request<ExpenseRecord>(`/expenses/${id}`, { token }); }
 export function createExpense(token: string, payload: Record<string, unknown>) { return request<ExpenseRecord>('/expenses', { method: 'POST', body: JSON.stringify(payload), token }); }

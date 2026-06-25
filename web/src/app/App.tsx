@@ -20,6 +20,7 @@ import { TripsPage } from '../pages/TripsPage';
 import { TripDetailPage } from '../pages/TripDetailPage';
 import { WorkflowListPage } from '../pages/WorkflowListPage';
 import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
+import { FuelEntryPage } from '../pages/FuelEntryPage';
 import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
@@ -66,7 +67,7 @@ function App() {
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['fuel_view']} />}>
                   <Route path="/fuel" element={<WorkflowListPage kind="fuel" />} />
-                  <Route path="/fuel/:id" element={<WorkflowDetailPage kind="fuel" />} />
+                  <Route path="/fuel/:id" element={<FuelEntryPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['expense_view']} />}>
                   <Route path="/expenses" element={<WorkflowListPage kind="expense" />} />

@@ -71,6 +71,7 @@ export async function listDocuments(query: DocumentListQuery) {
   if (query.tripId) where.tripId = query.tripId;
   if (query.customerId) where.customerId = query.customerId;
   if (query.vendorId) where.vendorId = query.vendorId;
+  if (query.fuelEntryId) where.fuelEntryId = query.fuelEntryId;
   if (query.status) where.documentStatus = query.status as any;
   if (query.verificationStatus) where.verificationStatus = query.verificationStatus as any;
   if (query.uploadedById) where.uploadedById = query.uploadedById;
@@ -134,7 +135,15 @@ export async function getDocumentById(id: string) {
     throw new AppError('Document not found', 404);
   }
 
-  return doc;
+  let fileUrl: string | null = null;
+  try {
+    const storage = getStorageProvider();
+    fileUrl = await storage.getSignedViewUrl(doc.storageKey, doc.mimeType);
+  } catch {
+    // signed URL generation failed — fileUrl stays null
+  }
+
+  return { ...doc, fileUrl };
 }
 
 export async function uploadDocument(
@@ -164,6 +173,10 @@ export async function uploadDocument(
   if (input.vendorId) {
     const exists = await prisma.vendor.findUnique({ where: { id: input.vendorId } });
     if (!exists) throw new AppError('Vendor not found', 400);
+  }
+  if (input.fuelEntryId) {
+    const exists = await prisma.fuelEntry.findUnique({ where: { id: input.fuelEntryId } });
+    if (!exists) throw new AppError('Fuel entry not found', 400);
   }
 
   const storage = getStorageProvider();
@@ -220,6 +233,7 @@ export async function uploadDocument(
       tripBillingId: input.tripBillingId || null,
       maintenanceRequestId: input.maintenanceRequestId || null,
       repairId: input.repairId || null,
+      fuelEntryId: input.fuelEntryId || null,
       issueDate: input.issueDate ? new Date(input.issueDate) : null,
       expiryDate: input.expiryDate ? new Date(input.expiryDate) : null,
       tags,

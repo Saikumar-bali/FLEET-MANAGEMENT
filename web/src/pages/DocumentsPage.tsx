@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getDocuments, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument, verifyDocument } from '../services/api';
+import { getDocuments, getDocument, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument, verifyDocument } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { DocumentRecord } from '../types/auth';
@@ -45,6 +45,7 @@ export function DocumentsPage() {
       else if (activeTab === 'trips') params.linkedEntityType = 'TRIP';
       else if (activeTab === 'compliance') params.documentCategory = 'COMPLIANCE';
       else if (activeTab === 'finance') params.documentCategory = 'FINANCE';
+      else if (activeTab === 'fuelbills') params.documentType = 'FUEL_BILL';
       else if (activeTab === 'expiring') {
         const d = new Date();
         d.setDate(d.getDate() + 30);
@@ -129,6 +130,7 @@ export function DocumentsPage() {
     { key: 'trips', label: 'Trips' },
     { key: 'compliance', label: 'Compliance' },
     { key: 'finance', label: 'Finance' },
+    { key: 'fuelbills', label: 'Fuel Bills' },
     { key: 'expiring', label: 'Expiring Soon' },
     { key: 'archived', label: 'Archived' },
   ];
@@ -181,7 +183,17 @@ export function DocumentsPage() {
         ) : (
           <DocumentTable
             documents={documents}
-            onView={(doc) => { setPreviewDoc(doc); setPreviewOpen(true); }}
+            onView={async (doc) => {
+              if (!auth.accessToken) return;
+              try {
+                const res = await getDocument(auth.accessToken, doc.id);
+                if (res.data) setPreviewDoc(res.data);
+                else setPreviewDoc(doc);
+              } catch {
+                setPreviewDoc(doc);
+              }
+              setPreviewOpen(true);
+            }}
             onDownload={handleDownload}
             onArchive={auth.hasPermission('documents_archive') ? handleArchive : undefined}
             onDelete={auth.hasPermission('documents_delete') ? handleDelete : undefined}

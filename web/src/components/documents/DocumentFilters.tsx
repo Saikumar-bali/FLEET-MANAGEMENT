@@ -21,6 +21,28 @@ const EXPIRY_OPTIONS = [
   { label: 'Expiring in 30 days', value: '30' },
   { label: 'Expiring in 90 days', value: '90' },
 ];
+const DOC_TYPES = [
+  { label: 'All Types', value: '' },
+  { label: 'Vehicle RC', value: 'VEHICLE_RC' },
+  { label: 'Insurance', value: 'VEHICLE_INSURANCE' },
+  { label: 'Permit', value: 'VEHICLE_PERMIT' },
+  { label: 'Fitness', value: 'VEHICLE_FITNESS' },
+  { label: 'PUC', value: 'VEHICLE_PUC' },
+  { label: 'Road Tax', value: 'ROAD_TAX' },
+  { label: 'FASTAG', value: 'FASTAG' },
+  { label: 'AIS140 GPS', value: 'AIS140_GPS' },
+  { label: 'License', value: 'DRIVER_LICENSE' },
+  { label: 'ID Proof', value: 'DRIVER_ID_PROOF' },
+  { label: 'POD', value: 'TRIP_POD' },
+  { label: 'Challan', value: 'TRIP_CHALLAN' },
+  { label: 'LR', value: 'TRIP_LR' },
+  { label: 'E-Way Bill', value: 'TRIP_EWAY_BILL' },
+  { label: 'Invoice', value: 'INVOICE' },
+  { label: 'Payment Proof', value: 'PAYMENT_PROOF' },
+  { label: 'Fuel Bill', value: 'FUEL_BILL' },
+  { label: 'Expense Bill', value: 'EXPENSE_BILL' },
+  { label: 'General', value: 'GENERAL' },
+];
 
 export function DocumentFilters({ filters, onChange }: Props) {
   const update = (key: keyof FilterState, value: string) => {
@@ -45,6 +67,9 @@ export function DocumentFilters({ filters, onChange }: Props) {
       <div className="doc-toolbar-filters">
         <select value={filters.documentCategory} onChange={(e) => update('documentCategory', e.target.value)} className="doc-toolbar-select">
           {CATEGORIES.map((c) => <option key={c} value={c}>{c || 'All Categories'}</option>)}
+        </select>
+        <select value={filters.documentType} onChange={(e) => update('documentType', e.target.value)} className="doc-toolbar-select">
+          {DOC_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
         <select value={filters.status} onChange={(e) => update('status', e.target.value)} className="doc-toolbar-select">
           {STATUSES.map((s) => <option key={s} value={s}>{s || 'All Statuses'}</option>)}

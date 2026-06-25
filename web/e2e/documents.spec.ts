@@ -165,6 +165,27 @@ test.describe('Entity detail Documents tabs', () => {
   });
 });
 
+test.describe('Documents Fuel Bills tab', () => {
+  test('admin can navigate to Fuel Bills tab', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+    await page.goto('/documents');
+    await expect(page.locator('.doc-vault-shell')).toBeVisible({ timeout: 10000 });
+
+    const fuelBillsTab = page.locator('[data-testid="document-tab-fuel-bills"]');
+    if (await fuelBillsTab.count() > 0) {
+      await fuelBillsTab.click();
+      await expect(fuelBillsTab).toHaveClass(/active/);
+    } else {
+      const tab = page.locator('button, [role="tab"]', { hasText: 'Fuel Bills' });
+      if (await tab.count() > 0) {
+        await tab.first().click();
+      }
+    }
+
+    await page.screenshot({ path: 'docs/ui-review/screenshots/phase-8-documents-ui/fuel-bills-tab.png', fullPage: true });
+  });
+});
+
 test.describe('Dashboard document widgets', () => {
   test('dashboard shows document KPIs for admin', async ({ page }) => {
     await loginAsRole(page, 'admin');

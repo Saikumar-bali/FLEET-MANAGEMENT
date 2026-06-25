@@ -443,6 +443,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           tripId: { type: 'string', nullable: true },
           customerId: { type: 'string', nullable: true },
           vendorId: { type: 'string', nullable: true },
+          fuelEntryId: { type: 'string', nullable: true },
           issueDate: { type: 'string', format: 'date-time', nullable: true },
           expiryDate: { type: 'string', format: 'date-time', nullable: true },
           documentStatus: { type: 'string', enum: ['ACTIVE', 'ARCHIVED', 'DELETED'] },
@@ -473,6 +474,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           issueDate: { type: 'string', format: 'date-time' },
           expiryDate: { type: 'string', format: 'date-time' },
           tags: { type: 'string' },
+          fuelEntryId: { type: 'string', description: 'Optional fuel entry ID to link this document to a fuel entry' },
         },
       },
       DocumentUpdateInput: {
@@ -1213,6 +1215,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
                   issueDate: { type: 'string', format: 'date-time' },
                   expiryDate: { type: 'string', format: 'date-time' },
                   tags: { type: 'string', description: 'Comma-separated tags or JSON array' },
+                  fuelEntryId: { type: 'string', description: 'Optional fuel entry ID to link this document to a fuel entry' },
                 },
               },
             },
@@ -1503,7 +1506,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/fuel': {
       get: { tags: ['Fuel'], summary: 'List fuel entries', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated fuel entries' } } },
-      post: { tags: ['Fuel'], summary: 'Create fuel entry', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'fuelDate', 'fuelType', 'quantityLiters', 'pricePerLiter'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, fuelDate: { type: 'string', format: 'date-time' }, odometerReading: { type: 'integer', minimum: 0 }, fuelType: { type: 'string' }, quantityLiters: { type: 'number', exclusiveMinimum: 0 }, pricePerLiter: { type: 'number', exclusiveMinimum: 0 }, totalAmount: { type: 'number', exclusiveMinimum: 0 }, stationName: { type: 'string' }, receiptNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Fuel entry created' } } },
+      post: { tags: ['Fuel'], summary: 'Create fuel entry', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'fuelDate', 'fuelType', 'entryMode'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, fuelDate: { type: 'string', format: 'date-time' }, odometerReading: { type: 'integer', minimum: 0 }, fuelType: { type: 'string' }, entryMode: { type: 'string', enum: ['QUICK_AMOUNT', 'FULL_DETAILS', 'RECEIPT_ASSISTED'], description: 'QUICK_AMOUNT: only totalAmount required. FULL_DETAILS: quantityLiters and pricePerLiter required, totalAmount auto-calculated. RECEIPT_ASSISTED: OCR-extracted values.' }, quantityLiters: { type: 'number', exclusiveMinimum: 0, nullable: true, description: 'Required when entryMode is FULL_DETAILS. Omitted or null for QUICK_AMOUNT.' }, pricePerLiter: { type: 'number', exclusiveMinimum: 0, nullable: true, description: 'Required when entryMode is FULL_DETAILS. Omitted or null for QUICK_AMOUNT.' }, totalAmount: { type: 'number', exclusiveMinimum: 0, description: 'Required when entryMode is QUICK_AMOUNT. Auto-calculated when entryMode is FULL_DETAILS.' }, paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'CREDIT', 'OTHER'], description: 'Payment method used for the fuel purchase.' }, stationName: { type: 'string' }, receiptNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Fuel entry created' }, '400': { description: 'Validation error (e.g. totalAmount=0 for QUICK_AMOUNT)' } } },
     },
     '/fuel/{id}': {
       get: { tags: ['Fuel'], summary: 'Get fuel entry', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Fuel entry' } } },
@@ -1514,6 +1517,33 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/fuel/{id}/approve': { post: { tags: ['Fuel'], summary: 'Approve fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry approved' } } } },
     '/fuel/{id}/reject': { post: { tags: ['Fuel'], summary: 'Reject fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry rejected' } } } },
     '/fuel/{id}/cancel': { post: { tags: ['Fuel'], summary: 'Cancel fuel entry', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Fuel entry cancelled' } } } },
+    '/fuel/extract-receipt': {
+      post: {
+        tags: ['Fuel'],
+        summary: 'Extract data from fuel receipt',
+        description: 'OCR extraction of fuel receipt data from a stored document. Accepts the storage key and MIME type of the receipt image/PDF.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['storageKey', 'mimeType'],
+                properties: {
+                  storageKey: { type: 'string', description: 'Storage key of the uploaded receipt document' },
+                  mimeType: { type: 'string', description: 'MIME type of the receipt file (e.g. application/pdf, image/jpeg)' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Extraction results with parsed fields' },
+          '400': { description: 'Invalid storage key or extraction failed' },
+        },
+      },
+    },
     '/expenses': {
       get: { tags: ['Expenses'], summary: 'List expenses', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Paginated expenses' } } },
       post: { tags: ['Expenses'], summary: 'Create expense', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['vehicleId', 'category', 'expenseDate', 'amount'], properties: { vehicleId: { type: 'string' }, tripId: { type: 'string' }, driverId: { type: 'string' }, category: { type: 'string' }, expenseDate: { type: 'string', format: 'date-time' }, amount: { type: 'number', exclusiveMinimum: 0 }, vendor: { type: 'string' }, receiptNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Expense created' } } },

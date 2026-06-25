@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { getDocuments, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument, verifyDocument } from '../../services/api';
+import { getDocuments, getDocument, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument, verifyDocument } from '../../services/api';
 import { DocumentTable } from './DocumentTable';
 import { DocumentUploadDrawer } from './DocumentUploadDrawer';
 import { DocumentPreviewDrawer } from './DocumentPreviewDrawer';
@@ -199,7 +199,17 @@ export function LinkedDocumentsPanel({
       ) : (
         <DocumentTable
           documents={documents}
-          onView={(doc) => { setPreviewDoc(doc); setPreviewOpen(true); }}
+          onView={async (doc) => {
+            if (!auth.accessToken) return;
+            try {
+              const res = await getDocument(auth.accessToken, doc.id);
+              if (res.data) setPreviewDoc(res.data);
+              else setPreviewDoc(doc);
+            } catch {
+              setPreviewDoc(doc);
+            }
+            setPreviewOpen(true);
+          }}
           onDownload={handleDownload}
           onArchive={canArchive ? handleArchive : undefined}
           onDelete={canDelete ? handleDelete : undefined}

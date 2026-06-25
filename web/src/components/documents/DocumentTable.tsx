@@ -28,6 +28,36 @@ function formatDate(dateStr: string | null | undefined) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function formatDocType(type: string): string {
+  const map: Record<string, string> = {
+    VEHICLE_RC: 'RC',
+    VEHICLE_INSURANCE: 'Insurance',
+    VEHICLE_PERMIT: 'Permit',
+    VEHICLE_FITNESS: 'Fitness',
+    VEHICLE_PUC: 'PUC',
+    ROAD_TAX: 'Road Tax',
+    FASTAG: 'FASTAG',
+    AIS140_GPS: 'AIS140 GPS',
+    DRIVER_LICENSE: 'License',
+    DRIVER_ID_PROOF: 'ID Proof',
+    TRIP_POD: 'POD',
+    TRIP_CHALLAN: 'Challan',
+    TRIP_LR: 'LR',
+    TRIP_EWAY_BILL: 'E-Way Bill',
+    CUSTOMER_PO: 'PO',
+    INVOICE: 'Invoice',
+    PAYMENT_PROOF: 'Payment Proof',
+    FUEL_BILL: 'Fuel Bill',
+    EXPENSE_BILL: 'Expense Bill',
+    MAINTENANCE_BILL: 'Maintenance Bill',
+    REPAIR_BILL: 'Repair Bill',
+    VENDOR_DOCUMENT: 'Vendor Doc',
+    CUSTOMER_DOCUMENT: 'Customer Doc',
+    GENERAL: 'General',
+  };
+  return map[type] || type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function getLinkedLabel(doc: DocumentRecord) {
   if (doc.vehicle) return doc.vehicle.vehicleNumber;
   if (doc.driver) return doc.driver.name;
@@ -45,6 +75,7 @@ export function DocumentTable({ documents, onView, onDownload, onArchive, onDele
         <thead>
           <tr>
             <th className="doc-th-doc">Document</th>
+            <th className="doc-th-type">Type</th>
             <th className="doc-th-cat">Category</th>
             <th className="doc-th-linked">Linked To</th>
             <th className="doc-th-verify">Verification</th>
@@ -65,6 +96,9 @@ export function DocumentTable({ documents, onView, onDownload, onArchive, onDele
                     <span className="doc-td-sub">{doc.documentNumber || doc.originalFileName}</span>
                   </div>
                 </div>
+              </td>
+              <td className="doc-td-type">
+                <span className="doc-type-pill">{formatDocType(doc.documentType)}</span>
               </td>
               <td className="doc-td-cat">
                 <span className="doc-cat-pill">{doc.documentCategory}</span>
