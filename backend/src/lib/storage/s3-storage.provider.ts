@@ -1,41 +1,93 @@
+import * as crypto from 'crypto';
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { StorageProvider, StorageUploadResult, StorageConfig } from './storage.types';
 
 export class S3StorageProvider implements StorageProvider {
+  private client: S3Client;
   private bucket: string;
-  private region: string;
-  private endpoint?: string;
-  private accessKeyId?: string;
-  private secretAccessKey?: string;
 
   constructor(config: StorageConfig) {
     this.bucket = config.bucket;
-    this.region = config.region || 'us-east-1';
-    this.endpoint = config.endpoint;
-    this.accessKeyId = config.accessKeyId;
-    this.secretAccessKey = config.secretAccessKey;
+    this.client = new S3Client({
+      region: config.region || 'auto',
+      endpoint: config.endpoint,
+      credentials: {
+        accessKeyId: config.accessKeyId || '',
+        secretAccessKey: config.secretAccessKey || '',
+      },
+      forcePathStyle: true,
+    });
   }
 
   async uploadFile(
-    _buffer: Buffer,
-    _key: string,
-    _contentType: string,
+    buffer: Buffer,
+    key: string,
+    contentType: string,
   ): Promise<StorageUploadResult> {
-    throw new Error('S3 upload not implemented. Configure AWS SDK and implement.');
+    const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+
+    return {
+      storageKey: key,
+      storageBucket: this.bucket,
+      storageProvider: 's3',
+      fileSizeBytes: buffer.length,
+      mimeType: contentType,
+      checksumSha256: checksum,
+    };
   }
 
-  async getSignedViewUrl(_key: string, _contentType: string): Promise<string> {
-    throw new Error('S3 signed URL not implemented. Configure AWS SDK and implement.');
+  async getSignedViewUrl(key: string, _contentType: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    return getSignedUrl(this.client, command, { expiresIn: 3600 });
   }
 
-  async getDownloadUrl(_key: string, _contentType: string): Promise<string> {
-    throw new Error('S3 download URL not implemented. Configure AWS SDK and implement.');
+  async getDownloadUrl(key: string, _contentType: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    return getSignedUrl(this.client, command, { expiresIn: 3600 });
   }
 
-  async deleteFile(_key: string): Promise<void> {
-    throw new Error('S3 delete not implemented. Configure AWS SDK and implement.');
+  async deleteFile(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
+    );
   }
 
-  async fileExists(_key: string): Promise<boolean> {
-    throw new Error('S3 fileExists not implemented. Configure AWS SDK and implement.');
+  async fileExists(key: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
