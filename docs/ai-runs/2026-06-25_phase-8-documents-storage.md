@@ -55,7 +55,7 @@
 
 ### Security
 - **CRITICAL: Hardcoded R2 credentials found in backend/scripts/r2-test.ts**
-  - Endpoint: `https://c60476ef1ffb10e731c1a6aec612af6e.r2.cloudflarestorage.com`
+  - Endpoint: `https://<REDACTED>.r2.cloudflarestorage.com`
   - Access Key: exposed
   - Secret Key: exposed
   - **ACTION REQUIRED: Rotate/revoke the R2 API token immediately in Cloudflare Dashboard**
