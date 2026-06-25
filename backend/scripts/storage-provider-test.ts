@@ -1,48 +1,51 @@
 import { getStorageProvider } from '../src/lib/storage/storage.service';
 
 async function test() {
-  console.log('Storage provider config:');
-  console.log('  PROVIDER:', process.env.STORAGE_PROVIDER);
-  console.log('  BUCKET:', process.env.STORAGE_BUCKET);
-  console.log('  ENDPOINT:', process.env.STORAGE_ENDPOINT);
+  const provider = process.env.STORAGE_PROVIDER || 'local';
+  console.log('Storage provider test');
+  console.log('  Provider:', provider);
   console.log('');
+
+  if (provider === 's3' || provider === 'r2') {
+    const required = ['STORAGE_BUCKET', 'STORAGE_ENDPOINT', 'STORAGE_ACCESS_KEY_ID', 'STORAGE_SECRET_ACCESS_KEY'];
+    const missing = required.filter((k) => !process.env[k]);
+    if (missing.length > 0) {
+      console.error('Missing required env vars:', missing.join(', '));
+      process.exit(1);
+    }
+    console.log('R2/S3 env vars configured');
+  }
 
   const storage = getStorageProvider();
 
-  // 1. Upload a test PDF
-  const testPdf = Buffer.from('%PDF-1.4 Test fleet document for R2 integration');
+  const testPdf = Buffer.from('%PDF-1.4 Test fleet document for storage integration');
   const testKey = `uploads/test-${Date.now()}.pdf`;
 
-  console.log('1. Uploading test document via storage provider...');
+  console.log('1. Uploading test document...');
   const result = await storage.uploadFile(testPdf, testKey, 'application/pdf');
-  console.log('   OK -', JSON.stringify(result, null, 2));
+  console.log('   Upload passed');
 
-  // 2. Get signed view URL
   console.log('2. Getting signed view URL...');
   const viewUrl = await storage.getSignedViewUrl(result.storageKey, 'application/pdf');
-  console.log(`   OK - ${viewUrl.substring(0, 100)}...`);
+  console.log('   Signed URL generated');
 
-  // 3. Get download URL
   console.log('3. Getting download URL...');
   const downloadUrl = await storage.getDownloadUrl(result.storageKey, 'application/pdf');
-  console.log(`   OK - ${downloadUrl.substring(0, 100)}...`);
+  console.log('   Signed URL generated');
 
-  // 4. Check exists
   console.log('4. Checking file exists...');
   const exists = await storage.fileExists(result.storageKey);
-  console.log(`   OK - exists: ${exists}`);
+  console.log('   File exists:', exists);
 
-  // 5. Delete
   console.log('5. Deleting file...');
   await storage.deleteFile(result.storageKey);
-  console.log('   OK - deleted');
+  console.log('   Delete passed');
 
-  // 6. Verify deleted
   console.log('6. Verifying deletion...');
   const existsAfter = await storage.fileExists(result.storageKey);
-  console.log(`   OK - exists after delete: ${existsAfter}`);
+  console.log('   Exists after delete:', existsAfter);
 
-  console.log('\nFull storage provider test passed!');
+  console.log('\nStorage provider test passed!');
 }
 
 test().catch((e) => {

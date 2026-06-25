@@ -468,18 +468,69 @@ export function DashboardPage() {
                 <Link to="/documents" className="chart-card-link">View all</Link>
               )}
             </div>
-            <div className="dashboard-doc-list">
-              {data!.recentDocuments.map((doc) => (
-                <div key={doc.id} className="dashboard-doc-item">
-                  <div className="dashboard-doc-info">
-                    <span className="dashboard-doc-title">{doc.title}</span>
-                    <span className="dashboard-doc-meta">{doc.documentType.replace(/_/g, ' ')} · {formatFileSize(doc.fileSizeBytes)} · {formatDate(doc.createdAt)}</span>
-                  </div>
-                  <span className={`status-pill status-pill-${doc.verificationStatus === 'VERIFIED' ? 'success' : doc.verificationStatus === 'REJECTED' ? 'danger' : 'warning'}`}>
-                    {doc.verificationStatus}
-                  </span>
-                </div>
-              ))}
+            <div className="doc-table-wrap">
+              <table className="doc-table doc-table-compact">
+                <thead>
+                  <tr>
+                    <th className="doc-th-doc">Document</th>
+                    <th className="doc-th-cat">Category</th>
+                    <th className="doc-th-verify">Verification</th>
+                    <th className="doc-th-size">Size</th>
+                    <th className="doc-th-uploaded">Uploaded</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data!.recentDocuments.slice(0, 5).map((doc) => (
+                    <tr key={doc.id} className="doc-tr">
+                      <td className="doc-td-doc">
+                        <span className="doc-td-title">{doc.title}</span>
+                      </td>
+                      <td className="doc-td-cat">
+                        <span className="doc-cat-pill">{doc.documentCategory}</span>
+                      </td>
+                      <td className="doc-td-verify">
+                        <span className={`doc-verify-badge doc-verify-${doc.verificationStatus.toLowerCase()}`}>
+                          {doc.verificationStatus}
+                        </span>
+                      </td>
+                      <td className="doc-td-size">{formatFileSize(doc.fileSizeBytes)}</td>
+                      <td className="doc-td-uploaded">{formatDate(doc.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {data && data.expiringDocuments30 > 0 && auth.hasPermission('documents_view') && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Expiring Documents</h3>
+                <p className="chart-card-subtitle">Documents expiring within 30 days</p>
+              </div>
+              <Link to="/documents" className="chart-card-link">View all</Link>
+            </div>
+            <div className="dashboard-expiring-cta">
+              <span className="dashboard-expiring-count">{data.expiringDocuments30}</span>
+              <span className="dashboard-expiring-label">documents need attention</span>
+            </div>
+          </div>
+        )}
+
+        {data && data.unverifiedDocuments > 0 && auth.hasPermission('documents_verify') && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Pending Verification</h3>
+                <p className="chart-card-subtitle">Documents awaiting review</p>
+              </div>
+              <Link to="/documents" className="chart-card-link">Review now</Link>
+            </div>
+            <div className="dashboard-expiring-cta">
+              <span className="dashboard-expiring-count">{data.unverifiedDocuments}</span>
+              <span className="dashboard-expiring-label">documents pending verification</span>
             </div>
           </div>
         )}

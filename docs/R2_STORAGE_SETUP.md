@@ -95,6 +95,19 @@ Add the same variables in Vercel Dashboard → Settings → Environment Variable
 - Signed URLs expire after `STORAGE_SIGNED_URL_EXPIRES_SECONDS` (default 900s).
 - RBAC is enforced before generating signed URLs — unauthorized users cannot access files.
 
+### ⚠️ CRITICAL: If R2 Keys Were Committed
+
+**If R2 access keys or secret keys were ever committed to the repository:**
+
+1. **Immediately rotate/revoke** the exposed R2 API token in Cloudflare Dashboard → R2 → Manage R2 API Tokens
+2. **Delete the compromised token** and create a new one
+3. **Update `.env`** with the new credentials
+4. **Check git history** — even if removed from HEAD, credentials remain in historical commits
+5. **Consider re-issuing all API tokens** if the exposure duration is unknown
+6. **Scan the repository** for any other potential credential leaks
+
+Never re-use credentials that were exposed in version control.
+
 ## Bucket Structure
 
 Files are stored with keys like:
@@ -112,3 +125,22 @@ documents/2026-07/DOC-20260701-C3D4.jpg
 | `r2` | S3StorageProvider | Cloudflare R2 |
 
 Both `s3` and `r2` use the same `S3StorageProvider` since R2 is S3-compatible.
+
+## R2 Smoke Test
+
+A safe smoke test script is available that reads credentials only from environment variables and never prints secrets:
+
+```bash
+# Set env vars first
+export STORAGE_PROVIDER=r2
+export STORAGE_BUCKET=...
+export STORAGE_ENDPOINT=...
+export STORAGE_ACCESS_KEY_ID=...
+export STORAGE_SECRET_ACCESS_KEY=...
+export STORAGE_REGION=auto
+
+# Run smoke test (not in CI)
+npx ts-node backend/scripts/r2-smoke-test.ts
+```
+
+Do NOT run this script in CI. CI uses local storage only.

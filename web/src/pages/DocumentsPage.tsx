@@ -1,15 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getDocuments, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument } from '../services/api';
+import { getDocuments, downloadDocument, archiveDocument, deleteDocument as apiDeleteDocument, verifyDocument } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { DocumentRecord } from '../types/auth';
 import { PageShell } from '../components/ui/PageShell';
-import { PageHeader } from '../components/PageHeader';
-import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
-import { DocumentUploadPanel } from '../components/documents/DocumentUploadPanel';
-import { DocumentList } from '../components/documents/DocumentList';
+import { DocumentKpiStrip } from '../components/documents/DocumentKpiStrip';
+import { DocumentTable } from '../components/documents/DocumentTable';
 import { DocumentFilters } from '../components/documents/DocumentFilters';
-import { DocumentPreviewModal } from '../components/documents/DocumentPreviewModal';
+import { DocumentUploadDrawer } from '../components/documents/DocumentUploadDrawer';
+import { DocumentPreviewDrawer } from '../components/documents/DocumentPreviewDrawer';
 
 export function DocumentsPage() {
   const auth = useAuth();
@@ -18,6 +17,7 @@ export function DocumentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<DocumentRecord | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [filters, setFilters] = useState({
     search: '',
@@ -60,18 +60,14 @@ export function DocumentsPage() {
     }
   }, [auth.accessToken, filters, activeTab, showToast]);
 
-  useEffect(() => {
-    loadDocuments();
-  }, [loadDocuments]);
+  useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
   const handleDownload = async (doc: DocumentRecord) => {
     if (!auth.accessToken) return;
     try {
       const result = await downloadDocument(auth.accessToken, doc.id);
       const data = result.data as any;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
+      if (data?.url) window.open(data.url, '_blank');
       showToast('Download started', 'success');
     } catch {
       showToast('Download failed', 'error');
@@ -90,8 +86,7 @@ export function DocumentsPage() {
   };
 
   const handleDelete = async (doc: DocumentRecord) => {
-    if (!auth.accessToken) return;
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!auth.accessToken || !confirm('Delete this document permanently?')) return;
     try {
       await apiDeleteDocument(auth.accessToken, doc.id);
       showToast('Document deleted', 'success');
@@ -100,6 +95,32 @@ export function DocumentsPage() {
       showToast('Delete failed', 'error');
     }
   };
+
+  const handleVerify = async (doc: DocumentRecord, status: string) => {
+    if (!auth.accessToken) return;
+    try {
+      await verifyDocument(auth.accessToken, doc.id, status);
+      showToast(`Document ${status.toLowerCase()}`, 'success');
+      loadDocuments();
+    } catch {
+      showToast('Verify failed', 'error');
+    }
+  };
+
+  const allDocs = documents;
+  const activeDocs = allDocs.filter((d) => d.documentStatus === 'ACTIVE');
+  const pendingCount = activeDocs.filter((d) => d.verificationStatus === 'PENDING').length;
+  const expiredCount = activeDocs.filter((d) => d.expiryDate && new Date(d.expiryDate) < new Date()).length;
+  const archivedCount = allDocs.filter((d) => d.documentStatus === 'ARCHIVED').length;
+  const totalSize = activeDocs.reduce((sum, d) => sum + (d.fileSizeBytes || 0), 0);
+
+  const kpis = [
+    { label: 'Total Documents', value: activeDocs.length, variant: 'default' as const },
+    { label: 'Pending Verification', value: pendingCount, variant: pendingCount > 0 ? 'warning' as const : 'default' as const },
+    { label: 'Expiring Soon', value: expiredCount, variant: expiredCount > 0 ? 'danger' as const : 'default' as const },
+    { label: 'Archived', value: archivedCount, variant: 'default' as const },
+    { label: 'Storage Used', value: totalSize < 1024 * 1024 ? `${(totalSize / 1024).toFixed(0)} KB` : `${(totalSize / (1024 * 1024)).toFixed(1)} MB`, variant: 'accent' as const },
+  ];
 
   const tabs = [
     { key: 'all', label: 'All' },
@@ -114,65 +135,83 @@ export function DocumentsPage() {
 
   return (
     <PageShell>
-      <PageHeader
-        title="Documents Vault"
-        description="Store and manage fleet documents, compliance files, invoices, proofs, and trip papers."
-        actions={
-          <button
-            onClick={() => setShowUpload(!showUpload)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            data-testid="upload-document-button"
-          >
-            {showUpload ? 'Close Upload' : 'Upload Document'}
-          </button>
-        }
-      />
-
-      {showUpload && (
-        <div className="mb-6">
-          <DocumentUploadPanel
-            onSuccess={() => { setShowUpload(false); loadDocuments(); }}
-            onCancel={() => setShowUpload(false)}
-          />
+      <div className="doc-vault-shell">
+        <div className="doc-vault-header">
+          <div className="doc-vault-header-text">
+            <h1 className="doc-vault-title">Documents Vault</h1>
+            <p className="doc-vault-subtitle">Fleet files, compliance papers, invoices, proofs, driver and vehicle records.</p>
+          </div>
+          {auth.hasPermission('documents_upload') && (
+            <button className="doc-btn doc-btn-primary" onClick={() => setShowUpload(true)} data-testid="upload-document-button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+              Upload Document
+            </button>
+          )}
         </div>
-      )}
 
-      <div className="mb-4">
-        <DocumentFilters filters={filters} onChange={setFilters} />
-      </div>
+        <DocumentKpiStrip items={kpis} />
 
-      <div className="mb-4 border-b border-gray-200">
-        <nav className="flex gap-1 -mb-px" data-testid="document-tabs">
+        <div className="doc-vault-tabs" data-testid="document-tabs">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`doc-tab ${activeTab === tab.key ? 'doc-tab-active' : ''}`}
               data-testid={`document-tab-${tab.key}`}
             >
               {tab.label}
             </button>
           ))}
-        </nav>
-      </div>
+        </div>
 
-      {isLoading ? (
-        <LoadingSkeleton rows={6} />
-      ) : (
-        <DocumentList
-          documents={documents}
-          onView={setPreviewDoc}
-          onDownload={handleDownload}
-          onArchive={handleArchive}
-          onDelete={handleDelete}
+        <DocumentFilters filters={filters} onChange={setFilters} />
+
+        {isLoading ? (
+          <div className="doc-loading-skeleton">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="doc-skeleton-row">
+                <div className="doc-skeleton-icon" />
+                <div className="doc-skeleton-lines">
+                  <div className="doc-skeleton-line doc-skeleton-line-long" />
+                  <div className="doc-skeleton-line doc-skeleton-line-short" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <DocumentTable
+            documents={documents}
+            onView={(doc) => { setPreviewDoc(doc); setPreviewOpen(true); }}
+            onDownload={handleDownload}
+            onArchive={auth.hasPermission('documents_archive') ? handleArchive : undefined}
+            onDelete={auth.hasPermission('documents_delete') ? handleDelete : undefined}
+            onVerify={auth.hasPermission('documents_verify') ? handleVerify : undefined}
+            canArchive={auth.hasPermission('documents_archive')}
+            canDelete={auth.hasPermission('documents_delete')}
+            canVerify={auth.hasPermission('documents_verify')}
+          />
+        )}
+
+        <DocumentUploadDrawer
+          open={showUpload}
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => { setShowUpload(false); loadDocuments(); }}
         />
-      )}
 
-      <DocumentPreviewModal document={previewDoc} onClose={() => setPreviewDoc(null)} />
+        <DocumentPreviewDrawer
+          document={previewDoc}
+          open={previewOpen}
+          onClose={() => { setPreviewOpen(false); setPreviewDoc(null); }}
+          onDownload={handleDownload}
+          onVerify={auth.hasPermission('documents_verify') ? handleVerify : undefined}
+          onArchive={auth.hasPermission('documents_archive') ? handleArchive : undefined}
+          onDelete={auth.hasPermission('documents_delete') ? handleDelete : undefined}
+          canDownload={auth.hasPermission('documents_download')}
+          canVerify={auth.hasPermission('documents_verify')}
+          canArchive={auth.hasPermission('documents_archive')}
+          canDelete={auth.hasPermission('documents_delete')}
+        />
+      </div>
     </PageShell>
   );
 }

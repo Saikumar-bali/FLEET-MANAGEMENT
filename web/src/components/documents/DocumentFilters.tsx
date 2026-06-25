@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 type FilterState = {
   search: string;
   documentCategory: string;
@@ -25,66 +23,37 @@ const EXPIRY_OPTIONS = [
 ];
 
 export function DocumentFilters({ filters, onChange }: Props) {
-  const [local, setLocal] = useState(filters);
-
   const update = (key: keyof FilterState, value: string) => {
-    const next = { ...local, [key]: value };
-    setLocal(next);
-    onChange(next);
+    onChange({ ...filters, [key]: value });
   };
 
   return (
-    <div className="flex flex-wrap gap-3 items-end">
-      <div className="flex-1 min-w-[200px]">
-        <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
+    <div className="doc-toolbar">
+      <div className="doc-toolbar-search">
+        <svg className="doc-toolbar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
         <input
           type="text"
-          value={local.search}
+          value={filters.search}
           onChange={(e) => update('search', e.target.value)}
           placeholder="Search documents..."
-          className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="doc-toolbar-search-input"
         />
       </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
-        <select
-          value={local.documentCategory}
-          onChange={(e) => update('documentCategory', e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c || 'All Categories'}</option>
-          ))}
+      <div className="doc-toolbar-filters">
+        <select value={filters.documentCategory} onChange={(e) => update('documentCategory', e.target.value)} className="doc-toolbar-select">
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c || 'All Categories'}</option>)}
         </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-        <select
-          value={local.status}
-          onChange={(e) => update('status', e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s || 'All Statuses'}</option>
-          ))}
+        <select value={filters.status} onChange={(e) => update('status', e.target.value)} className="doc-toolbar-select">
+          {STATUSES.map((s) => <option key={s} value={s}>{s || 'All Statuses'}</option>)}
         </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Verification</label>
-        <select
-          value={local.verificationStatus}
-          onChange={(e) => update('verificationStatus', e.target.value)}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          {VERIFICATION_STATUSES.map((v) => (
-            <option key={v} value={v}>{v || 'All'}</option>
-          ))}
+        <select value={filters.verificationStatus} onChange={(e) => update('verificationStatus', e.target.value)} className="doc-toolbar-select">
+          {VERIFICATION_STATUSES.map((v) => <option key={v} value={v}>{v || 'All Verification'}</option>)}
         </select>
-      </div>
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Expiry</label>
         <select
-          value={local.expiringBefore}
+          value={filters.expiringBefore ? String(Math.ceil((new Date(filters.expiringBefore).getTime() - Date.now()) / 86400000)) : ''}
           onChange={(e) => {
             const days = e.target.value;
             if (days) {
@@ -95,11 +64,9 @@ export function DocumentFilters({ filters, onChange }: Props) {
               update('expiringBefore', '');
             }
           }}
-          className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="doc-toolbar-select"
         >
-          {EXPIRY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value === '' ? '' : new Date(Date.now() + Number(o.value) * 86400000).toISOString()}>{o.label}</option>
-          ))}
+          {EXPIRY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
     </div>
