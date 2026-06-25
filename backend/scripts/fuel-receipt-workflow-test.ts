@@ -63,8 +63,8 @@ async function main() {
   const blob = new Blob(['test pdf content'], { type: 'application/pdf' });
   form.append('file', blob, 'test-receipt.pdf');
   form.append('title', `TEST-E2E Fuel Receipt ${stamp}`);
-  form.append('documentType', 'RECEIPT');
-  form.append('documentCategory', 'FUEL');
+  form.append('documentType', 'FUEL_BILL');
+  form.append('documentCategory', 'FINANCE');
   form.append('fuelEntryId', quickId);
   const uploadR = await fetch(`${api}/documents/upload`, { method: 'POST', headers: { Authorization: `Bearer ${admin}` }, body: form });
   const uploadText = await uploadR.text();
