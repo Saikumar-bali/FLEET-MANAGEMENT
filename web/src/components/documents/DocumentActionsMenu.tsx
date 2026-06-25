@@ -16,18 +16,23 @@ type Props = {
 export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchive, onDelete, onVerify, canArchive, canDelete, canVerify }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
 
   const calcPos = useCallback(() => {
     if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const menuHeight = 220;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUp = spaceBelow < menuHeight;
-    setPos({
-      top: openUp ? rect.top - menuHeight - 4 : rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
+    const btnRect = ref.current.getBoundingClientRect();
+    let top = btnRect.bottom + 4;
+    const right = window.innerWidth - btnRect.right;
+
+    if (menuRef.current) {
+      const menuRect = menuRef.current.getBoundingClientRect();
+      if (top + menuRect.height > window.innerHeight - 8) {
+        top = btnRect.top - menuRect.height - 4;
+      }
+    }
+
+    setPos({ top, right });
   }, []);
 
   useEffect(() => {
@@ -36,7 +41,7 @@ export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchi
     };
     if (open) {
       document.addEventListener('mousedown', handler);
-      calcPos();
+      requestAnimationFrame(calcPos);
       window.addEventListener('resize', calcPos);
     }
     return () => {
@@ -55,7 +60,7 @@ export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchi
         </svg>
       </button>
       {open && (
-        <div className="doc-action-menu-dropdown" style={{ position: 'fixed', top: pos.top, right: pos.right }}>
+        <div ref={menuRef} className="doc-action-menu-dropdown" style={{ position: 'fixed', top: pos.top, right: pos.right }}>
           <button className="doc-action-menu-item" onClick={() => { setOpen(false); onView(doc); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             View
