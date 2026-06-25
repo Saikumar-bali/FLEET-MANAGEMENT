@@ -63,6 +63,9 @@ jobs:
           npm run dev &
           for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
         working-directory: backend
+      - name: Seed test data
+        run: npm run seed:api
+        working-directory: backend
       - run: npm run test:documents
         working-directory: backend
       - run: npm run test:rbac-documents-negative
