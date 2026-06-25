@@ -10,6 +10,8 @@ type FilterState = {
 type Props = {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
+  onUpload?: () => void;
+  canUpload?: boolean;
 };
 
 const CATEGORIES = ['', 'VEHICLE', 'DRIVER', 'TRIP', 'COMPLIANCE', 'FINANCE', 'MAINTENANCE', 'REPAIR', 'VENDOR', 'CUSTOMER', 'GENERAL'];
@@ -44,7 +46,7 @@ const DOC_TYPES = [
   { label: 'General', value: 'GENERAL' },
 ];
 
-export function DocumentFilters({ filters, onChange }: Props) {
+export function DocumentFilters({ filters, onChange, onUpload, canUpload }: Props) {
   const update = (key: keyof FilterState, value: string) => {
     onChange({ ...filters, [key]: value });
   };
@@ -94,6 +96,12 @@ export function DocumentFilters({ filters, onChange }: Props) {
           {EXPIRY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
+      {canUpload && (
+        <button className="doc-btn doc-btn-primary doc-toolbar-upload" onClick={onUpload} data-testid="upload-document-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+          Upload
+        </button>
+      )}
     </div>
   );
 }

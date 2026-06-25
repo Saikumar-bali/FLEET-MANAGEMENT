@@ -138,19 +138,6 @@ export function DocumentsPage() {
   return (
     <PageShell>
       <div className="doc-vault-shell">
-        <div className="doc-vault-header">
-          <div className="doc-vault-header-text">
-            <h1 className="doc-vault-title">Documents Vault</h1>
-            <p className="doc-vault-subtitle">Fleet files, compliance papers, invoices, proofs, driver and vehicle records.</p>
-          </div>
-          {auth.hasPermission('documents_upload') && (
-            <button className="doc-btn doc-btn-primary" onClick={() => setShowUpload(true)} data-testid="upload-document-button">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-              Upload Document
-            </button>
-          )}
-        </div>
-
         <DocumentKpiStrip items={kpis} />
 
         <div className="doc-vault-tabs" data-testid="document-tabs">
@@ -166,7 +153,7 @@ export function DocumentsPage() {
           ))}
         </div>
 
-        <DocumentFilters filters={filters} onChange={setFilters} />
+        <DocumentFilters filters={filters} onChange={setFilters} onUpload={() => setShowUpload(true)} canUpload={auth.hasPermission('documents_upload')} />
 
         {isLoading ? (
           <div className="doc-loading-skeleton">
