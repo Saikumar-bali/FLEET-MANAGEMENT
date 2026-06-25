@@ -66,8 +66,8 @@ async function main() {
   }
 
   const DOCUMENT_ENDPOINTS = [
-    { method: 'GET', path: '/api/v1/documents' },
-    { method: 'POST', path: '/api/v1/documents/upload' },
+    { method: 'GET', path: '/api/v1/documents', deniedRoles: ['driver', 'assistant_driver'] },
+    { method: 'POST', path: '/api/v1/documents/upload', deniedRoles: ['driver', 'assistant_driver', 'viewer'] },
   ];
 
   let totalTests = 0;
@@ -84,20 +84,30 @@ async function main() {
 
     for (const ep of DOCUMENT_ENDPOINTS) {
       totalTests++;
+      const shouldDeny = ep.deniedRoles.includes(tc.roleKey);
       let status: number;
       if (ep.method === 'GET') {
         status = await apiGet(`${API_BASE}${ep.path}`, token);
       } else {
         status = await apiPost(`${API_BASE}${ep.path}`, token, {});
       }
-      const isForbidden = status === 403;
       const label = `${ep.method} ${ep.path.replace('/api/v1/', '')}`;
-      if (isForbidden || status === 401) {
-        console.log(`  PASS ${label} -> ${status}`);
-        passedTests++;
+      if (shouldDeny) {
+        if (status === 403 || status === 401) {
+          console.log(`  PASS ${label} -> ${status} (denied as expected)`);
+          passedTests++;
+        } else {
+          console.log(`  FAIL ${label} -> ${status} (expected 403/401 for ${tc.roleKey})`);
+          failedTests++;
+        }
       } else {
-        console.log(`  FAIL ${label} -> ${status} (expected 403)`);
-        failedTests++;
+        if (status === 200) {
+          console.log(`  PASS ${label} -> ${status} (allowed as expected)`);
+          passedTests++;
+        } else {
+          console.log(`  FAIL ${label} -> ${status} (expected 200 for ${tc.roleKey})`);
+          failedTests++;
+        }
       }
     }
   }
