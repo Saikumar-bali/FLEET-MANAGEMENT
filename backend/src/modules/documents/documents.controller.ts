@@ -64,6 +64,7 @@ export async function uploadDocumentController(req: Request, res: Response) {
     tripBillingId: req.body.tripBillingId,
     maintenanceRequestId: req.body.maintenanceRequestId,
     repairId: req.body.repairId,
+    fuelEntryId: req.body.fuelEntryId,
     issueDate: req.body.issueDate,
     expiryDate: req.body.expiryDate,
     tags: req.body.tags,

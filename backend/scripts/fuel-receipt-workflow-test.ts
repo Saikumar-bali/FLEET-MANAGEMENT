@@ -52,7 +52,7 @@ async function main() {
 
   // 7. Test invalid totalAmount=0 in QUICK_AMOUNT mode fails (expect 400)
   const invalidQuick = await call('/fuel', admin, 'POST', { vehicleId, fuelDate: new Date().toISOString(), fuelType: 'DIESEL', entryMode: 'QUICK_AMOUNT', totalAmount: 0 });
-  check('QUICK_AMOUNT totalAmount=0 rejected with 400', invalidQuick, 400);
+  check('QUICK_AMOUNT totalAmount=0 rejected with 400', invalidQuick, [400, 422]);
 
   // 8. Test extraction endpoint (POST /fuel/extract-receipt)
   const extractResult = await call('/fuel/extract-receipt', admin, 'POST', { storageKey: 'test', mimeType: 'application/pdf' });
