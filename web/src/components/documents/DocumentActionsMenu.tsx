@@ -21,7 +21,13 @@ export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchi
   const calcPos = useCallback(() => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
-    setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    const menuHeight = 220;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < menuHeight;
+    setPos({
+      top: openUp ? rect.top - menuHeight - 4 : rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
   }, []);
 
   useEffect(() => {
