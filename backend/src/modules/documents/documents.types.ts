@@ -1,0 +1,60 @@
+export type DocumentUploadInput = {
+  title: string;
+  description?: string;
+  documentType: string;
+  documentCategory: string;
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+  vehicleId?: string;
+  driverId?: string;
+  tripId?: string;
+  customerId?: string;
+  vendorId?: string;
+  financeTransactionId?: string;
+  tripBillingId?: string;
+  maintenanceRequestId?: string;
+  repairId?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  tags?: string;
+  metadata?: string;
+};
+
+export type DocumentUpdateInput = {
+  title?: string;
+  description?: string;
+  documentType?: string;
+  documentCategory?: string;
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+  vehicleId?: string;
+  driverId?: string;
+  tripId?: string;
+  customerId?: string;
+  vendorId?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  tags?: string;
+  metadata?: string;
+};
+
+export type DocumentListQuery = {
+  search?: string;
+  documentType?: string;
+  documentCategory?: string;
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+  vehicleId?: string;
+  driverId?: string;
+  tripId?: string;
+  customerId?: string;
+  vendorId?: string;
+  status?: string;
+  verificationStatus?: string;
+  expiringBefore?: string;
+  uploadedById?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+};

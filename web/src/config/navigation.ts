@@ -168,6 +168,15 @@ export const navigationItems: NavigationItem[] = [
     pageDescription: 'Financial management, P&L, transactions, vendors, customers, billing, and payments',
   },
   {
+    label: 'Documents',
+    path: '/documents',
+    description: 'Manage fleet documents and files',
+    permissionKeys: ['documents_view'],
+    section: 'MANAGE',
+    pageTitle: 'Documents Vault',
+    pageDescription: 'Store and manage fleet documents, compliance files, invoices, proofs, and trip papers',
+  },
+  {
     label: 'Roles',
     path: '/roles',
     description: 'Roles and permission assignments',

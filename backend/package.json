@@ -17,6 +17,8 @@
     "test:finance": "ts-node scripts/finance-workflow-test.ts",
     "test:rbac-finance": "ts-node scripts/rbac-finance-audit.ts",
     "test:rbac-finance-negative": "ts-node scripts/rbac-finance-negative-test.ts",
+    "test:documents": "ts-node scripts/documents-workflow-test.ts",
+    "test:rbac-documents-negative": "ts-node scripts/rbac-documents-negative-test.ts",
     "repair:rbac-finance": "ts-node scripts/repair-rbac-finance-permissions.ts",
     "seed:api": "ts-node scripts/api-seed.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
@@ -35,6 +37,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@types/bcryptjs": "^2.4.6",
+    "@types/multer": "^2.1.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -42,6 +45,7 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
+    "multer": "^2.2.0",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"

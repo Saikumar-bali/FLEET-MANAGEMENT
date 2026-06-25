@@ -55,6 +55,8 @@ model User {
   financeTxnsUpdated       FinanceTransaction[]        @relation("FinanceTxnUpdatedBy")
   paymentsCreated          PaymentRecord[]             @relation("PaymentRecordCreatedBy")
   financeHistoryCreated    FinanceHistory[]            @relation("FinanceHistoryCreatedBy")
+  uploadedDocuments        Document[]                  @relation("DocumentUploadedBy")
+  verifiedDocuments        Document[]                  @relation("DocumentVerifiedBy")
 
   @@map("users")
 }
@@ -203,6 +205,71 @@ enum DocumentEntityType {
   ASSET
 }
 
+enum DocumentType {
+  VEHICLE_RC
+  VEHICLE_INSURANCE
+  VEHICLE_PERMIT
+  VEHICLE_FITNESS
+  VEHICLE_PUC
+  ROAD_TAX
+  FASTAG
+  AIS140_GPS
+  DRIVER_LICENSE
+  DRIVER_ID_PROOF
+  TRIP_POD
+  TRIP_CHALLAN
+  TRIP_LR
+  TRIP_EWAY_BILL
+  CUSTOMER_PO
+  INVOICE
+  PAYMENT_PROOF
+  FUEL_BILL
+  EXPENSE_BILL
+  MAINTENANCE_BILL
+  REPAIR_BILL
+  VENDOR_DOCUMENT
+  CUSTOMER_DOCUMENT
+  GENERAL
+}
+
+enum DocumentCategory {
+  VEHICLE
+  DRIVER
+  TRIP
+  COMPLIANCE
+  FINANCE
+  MAINTENANCE
+  REPAIR
+  VENDOR
+  CUSTOMER
+  GENERAL
+}
+
+enum LinkedEntityType {
+  VEHICLE
+  DRIVER
+  TRIP
+  CUSTOMER
+  VENDOR
+  FINANCE_TRANSACTION
+  TRIP_BILLING
+  MAINTENANCE_REQUEST
+  REPAIR
+  GENERAL
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 model Vehicle {
   id              String        @id @default(cuid())
   vehicleNumber   String        @unique @map("vehicle_number")
@@ -241,6 +308,7 @@ model Vehicle {
   gpsDeviceDetail       VehicleGpsDeviceDetail?
   complianceDocuments   VehicleComplianceDocument[]
   complianceHistory     VehicleComplianceHistory[]
+  documents             Document[]
 
   @@map("vehicles")
 }
@@ -267,6 +335,7 @@ model Driver {
   repairs           Repair[]
   financeTransactions FinanceTransaction[]
   tripBillings        TripBilling[]
+  documents           Document[]
 
   @@map("drivers")
 }
@@ -376,6 +445,7 @@ model Trip {
   repairs           Repair[]
   billing           TripBilling?
   financeTransactions FinanceTransaction[]
+  documents           Document[]
 
   @@index([vehicleId, status])
   @@index([driverId, status])
@@ -486,20 +556,76 @@ model Expense {
 }
 
 model Document {
-  id             String             @id @default(cuid())
-  entityType     DocumentEntityType @map("entity_type")
-  entityId       String             @map("entity_id")
-  documentType   String             @map("document_type")
-  documentNumber String?            @map("document_number")
-  expiryDate     DateTime?          @map("expiry_date")
-  fileUrl        String?            @map("file_url")
-  fileName       String?            @map("file_name")
-  mimeType       String?            @map("mime_type")
-  sizeBytes      Int?               @map("size_bytes")
-  uploadedById   String?            @map("uploaded_by_id")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  id                      String                   @id @default(cuid())
+  documentNumber          String?                  @unique @map("document_number")
+  title                   String
+  description             String?
+  originalFileName        String                   @map("original_file_name")
+  storedFileName          String                   @map("stored_file_name")
+  mimeType                String                   @map("mime_type")
+  fileSizeBytes           Int                      @map("file_size_bytes")
+  fileExtension           String?                  @map("file_extension")
+  storageProvider         String                   @default("local") @map("storage_provider")
+  storageBucket           String?                  @map("storage_bucket")
+  storageKey              String                   @map("storage_key")
+  checksumSha256          String?                  @map("checksum_sha256")
 
+  documentType            DocumentType             @map("document_type")
+  documentCategory        DocumentCategory         @map("document_category")
+  linkedEntityType        LinkedEntityType?        @map("linked_entity_type")
+  linkedEntityId          String?                  @map("linked_entity_id")
+
+  vehicleId               String?                  @map("vehicle_id")
+  driverId                String?                  @map("driver_id")
+  tripId                  String?                  @map("trip_id")
+  customerId              String?                  @map("customer_id")
+  vendorId                String?                  @map("vendor_id")
+  financeTransactionId    String?                  @map("finance_transaction_id")
+  tripBillingId           String?                  @map("trip_billing_id")
+  maintenanceRequestId    String?                  @map("maintenance_request_id")
+  repairId                String?                  @map("repair_id")
+
+  issueDate               DateTime?                @map("issue_date")
+  expiryDate              DateTime?                @map("expiry_date")
+  documentStatus          DocumentStatus           @default(ACTIVE) @map("document_status")
+  verificationStatus      DocumentVerificationStatus @default(PENDING) @map("verification_status")
+  tags                    String[]                 @default([])
+  metadata                Json?
+
+  uploadedById            String                   @map("uploaded_by_id")
+  verifiedById            String?                  @map("verified_by_id")
+  verifiedAt              DateTime?                @map("verified_at")
+  archivedAt              DateTime?                @map("archived_at")
+  deletedAt               DateTime?                @map("deleted_at")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+
+  uploadedBy              User                     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  verifiedBy              User?                    @relation("DocumentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  vehicle                 Vehicle?                 @relation(fields: [vehicleId], references: [id])
+  driver                  Driver?                  @relation(fields: [driverId], references: [id])
+  trip                    Trip?                    @relation(fields: [tripId], references: [id])
+  customer                Customer?                @relation(fields: [customerId], references: [id])
+  vendor                  Vendor?                  @relation(fields: [vendorId], references: [id])
+  financeTransaction      FinanceTransaction?      @relation(fields: [financeTransactionId], references: [id])
+  tripBilling             TripBilling?             @relation(fields: [tripBillingId], references: [id])
+  maintenanceRequest      MaintenanceRequest?      @relation(fields: [maintenanceRequestId], references: [id])
+  repair                  Repair?                  @relation(fields: [repairId], references: [id])
+
+  @@index([documentNumber])
+  @@index([documentType])
+  @@index([documentCategory])
+  @@index([linkedEntityType, linkedEntityId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([tripId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([expiryDate])
+  @@index([uploadedById])
+  @@index([documentStatus])
+  @@index([verificationStatus])
+  @@index([createdAt])
   @@map("documents")
 }
 
@@ -528,6 +654,7 @@ model MaintenanceRequest {
   driver          Driver?              @relation(fields: [driverId], references: [id])
   createdBy       User?                @relation("MaintenanceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   approvedBy      User?                @relation("MaintenanceApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  documents       Document[]
 
   @@index([vehicleId, requestDate])
   @@index([tripId])
@@ -560,6 +687,7 @@ model Repair {
   driver          Driver?       @relation(fields: [driverId], references: [id])
   createdBy       User?         @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   closedBy        User?         @relation("RepairClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  documents       Document[]
 
   @@index([vehicleId, repairDate])
   @@index([tripId])
@@ -1029,6 +1157,7 @@ model Vendor {
   updatedAt           DateTime             @updatedAt @map("updated_at")
   transactions        FinanceTransaction[]
   payments            PaymentRecord[]
+  documents           Document[]
 
   @@map("vendors")
 }
@@ -1060,6 +1189,7 @@ model Customer {
   tripBillings        TripBilling[]
   transactions        FinanceTransaction[]
   payments            PaymentRecord[]
+  documents           Document[]
 
   @@map("customers")
 }
@@ -1110,6 +1240,7 @@ model TripBilling {
   createdBy                User?                    @relation("TripBillingCreatedBy", fields: [createdById], references: [id])
   updatedBy                User?                    @relation("TripBillingUpdatedBy", fields: [updatedById], references: [id])
   payments                 PaymentRecord[]
+  documents                Document[]
 
   @@unique([tripId])
   @@index([customerId])
@@ -1155,6 +1286,7 @@ model FinanceTransaction {
   createdBy         User?                  @relation("FinanceTxnCreatedBy", fields: [createdById], references: [id])
   updatedBy         User?                  @relation("FinanceTxnUpdatedBy", fields: [updatedById], references: [id])
   payments          PaymentRecord[]
+  documents         Document[]
 
   @@index([transactionDate])
   @@index([vehicleId])

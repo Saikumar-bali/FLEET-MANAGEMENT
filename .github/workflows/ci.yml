@@ -231,5 +231,11 @@ jobs:
       - name: Local backend finance API tests
         run: npm --prefix backend run test:finance
 
+      - name: Local backend documents API tests
+        run: npm --prefix backend run test:documents
+
+      - name: Local backend documents RBAC negative tests
+        run: npm --prefix backend run test:rbac-documents-negative
+
       - name: Local Playwright tests
         run: npm --prefix web run test:e2e

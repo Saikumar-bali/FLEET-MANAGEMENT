@@ -23,6 +23,7 @@ import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
 import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
+import { DocumentsPage } from '../pages/DocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { lazy, Suspense } from 'react';
 
@@ -81,6 +82,9 @@ function App() {
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_compliance_view']} />}>
                   <Route path="/compliance" element={<ComplianceDashboardPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['documents_view']} />}>
+                  <Route path="/documents" element={<DocumentsPage />} />
                 </Route>
                 <Route element={<FinanceLayout />}>
                   <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>
