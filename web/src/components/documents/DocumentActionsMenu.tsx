@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { DocumentRecord } from '../../types/auth';
 
 type Props = {
@@ -16,14 +16,28 @@ type Props = {
 export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchive, onDelete, onVerify, canArchive, canDelete, canVerify }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
+
+  const calcPos = useCallback(() => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    if (open) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+    if (open) {
+      document.addEventListener('mousedown', handler);
+      calcPos();
+      window.addEventListener('resize', calcPos);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('resize', calcPos);
+    };
+  }, [open, calcPos]);
 
   return (
     <div className="doc-action-menu" ref={ref}>
@@ -35,7 +49,7 @@ export function DocumentActionsMenu({ document: doc, onView, onDownload, onArchi
         </svg>
       </button>
       {open && (
-        <div className="doc-action-menu-dropdown">
+        <div className="doc-action-menu-dropdown" style={{ position: 'fixed', top: pos.top, right: pos.right }}>
           <button className="doc-action-menu-item" onClick={() => { setOpen(false); onView(doc); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             View

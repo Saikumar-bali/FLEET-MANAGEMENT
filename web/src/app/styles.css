@@ -3803,9 +3803,6 @@ fieldset.form-section {
 }
 
 .doc-action-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
   min-width: 160px;
   background: var(--color-bg-surface, #ffffff);
   border: 1px solid var(--color-border, #dadce0);
