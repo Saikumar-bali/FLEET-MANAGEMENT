@@ -3,9 +3,12 @@
 ## Date: 2026-06-25
 
 ### Storage Approach
-- Provider: Local filesystem (`backend/.storage/uploads/`)
-- Production env vars documented: STORAGE_PROVIDER, STORAGE_BUCKET, STORAGE_REGION, STORAGE_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY
-- CI uses local storage under temp directory
+- Provider: Local filesystem for dev/CI (`backend/.storage/uploads/`), R2/S3 for production
+- R2 bucket: `fleet-documents` created and tested
+- Full S3StorageProvider: PutObject, GetObject, HeadObject, DeleteObject, signed URLs
+- Configurable signed URL expiry via `STORAGE_SIGNED_URL_EXPIRES_SECONDS` (default 900s)
+- CI uses `STORAGE_PROVIDER=local` (set in .github/workflows/ci.yml)
+- R2 credentials must be set in .env: `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_REGION`
 
 ### DB Models Added
 - 5 new enums: DocumentType, DocumentCategory, LinkedEntityType, DocumentStatus, DocumentVerificationStatus

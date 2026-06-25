@@ -23,6 +23,16 @@ export class DashboardService {
       recentTrips,
       recentFuel,
       recentExpenses,
+      totalDocuments,
+      activeDocuments,
+      archivedDocuments,
+      unverifiedDocuments,
+      rejectedDocuments,
+      expiringDocs30,
+      expiredDocs,
+      storageUsageAgg,
+      docsByCategory,
+      recentDocuments,
     ] = await Promise.all([
       prisma.vehicle.count(),
       prisma.vehicle.count({ where: { status: 'AVAILABLE' } }),
@@ -74,6 +84,43 @@ export class DashboardService {
         orderBy: { createdAt: 'desc' },
         select: { id: true, vehicleId: true, category: true, amount: true, notes: true, expenseDate: true },
       }),
+      prisma.document.count({ where: { documentStatus: { not: 'DELETED' } } }),
+      prisma.document.count({ where: { documentStatus: 'ACTIVE' } }),
+      prisma.document.count({ where: { documentStatus: 'ARCHIVED' } }),
+      prisma.document.count({ where: { verificationStatus: 'PENDING', documentStatus: 'ACTIVE' } }),
+      prisma.document.count({ where: { verificationStatus: 'REJECTED', documentStatus: 'ACTIVE' } }),
+      prisma.document.count({
+        where: {
+          documentStatus: 'ACTIVE',
+          expiryDate: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) },
+        },
+      }),
+      prisma.document.count({
+        where: {
+          documentStatus: 'ACTIVE',
+          expiryDate: { lt: now },
+        },
+      }),
+      prisma.document.aggregate({
+        _sum: { fileSizeBytes: true },
+        where: { documentStatus: { not: 'DELETED' } },
+      }),
+      prisma.document.groupBy({
+        by: ['documentCategory'],
+        _count: true,
+        where: { documentStatus: { not: 'DELETED' } },
+      }),
+      prisma.document.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        where: { documentStatus: { not: 'DELETED' } },
+        select: {
+          id: true, title: true, documentType: true, documentCategory: true,
+          fileSizeBytes: true, documentStatus: true, verificationStatus: true,
+          createdAt: true,
+          uploadedBy: { select: { name: true } },
+        },
+      }),
     ]);
 
     const inactiveVehicles = totalVehicles - activeVehicles;
@@ -103,6 +150,19 @@ export class DashboardService {
         ...e,
         amount: Number(e.amount),
       })),
+      totalDocuments,
+      activeDocuments,
+      archivedDocuments,
+      unverifiedDocuments,
+      rejectedDocuments,
+      expiringDocuments30: expiringDocs30,
+      expiredDocuments: expiredDocs,
+      storageUsageBytes: Number(storageUsageAgg._sum?.fileSizeBytes ?? 0),
+      documentsByCategory: docsByCategory.map((d) => ({
+        category: d.documentCategory,
+        count: d._count,
+      })),
+      recentDocuments,
     };
   }
 }

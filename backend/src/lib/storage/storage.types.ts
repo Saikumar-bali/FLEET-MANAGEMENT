@@ -16,7 +16,7 @@ export interface StorageProvider {
 
   getSignedViewUrl(key: string, contentType: string): Promise<string>;
 
-  getDownloadUrl(key: string, contentType: string): Promise<string>;
+  getDownloadUrl(key: string, contentType: string, fileName?: string): Promise<string>;
 
   deleteFile(key: string): Promise<void>;
 
@@ -24,11 +24,13 @@ export interface StorageProvider {
 }
 
 export type StorageConfig = {
-  provider: 'local' | 's3' | 'supabase' | 'r2' | 'vercel_blob';
+  provider: 'local' | 's3' | 'r2';
   bucket: string;
   region?: string;
   endpoint?: string;
   accessKeyId?: string;
   secretAccessKey?: string;
   localPath?: string;
+  publicBaseUrl?: string;
+  signedUrlExpiresSeconds?: number;
 };

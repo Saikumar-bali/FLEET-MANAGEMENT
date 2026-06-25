@@ -45,7 +45,7 @@ export class LocalStorageProvider implements StorageProvider {
     return `file://${filePath}`;
   }
 
-  async getDownloadUrl(key: string, _contentType: string): Promise<string> {
+  async getDownloadUrl(key: string, _contentType: string, _fileName?: string): Promise<string> {
     const filePath = path.join(this.basePath, key);
     if (!fs.existsSync(filePath)) {
       throw new Error('File not found');

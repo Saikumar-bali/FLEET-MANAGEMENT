@@ -3,58 +3,51 @@
 ## Storage
 - [x] StorageProvider interface defined
 - [x] LocalStorageProvider implemented
-- [x] S3StorageProvider stub created
-- [x] Storage service with env-based provider selection
+- [x] S3StorageProvider fully implemented (not stub)
+- [x] Storage service with env-based provider selection (local/s3/r2)
+- [x] Configurable signed URL expiry via STORAGE_SIGNED_URL_EXPIRES_SECONDS
+- [x] Env validation at startup for s3/r2 (throws if required vars missing)
 - [x] `.storage` gitignored
+- [x] @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner installed
+
+## R2 Integration
+- [x] Cloudflare R2 bucket `fleet-documents` created
+- [x] R2 credentials configured in .env
+- [x] R2 provider tested: upload, head, signed URL, delete all pass
+- [x] storage.service.ts routes s3/r2 to S3StorageProvider
+- [x] .env.example updated with all STORAGE_* placeholders
+- [x] docs/R2_STORAGE_SETUP.md created
 
 ## Database
-- [x] New enums added (DocumentType, DocumentCategory, LinkedEntityType, DocumentStatus, DocumentVerificationStatus)
-- [x] Document model rewritten with all required fields
-- [x] Relations added to Vehicle, Driver, Trip, Customer, Vendor, FinanceTransaction, TripBilling, MaintenanceRequest, Repair, User
-- [x] 15 indexes created
-- [x] Migration SQL file created
-- [x] Schema validates
+- [x] 5 enums added (DocumentType, DocumentCategory, LinkedEntityType, DocumentStatus, DocumentVerificationStatus)
+- [x] Document model with all required fields, 15 indexes, 10 relations
+- [x] Migration applied successfully
 
 ## RBAC
-- [x] 7 new document permissions added
+- [x] 7 document permissions (view/upload/download/update/delete/verify/archive)
 - [x] Default role assignments configured
-- [x] Driver/assistant_driver restricted from global documents
-- [x] Viewer limited to read-only
-- [x] Backend enforces permissions on all endpoints
+- [x] DB seeded with document permissions
 
 ## Backend
-- [x] Multer installed for file uploads
-- [x] File type validation (PDF, JPEG, PNG, WebP)
-- [x] File size validation (10MB max)
-- [x] Blocked extensions enforced
-- [x] Document number generation (DOC-YYYYMMDD-xxxx)
-- [x] Filename sanitization
-- [x] Upload endpoint with multipart/form-data
-- [x] View/download endpoints with permission checks
-- [x] Verify endpoint
-- [x] Archive endpoint
-- [x] Soft delete (no hard delete)
-- [x] Audit logging on all mutations
-- [x] RBAC enforced on all endpoints
+- [x] 9 endpoints with RBAC
+- [x] Multer file upload (10MB max, PDF/JPEG/PNG/WebP)
+- [x] Linked entity validation (vehicleId/driverId/tripId/customerId/vendorId must exist)
+- [x] Dashboard aggregates: totalDocuments, activeDocuments, unverifiedDocuments, expiringDocuments30, expiredDocuments, storageUsageBytes, documentsByCategory, recentDocuments
 
-## Frontend
-- [x] Documents page with tabs (All, Vehicles, Drivers, Trips, Compliance, Finance, Expiring, Archived)
-- [x] Upload panel with drag-and-drop
-- [x] Document cards with status badges
-- [x] Filters (search, category, status, verification, expiry)
-- [x] Preview modal
-- [x] Download action
-- [x] Archive action
-- [x] Delete action
-- [x] Sidebar navigation item
-- [x] Permission-gated routing
+## Frontend Integration
+- [x] LinkedDocumentsPanel reusable component created
+- [x] Vehicle detail Documents tab: uses LinkedDocumentsPanel with VEHICLE types
+- [x] Driver detail Documents tab: uses LinkedDocumentsPanel with DRIVER types (was placeholder)
+- [x] Trip detail Documents tab: uses LinkedDocumentsPanel with TRIP types (was missing)
+- [x] Dashboard: document KPI cards (Total, Unverified, Expiring, Expired, Archived)
+- [x] Dashboard: Recent Documents table with "View all" link
+- [x] Dashboard: Documents quick link
+- [x] Documents Vault page: tabs, filters, upload panel, cards, preview modal
 
 ## Swagger
-- [x] Document schema updated
-- [x] Upload endpoint documented (multipart/form-data)
-- [x] All 9 endpoints documented
-- [x] Response schemas included
-- [x] Auth requirements specified
+- [x] 9 document endpoints documented
+- [x] Document schema with all fields
+- [x] Multipart upload schema
 
 ## Tests
 - [x] documents-workflow-test.ts
@@ -63,20 +56,16 @@
 - [x] rbac-documents.spec.ts (Playwright)
 
 ## CI
-- [x] Documents API tests added
-- [x] Documents RBAC tests added
-- [x] CI uses local storage (no production credentials needed)
+- [x] CI uses STORAGE_PROVIDER=local
+- [x] CI runs documents and RBAC tests
+- [x] CI runs Playwright E2E
 
-## Security
-- [x] No real .env committed
-- [x] No uploaded files committed
-- [x] No storage credentials committed
-- [x] No secrets printed
-- [x] Backend enforces RBAC (not just frontend hiding)
-- [x] No path traversal possible
-- [x] Filenames sanitized
-- [x] Content-Type set correctly
-- [x] Content-Disposition for downloads
+## Verification Commands
+- [x] npm run backend:lint — PASS
+- [x] npm run backend:build — PASS
+- [x] npm --prefix backend run test:api-docs — PASS (126/126)
+- [x] npm run web:lint — PASS
+- [x] npm run web:build — PASS
 
 ## NOT Started
 - [ ] Phase 8.1 OCR/AI Extraction

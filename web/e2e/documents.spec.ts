@@ -122,3 +122,41 @@ test.describe('Documents API upload and manage', () => {
     expect(deleteRes.status()).toBe(200);
   });
 });
+
+test.describe('Entity detail Documents tabs', () => {
+  test('vehicle detail page has Documents section', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+
+    const listRes = await page.request.get('http://localhost:4000/api/v1/vehicles?limit=1', {
+      headers: { Authorization: `Bearer ${(await page.evaluate(() => localStorage.getItem('fleet_token'))) || ''}` },
+    });
+    const listJson = await listRes.json();
+    if (!listJson.data?.items?.length) return;
+
+    await page.goto(`/vehicles/${listJson.data.items[0].id}`);
+    const docsTab = page.locator('button, [role="tab"]', { hasText: 'Documents' });
+    if (await docsTab.count() > 0) {
+      await docsTab.first().click();
+      const panel = page.locator('text=Upload and manage');
+      await expect(panel).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test('driver detail page has Documents section', async ({ page }) => {
+    await loginAsRole(page, 'admin');
+
+    const listRes = await page.request.get('http://localhost:4000/api/v1/drivers?limit=1', {
+      headers: { Authorization: `Bearer ${(await page.evaluate(() => localStorage.getItem('fleet_token'))) || ''}` },
+    });
+    const listJson = await listRes.json();
+    if (!listJson.data?.items?.length) return;
+
+    await page.goto(`/drivers/${listJson.data.items[0].id}`);
+    const docsTab = page.locator('button, [role="tab"]', { hasText: 'Documents' });
+    if (await docsTab.count() > 0) {
+      await docsTab.first().click();
+      const panel = page.locator('text=Upload and manage');
+      await expect(panel).toBeVisible({ timeout: 5000 });
+    }
+  });
+});

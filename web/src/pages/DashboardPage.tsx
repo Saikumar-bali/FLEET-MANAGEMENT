@@ -26,6 +26,13 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function formatFileSize(bytes: number) {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function pieChartColor(index: number): string {
   const colors = ['#1a73e8', '#1e8e3e', '#e37400', '#d93025', '#8ab4f8', '#81c995', '#fdd663', '#f28b82'];
   return colors[index % colors.length];
@@ -287,6 +294,44 @@ export function DashboardPage() {
         />
       </KpiGrid>
 
+      <KpiGrid columns={5}>
+        <StatCard
+          label="Total Documents"
+          value={data?.totalDocuments ?? 0}
+          subtext={`${formatFileSize(data?.storageUsageBytes ?? 0)} stored`}
+          variant="default"
+          icon={<TruckIcon />}
+        />
+        <StatCard
+          label="Unverified Docs"
+          value={data?.unverifiedDocuments ?? 0}
+          subtext="Awaiting verification"
+          variant={data && data.unverifiedDocuments > 0 ? 'warning' : 'muted'}
+          icon={<ShieldIcon />}
+        />
+        <StatCard
+          label="Expiring in 30d"
+          value={data?.expiringDocuments30 ?? 0}
+          subtext="Documents expiring soon"
+          variant={data && data.expiringDocuments30 > 0 ? 'warning' : 'muted'}
+          icon={<ClockIcon />}
+        />
+        <StatCard
+          label="Expired Documents"
+          value={data?.expiredDocuments ?? 0}
+          subtext="Requires renewal"
+          variant={data && data.expiredDocuments > 0 ? 'danger' : 'muted'}
+          icon={<AlertIcon />}
+        />
+        <StatCard
+          label="Archived Docs"
+          value={data?.archivedDocuments ?? 0}
+          subtext="Inactive documents"
+          variant="muted"
+          icon={<WrenchIcon />}
+        />
+      </KpiGrid>
+
       <div className="dashboard-chart-grid">
         <ChartCard title="Vehicle Status" subtitle="Active vs inactive vehicles">
           <ResponsiveContainer width="100%" height={260}>
@@ -411,6 +456,33 @@ export function DashboardPage() {
             <DataTable columns={expenseColumns} data={expenseRows} keyExtractor={(r) => r.id} />
           </div>
         )}
+
+        {(data?.recentDocuments ?? []).length > 0 && (
+          <div className="dashboard-table-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-card-title">Recent Documents</h3>
+                <p className="chart-card-subtitle">Latest uploaded files</p>
+              </div>
+              {auth.hasPermission('documents_view') && (
+                <Link to="/documents" className="chart-card-link">View all</Link>
+              )}
+            </div>
+            <div className="dashboard-doc-list">
+              {data!.recentDocuments.map((doc) => (
+                <div key={doc.id} className="dashboard-doc-item">
+                  <div className="dashboard-doc-info">
+                    <span className="dashboard-doc-title">{doc.title}</span>
+                    <span className="dashboard-doc-meta">{doc.documentType.replace(/_/g, ' ')} · {formatFileSize(doc.fileSizeBytes)} · {formatDate(doc.createdAt)}</span>
+                  </div>
+                  <span className={`status-pill status-pill-${doc.verificationStatus === 'VERIFIED' ? 'success' : doc.verificationStatus === 'REJECTED' ? 'danger' : 'warning'}`}>
+                    {doc.verificationStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -455,6 +527,12 @@ export function DashboardPage() {
             <Link to="/finance" className="quick-link-card">
               <strong>Finance</strong>
               <span>Finance management</span>
+            </Link>
+          )}
+          {auth.hasPermission('documents_view') && (
+            <Link to="/documents" className="quick-link-card">
+              <strong>Documents</strong>
+              <span>Manage fleet documents and files</span>
             </Link>
           )}
         </div>

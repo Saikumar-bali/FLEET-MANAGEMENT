@@ -12,9 +12,11 @@ import type { StorageProvider, StorageUploadResult, StorageConfig } from './stor
 export class S3StorageProvider implements StorageProvider {
   private client: S3Client;
   private bucket: string;
+  private expiresInSeconds: number;
 
   constructor(config: StorageConfig) {
     this.bucket = config.bucket;
+    this.expiresInSeconds = config.signedUrlExpiresSeconds || 900;
     this.client = new S3Client({
       region: config.region || 'auto',
       endpoint: config.endpoint,
@@ -57,15 +59,16 @@ export class S3StorageProvider implements StorageProvider {
       Bucket: this.bucket,
       Key: key,
     });
-    return getSignedUrl(this.client, command, { expiresIn: 3600 });
+    return getSignedUrl(this.client, command, { expiresIn: this.expiresInSeconds });
   }
 
-  async getDownloadUrl(key: string, _contentType: string): Promise<string> {
+  async getDownloadUrl(key: string, _contentType: string, fileName?: string): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
+      ...(fileName ? { ResponseContentDisposition: `attachment; filename="${fileName}"` } : {}),
     });
-    return getSignedUrl(this.client, command, { expiresIn: 3600 });
+    return getSignedUrl(this.client, command, { expiresIn: this.expiresInSeconds });
   }
 
   async deleteFile(key: string): Promise<void> {

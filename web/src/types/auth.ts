@@ -752,6 +752,26 @@ export type DashboardOverview = {
     notes: string | null;
     expenseDate: string;
   }>;
+  totalDocuments: number;
+  activeDocuments: number;
+  archivedDocuments: number;
+  unverifiedDocuments: number;
+  rejectedDocuments: number;
+  expiringDocuments30: number;
+  expiredDocuments: number;
+  storageUsageBytes: number;
+  documentsByCategory: Array<{ category: string; count: number }>;
+  recentDocuments: Array<{
+    id: string;
+    title: string;
+    documentType: string;
+    documentCategory: string;
+    fileSizeBytes: number;
+    documentStatus: string;
+    verificationStatus: string;
+    createdAt: string;
+    uploadedBy: { name: string } | null;
+  }>;
 };
 
 export interface PnlSummary {

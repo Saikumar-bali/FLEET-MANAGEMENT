@@ -19,6 +19,7 @@ import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
+import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
 
 type TripForm = {
   tripType: string;
@@ -56,13 +57,14 @@ const initialForm: TripForm = {
   distanceKm: '',
 };
 
-type SectionTab = 'overview' | 'route' | 'assignment' | 'odometer' | 'history';
+type SectionTab = 'overview' | 'route' | 'assignment' | 'odometer' | 'documents' | 'history';
 
 const sectionTabs: { key: SectionTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'route', label: 'Route' },
   { key: 'assignment', label: 'Assignment' },
   { key: 'odometer', label: 'Odometer' },
+  { key: 'documents', label: 'Documents' },
   { key: 'history', label: 'History' },
 ];
 
@@ -676,6 +678,25 @@ export function TripDetailPage() {
             </div>
           </div>
         )}
+
+        {!isNew && activeSection === 'documents' && trip ? (
+          <div className="card form-section-grid">
+            <LinkedDocumentsPanel
+              linkedEntityType="TRIP"
+              linkedEntityId={trip.id}
+              tripId={trip.id}
+              defaultDocumentCategory="TRIP"
+              allowedDocumentTypes={['TRIP_POD', 'TRIP_CHALLAN', 'TRIP_LR', 'TRIP_EWAY_BILL', 'CUSTOMER_PO', 'INVOICE', 'GENERAL']}
+              title={`Documents — ${trip.tripNumber || trip.id}`}
+              subtitle="Upload and manage trip documents, PODs, challans, and invoices"
+              canUpload={auth.hasPermission('documents_upload')}
+              canDownload={auth.hasPermission('documents_download')}
+              canArchive={auth.hasPermission('documents_archive')}
+              canDelete={auth.hasPermission('documents_delete')}
+              canVerify={auth.hasPermission('documents_verify')}
+            />
+          </div>
+        ) : null}
 
         {!isNew && activeSection === 'history' && (
           <div className="card form-section-grid">

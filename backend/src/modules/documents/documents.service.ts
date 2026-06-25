@@ -145,6 +145,27 @@ export async function uploadDocument(
   validateFileType(file.mimetype, file.originalname);
   validateFileSize(file.size);
 
+  if (input.vehicleId) {
+    const exists = await prisma.vehicle.findUnique({ where: { id: input.vehicleId } });
+    if (!exists) throw new AppError('Vehicle not found', 400);
+  }
+  if (input.driverId) {
+    const exists = await prisma.driver.findUnique({ where: { id: input.driverId } });
+    if (!exists) throw new AppError('Driver not found', 400);
+  }
+  if (input.tripId) {
+    const exists = await prisma.trip.findUnique({ where: { id: input.tripId } });
+    if (!exists) throw new AppError('Trip not found', 400);
+  }
+  if (input.customerId) {
+    const exists = await prisma.customer.findUnique({ where: { id: input.customerId } });
+    if (!exists) throw new AppError('Customer not found', 400);
+  }
+  if (input.vendorId) {
+    const exists = await prisma.vendor.findUnique({ where: { id: input.vendorId } });
+    if (!exists) throw new AppError('Vendor not found', 400);
+  }
+
   const storage = getStorageProvider();
   const docNumber = generateDocumentNumber();
   const safeOriginal = sanitizeFileName(file.originalname);

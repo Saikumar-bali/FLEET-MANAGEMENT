@@ -43,6 +43,7 @@ jobs:
       DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
       DIRECT_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
       CI_DATABASE_URL: postgresql://fleet_ci:fleet_ci_password@localhost:5432/fleet_ci
+      STORAGE_PROVIDER: local
       ADMIN_EMAIL: ci-super-admin@example.invalid
       ADMIN_USERNAME: ${{ secrets.CI_SUPER_ADMIN_IDENTIFIER }}
       ADMIN_PASSWORD: ${{ secrets.CI_SUPER_ADMIN_PASSWORD }}

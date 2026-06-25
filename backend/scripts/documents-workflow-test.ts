@@ -158,6 +158,132 @@ async function main() {
     expect(res.data.data.verificationStatus === 'VERIFIED', 'Verification status not updated');
   });
 
+  console.log('\nLinked Entity Uploads');
+  let vehicleId = '';
+  let driverId = '';
+  let tripId = '';
+
+  await runTest('Fetch first vehicle for linking', async () => {
+    const res = await apiCall('GET', '/api/v1/vehicles?limit=1', token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(res.data.data.items.length > 0, 'No vehicles found');
+    vehicleId = res.data.data.items[0].id;
+  });
+
+  await runTest('Fetch first driver for linking', async () => {
+    const res = await apiCall('GET', '/api/v1/drivers?limit=1', token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(res.data.data.items.length > 0, 'No drivers found');
+    driverId = res.data.data.items[0].id;
+  });
+
+  await runTest('Fetch first trip for linking', async () => {
+    const res = await apiCall('GET', '/api/v1/trips?limit=1', token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(res.data.data.items.length > 0, 'No trips found');
+    tripId = res.data.data.items[0].id;
+  });
+
+  await runTest('Upload document linked to vehicle', async () => {
+    const pdfBuffer = createMinimalPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'vehicle-rc.pdf');
+    formData.append('title', 'Vehicle RC Test');
+    formData.append('documentType', 'VEHICLE_RC');
+    formData.append('documentCategory', 'VEHICLE');
+    formData.append('linkedEntityType', 'VEHICLE');
+    formData.append('vehicleId', vehicleId);
+
+    const res = await apiCall('POST', '/api/v1/documents/upload', token, undefined, formData);
+    expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
+    expect(res.data.data.linkedEntityType === 'VEHICLE', 'linkedEntityType not VEHICLE');
+    expect(res.data.data.vehicleId === vehicleId, 'vehicleId mismatch');
+  });
+
+  await runTest('Upload document linked to driver', async () => {
+    const pdfBuffer = createMinimalPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'driver-license.pdf');
+    formData.append('title', 'Driver License Test');
+    formData.append('documentType', 'DRIVER_LICENSE');
+    formData.append('documentCategory', 'DRIVER');
+    formData.append('linkedEntityType', 'DRIVER');
+    formData.append('driverId', driverId);
+
+    const res = await apiCall('POST', '/api/v1/documents/upload', token, undefined, formData);
+    expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
+    expect(res.data.data.linkedEntityType === 'DRIVER', 'linkedEntityType not DRIVER');
+    expect(res.data.data.driverId === driverId, 'driverId mismatch');
+  });
+
+  await runTest('Upload document linked to trip', async () => {
+    const pdfBuffer = createMinimalPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'trip-pod.pdf');
+    formData.append('title', 'Trip POD Test');
+    formData.append('documentType', 'TRIP_POD');
+    formData.append('documentCategory', 'TRIP');
+    formData.append('linkedEntityType', 'TRIP');
+    formData.append('tripId', tripId);
+
+    const res = await apiCall('POST', '/api/v1/documents/upload', token, undefined, formData);
+    expect(res.status === 201, `Expected 201, got ${res.status}: ${res.data?.message || ''}`);
+    expect(res.data.data.linkedEntityType === 'TRIP', 'linkedEntityType not TRIP');
+    expect(res.data.data.tripId === tripId, 'tripId mismatch');
+  });
+
+  await runTest('Filter documents by vehicle', async () => {
+    const res = await apiCall('GET', `/api/v1/documents?vehicleId=${vehicleId}`, token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(Array.isArray(res.data.data.items), 'Items is not array');
+    expect(res.data.data.items.length > 0, 'No vehicle documents found');
+  });
+
+  await runTest('Filter documents by driver', async () => {
+    const res = await apiCall('GET', `/api/v1/documents?driverId=${driverId}`, token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(Array.isArray(res.data.data.items), 'Items is not array');
+    expect(res.data.data.items.length > 0, 'No driver documents found');
+  });
+
+  await runTest('Filter documents by trip', async () => {
+    const res = await apiCall('GET', `/api/v1/documents?tripId=${tripId}`, token);
+    expect(res.status === 200, `Expected 200, got ${res.status}`);
+    expect(Array.isArray(res.data.data.items), 'Items is not array');
+    expect(res.data.data.items.length > 0, 'No trip documents found');
+  });
+
+  await runTest('Upload with invalid vehicleId returns 400', async () => {
+    const pdfBuffer = createMinimalPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'bad.pdf');
+    formData.append('title', 'Bad Link');
+    formData.append('documentType', 'VEHICLE_RC');
+    formData.append('linkedEntityType', 'VEHICLE');
+    formData.append('vehicleId', 'nonexistent-id');
+
+    const res = await apiCall('POST', '/api/v1/documents/upload', token, undefined, formData);
+    expect(res.status === 400, `Expected 400, got ${res.status}`);
+  });
+
+  await runTest('Upload with invalid driverId returns 400', async () => {
+    const pdfBuffer = createMinimalPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'bad.pdf');
+    formData.append('title', 'Bad Link');
+    formData.append('documentType', 'DRIVER_LICENSE');
+    formData.append('linkedEntityType', 'DRIVER');
+    formData.append('driverId', 'nonexistent-id');
+
+    const res = await apiCall('POST', '/api/v1/documents/upload', token, undefined, formData);
+    expect(res.status === 400, `Expected 400, got ${res.status}`);
+  });
+
   console.log('\nArchive Document');
   await runTest('Archive document', async () => {
     const res = await apiCall('POST', `/api/v1/documents/${createdDocId}/archive`, token);
