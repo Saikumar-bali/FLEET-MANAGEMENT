@@ -8,13 +8,7 @@ let storageInstance: StorageProvider | null = null;
 function getStorageConfig(): StorageConfig {
   const provider = (process.env.STORAGE_PROVIDER || 'local') as StorageConfig['provider'];
 
-  console.log('[StorageConfig] STORAGE_PROVIDER:', provider);
-  console.log('[StorageConfig] STORAGE_ENDPOINT:', process.env.STORAGE_ENDPOINT ? 'Set' : 'MISSING');
-  console.log('[StorageConfig] STORAGE_ACCESS_KEY_ID:', process.env.STORAGE_ACCESS_KEY_ID ? 'Set' : 'MISSING');
-  console.log('[StorageConfig] STORAGE_SECRET_ACCESS_KEY:', process.env.STORAGE_SECRET_ACCESS_KEY ? 'Set' : 'MISSING');
-  console.log('[StorageConfig] STORAGE_BUCKET:', process.env.STORAGE_BUCKET || 'fleet-documents');
-
-  if (provider === 's3' || provider === 'r2') {
+  if (provider === 's3' || provider === 'r2' || provider === 'S3' || provider === 'R2') {
     if (!process.env.STORAGE_ENDPOINT) {
       throw new Error(`STORAGE_ENDPOINT is required when STORAGE_PROVIDER=${provider}`);
     }
@@ -44,7 +38,7 @@ export function getStorageProvider(): StorageProvider {
 
   const config = getStorageConfig();
 
-  switch (config.provider) {
+  switch (config.provider.toLowerCase()) {
     case 's3':
     case 'r2':
       storageInstance = new S3StorageProvider(config);
