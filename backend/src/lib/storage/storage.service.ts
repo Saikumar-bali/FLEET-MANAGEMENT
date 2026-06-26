@@ -6,9 +6,10 @@ import { S3StorageProvider } from './s3-storage.provider';
 let storageInstance: StorageProvider | null = null;
 
 function getStorageConfig(): StorageConfig {
-  const provider = (process.env.STORAGE_PROVIDER || 'local') as StorageConfig['provider'];
+  const rawProvider = process.env.STORAGE_PROVIDER || 'local';
+  const provider = rawProvider.toLowerCase() as StorageConfig['provider'];
 
-  if (provider === 's3' || provider === 'r2' || provider === 'S3' || provider === 'R2') {
+  if (provider === 's3' || provider === 'r2') {
     if (!process.env.STORAGE_ENDPOINT) {
       throw new Error(`STORAGE_ENDPOINT is required when STORAGE_PROVIDER=${provider}`);
     }
@@ -38,7 +39,7 @@ export function getStorageProvider(): StorageProvider {
 
   const config = getStorageConfig();
 
-  switch (config.provider.toLowerCase()) {
+  switch (config.provider) {
     case 's3':
     case 'r2':
       storageInstance = new S3StorageProvider(config);
