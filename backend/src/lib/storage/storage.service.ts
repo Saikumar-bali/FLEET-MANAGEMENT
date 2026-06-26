@@ -6,7 +6,7 @@ import { S3StorageProvider } from './s3-storage.provider';
 let storageInstance: StorageProvider | null = null;
 
 function getStorageConfig(): StorageConfig {
-  const rawProvider = process.env.STORAGE_PROVIDER || 'local';
+  const rawProvider = (process.env.STORAGE_PROVIDER || 'local').replace(/^"|"$/g, '');
   const provider = rawProvider.toLowerCase() as StorageConfig['provider'];
 
   if (provider === 's3' || provider === 'r2') {
