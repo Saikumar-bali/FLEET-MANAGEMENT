@@ -13,14 +13,14 @@ function getStorageConfig(): StorageConfig {
 
   return {
     provider,
-    bucket: process.env.STORAGE_BUCKET || 'fleet-documents',
-    region: process.env.STORAGE_REGION || 'auto',
-    endpoint: process.env.STORAGE_ENDPOINT,
-    accessKeyId: process.env.STORAGE_ACCESS_KEY_ID,
-    secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY,
-    localPath: process.env.STORAGE_LOCAL_PATH || path.resolve(__dirname, '..', '..', '..', '.storage', 'uploads'),
-    publicBaseUrl: process.env.STORAGE_PUBLIC_BASE_URL,
-    signedUrlExpiresSeconds: parseInt(process.env.STORAGE_SIGNED_URL_EXPIRES_SECONDS || '900', 10),
+    bucket: (process.env.STORAGE_BUCKET || 'fleet-documents').trim(),
+    region: (process.env.STORAGE_REGION || 'auto').trim(),
+    endpoint: (process.env.STORAGE_ENDPOINT || '').trim(),
+    accessKeyId: (process.env.STORAGE_ACCESS_KEY_ID || '').trim(),
+    secretAccessKey: (process.env.STORAGE_SECRET_ACCESS_KEY || '').trim(),
+    localPath: (process.env.STORAGE_LOCAL_PATH || path.resolve(__dirname, '..', '..', '..', '.storage', 'uploads')).trim(),
+    publicBaseUrl: (process.env.STORAGE_PUBLIC_BASE_URL || '').trim(),
+    signedUrlExpiresSeconds: parseInt((process.env.STORAGE_SIGNED_URL_EXPIRES_SECONDS || '900').trim(), 10),
   };
 }
 
