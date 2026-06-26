@@ -6,6 +6,8 @@ export type NavigationItem = {
   section?: string;
   pageTitle?: string;
   pageDescription?: string;
+  driverOnly?: boolean;
+  adminOnly?: boolean;
 };
 
 export type SidebarSection = {
@@ -15,6 +17,38 @@ export type SidebarSection = {
 };
 
 export const navigationItems: NavigationItem[] = [
+  // ─── Driver-only items ───
+  {
+    label: 'My Dashboard',
+    path: '/my-dashboard',
+    description: 'Your personal driver dashboard',
+    permissionKeys: [],
+    section: 'MY',
+    pageTitle: 'My Dashboard',
+    pageDescription: 'Your personal driver dashboard',
+    driverOnly: true,
+  },
+  {
+    label: 'My Trips',
+    path: '/my-trips',
+    description: 'View your trips and history',
+    permissionKeys: [],
+    section: 'MY',
+    pageTitle: 'My Trips',
+    pageDescription: 'Your trip history and active trips',
+    driverOnly: true,
+  },
+  {
+    label: 'My Documents',
+    path: '/my-documents',
+    description: 'View your documents',
+    permissionKeys: [],
+    section: 'MY',
+    pageTitle: 'My Documents',
+    pageDescription: 'Your uploaded documents and files',
+    driverOnly: true,
+  },
+  // ─── Admin/Manager items ───
   {
     label: 'Overview',
     path: '/',
@@ -166,6 +200,7 @@ export const navigationItems: NavigationItem[] = [
     section: 'MANAGE',
     pageTitle: 'Finance',
     pageDescription: 'Financial management, P&L, transactions, vendors, customers, billing, and payments',
+    adminOnly: true,
   },
   {
     label: 'Documents',
@@ -184,6 +219,7 @@ export const navigationItems: NavigationItem[] = [
     section: 'MANAGE',
     pageTitle: 'Roles and permissions',
     pageDescription: 'Role definitions and permission coverage',
+    adminOnly: true,
   },
   {
     label: 'Users',
@@ -193,10 +229,16 @@ export const navigationItems: NavigationItem[] = [
     section: 'MANAGE',
     pageTitle: 'Users',
     pageDescription: 'User access management',
+    adminOnly: true,
   },
 ];
 
 export const sidebarSections: SidebarSection[] = [
+  {
+    key: 'MY',
+    label: 'MY',
+    items: navigationItems.filter((item) => item.section === 'MY'),
+  },
   {
     key: 'EXPLORE',
     label: 'EXPLORE',

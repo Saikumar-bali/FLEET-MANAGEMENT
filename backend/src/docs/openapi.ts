@@ -56,6 +56,10 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Finance Trip Billing' },
     { name: 'Finance Transactions' },
     { name: 'Finance Payments' },
+    { name: 'Alerts' },
+    { name: 'Alert Rules' },
+    { name: 'Reports' },
+    { name: 'Dashboard' },
   ],
   components: {
     securitySchemes: {
@@ -89,6 +93,151 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
           success: { type: 'boolean', example: false },
           message: { type: 'string' },
           errors: { type: 'array', items: { type: 'string' } },
+        },
+      },
+
+      // Alerts (Phase 9)
+      AlertSeverity: {
+        type: 'string',
+        enum: ['INFO', 'WARNING', 'CRITICAL'],
+      },
+      AlertStatus: {
+        type: 'string',
+        enum: ['UNREAD', 'READ', 'RESOLVED', 'DISMISSED'],
+      },
+      AlertModule: {
+        type: 'string',
+        enum: ['VEHICLE', 'DRIVER', 'TRIP', 'FUEL', 'DOCUMENTS', 'COMPLIANCE', 'FINANCE', 'MAINTENANCE', 'REPAIR', 'SYSTEM'],
+      },
+      AlertTriggerType: {
+        type: 'string',
+        enum: ['EXPIRY', 'OVERDUE', 'THRESHOLD', 'MISSING_DOCUMENT', 'STATUS_CHANGE', 'MANUAL'],
+      },
+      Alert: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          dedupeKey: { type: 'string' },
+          module: { $ref: '#/components/schemas/AlertModule' },
+          triggerType: { $ref: '#/components/schemas/AlertTriggerType' },
+          severity: { $ref: '#/components/schemas/AlertSeverity' },
+          status: { $ref: '#/components/schemas/AlertStatus' },
+          title: { type: 'string' },
+          message: { type: 'string' },
+          entityType: { type: 'string', nullable: true },
+          entityId: { type: 'string', nullable: true },
+          vehicleId: { type: 'string', nullable: true },
+          driverId: { type: 'string', nullable: true },
+          tripId: { type: 'string', nullable: true },
+          metadata: { type: 'object', nullable: true },
+          detectedAt: { type: 'string', format: 'date-time' },
+          readAt: { type: 'string', format: 'date-time', nullable: true },
+          resolvedAt: { type: 'string', format: 'date-time', nullable: true },
+        },
+      },
+      AlertSummary: {
+        type: 'object',
+        properties: {
+          unreadCount: { type: 'integer' },
+          criticalCount: { type: 'integer' },
+          warningCount: { type: 'integer' },
+          infoCount: { type: 'integer' },
+          resolvedToday: { type: 'integer' },
+          byModule: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                module: { $ref: '#/components/schemas/AlertModule' },
+                count: { type: 'integer' },
+              },
+            },
+          },
+          recentAlerts: { type: 'array', items: { $ref: '#/components/schemas/Alert' } },
+          dueSoonAlerts: { type: 'array', items: { $ref: '#/components/schemas/Alert' } },
+        },
+      },
+      AlertRule: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          key: { type: 'string' },
+          module: { $ref: '#/components/schemas/AlertModule' },
+          triggerType: { $ref: '#/components/schemas/AlertTriggerType' },
+          severity: { $ref: '#/components/schemas/AlertSeverity' },
+          title: { type: 'string' },
+          description: { type: 'string', nullable: true },
+          thresholdDays: { type: 'integer', nullable: true },
+          thresholdValue: { type: 'number', nullable: true },
+          isActive: { type: 'boolean' },
+        },
+      },
+      AlertGenerateResult: {
+        type: 'object',
+        properties: {
+          scanned: { type: 'integer' },
+          created: { type: 'integer' },
+          skipped: { type: 'integer' },
+          dryRun: { type: 'boolean' },
+          durationMs: { type: 'integer' },
+        },
+      },
+      BulkAlertActionInput: {
+        type: 'object',
+        required: ['ids', 'action'],
+        properties: {
+          ids: { type: 'array', items: { type: 'string' } },
+          action: { type: 'string', enum: ['read', 'resolve', 'dismiss'] },
+        },
+      },
+      ReportRowVehicleUtilization: {
+        type: 'object',
+        properties: {
+          vehicleId: { type: 'string' },
+          vehicleNumber: { type: 'string' },
+          tripCount: { type: 'integer' },
+          totalDistanceKm: { type: 'number' },
+          totalFuelCost: { type: 'number' },
+          totalMaintenanceCost: { type: 'number' },
+          totalRepairCost: { type: 'number' },
+          utilizationPct: { type: 'number' },
+        },
+      },
+      ReportRowTripSummary: {
+        type: 'object',
+        properties: {
+          tripId: { type: 'string' },
+          tripNumber: { type: 'string' },
+          vehicleNumber: { type: 'string', nullable: true },
+          driverName: { type: 'string', nullable: true },
+          status: { type: 'string' },
+          tripType: { type: 'string' },
+          startDate: { type: 'string', nullable: true },
+          endDate: { type: 'string', nullable: true },
+          distanceKm: { type: 'number' },
+        },
+      },
+      ReportRowFuelMissing: {
+        type: 'object',
+        properties: {
+          fuelEntryId: { type: 'string' },
+          vehicleNumber: { type: 'string' },
+          fuelDate: { type: 'string' },
+          totalAmount: { type: 'number' },
+          stationName: { type: 'string', nullable: true },
+          receiptNumber: { type: 'string', nullable: true },
+        },
+      },
+      ReportRowComplianceExpiry: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          vehicleId: { type: 'string' },
+          vehicleNumber: { type: 'string' },
+          complianceType: { type: 'string' },
+          validTo: { type: 'string' },
+          daysToExpire: { type: 'integer' },
+          status: { type: 'string' },
         },
       },
 
@@ -1721,6 +1870,99 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/finance/payments/{id}': {
       get: { tags: ['Finance Payments'], summary: 'Get payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment' } } },
       delete: { tags: ['Finance Payments'], summary: 'Delete payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment deleted' } } },
+    },
+
+    // ─── Phase 9: Alerts ───
+    '/alerts': {
+      get: { tags: ['Alerts'], summary: 'List alerts', security: [{ bearerAuth: [] }], parameters: [{ name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'module', in: 'query', schema: { type: 'string' } }, { name: 'severity', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated alerts' } } },
+    },
+    '/alerts/summary': {
+      get: { tags: ['Alerts'], summary: 'Alert summary for dashboard and bell', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Alert summary' } } },
+    },
+    '/alerts/generate': {
+      post: { tags: ['Alerts'], summary: 'Trigger alert generation', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { dryRun: { type: 'boolean' } } } } } }, responses: { '200': { description: 'Generation result' } } },
+    },
+    '/alerts/{id}': {
+      get: { tags: ['Alerts'], summary: 'Get alert', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Alert detail' }, '404': { description: 'Not found' } } },
+    },
+    '/alerts/{id}/read': {
+      post: { tags: ['Alerts'], summary: 'Mark alert as read', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Alert marked read' } } },
+    },
+    '/alerts/{id}/resolve': {
+      post: { tags: ['Alerts'], summary: 'Resolve alert', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Alert resolved' } } },
+    },
+    '/alerts/{id}/dismiss': {
+      post: { tags: ['Alerts'], summary: 'Dismiss alert', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Alert dismissed' } } },
+    },
+    '/alerts/bulk-resolve': {
+      post: { tags: ['Alerts'], summary: 'Bulk read/resolve/dismiss', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/BulkAlertActionInput' } } } }, responses: { '200': { description: 'Bulk update result' } } },
+    },
+
+    // ─── Phase 9: Alert Rules ───
+    '/alert-rules': {
+      get: { tags: ['Alert Rules'], summary: 'List alert rules', security: [{ bearerAuth: [] }], parameters: [{ name: 'module', in: 'query', schema: { type: 'string' } }, { name: 'isActive', in: 'query', schema: { type: 'boolean' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated alert rules' } } },
+    },
+    '/alert-rules/{id}': {
+      get: { tags: ['Alert Rules'], summary: 'Get alert rule', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Alert rule' }, '404': { description: 'Not found' } } },
+      put: { tags: ['Alert Rules'], summary: 'Update alert rule thresholds/severity/active', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { severity: { $ref: '#/components/schemas/AlertSeverity' }, isActive: { type: 'boolean' }, thresholdDays: { type: 'integer', nullable: true }, thresholdValue: { type: 'number', nullable: true }, description: { type: 'string' } } } } } }, responses: { '200': { description: 'Updated alert rule' } } },
+    },
+
+    // ─── Phase 9: Reports ───
+    '/reports/vehicle-utilization': {
+      get: { tags: ['Reports'], summary: 'Vehicle utilization report', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Vehicle utilization rows' } } },
+    },
+    '/reports/trip-summary': {
+      get: { tags: ['Reports'], summary: 'Trip summary report', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Trip rows' } } },
+    },
+    '/reports/fuel-summary': {
+      get: { tags: ['Reports'], summary: 'Fuel consumption summary', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Per-vehicle fuel aggregates' } } },
+    },
+    '/reports/fuel-missing-receipts': {
+      get: { tags: ['Reports'], summary: 'Fuel entries missing receipts', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Missing receipt rows' } } },
+    },
+    '/reports/finance-pnl': {
+      get: { tags: ['Reports'], summary: 'Finance P&L report', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'P&L breakdown' } } },
+    },
+    '/reports/compliance-expiry': {
+      get: { tags: ['Reports'], summary: 'Compliance documents expiring soon', security: [{ bearerAuth: [] }], parameters: [{ name: 'daysToExpire', in: 'query', schema: { type: 'integer' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Compliance expiry rows' } } },
+    },
+    '/reports/document-verification': {
+      get: { tags: ['Reports'], summary: 'Document verification status counts', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }], responses: { '200': { description: 'Verification status rows' } } },
+    },
+    '/reports/maintenance-summary': {
+      get: { tags: ['Reports'], summary: 'Maintenance cost and status summary', security: [{ bearerAuth: [] }], parameters: [{ name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Maintenance rows' } } },
+    },
+    '/reports/{key}/export.csv': {
+      get: { tags: ['Reports'], summary: 'Export report as CSV', security: [{ bearerAuth: [] }], parameters: [{ name: 'key', in: 'path', required: true, schema: { type: 'string', enum: ['vehicle-utilization', 'trip-summary', 'fuel-summary', 'fuel-missing-receipts', 'finance-pnl', 'compliance-expiry', 'document-verification', 'maintenance-summary'] } }, { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date-time' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date-time' } }], responses: { '200': { description: 'CSV download' }, '404': { description: 'Export not available for this report' } } },
+    },
+
+    // ─── Phase 9: Driver Dashboard & Self APIs ───
+    '/dashboard/driver': {
+      get: { tags: ['Dashboard'], summary: 'Driver-scoped dashboard', security: [{ bearerAuth: [] }], parameters: [{ name: 'driverId', in: 'query', schema: { type: 'string' }, description: 'Required for admin/manager. Ignored for driver role.' }], responses: { '200': { description: 'Driver dashboard data' }, '403': { description: 'Driver account not linked' } } },
+    },
+    '/drivers/me': {
+      get: { tags: ['Drivers'], summary: 'Get my driver profile', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Driver profile' }, '403': { description: 'Driver account not linked' } } },
+    },
+    '/drivers/me/trips': {
+      get: { tags: ['Drivers'], summary: 'Get my trips', security: [{ bearerAuth: [] }], parameters: [{ name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated trips' } } },
+    },
+    '/drivers/me/fuel': {
+      get: { tags: ['Drivers'], summary: 'Get my fuel entries', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated fuel entries' } } },
+    },
+    '/drivers/me/expenses': {
+      get: { tags: ['Drivers'], summary: 'Get my expenses', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated expenses' } } },
+    },
+    '/drivers/me/documents': {
+      get: { tags: ['Drivers'], summary: 'Get my documents', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }], responses: { '200': { description: 'Paginated documents' } } },
+    },
+    '/drivers/me/vehicle': {
+      get: { tags: ['Drivers'], summary: 'Get my assigned vehicle', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Vehicle or null' } } },
+    },
+    '/users/{id}/link-driver': {
+      post: { tags: ['Users'], summary: 'Link a driver profile to a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['driverId'], properties: { driverId: { type: 'string' } } } } } }, responses: { '200': { description: 'User updated' }, '409': { description: 'Driver already linked' } } },
+    },
+    '/users/{id}/unlink-driver': {
+      delete: { tags: ['Users'], summary: 'Unlink driver from a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'User updated' }, '400': { description: 'User has no linked driver' } } },
     },
   },
 };

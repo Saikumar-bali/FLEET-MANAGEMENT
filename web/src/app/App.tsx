@@ -25,6 +25,9 @@ import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
+import { DriverDashboardPage } from '../pages/DriverDashboardPage';
+import { MyTripsPage } from '../pages/MyTripsPage';
+import { MyDocumentsPage } from '../pages/MyDocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { lazy, Suspense } from 'react';
 
@@ -47,6 +50,9 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
+                <Route path="/my-dashboard" element={<DriverDashboardPage />} />
+                <Route path="/my-trips" element={<MyTripsPage />} />
+                <Route path="/my-documents" element={<MyDocumentsPage />} />
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />

@@ -11,6 +11,7 @@ import type {
   DashboardOverview,
   DocumentRecord,
   DriverRecord,
+  DriverDashboardData,
   PaginatedResponse,
   PermissionRecord,
   RoleRecord,
@@ -42,6 +43,17 @@ import type {
   PaymentRecord,
   FinanceDashboardSummary,
   PnlSummary,
+  AlertRecord,
+  AlertSummary,
+  AlertRuleRecord,
+  AlertGenerateResult,
+  VehicleUtilizationRow,
+  TripSummaryRow,
+  FuelSummaryRow,
+  FuelMissingReceiptRow,
+  ComplianceExpiryRow,
+  DocumentVerificationRow,
+  MaintenanceSummaryRow,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -187,6 +199,7 @@ export function createUser(
     password: string;
     roleId: string;
     status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+    driverId?: string;
   },
 ) {
   return request<UserRecord>('/users', {
@@ -818,3 +831,240 @@ export function deletePayment(token: string, id: string) { return request<null>(
 
 export function getFinanceDashboardSummary(token: string) { return request<FinanceDashboardSummary>('/finance/dashboard-summary', { token }); }
 export function getFinancePnl(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PnlSummary>(`/finance/pnl${q ? `?${q}` : ''}`, { token }); }
+
+// ─── Phase 9: Alerts ───
+export type AlertQueryParams = {
+  status?: string;
+  module?: string;
+  severity?: string;
+  vehicleId?: string;
+  driverId?: string;
+  tripId?: string;
+  entityType?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+};
+
+function buildQuery(params: Record<string, string | number | undefined> | undefined): string {
+  if (!params) return '';
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '' && value !== null) query.set(key, String(value));
+  }
+  const qs = query.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function listAlerts(token: string, params?: AlertQueryParams) {
+  return request<PaginatedResponse<AlertRecord>>(`/alerts${buildQuery(params)}`, { token });
+}
+
+export function getAlert(token: string, id: string) {
+  return request<AlertRecord>(`/alerts/${id}`, { token });
+}
+
+export function getAlertSummary(token: string) {
+  return request<AlertSummary>('/alerts/summary', { token });
+}
+
+export function generateAlerts(token: string, dryRun = false) {
+  return request<AlertGenerateResult>('/alerts/generate', {
+    method: 'POST',
+    body: JSON.stringify({ dryRun }),
+    token,
+  });
+}
+
+export function readAlert(token: string, id: string) {
+  return request<AlertRecord>(`/alerts/${id}/read`, { method: 'POST', token });
+}
+
+export function resolveAlert(token: string, id: string) {
+  return request<AlertRecord>(`/alerts/${id}/resolve`, { method: 'POST', token });
+}
+
+export function dismissAlert(token: string, id: string) {
+  return request<AlertRecord>(`/alerts/${id}/dismiss`, { method: 'POST', token });
+}
+
+export function bulkResolveAlerts(token: string, ids: string[], action: 'read' | 'resolve' | 'dismiss') {
+  return request<{ updated: number }>('/alerts/bulk-resolve', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+    token,
+  });
+}
+
+export function listAlertRules(
+  token: string,
+  params?: { module?: string; isActive?: boolean; search?: string; page?: number; limit?: number },
+) {
+  const query: Record<string, string | number | undefined> = {};
+  if (params?.module) query.module = params.module;
+  if (typeof params?.isActive === 'boolean') query.isActive = String(params.isActive);
+  if (params?.search) query.search = params.search;
+  if (params?.page) query.page = params.page;
+  if (params?.limit) query.limit = params.limit;
+  return request<PaginatedResponse<AlertRuleRecord>>(`/alert-rules${buildQuery(query)}`, { token });
+}
+
+export function updateAlertRule(
+  token: string,
+  id: string,
+  payload: Partial<{
+    severity: 'INFO' | 'WARNING' | 'CRITICAL';
+    isActive: boolean;
+    thresholdDays: number | null;
+    thresholdValue: number | null;
+    description: string;
+  }>,
+) {
+  return request<AlertRuleRecord>(`/alert-rules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+// ─── Phase 9: Reports ───
+export type ReportQuery = {
+  dateFrom?: string;
+  dateTo?: string;
+  vehicleId?: string;
+  driverId?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+};
+
+function reportQuery(q?: ReportQuery & Record<string, string | number | undefined>) {
+  return buildQuery(q);
+}
+
+export function getVehicleUtilizationReport(token: string, q?: ReportQuery) {
+  return request<{ rows: VehicleUtilizationRow[]; summary: any }>(`/reports/vehicle-utilization${reportQuery(q)}`, { token });
+}
+export function getTripSummaryReport(token: string, q?: ReportQuery) {
+  return request<{ rows: TripSummaryRow[] }>(`/reports/trip-summary${reportQuery(q)}`, { token });
+}
+export function getFuelSummaryReport(token: string, q?: ReportQuery) {
+  return request<{ rows: FuelSummaryRow[]; summary: any }>(`/reports/fuel-summary${reportQuery(q)}`, { token });
+}
+export function getFuelMissingReceiptsReport(token: string, q?: ReportQuery) {
+  return request<{ rows: FuelMissingReceiptRow[]; summary: any }>(`/reports/fuel-missing-receipts${reportQuery(q)}`, { token });
+}
+export function getFinancePnlReport(token: string, q?: ReportQuery) {
+  return request<PnlSummary>(`/reports/finance-pnl${reportQuery(q)}`, { token });
+}
+export function getComplianceExpiryReport(token: string, q?: { daysToExpire?: number; vehicleId?: string }) {
+  return request<{ rows: ComplianceExpiryRow[]; summary: any }>(`/reports/compliance-expiry${reportQuery(q)}`, { token });
+}
+export function getDocumentVerificationReport(token: string, q?: ReportQuery) {
+  return request<{ rows: DocumentVerificationRow[]; summary: any }>(`/reports/document-verification${reportQuery(q)}`, { token });
+}
+export function getMaintenanceSummaryReport(token: string, q?: ReportQuery) {
+  return request<{ rows: MaintenanceSummaryRow[]; summary: any }>(`/reports/maintenance-summary${reportQuery(q)}`, { token });
+}
+
+export type CsvExportKey =
+  | 'vehicle-utilization'
+  | 'trip-summary'
+  | 'fuel-summary'
+  | 'fuel-missing-receipts'
+  | 'finance-pnl'
+  | 'compliance-expiry'
+  | 'document-verification'
+  | 'maintenance-summary';
+
+export function reportCsvUrl(key: CsvExportKey, q?: ReportQuery) {
+  return `${API_BASE_URL}/reports/${key}/export.csv${reportQuery(q)}`;
+}
+
+export async function downloadReportCsv(token: string, key: CsvExportKey, q?: ReportQuery): Promise<Blob> {
+  const url = reportCsvUrl(key, q);
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) {
+    throw new Error(`CSV download failed: ${response.status}`);
+  }
+  return response.blob();
+}
+
+// ─── Phase 9: Driver Account Linking API ───
+
+export function linkDriverToUser(token: string, userId: string, driverId: string) {
+  return request<UserRecord>(`/users/${userId}/link-driver`, {
+    method: 'POST',
+    body: JSON.stringify({ driverId }),
+    token,
+  });
+}
+
+export function unlinkDriverFromUser(token: string, userId: string) {
+  return request<UserRecord>(`/users/${userId}/unlink-driver`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function getUnlinkedDrivers(token: string, params?: { search?: string; page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  query.set('unlinkedOnly', 'true');
+  if (params?.search) query.set('search', params.search);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<DriverRecord>>(`/drivers${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Phase 9: Driver Dashboard API ───
+
+export function getDriverDashboard(token: string, driverId?: string) {
+  const query = driverId ? `?driverId=${driverId}` : '';
+  return request<DriverDashboardData>(`/dashboard/driver${query}`, { token });
+}
+
+// ─── Phase 9: Driver Self APIs ───
+
+export function getMyDriverProfile(token: string) {
+  return request<DriverRecord>('/drivers/me', { token });
+}
+
+export function getMyTrips(token: string, params?: { status?: string; page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<TripRecord>>(`/drivers/me/trips${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyFuelEntries(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<FuelRecord>>(`/drivers/me/fuel${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyExpenses(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<ExpenseRecord>>(`/drivers/me/expenses${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDocuments(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<PaginatedResponse<DocumentRecord>>(`/drivers/me/documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyVehicle(token: string) {
+  return request<VehicleRecord | null>('/drivers/me/vehicle', { token });
+}

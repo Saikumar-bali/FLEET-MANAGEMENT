@@ -16,8 +16,11 @@ import {
   updateUser as updateUserRequest,
   updateUserPassword as updateUserPasswordRequest,
   updateUserStatus as updateUserStatusRequest,
+  linkDriverToUser as linkDriverRequest,
+  unlinkDriverFromUser as unlinkDriverRequest,
+  getUnlinkedDrivers,
 } from '../services/api';
-import type { RoleRecord, UserRecord } from '../types/auth';
+import type { DriverRecord, RoleRecord, UserRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
 type UserFormState = {
@@ -28,6 +31,7 @@ type UserFormState = {
   password: string;
   roleId: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  driverId: string;
 };
 
 const initialUserFormState: UserFormState = {
@@ -38,6 +42,7 @@ const initialUserFormState: UserFormState = {
   password: '',
   roleId: '',
   status: 'ACTIVE',
+  driverId: '',
 };
 
 function getCreateFormState(roles: RoleRecord[]): UserFormState {
@@ -56,6 +61,7 @@ function getEditFormState(user: UserRecord): UserFormState {
     password: '',
     roleId: user.role.id,
     status: user.status,
+    driverId: user.userDriverId ?? '',
   };
 }
 
@@ -78,6 +84,9 @@ export function UsersPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [statusTarget, setStatusTarget] = useState<'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | null>(null);
+  const [unlinkedDrivers, setUnlinkedDrivers] = useState<DriverRecord[]>([]);
+  const [isLinkingDriver, setIsLinkingDriver] = useState(false);
+  const [linkDriverTarget, setLinkDriverTarget] = useState<string | null>(null);
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
@@ -111,6 +120,58 @@ export function UsersPage() {
     }));
   };
 
+  const loadUnlinkedDrivers = async () => {
+    if (!auth.accessToken) return;
+    try {
+      const response = await getUnlinkedDrivers(auth.accessToken, { limit: 100 });
+      setUnlinkedDrivers(response.data.items);
+    } catch {
+      // Silently fail - driver list is optional
+    }
+  };
+
+  const selectedRoleKey = useMemo(() => {
+    const roleId = createForm.roleId || editForm.roleId;
+    return roles.find((r) => r.id === roleId)?.key ?? '';
+  }, [roles, createForm.roleId, editForm.roleId]);
+
+  async function handleLinkDriver() {
+    if (!auth.accessToken || !selectedUser || !linkDriverTarget) return;
+    setIsLinkingDriver(true);
+    setEditError(null);
+    try {
+      const response = await linkDriverRequest(auth.accessToken, selectedUser.id, linkDriverTarget);
+      setUsers((current) => current.map((u) => u.id === selectedUser.id ? response.data : u));
+      setSelectedUserId(response.data.id);
+      setPageMessage('Driver linked successfully.');
+      setLinkDriverTarget(null);
+      await loadUnlinkedDrivers();
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) setEditError(caughtError.message);
+      else setEditError('Failed to link driver.');
+    } finally {
+      setIsLinkingDriver(false);
+    }
+  }
+
+  async function handleUnlinkDriver() {
+    if (!auth.accessToken || !selectedUser) return;
+    setIsLinkingDriver(true);
+    setEditError(null);
+    try {
+      const response = await unlinkDriverRequest(auth.accessToken, selectedUser.id);
+      setUsers((current) => current.map((u) => u.id === selectedUser.id ? response.data : u));
+      setSelectedUserId(response.data.id);
+      setPageMessage('Driver unlinked successfully.');
+      await loadUnlinkedDrivers();
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) setEditError(caughtError.message);
+      else setEditError('Failed to unlink driver.');
+    } finally {
+      setIsLinkingDriver(false);
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       if (!auth.accessToken) {
@@ -122,7 +183,7 @@ export function UsersPage() {
       setRolesError(null);
 
       try {
-        await Promise.all([loadUsers(), loadRoles()]);
+        await Promise.all([loadUsers(), loadRoles(), loadUnlinkedDrivers()]);
       } catch (caughtError) {
         if (caughtError instanceof ApiError) {
           setPageError(caughtError.message);
@@ -178,7 +239,11 @@ export function UsersPage() {
     setPageMessage(null);
 
     try {
-      const response = await createUserRequest(auth.accessToken, createForm);
+      const payload: any = { ...createForm };
+      if (selectedRoleKey !== 'driver') {
+        delete payload.driverId;
+      }
+      const response = await createUserRequest(auth.accessToken, payload);
       await refreshUsersAndSelect(response.data.id);
       setPageMessage('User created successfully.');
       closeCreateMode();
@@ -362,6 +427,16 @@ export function UsersPage() {
                   render: (user) => user.role.name,
                 },
                 {
+                  key: 'driverLink',
+                  header: 'Driver',
+                  render: (user) => user.userDriverId ? (
+                    <span style={{ color: 'var(--color-success)' }}>Linked</span>
+                  ) : (
+                    <span className="table-secondary">—</span>
+                  ),
+                  width: '80px',
+                },
+                {
                   key: 'status',
                   header: 'Status',
                   render: (user) => <StatusBadge status={user.status} />,
@@ -419,7 +494,58 @@ export function UsersPage() {
                     <p className="detail-label">Last login</p>
                     <p className="detail-value">{selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : 'Never'}</p>
                   </div>
+                  <div>
+                    <p className="detail-label">Linked Driver</p>
+                    <p className="detail-value">
+                      {selectedUser.userDriverId ? (
+                        <span>
+                          <StatusBadge status="LINKED" /> <a href={`/drivers/${selectedUser.userDriverId}`}>View driver</a>
+                        </span>
+                      ) : (
+                        <StatusBadge status="NOT_LINKED" />
+                      )}
+                    </p>
+                  </div>
                 </div>
+
+                {selectedUser.role.key === 'driver' && canUpdateUser && (
+                  <FormSection title="Driver Account Linking" description="Link or unlink a driver profile to this account.">
+                    <div className="button-row wrap-row">
+                      {!selectedUser.userDriverId ? (
+                        <>
+                          <select
+                            value={linkDriverTarget ?? ''}
+                            onChange={(e) => setLinkDriverTarget(e.target.value || null)}
+                          >
+                            <option value="">Select a driver to link...</option>
+                            {unlinkedDrivers.map((driver) => (
+                              <option key={driver.id} value={driver.id}>
+                                {driver.name} ({driver.mobile})
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => void handleLinkDriver()}
+                            disabled={isLinkingDriver || !linkDriverTarget}
+                          >
+                            {isLinkingDriver ? 'Linking...' : 'Link Driver'}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void handleUnlinkDriver()}
+                          disabled={isLinkingDriver}
+                        >
+                          {isLinkingDriver ? 'Unlinking...' : 'Unlink Driver'}
+                        </button>
+                      )}
+                    </div>
+                  </FormSection>
+                )}
 
                 <FormSection title="Edit user" description="Update the selected user without affecting create mode.">
                   <div className="form-grid">
@@ -615,7 +741,7 @@ export function UsersPage() {
                 <span>Role</span>
                 <select
                   value={createForm.roleId}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value }))}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value, driverId: '' }))}
                   disabled={roles.length === 0}
                 >
                   {roles.map((role) => (
@@ -641,6 +767,23 @@ export function UsersPage() {
                   <option value="SUSPENDED">Suspended</option>
                 </select>
               </label>
+              {selectedRoleKey === 'driver' && (
+                <label>
+                  <span>Link Driver *</span>
+                  <select
+                    value={createForm.driverId}
+                    onChange={(event) => setCreateForm((current) => ({ ...current, driverId: event.target.value }))}
+                    required
+                  >
+                    <option value="">Select a driver...</option>
+                    {unlinkedDrivers.map((driver) => (
+                      <option key={driver.id} value={driver.id}>
+                        {driver.name} ({driver.mobile})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
           </FormSection>
 

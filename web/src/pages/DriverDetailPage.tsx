@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createDriver, getDriver, updateDriver, updateDriverStatus } from '../services/api';
+import { createDriver, getDriver, updateDriver, updateDriverStatus, getUsers } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { DriverRecord } from '../types/auth';
+import type { DriverRecord, UserRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -32,13 +32,14 @@ const initialForm: DriverForm = {
   experienceYears: '',
 };
 
-type SectionTab = 'personal' | 'license' | 'documents' | 'status';
+type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'account';
 
 const sectionTabs: { key: SectionTab; label: string }[] = [
   { key: 'personal', label: 'Personal Info' },
   { key: 'license', label: 'License' },
   { key: 'documents', label: 'Documents' },
   { key: 'status', label: 'Status' },
+  { key: 'account', label: 'Login Account' },
 ];
 
 export function DriverDetailPage() {
@@ -54,6 +55,8 @@ export function DriverDetailPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionTab>('personal');
   const [statusValue, setStatusValue] = useState('');
+  const [linkedUser, setLinkedUser] = useState<UserRecord | null>(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -83,6 +86,23 @@ export function DriverDetailPage() {
       }
     };
     void load();
+  }, [auth.accessToken, id, isNew]);
+
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken) return;
+    const loadLinkedUser = async () => {
+      setIsLoadingUsers(true);
+      try {
+        const usersRes = await getUsers(auth.accessToken!);
+        const found = usersRes.data.find((u) => u.userDriverId === id);
+        setLinkedUser(found ?? null);
+      } catch {
+        // Silently fail
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+    void loadLinkedUser();
   }, [auth.accessToken, id, isNew]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -304,6 +324,50 @@ export function DriverDetailPage() {
                 </div>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {!isNew && activeSection === 'account' ? (
+          <div className="card form-section-grid">
+            <h4 className="role-edit-h4">Linked Login Account</h4>
+            {isLoadingUsers ? (
+              <p className="helper-text">Loading account info...</p>
+            ) : linkedUser ? (
+              <div>
+                <div className="detail-grid">
+                  <div>
+                    <p className="detail-label">Account Status</p>
+                    <StatusBadge status={linkedUser.status} />
+                  </div>
+                  <div>
+                    <p className="detail-label">Username</p>
+                    <p className="detail-value">{linkedUser.username ? `@${linkedUser.username}` : 'Not set'}</p>
+                  </div>
+                  <div>
+                    <p className="detail-label">Email/Mobile</p>
+                    <p className="detail-value">{linkedUser.email} {linkedUser.mobile ? `/ ${linkedUser.mobile}` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="detail-label">Role</p>
+                    <p className="detail-value">{linkedUser.role.name}</p>
+                  </div>
+                  <div>
+                    <p className="detail-label">Last Login</p>
+                    <p className="detail-value">{linkedUser.lastLoginAt ? new Date(linkedUser.lastLoginAt).toLocaleString() : 'Never'}</p>
+                  </div>
+                </div>
+                <div className="button-row" style={{ marginTop: 'var(--space-4)' }}>
+                  <a href={`/users`} className="secondary-button">Manage Account</a>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="helper-text">This driver does not have a linked login account.</p>
+                <div className="button-row" style={{ marginTop: 'var(--space-4)' }}>
+                  <a href={`/users`} className="primary-button">Create Driver Login Account</a>
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
 

@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  userDriverId: string | null;
   role: {
     id: string;
     name: string;
@@ -54,6 +55,7 @@ export type UserRecord = {
   email: string;
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  userDriverId: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -777,6 +779,43 @@ export type DashboardOverview = {
     createdAt: string;
     uploadedBy: { name: string } | null;
   }>;
+  alertUnread: number;
+  alertCritical: number;
+  alertWarning: number;
+  alertInfo: number;
+  alertResolvedToday: number;
+  alertsByModule: Array<{ module: AlertModule; count: number }>;
+  recentCriticalAlerts: AlertRecord[];
+};
+
+// ─── Phase 9: Driver Dashboard ───
+export type DriverDashboardData = {
+  driver: DriverRecord;
+  currentVehicle: VehicleRecord | null;
+  activeTrip: TripRecord | null;
+  tripStats: {
+    active: number;
+    completedThisMonth: number;
+    total: number;
+  };
+  fuelStatsThisMonth: {
+    count: number;
+    totalAmount: number;
+    totalLiters: number;
+  };
+  recentFuelEntries: FuelRecord[];
+  recentFuelReceipts: Array<{
+    id: string;
+    fuelDate: string;
+    totalAmount: number;
+    stationName: string | null;
+    receiptNumber: string | null;
+  }>;
+  recentExpenses: ExpenseRecord[];
+  driverDocuments: DocumentRecord[];
+  expiringDocuments: DocumentRecord[];
+  recentTrips: TripRecord[];
+  alerts: AlertRecord[];
 };
 
 export interface PnlSummary {
@@ -789,3 +828,143 @@ export interface PnlSummary {
     total: number;
   }>;
 }
+
+// ─── Phase 9: Alerts ───
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
+export type AlertStatus = 'UNREAD' | 'READ' | 'RESOLVED' | 'DISMISSED';
+export type AlertModule =
+  | 'VEHICLE'
+  | 'DRIVER'
+  | 'TRIP'
+  | 'FUEL'
+  | 'DOCUMENTS'
+  | 'COMPLIANCE'
+  | 'FINANCE'
+  | 'MAINTENANCE'
+  | 'REPAIR'
+  | 'SYSTEM';
+export type AlertTriggerType =
+  | 'EXPIRY'
+  | 'OVERDUE'
+  | 'THRESHOLD'
+  | 'MISSING_DOCUMENT'
+  | 'STATUS_CHANGE'
+  | 'MANUAL';
+
+export type AlertRecord = {
+  id: string;
+  dedupeKey: string;
+  module: AlertModule;
+  triggerType: AlertTriggerType;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  title: string;
+  message: string;
+  entityType: string | null;
+  entityId: string | null;
+  vehicleId: string | null;
+  driverId: string | null;
+  tripId: string | null;
+  metadata: Record<string, unknown> | null;
+  detectedAt: string;
+  readAt: string | null;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  ruleId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rule: { key: string; title: string; description: string | null } | null;
+};
+
+export type AlertSummary = {
+  unreadCount: number;
+  criticalCount: number;
+  warningCount: number;
+  infoCount: number;
+  resolvedToday: number;
+  byModule: Array<{ module: AlertModule; count: number }>;
+  recentAlerts: AlertRecord[];
+  dueSoonAlerts: AlertRecord[];
+};
+
+export type AlertRuleRecord = {
+  id: string;
+  key: string;
+  module: AlertModule;
+  triggerType: AlertTriggerType;
+  severity: AlertSeverity;
+  title: string;
+  description: string | null;
+  thresholdDays: number | null;
+  thresholdValue: number | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AlertGenerateResult = {
+  scanned: number;
+  created: number;
+  skipped: number;
+  dryRun: boolean;
+  durationMs: number;
+};
+
+// ─── Phase 9: Reports ───
+export type VehicleUtilizationRow = {
+  vehicleId: string;
+  vehicleNumber: string;
+  tripCount: number;
+  totalDistanceKm: number;
+  totalFuelCost: number;
+  totalMaintenanceCost: number;
+  totalRepairCost: number;
+  utilizationPct: number;
+};
+export type TripSummaryRow = {
+  tripId: string;
+  tripNumber: string;
+  vehicleNumber: string | null;
+  driverName: string | null;
+  status: string;
+  tripType: string;
+  startDate: string | null;
+  endDate: string | null;
+  distanceKm: number;
+};
+export type FuelSummaryRow = {
+  vehicleId: string;
+  vehicleNumber: string;
+  entryCount: number;
+  totalLiters: number;
+  totalAmount: number;
+  avgPricePerLiter: number;
+};
+export type FuelMissingReceiptRow = {
+  fuelEntryId: string;
+  vehicleNumber: string;
+  fuelDate: string;
+  totalAmount: number;
+  stationName: string | null;
+  receiptNumber: string | null;
+};
+export type ComplianceExpiryRow = {
+  id: string;
+  vehicleId: string;
+  vehicleNumber: string;
+  complianceType: string;
+  validTo: string;
+  daysToExpire: number;
+  status: string;
+};
+export type DocumentVerificationRow = {
+  documentStatus: string;
+  verificationStatus: string;
+  count: number;
+};
+export type MaintenanceSummaryRow = {
+  status: string;
+  count: number;
+  totalEstimatedCost: number;
+  totalActualCost: number;
+};

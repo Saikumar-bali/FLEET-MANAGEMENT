@@ -65,9 +65,27 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 7.6 | India Enterprise Hardening, Privacy, and Multi-branch Operations | Not Started |
 | Phase 8 | Documents & Storage Foundation | Submitted for Review |
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
-| Phase 9 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
+| Phase 9 | Driver Account Linking & Driver Portal | Completed locally |
+| Phase 9.1 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log
+
+### 2026-06-26
+
+- Phase 9 Driver Account Linking & Driver Portal: **Completed locally**.
+- Verified existing `userDriverId` schema relation (no migration needed).
+- Added driver dashboard endpoint: `GET /api/v1/dashboard/driver`.
+- Added driver self-scoped APIs: `/drivers/me/trips`, `/drivers/me/fuel`, `/drivers/me/expenses`, `/drivers/me/documents`, `/drivers/me/vehicle`.
+- Created `DriverDashboardPage` at `/my-dashboard` with KPI cards, current trip, recent entries, documents.
+- Created `MyTripsPage` at `/my-trips` and `MyDocumentsPage` at `/my-documents`.
+- Updated navigation config with driver-only items and admin-only items.
+- Updated sidebar to filter items based on driver role.
+- Updated `UsersPage` with driver linking UI (selector, link/unlink actions).
+- Updated `DriverDetailPage` with linked account section.
+- Updated OpenAPI docs with driver dashboard, self APIs, and linking endpoints.
+- Created `link-existing-drivers.ts` script (already existed, verified).
+- Created documentation: `docs/PHASE_9_DRIVER_ACCOUNT_LINKING.md`.
+- Vercel deploy: NO. Mobile: DEFERRED.
 
 ### 2026-06-25
 

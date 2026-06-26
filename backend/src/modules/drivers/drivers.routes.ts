@@ -6,10 +6,18 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createDriverController,
   getDriverController,
+  getMyDriverProfileController,
   listDriversController,
   updateDriverController,
   updateDriverStatusController,
 } from './drivers.controller';
+import {
+  getMyTripsController,
+  getMyFuelEntriesController,
+  getMyExpensesController,
+  getMyDocumentsController,
+  getMyVehicleController,
+} from './driver-self.controller';
 import {
   createDriverSchema,
   driverIdParamsSchema,
@@ -28,6 +36,32 @@ router.get(
   validateRequest({ query: driverQuerySchema }),
   asyncHandler(listDriversController),
 );
+
+router.get(
+  '/me',
+  asyncHandler(getMyDriverProfileController),
+);
+router.get(
+  '/me/trips',
+  asyncHandler(getMyTripsController),
+);
+router.get(
+  '/me/fuel',
+  asyncHandler(getMyFuelEntriesController),
+);
+router.get(
+  '/me/expenses',
+  asyncHandler(getMyExpensesController),
+);
+router.get(
+  '/me/documents',
+  asyncHandler(getMyDocumentsController),
+);
+router.get(
+  '/me/vehicle',
+  asyncHandler(getMyVehicleController),
+);
+
 router.get(
   '/:id',
   requirePermission('driver_view'),
