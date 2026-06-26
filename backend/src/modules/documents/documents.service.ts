@@ -139,8 +139,8 @@ export async function getDocumentById(id: string) {
   try {
     const storage = getStorageProvider();
     fileUrl = await storage.getSignedViewUrl(doc.storageKey, doc.mimeType);
-  } catch {
-    // signed URL generation failed — fileUrl stays null
+  } catch (err: any) {
+    console.error('[getDocumentById] Failed to generate signed URL:', err?.message ?? err);
   }
 
   return { ...doc, fileUrl };
