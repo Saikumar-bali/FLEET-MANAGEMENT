@@ -1,24 +1,14 @@
 import * as path from 'path';
 import type { StorageProvider, StorageConfig } from './storage.types';
-import { LocalStorageProvider } from './local-storage.provider';
 import { S3StorageProvider } from './s3-storage.provider';
 
-let storageInstance: StorageProvider | null = null;
 
 function getStorageConfig(): StorageConfig {
-  const rawProvider = (process.env.STORAGE_PROVIDER || 'local').replace(/^"|"$/g, '');
-  const provider = rawProvider.toLowerCase() as StorageConfig['provider'];
-
-  if (provider === 's3' || provider === 'r2') {
-    if (!process.env.STORAGE_ENDPOINT) {
-      throw new Error(`STORAGE_ENDPOINT is required when STORAGE_PROVIDER=${provider}`);
-    }
-    if (!process.env.STORAGE_ACCESS_KEY_ID) {
-      throw new Error(`STORAGE_ACCESS_KEY_ID is required when STORAGE_PROVIDER=${provider}`);
-    }
-    if (!process.env.STORAGE_SECRET_ACCESS_KEY) {
-      throw new Error(`STORAGE_SECRET_ACCESS_KEY is required when STORAGE_PROVIDER=${provider}`);
-    }
+  const rawProvider = (process.env.STORAGE_PROVIDER || '').replace(/^"|"$/g, '').trim().toLowerCase();
+  const provider = (rawProvider === 's3' || rawProvider === 'r2' ? rawProvider : 'local') as StorageConfig['provider'];  if (provider === 's3' || provider === 'r2') {
+    if (!process.env.STORAGE_ENDPOINT) throw new Error(`STORAGE_ENDPOINT is required when STORAGE_PROVIDER=${provider}`);
+    if (!process.env.STORAGE_ACCESS_KEY_ID) throw new Error(`STORAGE_ACCESS_KEY_ID is required when STORAGE_PROVIDER=${provider}`);
+    if (!process.env.STORAGE_SECRET_ACCESS_KEY) throw new Error(`STORAGE_SECRET_ACCESS_KEY is required when STORAGE_PROVIDER=${provider}`);
   }
 
   return {
@@ -35,24 +25,9 @@ function getStorageConfig(): StorageConfig {
 }
 
 export function getStorageProvider(): StorageProvider {
-  if (storageInstance) return storageInstance;
-
   const config = getStorageConfig();
-
-  switch (config.provider) {
-    case 's3':
-    case 'r2':
-      storageInstance = new S3StorageProvider(config);
-      break;
-    case 'local':
-    default:
-      storageInstance = new LocalStorageProvider(config.localPath!);
-      break;
-  }
-
-  return storageInstance;
+  return new S3StorageProvider(config);
 }
 
-export function resetStorageProvider(): void {
-  storageInstance = null;
-}
+export function resetStorageProvider(): void {}
+
