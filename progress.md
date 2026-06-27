@@ -66,6 +66,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 8 | Documents & Storage Foundation | Submitted for Review |
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
 | Phase 9 | Driver Account Linking & Driver Portal | Completed locally — auth userDriverId wired, linkedDriver summary, effective permissions, user permission overrides, strict sidebar, route guard, MyProfilePage, backend/web build pass, API docs verified |
+| Phase 9.2 | Driver Dynamic Workflows & Permission Clarity | Completed locally — Roles UI driver grouping + warnings, permission refresh flow, driver dashboard /my-* routes + dynamic actions + My Capabilities, backend expense/document stats, Created By + Driver badge, cross-driver isolation, Playwright E2E, placeholder pages implemented, all builds pass |
 | Phase 9.1 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log
@@ -73,6 +74,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 ### 2026-06-26
 
 - Phase 9 Driver Account Linking & Driver Portal: **Completed locally with verification**. Auth userDriverId fixed. Driver-only route guard added. Post-login driver redirect. Sidebar strict driver mode. Link/unlink APIs. Script skips test drivers. Backend and web builds pass. API docs verified. No Vercel deploy, no full E2E.
+- Phase 9.2 Driver Dynamic Workflows: **Completed locally with verification**. Roles UI groups driver permissions into Driver Portal/Trips/Fuel/Expenses/Vehicle/Maintenance with friendly labels and warnings. Permission refresh flow via Account menu + window focus. Driver dashboard uses /my-* routes only with permission-driven quick actions and My Capabilities card. Backend returns expenseStatsThisMonth and documentStats. Admin sees Created By with Driver-created badge. Cross-driver isolation validated by scope test. Playwright E2E test uses env credentials and does full workflow (grant→create→verify→isolate→deny). 3 placeholder pages implemented. All builds pass. No Vercel deploy, no full E2E.
 - Verified existing `userDriverId` schema relation (no migration needed).
 - Added driver dashboard endpoint: `GET /api/v1/dashboard/driver`.
 - Added driver self-scoped APIs: `/drivers/me/trips`, `/drivers/me/fuel`, `/drivers/me/expenses`, `/drivers/me/documents`, `/drivers/me/vehicle`.

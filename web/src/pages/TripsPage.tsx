@@ -115,6 +115,9 @@ export function TripsPage() {
               @{t.createdBy.username}
             </span>
           )}
+          {(t.createdBy as any)?.role?.key === 'driver' && (
+            <span style={{ display: 'inline-block', marginTop: '2px', padding: '1px 6px', fontSize: '10px', borderRadius: '8px', background: '#e3f2fd', color: '#1565c0', fontWeight: 600 }}>Driver-created</span>
+          )}
         </div>
       ),
     },

@@ -726,7 +726,12 @@ export function TripDetailPage() {
                         <td>{h.fromStatus ? statusLabels[h.fromStatus] ?? h.fromStatus : '-'}</td>
                         <td>{h.toStatus ? statusLabels[h.toStatus] ?? h.toStatus : '-'}</td>
                         <td>{h.remarks ?? '-'}</td>
-                        <td>{h.createdBy?.name ?? h.createdBy?.username ?? '-'}</td>
+                        <td>
+                          {h.createdBy?.name ?? h.createdBy?.username ?? '-'}
+                          {(h.createdBy as any)?.role?.key === 'driver' && (
+                            <span style={{ display: 'inline-block', marginLeft: '4px', padding: '1px 6px', fontSize: '10px', borderRadius: '8px', background: '#e3f2fd', color: '#1565c0', fontWeight: 600 }}>Driver</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

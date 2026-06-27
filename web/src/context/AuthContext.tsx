@@ -15,6 +15,7 @@ type AuthContextValue = AuthState & {
   isBootstrapping: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshCurrentUser: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
 };
@@ -84,6 +85,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void bootstrap();
   }, []);
 
+  useEffect(() => {
+    if (!state.accessToken || !state.user) return;
+
+    const handleFocus = () => {
+      // Optionally refresh permissions on window focus for driver users
+      // so that admin permission changes take effect without relogin
+      if (state.user?.role?.key === 'driver' && state.accessToken) {
+        void api.getCurrentUser(state.accessToken).then((meResponse) => {
+          setState((prev) => ({
+            ...prev,
+            user: meResponse.data.user,
+            permissions: meResponse.data.permissions,
+          }));
+        }).catch(() => {
+          // Ignore - token expiry handled elsewhere
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [state.accessToken, state.user?.role?.key]);
+
   const value = useMemo<AuthContextValue>(() => ({
     ...state,
     isBootstrapping,
@@ -112,6 +136,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         accessToken: null,
         refreshToken: null,
       });
+    },
+    async refreshCurrentUser() {
+      if (!state.accessToken) return;
+      try {
+        const meResponse = await api.getCurrentUser(state.accessToken);
+        setState((prev) => ({
+          ...prev,
+          user: meResponse.data.user,
+          permissions: meResponse.data.permissions,
+        }));
+      } catch {
+        // If refresh fails, keep current state. Token expiry handled elsewhere.
+      }
     },
     hasPermission(permission) {
       return state.permissions.includes(permission);

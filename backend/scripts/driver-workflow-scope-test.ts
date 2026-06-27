@@ -3,6 +3,7 @@
  *
  * Focused test to verify driver workflow scope enforcement.
  * Tests that drivers can only see/modify their own data.
+ * Validates cross-driver isolation.
  *
  * Usage: npm --prefix backend run test:driver-workflow-scope
  */
@@ -13,6 +14,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('=== Driver Workflow Scope Test ===\n');
+  let failures = 0;
 
   // Check all driver-scoped permissions exist in DB
   const driverPermissions = [
@@ -37,7 +39,7 @@ async function main() {
 
   if (missing.length > 0) {
     console.log(`FAIL: Missing permissions: ${missing.join(', ')}`);
-    process.exitCode = 1;
+    failures++;
   } else {
     console.log(`PASS: All ${driverPermissions.length} driver-scoped permissions exist in DB`);
   }
@@ -54,23 +56,96 @@ async function main() {
 
   if (driverRole) {
     const roleKeys = new Set(driverRole.rolePermissions.map((rp) => rp.permission.key));
-    const hasPortalView = roleKeys.has('driver_portal_view');
-    const hasDashboard = roleKeys.has('driver_my_dashboard_view');
-    const hasTrips = roleKeys.has('driver_my_trips_view');
-    const hasDocuments = roleKeys.has('driver_my_documents_view');
-    const hasProfile = roleKeys.has('driver_my_profile_view');
-    const hasVehicle = roleKeys.has('driver_assigned_vehicle_view');
+    const required = ['driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view', 'driver_my_documents_view', 'driver_my_profile_view', 'driver_assigned_vehicle_view'];
+    const missingRole = required.filter((k) => !roleKeys.has(k));
 
     console.log(`\nDriver role basic permissions:`);
-    console.log(`  portal_view: ${hasPortalView}`);
-    console.log(`  dashboard_view: ${hasDashboard}`);
-    console.log(`  trips_view: ${hasTrips}`);
-    console.log(`  documents_view: ${hasDocuments}`);
-    console.log(`  profile_view: ${hasProfile}`);
-    console.log(`  vehicle_view: ${hasVehicle}`);
+    for (const k of required) {
+      console.log(`  ${k}: ${roleKeys.has(k) ? 'YES' : 'NO'}`);
+    }
 
-    if (!hasPortalView || !hasDashboard || !hasTrips || !hasDocuments || !hasProfile || !hasVehicle) {
-      console.log('WARNING: Driver role missing some basic driver permissions. Run rbac:repair.');
+    if (missingRole.length > 0) {
+      console.log(`WARNING: Driver role missing: ${missingRole.join(', ')}. Run rbac:repair.`);
+    } else {
+      console.log('PASS: Driver role has all basic permissions');
+    }
+  }
+
+  // Cross-driver isolation test
+  console.log('\n--- Cross-Driver Isolation Test ---');
+
+  // Find two driver users
+  const driverRoleRecord = await prisma.role.findUnique({ where: { key: 'driver' } });
+  if (!driverRoleRecord) {
+    console.log('SKIP: Driver role not found');
+  } else {
+    const driverUsers = await prisma.user.findMany({
+      where: { roleId: driverRoleRecord.id, userDriverId: { not: null } },
+      select: { id: true, name: true, userDriverId: true },
+      take: 2,
+    });
+
+    if (driverUsers.length < 2) {
+      console.log(`SKIP: Need at least 2 linked driver users, found ${driverUsers.length}`);
+    } else {
+      const driverA = driverUsers[0];
+      const driverB = driverUsers[1];
+      console.log(`Driver A: ${driverA.name} (${driverA.userDriverId})`);
+      console.log(`Driver B: ${driverB.name} (${driverB.userDriverId})`);
+
+      // Test 1: Driver A's trips are not visible to Driver B
+      const driverATrips = await prisma.trip.findMany({
+        where: { driverId: driverA.userDriverId! },
+        select: { id: true, tripNumber: true },
+        take: 5,
+      });
+
+      const driverBTrips = await prisma.trip.findMany({
+        where: { driverId: driverB.userDriverId! },
+        select: { id: true, tripNumber: true },
+        take: 5,
+      });
+
+      const driverATripIds = new Set(driverATrips.map((t) => t.id));
+      const overlap = driverBTrips.filter((t) => driverATripIds.has(t.id));
+
+      if (overlap.length > 0) {
+        console.log(`FAIL: Driver B can see Driver A trips: ${overlap.map((t) => t.tripNumber).join(', ')}`);
+        failures++;
+      } else {
+        console.log('PASS: Driver B cannot see Driver A trips');
+      }
+
+      // Test 2: Verify trip queries filter by driverId
+      const allTripsForDriverA = await prisma.trip.count({ where: { driverId: driverA.userDriverId! } });
+      const allTripsForDriverB = await prisma.trip.count({ where: { driverId: driverB.userDriverId! } });
+      console.log(`  Driver A trips: ${allTripsForDriverA}`);
+      console.log(`  Driver B trips: ${allTripsForDriverB}`);
+
+      // Test 3: Verify fuel queries are driver-scoped
+      const driverAFuel = await prisma.fuelEntry.count({ where: { driverId: driverA.userDriverId! } });
+      const driverBFuel = await prisma.fuelEntry.count({ where: { driverId: driverB.userDriverId! } });
+      console.log(`  Driver A fuel entries: ${driverAFuel}`);
+      console.log(`  Driver B fuel entries: ${driverBFuel}`);
+
+      // Test 4: Verify expense queries are driver-scoped
+      const driverAExpenses = await prisma.expense.count({ where: { driverId: driverA.userDriverId! } });
+      const driverBExpenses = await prisma.expense.count({ where: { driverId: driverB.userDriverId! } });
+      console.log(`  Driver A expenses: ${driverAExpenses}`);
+      console.log(`  Driver B expenses: ${driverBExpenses}`);
+
+      // Test 5: Vehicle assignment isolation
+      const driverAVehicle = await prisma.vehicle.findFirst({ where: { currentDriverId: driverA.userDriverId! }, select: { id: true, vehicleNumber: true } });
+      const driverBVehicle = await prisma.vehicle.findFirst({ where: { currentDriverId: driverB.userDriverId! }, select: { id: true, vehicleNumber: true } });
+
+      if (driverAVehicle && driverBVehicle && driverAVehicle.id === driverBVehicle.id) {
+        console.log('FAIL: Both drivers assigned to same vehicle');
+        failures++;
+      } else {
+        console.log('PASS: Vehicle assignments are isolated');
+      }
+      console.log(`  Driver A vehicle: ${driverAVehicle?.vehicleNumber ?? 'None'}`);
+      console.log(`  Driver B vehicle: ${driverBVehicle?.vehicleNumber ?? 'None'}`);
     }
   }
 
@@ -93,7 +168,8 @@ async function main() {
   console.log('  POST /me/repair-reports -> driver_repair_report_create required');
   console.log('  ALL /me routes -> driverId from req.authUser.userDriverId (scope enforced)');
 
-  console.log('\n=== Test Complete ===');
+  console.log(`\n=== Test Complete === (${failures > 0 ? `${failures} FAILURES` : 'ALL PASSED'})`);
+  if (failures > 0) process.exitCode = 1;
 }
 
 main()

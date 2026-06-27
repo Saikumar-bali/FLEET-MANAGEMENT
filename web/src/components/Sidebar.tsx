@@ -72,6 +72,11 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
     }),
   })).filter((section) => section.items.length > 0);
 
+  const hasDriverScopedActions = isDriver && visibleSections.some((section) =>
+    section.items.some((item) => item.driverScoped),
+  );
+  const showDriverPermissionHint = isDriver && !hasDriverScopedActions;
+
   const handleAccountClick = useCallback(() => {
     if (accountChipRef.current) {
       onOpenAccount(accountChipRef.current);
@@ -149,6 +154,12 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
             </div>
           ))}
         </nav>
+
+        {showDriverPermissionHint && !isCollapsed && (
+          <div className="sidebar-driver-hint" style={{ padding: '8px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', borderTop: '1px solid var(--color-border)' }}>
+            Missing actions? Ask admin to assign Driver Portal permissions, then refresh permissions.
+          </div>
+        )}
 
         <div className="sidebar-footer">
           <div className="sidebar-upgrade-card">

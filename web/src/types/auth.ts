@@ -823,6 +823,16 @@ export type DriverDashboardData = {
     totalAmount: number;
     totalLiters: number;
   };
+  expenseStatsThisMonth: {
+    count: number;
+    totalAmount: number;
+  };
+  documentStats: {
+    total: number;
+    pendingVerification: number;
+    expiringSoon: number;
+    expired: number;
+  };
   recentFuelEntries: FuelRecord[];
   recentFuelReceipts: Array<{
     id: string;

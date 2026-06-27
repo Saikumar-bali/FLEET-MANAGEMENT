@@ -17,6 +17,67 @@ import {
 import type { PermissionRecord, RoleRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
+const DRIVER_PERMISSION_LABELS: Record<string, string> = {
+  driver_portal_view: 'Can access driver portal',
+  driver_my_dashboard_view: 'Can view own dashboard',
+  driver_my_trips_view: 'Can view own trip list',
+  driver_my_documents_view: 'Can view own documents',
+  driver_my_profile_view: 'Can view own profile',
+  driver_trip_create: 'Driver can create own trips',
+  driver_trip_view: 'Driver can view own trip details',
+  driver_trip_start: 'Driver can start own trips',
+  driver_trip_end: 'Driver can end own trips',
+  driver_trip_cancel: 'Driver can cancel own trips',
+  driver_trip_document_upload: 'Driver can upload trip documents',
+  driver_pod_upload: 'Driver can upload proof of delivery',
+  driver_lr_upload: 'Driver can upload LR document',
+  driver_challan_upload: 'Driver can upload challan',
+  driver_eway_bill_upload: 'Driver can upload e-way bill',
+  driver_quick_fuel_create: 'Driver can create own fuel entry',
+  driver_fuel_receipt_upload: 'Driver can upload own fuel receipt',
+  driver_fuel_view_own: 'Driver can view own fuel entries',
+  driver_expense_create: 'Driver can create own expense claim',
+  driver_expense_view_own: 'Driver can view own expenses',
+  driver_expense_receipt_upload: 'Driver can upload own expense receipt',
+  driver_assigned_vehicle_view: 'Driver can view assigned vehicle',
+  driver_vehicle_inspection_create: 'Driver can submit vehicle inspection',
+  driver_vehicle_issue_report: 'Driver can report vehicle issue',
+  driver_maintenance_report_create: 'Driver can report maintenance',
+  driver_repair_report_create: 'Driver can report repair',
+};
+
+const DRIVER_DISPLAY_GROUPS: Record<string, { label: string; match: (key: string, mod: string) => boolean }> = {
+  'Driver Portal': {
+    label: 'Driver Portal',
+    match: (key) => ['driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view', 'driver_my_documents_view', 'driver_my_profile_view'].includes(key),
+  },
+  'Driver Trips': {
+    label: 'Driver Trips',
+    match: (key) => ['driver_trip_create', 'driver_trip_view', 'driver_trip_start', 'driver_trip_end', 'driver_trip_cancel', 'driver_trip_document_upload', 'driver_pod_upload', 'driver_lr_upload', 'driver_challan_upload', 'driver_eway_bill_upload'].includes(key),
+  },
+  'Driver Fuel': {
+    label: 'Driver Fuel',
+    match: (key) => ['driver_quick_fuel_create', 'driver_fuel_receipt_upload', 'driver_fuel_view_own'].includes(key),
+  },
+  'Driver Expenses': {
+    label: 'Driver Expenses',
+    match: (key) => ['driver_expense_create', 'driver_expense_view_own', 'driver_expense_receipt_upload'].includes(key),
+  },
+  'Driver Vehicle': {
+    label: 'Driver Vehicle',
+    match: (key) => ['driver_assigned_vehicle_view', 'driver_vehicle_inspection_create', 'driver_vehicle_issue_report'].includes(key),
+  },
+  'Driver Maintenance / Repair': {
+    label: 'Driver Maintenance / Repair',
+    match: (key) => ['driver_maintenance_report_create', 'driver_repair_report_create'].includes(key),
+  },
+};
+
+function getPermissionLabel(key: string): string {
+  if (DRIVER_PERMISSION_LABELS[key]) return DRIVER_PERMISSION_LABELS[key];
+  return '';
+}
+
 type RoleFormState = {
   name: string;
   key: string;
@@ -63,6 +124,8 @@ export function RolesPage() {
     [roles, selectedRoleId],
   );
 
+  const isDriverRole = selectedRole?.key === 'driver';
+
   const filteredPermissionGroups = useMemo(() => {
     const normalizedSearch = permissionSearch.trim().toLowerCase();
     const filteredPermissions = normalizedSearch
@@ -74,13 +137,49 @@ export function RolesPage() {
         )
       : permissions;
 
+    if (isDriverRole) {
+      const driverPerms = filteredPermissions.filter((p) => p.module === 'driver');
+      const otherPerms = filteredPermissions.filter((p) => p.module !== 'driver');
+
+      const driverGroups: Record<string, PermissionRecord[]> = {};
+      const unmatched: PermissionRecord[] = [];
+
+      for (const perm of driverPerms) {
+        let placed = false;
+        for (const [, groupDef] of Object.entries(DRIVER_DISPLAY_GROUPS)) {
+          if (groupDef.match(perm.key, perm.module)) {
+            driverGroups[groupDef.label] = driverGroups[groupDef.label] ?? [];
+            driverGroups[groupDef.label].push(perm);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          unmatched.push(perm);
+        }
+      }
+
+      if (unmatched.length > 0) {
+        driverGroups['Driver (Other)'] = unmatched;
+      }
+
+      const otherGroups = otherPerms.reduce<Record<string, PermissionRecord[]>>((groups, permission) => {
+        const key = permission.module || 'general';
+        groups[key] = groups[key] ?? [];
+        groups[key].push(permission);
+        return groups;
+      }, {});
+
+      return { ...driverGroups, ...otherGroups };
+    }
+
     return filteredPermissions.reduce<Record<string, PermissionRecord[]>>((groups, permission) => {
       const key = permission.module || 'general';
       groups[key] = groups[key] ?? [];
       groups[key].push(permission);
       return groups;
     }, {});
-  }, [permissionSearch, permissions]);
+  }, [permissionSearch, permissions, isDriverRole]);
 
   const selectedCount = useMemo(
     () => selectedPermissionKeys.length,
@@ -405,6 +504,54 @@ export function RolesPage() {
           ) : null}
         </div>
 
+        {isDriverRole && (
+          <div className="warning-banner" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', background: 'var(--color-warning-bg, #fff8e1)', border: '1px solid var(--color-warning-border, #ffc107)', borderRadius: '6px' }}>
+            <strong>Driver Portal Permissions:</strong> Driver portal menu uses <code>driver_trip_create</code>, <code>driver_quick_fuel_create</code>, etc. Global permissions like <code>trip_create</code> are for admin/global modules and will <em>not</em> show driver portal actions.
+          </div>
+        )}
+
+        {isDriverRole && (() => {
+          const hasGlobalTripCreate = selectedPermissionKeys.includes('trip_create');
+          const hasDriverTripCreate = selectedPermissionKeys.includes('driver_trip_create');
+          const hasGlobalTripStart = selectedPermissionKeys.includes('trip_start');
+          const hasDriverTripStart = selectedPermissionKeys.includes('driver_trip_start');
+          const hasGlobalTripEnd = selectedPermissionKeys.includes('trip_end');
+          const hasDriverTripEnd = selectedPermissionKeys.includes('driver_trip_end');
+          const hasGlobalFuelCreate = selectedPermissionKeys.includes('fuel_create');
+          const hasDriverFuelCreate = selectedPermissionKeys.includes('driver_quick_fuel_create');
+          const hasGlobalExpenseCreate = selectedPermissionKeys.includes('expense_create');
+          const hasDriverExpenseCreate = selectedPermissionKeys.includes('driver_expense_create');
+
+          const warnings: string[] = [];
+
+          if (hasGlobalTripCreate && !hasDriverTripCreate) {
+            warnings.push('You selected global trip_create. To show "Create Trip" in the driver sidebar, also enable driver_trip_create.');
+          }
+          if (hasGlobalTripStart && !hasDriverTripStart) {
+            warnings.push('You selected global trip_start. To show "Start Trip" in the driver sidebar, also enable driver_trip_start.');
+          }
+          if (hasGlobalTripEnd && !hasDriverTripEnd) {
+            warnings.push('You selected global trip_end. To show "End Trip" in the driver sidebar, also enable driver_trip_end.');
+          }
+          if (hasGlobalFuelCreate && !hasDriverFuelCreate) {
+            warnings.push('You selected global fuel_create. To show "Add Fuel" in the driver sidebar, also enable driver_quick_fuel_create.');
+          }
+          if (hasGlobalExpenseCreate && !hasDriverExpenseCreate) {
+            warnings.push('You selected global expense_create. To show "Create Expense" in the driver sidebar, also enable driver_expense_create.');
+          }
+
+          if (warnings.length === 0) return null;
+
+          return (
+            <div className="warning-banner" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', background: '#fff3e0', border: '1px solid #ff9800', borderRadius: '6px', fontSize: 'var(--font-size-sm)' }}>
+              <strong>Permission mapping notice:</strong>
+              <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          );
+        })()}
+
         {Object.entries(filteredPermissionGroups).length === 0 ? (
           <p className="muted-copy">No permissions match your search.</p>
         ) : (
@@ -447,6 +594,7 @@ export function RolesPage() {
                     </tr>
                     {modulePermissions.map((permission) => {
                       const isChecked = selectedPermissionKeys.includes(permission.key);
+                      const friendlyLabel = getPermissionLabel(permission.key);
 
                       return (
                         <tr key={permission.id}>
@@ -455,7 +603,7 @@ export function RolesPage() {
                             <code className="permission-code">{permission.key}</code>
                           </td>
                           <td className="permission-desc">
-                            {permission.description || `${permission.module} ${permission.action}`}
+                            {friendlyLabel || permission.description || `${permission.module} ${permission.action}`}
                           </td>
                           <td className="permission-cell">
                             <input

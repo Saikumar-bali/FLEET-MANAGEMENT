@@ -39,6 +39,7 @@ const tripInclude = {
       name: true,
       email: true,
       username: true,
+      role: { select: { key: true, name: true } },
     },
   },
 } satisfies Prisma.TripInclude;
@@ -50,6 +51,7 @@ const historyInclude = {
       name: true,
       email: true,
       username: true,
+      role: { select: { key: true, name: true } },
     },
   },
 } satisfies Prisma.TripHistoryInclude;

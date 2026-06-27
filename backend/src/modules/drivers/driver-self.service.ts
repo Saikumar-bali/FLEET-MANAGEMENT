@@ -109,7 +109,7 @@ export async function getMyTrips(userId: string, query: { status?: string; page:
         vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true, status: true } },
         driver: { select: { id: true, name: true, mobile: true, status: true } },
         assistantDriver: { select: { id: true, name: true, mobile: true, status: true } },
-        createdBy: { select: { id: true, name: true, email: true, username: true } },
+        createdBy: { select: { id: true, name: true, email: true, username: true, role: { select: { key: true, name: true } } } },
       },
     }),
     prisma.trip.count({ where }),

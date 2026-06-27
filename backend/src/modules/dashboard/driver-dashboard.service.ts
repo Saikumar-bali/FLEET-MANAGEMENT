@@ -41,6 +41,10 @@ export async function getDriverDashboard(params: {
     completedTripCount,
     totalTripCount,
     fuelStatsThisMonth,
+    expenseStatsThisMonth,
+    documentTotalCount,
+    pendingVerificationDocs,
+    expiredDocs,
     recentFuelEntries,
     recentExpenses,
     driverDocuments,
@@ -68,6 +72,29 @@ export async function getDriverDashboard(params: {
         driverId,
         fuelDate: { gte: startOfMonth, lte: endOfMonth },
       },
+    }),
+    prisma.expense.aggregate({
+      _sum: { amount: true },
+      _count: true,
+      where: {
+        driverId,
+        expenseDate: { gte: startOfMonth, lte: endOfMonth },
+      },
+    }),
+    prisma.document.aggregate({
+      _count: true,
+      where: {
+        driverId,
+        documentStatus: { not: 'DELETED' },
+      },
+    }),
+    prisma.document.findMany({
+      where: { driverId, verificationStatus: 'PENDING' },
+      select: { id: true },
+    }),
+    prisma.document.findMany({
+      where: { driverId, documentStatus: 'ACTIVE', expiryDate: { lt: now } },
+      select: { id: true },
     }),
     prisma.fuelEntry.findMany({
       where: { driverId },
@@ -146,6 +173,16 @@ export async function getDriverDashboard(params: {
       count: fuelStatsThisMonth._count,
       totalAmount: Number(fuelStatsThisMonth._sum?.totalAmount ?? 0),
       totalLiters: Number(fuelStatsThisMonth._sum?.quantityLiters ?? 0),
+    },
+    expenseStatsThisMonth: {
+      count: expenseStatsThisMonth._count,
+      totalAmount: Number(expenseStatsThisMonth._sum?.amount ?? 0),
+    },
+    documentStats: {
+      total: documentTotalCount._count,
+      pendingVerification: pendingVerificationDocs.length,
+      expiringSoon: expiringDocuments.length,
+      expired: expiredDocs.length,
     },
     recentFuelEntries: recentFuelEntries.map((f) => ({
       ...f,

@@ -30,6 +30,21 @@ function daysUntil(dateStr: string) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+const DRIVER_CAPABILITY_MAP: Record<string, string> = {
+  driver_trip_create: 'Create Trip',
+  driver_trip_start: 'Start Trip',
+  driver_trip_end: 'End Trip',
+  driver_quick_fuel_create: 'Add Fuel',
+  driver_fuel_receipt_upload: 'Upload Fuel Bill',
+  driver_expense_create: 'Expense Claim',
+  driver_pod_upload: 'Upload POD',
+  driver_vehicle_inspection_create: 'Vehicle Inspection',
+  driver_maintenance_report_create: 'Maintenance Report',
+  driver_repair_report_create: 'Repair Report',
+  driver_vehicle_issue_report: 'Report Vehicle Issue',
+  driver_trip_document_upload: 'Upload Trip Document',
+};
+
 export function DriverDashboardPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -88,6 +103,23 @@ export function DriverDashboardPage() {
 
   const licenseExpiring = driver.licenseExpiry ? daysUntil(driver.licenseExpiry) : null;
 
+  const capabilities = Object.entries(DRIVER_CAPABILITY_MAP)
+    .filter(([perm]) => auth.hasPermission(perm))
+    .map(([, label]) => label);
+
+  const hasTripCreate = auth.hasPermission('driver_trip_create');
+  const hasTripStart = auth.hasPermission('driver_trip_start');
+  const hasTripEnd = auth.hasPermission('driver_trip_end');
+  const hasFuelCreate = auth.hasPermission('driver_quick_fuel_create');
+  const hasFuelReceipt = auth.hasPermission('driver_fuel_receipt_upload');
+  const hasExpenseCreate = auth.hasPermission('driver_expense_create');
+  const hasPodUpload = auth.hasPermission('driver_pod_upload');
+  const hasInspection = auth.hasPermission('driver_vehicle_inspection_create');
+  const hasIssueReport = auth.hasPermission('driver_vehicle_issue_report');
+
+  const expenseStatsThisMonth = data.expenseStatsThisMonth ?? { count: recentExpenses.length, totalAmount: recentExpenses.reduce((sum, e) => sum + Number(e.amount), 0) };
+  const documentStats = data.documentStats ?? { total: driverDocuments.length, pendingVerification: driverDocuments.filter((d) => d.verificationStatus === 'PENDING').length, expiringSoon: expiringDocuments.length, expired: driverDocuments.filter((d) => d.documentStatus === 'ARCHIVED').length };
+
   return (
     <PageShell>
       <PageHeader title="My Dashboard" />
@@ -109,8 +141,8 @@ export function DriverDashboardPage() {
             </p>
           </div>
           <div className="action-panel">
-            <ActionButton label="Fuel Entry" variant="primary" onClick={() => navigate('/fuel/new')} />
-            <ActionButton label="Add Expense" variant="secondary" onClick={() => navigate('/expenses/new')} />
+            {hasFuelCreate && <ActionButton label="Fuel Entry" variant="primary" onClick={() => navigate('/my-fuel/new')} />}
+            {hasExpenseCreate && <ActionButton label="Add Expense" variant="secondary" onClick={() => navigate('/my-expenses/new')} />}
             <ActionButton label="My Trips" variant="ghost" onClick={() => navigate('/my-trips')} />
           </div>
         </div>
@@ -158,6 +190,34 @@ export function DriverDashboardPage() {
         />
       </KpiGrid>
 
+      <div style={{ marginTop: 'var(--space-4)' }}>
+        <KpiGrid columns={4}>
+        <StatCard
+          label="Expense (Month)"
+          value={formatCurrency(expenseStatsThisMonth.totalAmount)}
+          subtext={`${expenseStatsThisMonth.count} entries`}
+          variant="default"
+        />
+        <StatCard
+          label="Documents"
+          value={documentStats.total}
+          subtext={`${documentStats.pendingVerification} pending, ${documentStats.expiringSoon} expiring`}
+          variant={documentStats.expiringSoon > 0 ? 'warning' : 'muted'}
+        />
+        <StatCard
+          label="Assigned Vehicle"
+          value={currentVehicle ? currentVehicle.vehicleNumber : 'None'}
+          variant={currentVehicle ? 'default' : 'muted'}
+        />
+        <StatCard
+          label="Expenses This Month"
+          value={expenseStatsThisMonth.count}
+          subtext={formatCurrency(expenseStatsThisMonth.totalAmount)}
+          variant="default"
+        />
+      </KpiGrid>
+      </div>
+
       {activeTrip && (
         <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
           <div className="chart-card-header">
@@ -165,7 +225,7 @@ export function DriverDashboardPage() {
               <h3 className="chart-card-title">Active Trip</h3>
               <p className="chart-card-subtitle">{activeTrip.tripNumber}</p>
             </div>
-            <Link to={`/trips/${activeTrip.id}`} className="chart-card-link">View trip</Link>
+            <Link to={`/my-trips/${activeTrip.id}`} className="chart-card-link">View trip</Link>
           </div>
           <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
             <p><strong>Route:</strong> {activeTrip.originName} → {activeTrip.destinationName}</p>
@@ -174,6 +234,42 @@ export function DriverDashboardPage() {
           </div>
         </div>
       )}
+
+      {capabilities.length > 0 && (
+        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="chart-card-header">
+            <div>
+              <h3 className="chart-card-title">My Capabilities</h3>
+              <p className="chart-card-subtitle">Your enabled driver actions</p>
+            </div>
+          </div>
+          <div style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {capabilities.map((cap) => (
+              <span key={cap} style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', background: 'var(--color-success-bg, #e8f5e9)', color: 'var(--color-success-text, #2e7d32)', border: '1px solid var(--color-success-border, #a5d6a7)' }}>{cap}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="section-header">
+          <div>
+            <h3 className="chart-card-title">Quick Actions</h3>
+            <p className="chart-card-subtitle">Common tasks</p>
+          </div>
+          <div className="action-panel" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {hasTripCreate && <ActionButton label="Create Trip" variant="primary" onClick={() => navigate('/my-trips/new')} />}
+            {hasTripStart && activeTrip && <ActionButton label="Start Trip" variant="primary" onClick={() => navigate(`/my-trips/${activeTrip.id}`)} />}
+            {hasTripEnd && activeTrip && <ActionButton label="End Trip" variant="secondary" onClick={() => navigate(`/my-trips/${activeTrip.id}`)} />}
+            {hasFuelCreate && <ActionButton label="Add Fuel" variant="secondary" onClick={() => navigate('/my-fuel/new')} />}
+            {hasFuelReceipt && <ActionButton label="Upload Fuel Bill" variant="ghost" onClick={() => navigate('/my-fuel/upload-receipt')} />}
+            {hasExpenseCreate && <ActionButton label="Create Expense" variant="ghost" onClick={() => navigate('/my-expenses/new')} />}
+            {hasPodUpload && <ActionButton label="Upload POD" variant="ghost" onClick={() => navigate('/my-trips/upload-pod')} />}
+            {hasInspection && <ActionButton label="Vehicle Inspection" variant="ghost" onClick={() => navigate('/my-vehicle/inspection')} />}
+            {hasIssueReport && <ActionButton label="Report Issue" variant="ghost" onClick={() => navigate('/my-vehicle/report-issue')} />}
+          </div>
+        </div>
+      </div>
 
       <div className="dashboard-chart-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
         {recentTrips.length > 0 && (
@@ -198,7 +294,7 @@ export function DriverDashboardPage() {
                 <tbody>
                   {recentTrips.slice(0, 5).map((trip) => (
                     <tr key={trip.id}>
-                      <td><Link to={`/trips/${trip.id}`}>{trip.tripNumber}</Link></td>
+                      <td><Link to={`/my-trips/${trip.id}`}>{trip.tripNumber}</Link></td>
                       <td>{trip.originName} → {trip.destinationName}</td>
                       <td><StatusPill status={trip.status} /></td>
                       <td>{formatDate(trip.createdAt)}</td>
