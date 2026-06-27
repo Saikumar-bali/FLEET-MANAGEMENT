@@ -26,6 +26,7 @@ import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { DriverDashboardPage } from '../pages/DriverDashboardPage';
+import { MyProfilePage } from '../pages/MyProfilePage';
 import { MyTripsPage } from '../pages/MyTripsPage';
 import { MyDocumentsPage } from '../pages/MyDocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
@@ -55,6 +56,7 @@ function App() {
                   <Route path="/my-dashboard" element={<DriverDashboardPage />} />
                   <Route path="/my-trips" element={<MyTripsPage />} />
                   <Route path="/my-documents" element={<MyDocumentsPage />} />
+                  <Route path="/my-profile" element={<MyProfilePage />} />
                 </Route>
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>

@@ -310,6 +310,13 @@ export function getDriver(token: string, driverId: string) {
   return request<DriverRecord>(`/drivers/${driverId}`, { token });
 }
 
+export function getDriverLinkedAccount(token: string, driverId: string) {
+  return request<{ driver: { id: string; name: string }; linkedUser: Record<string, unknown> | null }>(
+    `/drivers/${driverId}/linked-account`,
+    { token },
+  );
+}
+
 export function createDriver(
   token: string,
   payload: { name: string; mobile: string; licenseNumber: string },

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createDriver, getDriver, updateDriver, updateDriverStatus } from '../services/api';
+import { createDriver, getDriver, getDriverLinkedAccount, updateDriver, updateDriverStatus } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { DriverRecord } from '../types/auth';
 import { ApiError } from '../types/api';
@@ -48,14 +48,6 @@ const initialForm: DriverForm = {
 
 type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'account';
 
-const sectionTabs: { key: SectionTab; label: string }[] = [
-  { key: 'personal', label: 'Personal Info' },
-  { key: 'license', label: 'License' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'status', label: 'Status' },
-  { key: 'account', label: 'Login Account' },
-];
-
 export function DriverDetailPage() {
   const { id } = useParams();
   const isNew = id === 'new';
@@ -70,6 +62,7 @@ export function DriverDetailPage() {
   const [activeSection, setActiveSection] = useState<SectionTab>('personal');
   const [statusValue, setStatusValue] = useState('');
   const [linkedUser, setLinkedUser] = useState<LinkedUserSummary | null>(null);
+  const canManageDriverAccount = auth.user?.role?.key !== 'driver' && auth.hasAnyPermission(['user_view', 'user_update']);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -81,7 +74,7 @@ export function DriverDetailPage() {
         const response = await getDriver(auth.accessToken, id);
         setDriver(response.data);
         setStatusValue(response.data.status);
-        setLinkedUser(response.data.linkedUser ?? null);
+        setLinkedUser(null);
         setForm({
           name: response.data.name,
           mobile: response.data.mobile,
@@ -101,6 +94,20 @@ export function DriverDetailPage() {
     };
     void load();
   }, [auth.accessToken, id, isNew]);
+
+  // Fetch linked account data when Login Account tab is active
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken || activeSection !== 'account' || !canManageDriverAccount) return;
+    const load = async () => {
+      try {
+        const res = await getDriverLinkedAccount(auth.accessToken!, id);
+        setLinkedUser(res.data.linkedUser as LinkedUserSummary | null);
+      } catch {
+        setLinkedUser(null);
+      }
+    };
+    void load();
+  }, [auth.accessToken, id, isNew, activeSection, canManageDriverAccount]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,6 +168,19 @@ export function DriverDetailPage() {
   const canEdit = auth.hasPermission('driver_update');
   const canChangeStatus = auth.hasAnyPermission(['driver_update', 'driver_delete']);
 
+  const sectionTabs: { key: SectionTab; label: string }[] = [
+    { key: 'personal', label: 'Personal Info' },
+    { key: 'license', label: 'License' },
+    { key: 'documents', label: 'Documents' },
+    { key: 'status', label: 'Status' },
+  ];
+  if (canManageDriverAccount) {
+    sectionTabs.push({ key: 'account', label: 'Login Account' });
+  }
+  // Reset activeSection if current section is no longer available
+  const availableSections = new Set(sectionTabs.map((t) => t.key));
+  const effectiveSection = availableSections.has(activeSection) ? activeSection : 'personal';
+
   return (
     <section className="page-content">
       <div className="section-header">
@@ -190,7 +210,7 @@ export function DriverDetailPage() {
             <button
               key={tab.key}
               type="button"
-              className={`detail-tab${activeSection === tab.key ? ' detail-tab-active' : ''}`}
+              className={`detail-tab${effectiveSection === tab.key ? ' detail-tab-active' : ''}`}
               onClick={() => setActiveSection(tab.key)}
             >
               {tab.label}
@@ -200,7 +220,7 @@ export function DriverDetailPage() {
       ) : null}
 
       <form id="driver-form" className="form-main" onSubmit={handleSubmit}>
-        {isNew || activeSection === 'personal' ? (
+        {isNew || effectiveSection === 'personal' ? (
           <div className="card form-section-grid">
             <h4 className="role-edit-h4">Personal Information</h4>
             <label>
@@ -247,7 +267,7 @@ export function DriverDetailPage() {
           </div>
         ) : null}
 
-        {!isNew && activeSection === 'license' ? (
+        {!isNew && effectiveSection === 'license' ? (
           <div className="card form-section-grid">
             <h4 className="role-edit-h4">License Information</h4>
             <label>
@@ -267,7 +287,7 @@ export function DriverDetailPage() {
           </div>
         ) : null}
 
-        {!isNew && activeSection === 'documents' && driver ? (
+        {!isNew && effectiveSection === 'documents' && driver ? (
           <div className="card form-section-grid">
             <LinkedDocumentsPanel
               linkedEntityType="DRIVER"
@@ -286,7 +306,7 @@ export function DriverDetailPage() {
           </div>
         ) : null}
 
-        {!isNew && activeSection === 'status' ? (
+        {!isNew && effectiveSection === 'status' ? (
           <div className="card form-section-grid">
             <h4 className="role-edit-h4">Status Management</h4>
             {canChangeStatus ? (
@@ -324,7 +344,7 @@ export function DriverDetailPage() {
           </div>
         ) : null}
 
-        {!isNew && activeSection === 'account' ? (
+        {!isNew && effectiveSection === 'account' && canManageDriverAccount ? (
           <div className="card form-section-grid">
             <h4 className="role-edit-h4">Linked Login Account</h4>
             {linkedUser ? (

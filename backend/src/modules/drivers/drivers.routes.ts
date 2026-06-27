@@ -6,6 +6,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createDriverController,
   getDriverController,
+  getDriverLinkedAccountController,
   getMyDriverProfileController,
   listDriversController,
   updateDriverController,
@@ -60,6 +61,13 @@ router.get(
 router.get(
   '/me/vehicle',
   asyncHandler(getMyVehicleController),
+);
+
+router.get(
+  '/:id/linked-account',
+  requireAnyPermission(['user_view', 'user_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverLinkedAccountController),
 );
 
 router.get(

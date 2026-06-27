@@ -7,6 +7,7 @@ export type NavigationItem = {
   pageTitle?: string;
   pageDescription?: string;
   driverOnly?: boolean;
+  driverScoped?: boolean;
   adminOnly?: boolean;
 };
 
@@ -47,6 +48,16 @@ export const navigationItems: NavigationItem[] = [
     pageTitle: 'My Documents',
     pageDescription: 'Your uploaded documents and files',
     driverOnly: true,
+  },
+  {
+    label: 'My Profile',
+    path: '/my-profile',
+    description: 'View your driver profile',
+    permissionKeys: [],
+    section: 'MY',
+    pageTitle: 'My Profile',
+    pageDescription: 'Your driver profile information',
+    driverScoped: true,
   },
   // ─── Admin/Manager items ───
   {

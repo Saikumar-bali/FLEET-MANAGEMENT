@@ -56,11 +56,11 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
     ...section,
     items: section.items.filter((item) => {
       if (isDriver) {
-        if (item.adminOnly) return false;
-        if (item.driverOnly) return true;
-        return auth.hasAnyPermission(item.permissionKeys);
+        // Drivers see only driverOnly or driverScoped items
+        return item.driverOnly === true || item.driverScoped === true;
       }
-      if (item.driverOnly) return false;
+      // Non-drivers never see driver items
+      if (item.driverOnly || item.driverScoped) return false;
       return auth.hasAnyPermission(item.permissionKeys);
     }),
   })).filter((section) => section.items.length > 0);

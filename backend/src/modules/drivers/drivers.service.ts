@@ -47,34 +47,13 @@ export async function listDrivers(query: { search?: string; status?: string; unl
 export async function getDriverById(driverId: string) {
   const driver = await prisma.driver.findUnique({
     where: { id: driverId },
-    include: {
-      linkedUsers: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          email: true,
-          mobile: true,
-          status: true,
-          userDriverId: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
-          role: { select: { id: true, name: true, key: true } },
-        },
-      },
-    },
   });
 
   if (!driver) {
     throw new AppError('Driver not found', 404);
   }
 
-  const { linkedUsers, ...driverData } = driver;
-  return {
-    ...driverData,
-    linkedUser: linkedUsers[0] ?? null,
-  };
+  return driver;
 }
 
 export async function createDriver(input: {
