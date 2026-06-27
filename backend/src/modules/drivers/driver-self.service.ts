@@ -32,9 +32,20 @@ export async function createMyTrip(authUser: RequestUser, input: {
 }) {
   const driverId = await getDriverIdFromUser(authUser.id);
 
-  // If no vehicleId, find assigned vehicle
+  // Determine vehicle: must be assigned to this driver
   let vehicleId = input.vehicleId;
-  if (!vehicleId) {
+
+  if (vehicleId) {
+    // If vehicleId provided, verify it is assigned to this driver
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) {
+      throw new AppError('Vehicle not found', 404);
+    }
+    if (vehicle.currentDriverId !== driverId) {
+      throw new AppError('Vehicle is not assigned to you', 403);
+    }
+  } else {
+    // Auto-select assigned vehicle
     const assignedVehicle = await prisma.vehicle.findFirst({
       where: { currentDriverId: driverId },
     });
@@ -44,13 +55,7 @@ export async function createMyTrip(authUser: RequestUser, input: {
   }
 
   if (!vehicleId) {
-    throw new AppError('No vehicle specified and no assigned vehicle found. Please contact your administrator.', 400);
-  }
-
-  // Verify vehicle exists
-  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
-  if (!vehicle) {
-    throw new AppError('Vehicle not found', 404);
+    throw new AppError('No vehicle specified and no vehicle assigned to you. Contact your administrator.', 400);
   }
 
   // Generate trip number
@@ -245,4 +250,173 @@ export async function getMyVehicle(userId: string) {
   });
 
   return vehicle;
+}
+
+export async function getMyTripById(userId: string, tripId: string) {
+  const driverId = await getDriverIdFromUser(userId);
+  const trip = await prisma.trip.findUnique({
+    where: { id: tripId },
+    include: {
+      vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true, status: true } },
+      driver: { select: { id: true, name: true, mobile: true, status: true } },
+    },
+  });
+  if (!trip || trip.driverId !== driverId) {
+    throw new AppError('Trip not found', 404);
+  }
+  return {
+    ...trip,
+    plannedStartAt: trip.plannedStartAt?.toISOString() ?? null,
+    actualStartAt: trip.actualStartAt?.toISOString() ?? null,
+    plannedEndAt: trip.plannedEndAt?.toISOString() ?? null,
+    actualEndAt: trip.actualEndAt?.toISOString() ?? null,
+    createdAt: trip.createdAt.toISOString(),
+    updatedAt: trip.updatedAt.toISOString(),
+  };
+}
+
+export async function startMyTrip(userId: string, tripId: string) {
+  const driverId = await getDriverIdFromUser(userId);
+  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+  if (!trip || trip.driverId !== driverId) throw new AppError('Trip not found', 404);
+  if (trip.status !== 'DRAFT' && trip.status !== 'SCHEDULED') throw new AppError('Trip cannot be started from current status', 400);
+  return prisma.trip.update({
+    where: { id: tripId },
+    data: { status: 'STARTED', actualStartAt: new Date() },
+  });
+}
+
+export async function endMyTrip(userId: string, tripId: string) {
+  const driverId = await getDriverIdFromUser(userId);
+  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+  if (!trip || trip.driverId !== driverId) throw new AppError('Trip not found', 404);
+  if (trip.status !== 'STARTED') throw new AppError('Trip must be started before ending', 400);
+  return prisma.trip.update({
+    where: { id: tripId },
+    data: { status: 'COMPLETED', actualEndAt: new Date() },
+  });
+}
+
+export async function cancelMyTrip(userId: string, tripId: string) {
+  const driverId = await getDriverIdFromUser(userId);
+  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+  if (!trip || trip.driverId !== driverId) throw new AppError('Trip not found', 404);
+  if (!['DRAFT', 'SCHEDULED', 'STARTED'].includes(trip.status)) throw new AppError('Trip cannot be cancelled from current status', 400);
+  return prisma.trip.update({
+    where: { id: tripId },
+    data: { status: 'CANCELLED', actualEndAt: new Date() },
+  });
+}
+
+export async function createMyFuelEntry(userId: string, input: {
+  vehicleId?: string;
+  tripId?: string;
+  totalAmount: number;
+  quantityLiters?: number;
+  fuelType?: string;
+  stationName?: string;
+  receiptNumber?: string;
+  notes?: string;
+}) {
+  const driverId = await getDriverIdFromUser(userId);
+  let vehicleId = input.vehicleId;
+  if (!vehicleId) {
+    const v = await prisma.vehicle.findFirst({ where: { currentDriverId: driverId } });
+    if (v) vehicleId = v.id;
+  }
+  if (!vehicleId) throw new AppError('No vehicle specified and no assigned vehicle found', 400);
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle || vehicle.currentDriverId !== driverId) throw new AppError('Vehicle not assigned to you', 403);
+
+  if (input.tripId) {
+    const trip = await prisma.trip.findUnique({ where: { id: input.tripId } });
+    if (!trip || trip.driverId !== driverId) throw new AppError('Trip not found', 404);
+  }
+  return prisma.fuelEntry.create({
+    data: {
+      vehicleId, driverId, tripId: input.tripId || null,
+      fuelDate: new Date(), fuelType: input.fuelType || 'DIESEL',
+      entryMode: input.quantityLiters ? 'FULL_DETAILS' : 'QUICK_AMOUNT',
+      quantityLiters: input.quantityLiters || null,
+      totalAmount: input.totalAmount,
+      stationName: input.stationName || null,
+      receiptNumber: input.receiptNumber || null,
+      notes: input.notes || null,
+      status: 'DRAFT',
+      createdById: userId,
+    },
+  });
+}
+
+export async function createMyExpense(userId: string, input: {
+  vehicleId?: string;
+  tripId?: string;
+  category: string;
+  amount: number;
+  expenseDate?: string;
+  vendor?: string;
+  receiptNumber?: string;
+  notes?: string;
+}) {
+  const driverId = await getDriverIdFromUser(userId);
+  let vehicleId = input.vehicleId;
+  if (!vehicleId) {
+    const v = await prisma.vehicle.findFirst({ where: { currentDriverId: driverId } });
+    if (v) vehicleId = v.id;
+  }
+  if (!vehicleId) throw new AppError('No vehicle specified', 400);
+  if (input.tripId) {
+    const trip = await prisma.trip.findUnique({ where: { id: input.tripId } });
+    if (!trip || trip.driverId !== driverId) throw new AppError('Trip not found', 404);
+  }
+  return prisma.expense.create({
+    data: {
+      vehicleId, driverId, tripId: input.tripId || null,
+      category: input.category, amount: input.amount,
+      expenseDate: input.expenseDate ? new Date(input.expenseDate) : new Date(),
+      vendor: input.vendor || null, receiptNumber: input.receiptNumber || null,
+      notes: input.notes || null, status: 'DRAFT', createdById: userId,
+    },
+  });
+}
+
+export async function createMyMaintenanceReport(userId: string, input: {
+  vehicleId?: string; tripId?: string;
+  category: string; description: string; priority?: string;
+}) {
+  const driverId = await getDriverIdFromUser(userId);
+  let vehicleId = input.vehicleId;
+  if (!vehicleId) {
+    const v = await prisma.vehicle.findFirst({ where: { currentDriverId: driverId } });
+    if (v) vehicleId = v.id;
+  }
+  if (!vehicleId) throw new AppError('No vehicle specified', 400);
+  return prisma.maintenanceRequest.create({
+    data: {
+      vehicleId, driverId, tripId: input.tripId || null,
+      requestDate: new Date(), category: input.category,
+      description: input.description, priority: (input.priority as any) || 'MEDIUM',
+      status: 'DRAFT', createdById: userId,
+    },
+  });
+}
+
+export async function createMyRepairReport(userId: string, input: {
+  vehicleId?: string; tripId?: string;
+  category: string; description: string;
+}) {
+  const driverId = await getDriverIdFromUser(userId);
+  let vehicleId = input.vehicleId;
+  if (!vehicleId) {
+    const v = await prisma.vehicle.findFirst({ where: { currentDriverId: driverId } });
+    if (v) vehicleId = v.id;
+  }
+  if (!vehicleId) throw new AppError('No vehicle specified', 400);
+  return prisma.repair.create({
+    data: {
+      vehicleId, driverId, tripId: input.tripId || null,
+      repairDate: new Date(), category: input.category,
+      description: input.description, status: 'OPEN', createdById: userId,
+    },
+  });
 }

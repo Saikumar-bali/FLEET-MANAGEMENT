@@ -14,11 +14,19 @@ import {
 } from './drivers.controller';
 import {
   createMyTripController,
+  getMyTripController,
+  startMyTripController,
+  endMyTripController,
+  cancelMyTripController,
   getMyTripsController,
+  createMyFuelEntryController,
   getMyFuelEntriesController,
+  createMyExpenseController,
   getMyExpensesController,
   getMyDocumentsController,
   getMyVehicleController,
+  createMyMaintenanceReportController,
+  createMyRepairReportController,
 } from './driver-self.controller';
 import {
   createDriverSchema,
@@ -47,10 +55,69 @@ router.get(
   '/me/trips',
   asyncHandler(getMyTripsController),
 );
+router.get(
+  '/me/trips/:tripId',
+  requirePermission('driver_trip_view'),
+  asyncHandler(getMyTripController),
+);
 router.post(
   '/me/trips',
   requirePermission('driver_trip_create'),
   asyncHandler(createMyTripController),
+);
+router.post(
+  '/me/trips/:tripId/start',
+  requirePermission('driver_trip_start'),
+  asyncHandler(startMyTripController),
+);
+router.post(
+  '/me/trips/:tripId/end',
+  requirePermission('driver_trip_end'),
+  asyncHandler(endMyTripController),
+);
+router.post(
+  '/me/trips/:tripId/cancel',
+  requirePermission('driver_trip_cancel'),
+  asyncHandler(cancelMyTripController),
+);
+router.get(
+  '/me/fuel',
+  requirePermission('driver_fuel_view_own'),
+  asyncHandler(getMyFuelEntriesController),
+);
+router.post(
+  '/me/fuel',
+  requirePermission('driver_quick_fuel_create'),
+  asyncHandler(createMyFuelEntryController),
+);
+router.get(
+  '/me/expenses',
+  requirePermission('driver_expense_view_own'),
+  asyncHandler(getMyExpensesController),
+);
+router.post(
+  '/me/expenses',
+  requirePermission('driver_expense_create'),
+  asyncHandler(createMyExpenseController),
+);
+router.get(
+  '/me/documents',
+  asyncHandler(getMyDocumentsController),
+);
+router.get(
+  '/me/vehicle',
+  requirePermission('driver_assigned_vehicle_view'),
+  asyncHandler(getMyVehicleController),
+);
+router.post(
+  '/me/maintenance-reports',
+  requirePermission('driver_maintenance_report_create'),
+  asyncHandler(createMyMaintenanceReportController),
+);
+router.post(
+  '/me/repair-reports',
+  requirePermission('driver_repair_report_create'),
+  asyncHandler(createMyRepairReportController),
 );
 router.get(
   '/me/fuel',

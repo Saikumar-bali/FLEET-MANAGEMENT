@@ -124,6 +124,34 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'alerts_view', module: 'alerts', action: 'view', description: 'View alerts and notifications' },
   { key: 'alerts_manage', module: 'alerts', action: 'manage', description: 'Trigger alert generation and edit alert rules' },
   { key: 'alerts_resolve', module: 'alerts', action: 'resolve', description: 'Read, resolve, and dismiss alerts' },
+
+  // Driver-scoped permissions
+  { key: 'driver_portal_view', module: 'driver', action: 'portal_view', description: 'Access the driver portal' },
+  { key: 'driver_my_dashboard_view', module: 'driver', action: 'dashboard_view', description: 'View driver dashboard' },
+  { key: 'driver_my_trips_view', module: 'driver', action: 'trips_view', description: 'View own trips' },
+  { key: 'driver_my_documents_view', module: 'driver', action: 'documents_view', description: 'View own documents' },
+  { key: 'driver_my_profile_view', module: 'driver', action: 'profile_view', description: 'View own driver profile' },
+  { key: 'driver_trip_create', module: 'driver', action: 'trip_create', description: 'Create own trips' },
+  { key: 'driver_trip_view', module: 'driver', action: 'trip_view', description: 'View own trip details' },
+  { key: 'driver_trip_start', module: 'driver', action: 'trip_start', description: 'Start own trip' },
+  { key: 'driver_trip_end', module: 'driver', action: 'trip_end', description: 'End own trip' },
+  { key: 'driver_trip_cancel', module: 'driver', action: 'trip_cancel', description: 'Cancel own trip' },
+  { key: 'driver_trip_document_upload', module: 'driver', action: 'trip_document_upload', description: 'Upload trip documents' },
+  { key: 'driver_pod_upload', module: 'driver', action: 'pod_upload', description: 'Upload proof of delivery' },
+  { key: 'driver_lr_upload', module: 'driver', action: 'lr_upload', description: 'Upload LR document' },
+  { key: 'driver_challan_upload', module: 'driver', action: 'challan_upload', description: 'Upload challan document' },
+  { key: 'driver_eway_bill_upload', module: 'driver', action: 'eway_bill_upload', description: 'Upload e-way bill' },
+  { key: 'driver_quick_fuel_create', module: 'driver', action: 'fuel_create', description: 'Create quick fuel entries' },
+  { key: 'driver_fuel_receipt_upload', module: 'driver', action: 'fuel_receipt_upload', description: 'Upload fuel receipt' },
+  { key: 'driver_fuel_view_own', module: 'driver', action: 'fuel_view', description: 'View own fuel entries' },
+  { key: 'driver_expense_create', module: 'driver', action: 'expense_create', description: 'Create expense claims' },
+  { key: 'driver_expense_view_own', module: 'driver', action: 'expense_view', description: 'View own expenses' },
+  { key: 'driver_expense_receipt_upload', module: 'driver', action: 'expense_receipt_upload', description: 'Upload expense receipt' },
+  { key: 'driver_assigned_vehicle_view', module: 'driver', action: 'vehicle_view', description: 'View assigned vehicle' },
+  { key: 'driver_vehicle_inspection_create', module: 'driver', action: 'inspection_create', description: 'Submit vehicle inspection' },
+  { key: 'driver_vehicle_issue_report', module: 'driver', action: 'issue_report', description: 'Report vehicle issue' },
+  { key: 'driver_maintenance_report_create', module: 'driver', action: 'maintenance_report', description: 'Request maintenance' },
+  { key: 'driver_repair_report_create', module: 'driver', action: 'repair_report', description: 'Request repair' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -287,7 +315,11 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'alerts_view',
     'alerts_resolve',
   ],
-  driver: ['trip_view', 'trip_start', 'trip_end', 'vehicle_compliance_view', 'compliance_alerts_view', 'alerts_view'],
+  driver: [
+    'trip_view', 'trip_start', 'trip_end', 'vehicle_compliance_view', 'compliance_alerts_view', 'alerts_view',
+    'driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view', 'driver_my_documents_view', 'driver_my_profile_view',
+    'driver_assigned_vehicle_view',
+  ],
   assistant_driver: ['trip_view', 'alerts_view'],
   collector: [
     'payments_view',

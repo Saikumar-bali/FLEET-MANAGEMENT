@@ -1048,6 +1048,29 @@ export function getMyTrips(token: string, params?: { status?: string; page?: num
   return request<PaginatedResponse<TripRecord>>(`/drivers/me/trips${qs ? `?${qs}` : ''}`, { token });
 }
 
+export function getMyTrip(token: string, tripId: string) {
+  return request<TripRecord>(`/drivers/me/trips/${tripId}`, { token });
+}
+
+export function createMyTrip(
+  token: string,
+  payload: { tripType: string; originName: string; destinationName: string; vehicleId?: string; plannedStartAt?: string; notes?: string },
+) {
+  return request<TripRecord>('/drivers/me/trips', { method: 'POST', body: JSON.stringify(payload), token });
+}
+
+export function startMyTrip(token: string, tripId: string) {
+  return request<TripRecord>(`/drivers/me/trips/${tripId}/start`, { method: 'POST', token });
+}
+
+export function endMyTrip(token: string, tripId: string) {
+  return request<TripRecord>(`/drivers/me/trips/${tripId}/end`, { method: 'POST', token });
+}
+
+export function cancelMyTrip(token: string, tripId: string) {
+  return request<TripRecord>(`/drivers/me/trips/${tripId}/cancel`, { method: 'POST', token });
+}
+
 export function getMyFuelEntries(token: string, params?: { page?: number; limit?: number }) {
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
@@ -1056,12 +1079,26 @@ export function getMyFuelEntries(token: string, params?: { page?: number; limit?
   return request<PaginatedResponse<FuelRecord>>(`/drivers/me/fuel${qs ? `?${qs}` : ''}`, { token });
 }
 
+export function createMyFuelEntry(
+  token: string,
+  payload: { totalAmount: number; quantityLiters?: number; vehicleId?: string; tripId?: string; stationName?: string; notes?: string },
+) {
+  return request<FuelRecord>('/drivers/me/fuel', { method: 'POST', body: JSON.stringify(payload), token });
+}
+
 export function getMyExpenses(token: string, params?: { page?: number; limit?: number }) {
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));
   const qs = query.toString();
   return request<PaginatedResponse<ExpenseRecord>>(`/drivers/me/expenses${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function createMyExpense(
+  token: string,
+  payload: { category: string; amount: number; vehicleId?: string; tripId?: string; expenseDate?: string; vendor?: string; notes?: string },
+) {
+  return request<ExpenseRecord>('/drivers/me/expenses', { method: 'POST', body: JSON.stringify(payload), token });
 }
 
 export function getMyDocuments(token: string, params?: { page?: number; limit?: number }) {

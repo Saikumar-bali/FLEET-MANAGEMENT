@@ -1,31 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getMyVehicle } from '../../services/api';
+import { getMyVehicle, createMyTrip } from '../../services/api';
 import type { VehicleRecord } from '../../types/auth';
 import { ApiError } from '../../types/api';
 import { PageShell } from '../../components/ui/PageShell';
 
-type TripForm = {
-  tripType: string;
-  originName: string;
-  destinationName: string;
-  plannedStartAt: string;
-  notes: string;
-};
-
-const initialForm: TripForm = {
-  tripType: 'TRANSFER',
-  originName: '',
-  destinationName: '',
-  plannedStartAt: '',
-  notes: '',
-};
-
 export function MyTripCreatePage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState<TripForm>(initialForm);
+  const [form, setForm] = useState({ tripType: 'TRANSFER', originName: '', destinationName: '', plannedStartAt: '', notes: '' });
   const [vehicle, setVehicle] = useState<VehicleRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +25,8 @@ export function MyTripCreatePage() {
     if (!auth.accessToken) return;
     setIsSaving(true);
     setError(null);
-
     try {
-      const payload: Record<string, unknown> = {
+      const payload: Parameters<typeof createMyTrip>[1] = {
         tripType: form.tripType,
         originName: form.originName,
         destinationName: form.destinationName,
@@ -51,16 +34,8 @@ export function MyTripCreatePage() {
       };
       if (form.plannedStartAt) payload.plannedStartAt = new Date(form.plannedStartAt).toISOString();
       if (vehicle) payload.vehicleId = vehicle.id;
-
-      const response = await fetch('/api/v1/drivers/me/trips', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.accessToken}` },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new ApiError(data.message || 'Failed to create trip', response.status);
-
-      setMessage(`Trip ${data.data.tripNumber} created.`);
+      const res = await createMyTrip(auth.accessToken, payload);
+      setMessage(`Trip ${res.data.tripNumber} created.`);
       setTimeout(() => navigate('/my-trips'), 1500);
     } catch (caughtError) {
       if (caughtError instanceof ApiError) setError(caughtError.message);
@@ -74,46 +49,34 @@ export function MyTripCreatePage() {
     <PageShell>
       <div style={{ maxWidth: '500px' }}>
         <h2 style={{ margin: '0 0 var(--space-4)' }}>Create Trip</h2>
-
         {vehicle && (
           <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3)' }}>
             <strong>Assigned Vehicle:</strong> {vehicle.vehicleNumber} ({vehicle.vehicleType})
           </div>
         )}
-
         {error && <div className="error-banner">{error}</div>}
         {message && <div className="success-banner">{message}</div>}
-
         <form onSubmit={handleSubmit} className="stack-form">
-          <label>
-            <span className="field-label">Trip Type</span>
+          <label><span className="field-label">Trip Type</span>
             <select value={form.tripType} onChange={(e) => setForm({ ...form, tripType: e.target.value })} required>
-              <option value="TRANSFER">Transfer</option>
-              <option value="DELIVERY">Delivery</option>
-              <option value="PICKUP">Pickup</option>
-              <option value="SERVICE">Service</option>
+              <option value="TRANSFER">Transfer</option><option value="DELIVERY">Delivery</option>
+              <option value="PICKUP">Pickup</option><option value="SERVICE">Service</option>
             </select>
           </label>
-          <label>
-            <span className="field-label">Origin</span>
+          <label><span className="field-label">Origin</span>
             <input value={form.originName} onChange={(e) => setForm({ ...form, originName: e.target.value })} required placeholder="Starting point" />
           </label>
-          <label>
-            <span className="field-label">Destination</span>
+          <label><span className="field-label">Destination</span>
             <input value={form.destinationName} onChange={(e) => setForm({ ...form, destinationName: e.target.value })} required placeholder="End point" />
           </label>
-          <label>
-            <span className="field-label">Planned Start</span>
+          <label><span className="field-label">Planned Start</span>
             <input type="datetime-local" value={form.plannedStartAt} onChange={(e) => setForm({ ...form, plannedStartAt: e.target.value })} />
           </label>
-          <label>
-            <span className="field-label">Notes</span>
+          <label><span className="field-label">Notes</span>
             <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
           </label>
           <div className="button-row">
-            <button type="submit" className="primary-button" disabled={isSaving}>
-              {isSaving ? 'Creating...' : 'Create Trip'}
-            </button>
+            <button type="submit" className="primary-button" disabled={isSaving}>{isSaving ? 'Creating...' : 'Create Trip'}</button>
             <button type="button" className="secondary-button" onClick={() => navigate('/my-trips')}>Cancel</button>
           </div>
         </form>

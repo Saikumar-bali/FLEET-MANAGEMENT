@@ -31,6 +31,17 @@ import { MyTripsPage } from '../pages/MyTripsPage';
 import { MyDocumentsPage } from '../pages/MyDocumentsPage';
 import { MyTripCreatePage } from '../pages/driver/MyTripCreatePage';
 import { MyTripDetailPage } from '../pages/driver/MyTripDetailPage';
+import { MyFuelPage } from '../pages/driver/MyFuelPage';
+import { MyFuelCreatePage } from '../pages/driver/MyFuelCreatePage';
+import { MyFuelReceiptUploadPage } from '../pages/driver/MyFuelReceiptUploadPage';
+import { MyExpensesPage } from '../pages/driver/MyExpensesPage';
+import { MyExpenseCreatePage } from '../pages/driver/MyExpenseCreatePage';
+import { MyVehiclePage } from '../pages/driver/MyVehiclePage';
+import { MyVehicleInspectionPage } from '../pages/driver/MyVehicleInspectionPage';
+import { MyVehicleIssueReportPage } from '../pages/driver/MyVehicleIssueReportPage';
+import { MyMaintenanceReportPage } from '../pages/driver/MyMaintenanceReportPage';
+import { MyRepairReportPage } from '../pages/driver/MyRepairReportPage';
+import { MyTripDocumentUploadPage } from '../pages/driver/MyTripDocumentUploadPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { DriverOnlyRoute } from '../routes/DriverOnlyRoute';
 import { PermissionRoute } from '../routes/PermissionRoute';
@@ -61,18 +72,45 @@ function App() {
                   <Route path="/my-trips/new" element={<PermissionRoute requiredPermissions={['driver_trip_create']} />}>
                     <Route path="" element={<MyTripCreatePage />} />
                   </Route>
+                  <Route path="/my-trips/upload-pod" element={<PermissionRoute requiredPermissions={['driver_pod_upload']} />}>
+                    <Route path="" element={<MyTripDocumentUploadPage />} />
+                  </Route>
+                  <Route path="/my-trips/upload-document" element={<PermissionRoute requiredPermissions={['driver_trip_document_upload', 'driver_lr_upload', 'driver_challan_upload']} />}>
+                    <Route path="" element={<MyTripDocumentUploadPage />} />
+                  </Route>
                   <Route path="/my-trips/:id" element={<MyTripDetailPage />} />
+                  <Route path="/my-fuel" element={<PermissionRoute requiredPermissions={['driver_fuel_view_own']} />}>
+                    <Route path="" element={<MyFuelPage />} />
+                  </Route>
+                  <Route path="/my-fuel/new" element={<PermissionRoute requiredPermissions={['driver_quick_fuel_create']} />}>
+                    <Route path="" element={<MyFuelCreatePage />} />
+                  </Route>
+                  <Route path="/my-fuel/upload-receipt" element={<PermissionRoute requiredPermissions={['driver_fuel_receipt_upload']} />}>
+                    <Route path="" element={<MyFuelReceiptUploadPage />} />
+                  </Route>
+                  <Route path="/my-expenses" element={<PermissionRoute requiredPermissions={['driver_expense_view_own']} />}>
+                    <Route path="" element={<MyExpensesPage />} />
+                  </Route>
+                  <Route path="/my-expenses/new" element={<PermissionRoute requiredPermissions={['driver_expense_create']} />}>
+                    <Route path="" element={<MyExpenseCreatePage />} />
+                  </Route>
+                  <Route path="/my-vehicle" element={<PermissionRoute requiredPermissions={['driver_assigned_vehicle_view']} />}>
+                    <Route path="" element={<MyVehiclePage />} />
+                  </Route>
+                  <Route path="/my-vehicle/inspection" element={<PermissionRoute requiredPermissions={['driver_vehicle_inspection_create']} />}>
+                    <Route path="" element={<MyVehicleInspectionPage />} />
+                  </Route>
+                  <Route path="/my-vehicle/report-issue" element={<PermissionRoute requiredPermissions={['driver_vehicle_issue_report']} />}>
+                    <Route path="" element={<MyVehicleIssueReportPage />} />
+                  </Route>
+                  <Route path="/my-maintenance/report" element={<PermissionRoute requiredPermissions={['driver_maintenance_report_create']} />}>
+                    <Route path="" element={<MyMaintenanceReportPage />} />
+                  </Route>
+                  <Route path="/my-repairs/report" element={<PermissionRoute requiredPermissions={['driver_repair_report_create']} />}>
+                    <Route path="" element={<MyRepairReportPage />} />
+                  </Route>
                   <Route path="/my-documents" element={<MyDocumentsPage />} />
                   <Route path="/my-profile" element={<MyProfilePage />} />
-                  <Route path="/my-fuel" element={<div className="centered-state"><p>My Fuel Entries</p></div>} />
-                  <Route path="/my-fuel/new" element={<div className="centered-state"><p>Quick Fuel Entry</p></div>} />
-                  <Route path="/my-expenses" element={<div className="centered-state"><p>My Expenses</p></div>} />
-                  <Route path="/my-expenses/new" element={<div className="centered-state"><p>Create Expense</p></div>} />
-                  <Route path="/my-vehicle" element={<div className="centered-state"><p>My Vehicle</p></div>} />
-                  <Route path="/my-vehicle/inspection" element={<div className="centered-state"><p>Vehicle Inspection</p></div>} />
-                  <Route path="/my-vehicle/report-issue" element={<div className="centered-state"><p>Report Vehicle Issue</p></div>} />
-                  <Route path="/my-maintenance/report" element={<div className="centered-state"><p>Report Maintenance</p></div>} />
-                  <Route path="/my-repairs/report" element={<div className="centered-state"><p>Report Repair</p></div>} />
                 </Route>
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
