@@ -36,6 +36,7 @@ function sanitizeUser(user: UserWithRole) {
     email: user.email,
     mobile: user.mobile,
     status: user.status,
+    userDriverId: user.userDriverId,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -188,6 +189,7 @@ export async function createUser(input: {
   password: string;
   roleId: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  driverId?: string;
 }) {
   await ensureUsernameAvailable(input.username);
   await ensureEmailAvailable(input.email);
@@ -198,6 +200,25 @@ export async function createUser(input: {
 
   if (!role) {
     throw new AppError('Selected role not found', 404);
+  }
+
+  // Validate driver linking
+  if (input.driverId) {
+    if (role.key !== 'driver') {
+      throw new AppError('driverId is only allowed for driver role users', 400);
+    }
+    const driver = await prisma.driver.findUnique({
+      where: { id: input.driverId },
+    });
+    if (!driver) {
+      throw new AppError('Driver not found', 404);
+    }
+    const existingLink = await prisma.user.findUnique({
+      where: { userDriverId: input.driverId },
+    });
+    if (existingLink) {
+      throw new AppError('Driver is already linked to another user', 409);
+    }
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -211,11 +232,68 @@ export async function createUser(input: {
       passwordHash,
       roleId: input.roleId,
       status: input.status,
+      userDriverId: input.driverId || null,
     },
     include: userWithRoleSelect,
   });
 
   return sanitizeUser(user);
+}
+
+export async function linkDriverToUser(userId: string, driverId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: userWithRoleSelect,
+  });
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+  if (user.userDriverId) {
+    throw new AppError('User is already linked to a driver', 409);
+  }
+
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+  });
+  if (!driver) {
+    throw new AppError('Driver not found', 404);
+  }
+
+  const existingLink = await prisma.user.findUnique({
+    where: { userDriverId: driverId },
+  });
+  if (existingLink) {
+    throw new AppError('Driver is already linked to another user', 409);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { userDriverId: driverId },
+    include: userWithRoleSelect,
+  });
+
+  return sanitizeUser(updatedUser);
+}
+
+export async function unlinkDriverFromUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: userWithRoleSelect,
+  });
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+  if (!user.userDriverId) {
+    throw new AppError('User has no linked driver', 400);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { userDriverId: null },
+    include: userWithRoleSelect,
+  });
+
+  return sanitizeUser(updatedUser);
 }
 
 export async function updateUser(params: {

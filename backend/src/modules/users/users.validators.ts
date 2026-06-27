@@ -12,6 +12,11 @@ export const createUserSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   roleId: z.string().min(1, 'Role is required'),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']),
+  driverId: z.string().min(1, 'Driver id is required when creating a driver user').optional(),
+});
+
+export const linkDriverSchema = z.object({
+  driverId: z.string().min(1, 'Driver id is required'),
 });
 
 export const updateUserSchema = z.object({

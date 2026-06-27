@@ -11,7 +11,7 @@ function fail(results: CheckResult[], name: string, detail?: string) {
   results.push({ name, status: 'FAIL', detail });
 }
 
-const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips', 'Fuel', 'Expenses', 'Finance'];
+const REQUIRED_TAGS = ['Health', 'Auth', 'Users', 'Roles', 'Permissions', 'Vehicles', 'Drivers', 'Assets', 'Documents', 'Trips', 'Fuel', 'Expenses', 'Finance', 'Alerts', 'Alert Rules', 'Reports'];
 
 const REQUIRED_PATHS: Record<string, string[]> = {
   'Health': ['GET /health'],

@@ -16,6 +16,7 @@ export const createDriverSchema = z.object({
   emergencyContact: z.string().optional().or(z.literal('')),
   experienceYears: z.number().int().min(0).optional().nullable(),
   status: driverStatusEnum.default('AVAILABLE'),
+  createUserAccount: z.boolean().optional().default(false),
 });
 
 export const updateDriverSchema = z.object({

@@ -18,6 +18,7 @@ export function createAccessToken(user: RequestUser): string {
     sub: user.id,
     email: user.email,
     roleKey: user.role.key,
+    userDriverId: user.userDriverId,
   };
 
   return jwt.sign(payload, config.jwtSecret, {

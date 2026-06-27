@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { getAlertSummary } from '../alerts/alerts-summary.service';
 
 export class DashboardService {
   async getOverview() {
@@ -33,6 +34,7 @@ export class DashboardService {
       storageUsageAgg,
       docsByCategory,
       recentDocuments,
+      alertSummary,
     ] = await Promise.all([
       prisma.vehicle.count(),
       prisma.vehicle.count({ where: { status: 'AVAILABLE' } }),
@@ -121,6 +123,7 @@ export class DashboardService {
           uploadedBy: { select: { name: true } },
         },
       }),
+      getAlertSummary({ roleKey: null, userDriverId: null }),
     ]);
 
     const inactiveVehicles = totalVehicles - activeVehicles;
@@ -163,6 +166,15 @@ export class DashboardService {
         count: d._count,
       })),
       recentDocuments,
+      alertUnread: alertSummary.unreadCount,
+      alertCritical: alertSummary.criticalCount,
+      alertWarning: alertSummary.warningCount,
+      alertInfo: alertSummary.infoCount,
+      alertResolvedToday: alertSummary.resolvedToday,
+      alertsByModule: alertSummary.byModule,
+      recentCriticalAlerts: alertSummary.recentAlerts
+        .filter((a) => a.severity === 'CRITICAL')
+        .slice(0, 5),
     };
   }
 }

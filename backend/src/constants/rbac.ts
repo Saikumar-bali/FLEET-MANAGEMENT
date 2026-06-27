@@ -121,6 +121,9 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'customers_delete', module: 'customers', action: 'delete', description: 'Delete customers' },
   { key: 'pnl_view', module: 'pnl', action: 'view', description: 'View P&L reports' },
   { key: 'finance_history_view', module: 'finance_history', action: 'view', description: 'View finance history' },
+  { key: 'alerts_view', module: 'alerts', action: 'view', description: 'View alerts and notifications' },
+  { key: 'alerts_manage', module: 'alerts', action: 'manage', description: 'Trigger alert generation and edit alert rules' },
+  { key: 'alerts_resolve', module: 'alerts', action: 'resolve', description: 'Read, resolve, and dismiss alerts' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -231,6 +234,10 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'documents_archive',
     'compliance_alerts_view',
     'compliance_history_view',
+    'alerts_view',
+    'alerts_manage',
+    'alerts_resolve',
+    'report_export',
   ],
   supervisor: [
     'vehicle_view',
@@ -277,9 +284,11 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'documents_upload',
     'documents_download',
     'compliance_history_view',
+    'alerts_view',
+    'alerts_resolve',
   ],
-  driver: ['trip_view', 'trip_start', 'trip_end', 'vehicle_compliance_view', 'compliance_alerts_view'],
-  assistant_driver: ['trip_view'],
+  driver: ['trip_view', 'trip_start', 'trip_end', 'vehicle_compliance_view', 'compliance_alerts_view', 'alerts_view'],
+  assistant_driver: ['trip_view', 'alerts_view'],
   collector: [
     'payments_view',
     'payments_create',
@@ -287,8 +296,10 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'customers_view',
     'finance_view',
     'report_view',
+    'alerts_view',
+    'alerts_resolve',
   ],
-  mechanic: ['repair_view', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_update', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'document_metadata_view', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view'],
+  mechanic: ['repair_view', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_update', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'document_metadata_view', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view', 'alerts_view', 'alerts_resolve'],
   finance: [
     'finance_view',
     'finance_create',
@@ -329,6 +340,8 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'expense_approve',
     'report_view',
     'report_export',
+    'alerts_view',
+    'alerts_resolve',
   ],
   viewer: [
     'vehicle_view',
@@ -348,5 +361,6 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'role_view',
     'user_view',
     'permission_view',
+    'alerts_view',
   ],
 };

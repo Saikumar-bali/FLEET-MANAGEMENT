@@ -172,11 +172,205 @@ async function seedDemoUsers() {
   }
 }
 
+type AlertRuleSeed = {
+  key: string;
+  module:
+    | 'VEHICLE'
+    | 'DRIVER'
+    | 'TRIP'
+    | 'FUEL'
+    | 'DOCUMENTS'
+    | 'COMPLIANCE'
+    | 'FINANCE'
+    | 'MAINTENANCE'
+    | 'REPAIR'
+    | 'SYSTEM';
+  triggerType:
+    | 'EXPIRY'
+    | 'OVERDUE'
+    | 'THRESHOLD'
+    | 'MISSING_DOCUMENT'
+    | 'STATUS_CHANGE'
+    | 'MANUAL';
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  title: string;
+  description: string;
+  thresholdDays?: number;
+  thresholdValue?: number;
+};
+
+const alertRuleSeeds: AlertRuleSeed[] = [
+  {
+    key: 'vehicle.insurance.expiry',
+    module: 'VEHICLE',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Vehicle insurance expiring soon',
+    description: 'Insurance will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'vehicle.fitness.expiry',
+    module: 'VEHICLE',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Vehicle fitness expiring soon',
+    description: 'Fitness certificate will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'vehicle.pollution.expiry',
+    module: 'VEHICLE',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Vehicle PUC expiring soon',
+    description: 'Pollution Under Control certificate will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'vehicle.permit.expiry',
+    module: 'VEHICLE',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Vehicle permit expiring soon',
+    description: 'Permit will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'driver.license.expiry',
+    module: 'DRIVER',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Driver license expiring soon',
+    description: 'License will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'document.expiry',
+    module: 'DOCUMENTS',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Document expiring soon',
+    description: 'Document will expire within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'document.pending_verification',
+    module: 'DOCUMENTS',
+    triggerType: 'THRESHOLD',
+    severity: 'INFO',
+    title: 'Document pending verification',
+    description: 'Document awaiting verification for more than 7 days',
+    thresholdDays: 7,
+  },
+  {
+    key: 'document.rejected',
+    module: 'DOCUMENTS',
+    triggerType: 'STATUS_CHANGE',
+    severity: 'WARNING',
+    title: 'Document rejected',
+    description: 'A document was rejected during verification',
+  },
+  {
+    key: 'compliance.expiring_30d',
+    module: 'COMPLIANCE',
+    triggerType: 'EXPIRY',
+    severity: 'WARNING',
+    title: 'Compliance document expiring soon',
+    description: 'Compliance document validTo date within 30 days',
+    thresholdDays: 30,
+  },
+  {
+    key: 'fuel.missing_receipt',
+    module: 'FUEL',
+    triggerType: 'MISSING_DOCUMENT',
+    severity: 'WARNING',
+    title: 'Fuel entry missing receipt',
+    description: 'Approved fuel entry has no receipt attached',
+    thresholdDays: 3,
+  },
+  {
+    key: 'fuel.high_amount',
+    module: 'FUEL',
+    triggerType: 'THRESHOLD',
+    severity: 'WARNING',
+    title: 'High fuel amount',
+    description: 'Fuel entry total amount exceeds threshold',
+    thresholdValue: 15000,
+  },
+  {
+    key: 'trip.billing_overdue',
+    module: 'FINANCE',
+    triggerType: 'OVERDUE',
+    severity: 'WARNING',
+    title: 'Trip billing overdue',
+    description: 'Trip billing is past its due date',
+    thresholdDays: 0,
+  },
+  {
+    key: 'finance.pending_payment',
+    module: 'FINANCE',
+    triggerType: 'OVERDUE',
+    severity: 'WARNING',
+    title: 'Pending payment',
+    description: 'Finance transaction pending payment for more than 15 days',
+    thresholdDays: 15,
+  },
+  {
+    key: 'maintenance.open_old',
+    module: 'MAINTENANCE',
+    triggerType: 'OVERDUE',
+    severity: 'WARNING',
+    title: 'Maintenance request open too long',
+    description: 'Maintenance request open for more than 14 days',
+    thresholdDays: 14,
+  },
+  {
+    key: 'repair.in_progress_long',
+    module: 'REPAIR',
+    triggerType: 'THRESHOLD',
+    severity: 'WARNING',
+    title: 'Repair in progress too long',
+    description: 'Repair has been in progress for more than 21 days',
+    thresholdDays: 21,
+  },
+];
+
+async function seedAlertRules() {
+  for (const seed of alertRuleSeeds) {
+    await prisma.alertRule.upsert({
+      where: { key: seed.key },
+      update: {
+        module: seed.module,
+        triggerType: seed.triggerType,
+        severity: seed.severity,
+        title: seed.title,
+        description: seed.description,
+        thresholdDays: seed.thresholdDays ?? null,
+        thresholdValue: seed.thresholdValue ?? null,
+        isActive: true,
+      },
+      create: {
+        key: seed.key,
+        module: seed.module,
+        triggerType: seed.triggerType,
+        severity: seed.severity,
+        title: seed.title,
+        description: seed.description,
+        thresholdDays: seed.thresholdDays ?? null,
+        thresholdValue: seed.thresholdValue ?? null,
+        isActive: true,
+      },
+    });
+  }
+}
+
 async function main() {
   validateSeedEnvironment();
   await seedRolesAndPermissions();
   await seedSuperAdmin();
   await seedDemoUsers();
+  await seedAlertRules();
 }
 
 main()
