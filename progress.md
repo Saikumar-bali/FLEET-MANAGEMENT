@@ -65,7 +65,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 7.6 | India Enterprise Hardening, Privacy, and Multi-branch Operations | Not Started |
 | Phase 8 | Documents & Storage Foundation | Submitted for Review |
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
-| Phase 9 | Driver Account Linking & Driver Portal | Completed locally with verification — backend auth userDriverId wired, linkedDriver summary, privacy hardening, strict sidebar, route guard, MyProfilePage, backend and web builds pass, API docs verified |
+| Phase 9 | Driver Account Linking & Driver Portal | Completed locally — auth userDriverId wired, linkedDriver summary, effective permissions, user permission overrides, strict sidebar, route guard, MyProfilePage, backend/web build pass, API docs verified |
 | Phase 9.1 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log

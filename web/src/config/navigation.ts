@@ -18,7 +18,7 @@ export type SidebarSection = {
 };
 
 export const navigationItems: NavigationItem[] = [
-  // ─── Driver-only items ───
+  // ─── Driver-only items (always shown to drivers) ───
   {
     label: 'My Dashboard',
     path: '/my-dashboard',
@@ -57,6 +57,37 @@ export const navigationItems: NavigationItem[] = [
     section: 'MY',
     pageTitle: 'My Profile',
     pageDescription: 'Your driver profile information',
+    driverScoped: true,
+  },
+  // ─── Driver-scoped permission-based items ───
+  {
+    label: 'Quick Fuel Entry',
+    path: '/fuel/new',
+    description: 'Add a quick fuel entry',
+    permissionKeys: ['driver_quick_fuel_create'],
+    section: 'ACTIONS',
+    pageTitle: 'Quick Fuel Entry',
+    pageDescription: 'Quick fuel entry for your assigned vehicle',
+    driverScoped: true,
+  },
+  {
+    label: 'Upload Fuel Bill',
+    path: '/fuel/new',
+    description: 'Upload a fuel receipt',
+    permissionKeys: ['driver_fuel_receipt_upload'],
+    section: 'ACTIONS',
+    pageTitle: 'Upload Fuel Bill',
+    pageDescription: 'Upload fuel bill or receipt',
+    driverScoped: true,
+  },
+  {
+    label: 'Expense Claim',
+    path: '/expenses/new',
+    description: 'Create an expense claim',
+    permissionKeys: ['driver_expense_create'],
+    section: 'ACTIONS',
+    pageTitle: 'Expense Claim',
+    pageDescription: 'Submit a trip or vehicle expense',
     driverScoped: true,
   },
   // ─── Admin/Manager items ───

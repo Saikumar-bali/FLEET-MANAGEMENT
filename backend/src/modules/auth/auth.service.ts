@@ -3,14 +3,13 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { createAccessToken, generateRefreshToken, hashToken, verifyPassword } from '../../utils/auth';
 import { createAuditLog } from '../audit/audit.service';
+import { getEffectivePermissions } from '../permissions/effective-permissions.service';
 import type { RequestUser } from '../../types/auth';
 
 type UserWithRolePermissions = Awaited<ReturnType<typeof getUserById>>;
 
-function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
-  const permissionKeys = user.role.rolePermissions.map(
-    (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
-  );
+async function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
+  const effective = await getEffectivePermissions(user.id);
 
   const safeUser: RequestUser = {
     id: user.id,
@@ -39,7 +38,7 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
 
   return {
     user: safeUser,
-    permissions: permissionKeys,
+    permissions: effective.effectivePermissions,
   };
 }
 
@@ -115,7 +114,7 @@ export async function login(req: Request, identifier: string, password: string) 
     throw new AppError('Invalid username/email or password', 401);
   }
 
-  const authUser = mapUserWithPermissions(user);
+  const authUser = await mapUserWithPermissions(user);
   const accessToken = createAccessToken(authUser.user);
   const refreshToken = generateRefreshToken();
 
@@ -155,7 +154,7 @@ export async function getCurrentUser(userId: string) {
     throw new AppError('User not found', 404);
   }
 
-  return mapUserWithPermissions(user);
+  return await mapUserWithPermissions(user);
 }
 
 export async function refreshSession(req: Request, refreshToken: string) {
@@ -192,7 +191,7 @@ export async function refreshSession(req: Request, refreshToken: string) {
   }
 
   const rotatedToken = generateRefreshToken();
-  const authUser = mapUserWithPermissions(existingToken.user);
+  const authUser = await mapUserWithPermissions(existingToken.user);
   const accessToken = createAccessToken(authUser.user);
 
   await prisma.$transaction([

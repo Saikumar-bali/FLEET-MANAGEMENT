@@ -6,13 +6,19 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createUserController,
   getUserController,
+  getUserEffectivePermissionsController,
+  getUserPermissionOverridesController,
+  linkDriverController,
   listUsersController,
+  unlinkDriverController,
   updateUserController,
   updateUserPasswordController,
   updateUserStatusController,
+  updateUserPermissionOverridesController,
 } from './users.controller';
 import {
   createUserSchema,
+  linkDriverSchema,
   updateUserPasswordSchema,
   updateUserSchema,
   updateUserStatusSchema,
@@ -43,6 +49,36 @@ router.patch(
   requirePermission('user_update'),
   validateRequest({ params: userIdParamsSchema, body: updateUserPasswordSchema }),
   asyncHandler(updateUserPasswordController),
+);
+router.post(
+  '/:id/link-driver',
+  requirePermission('user_update'),
+  validateRequest({ params: userIdParamsSchema, body: linkDriverSchema }),
+  asyncHandler(linkDriverController),
+);
+router.delete(
+  '/:id/unlink-driver',
+  requirePermission('user_update'),
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(unlinkDriverController),
+);
+router.get(
+  '/:id/effective-permissions',
+  requireAnyPermission(['user_view', 'user_update', 'permission_manage']),
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(getUserEffectivePermissionsController),
+);
+router.get(
+  '/:id/permission-overrides',
+  requireAnyPermission(['user_view', 'user_update', 'permission_manage']),
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(getUserPermissionOverridesController),
+);
+router.put(
+  '/:id/permission-overrides',
+  requireAnyPermission(['user_update', 'permission_manage']),
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(updateUserPermissionOverridesController),
 );
 
 export default router;

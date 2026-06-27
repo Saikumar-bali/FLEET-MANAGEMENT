@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/appError';
 import { verifyAccessToken } from '../utils/auth';
+import { getEffectivePermissions } from '../modules/permissions/effective-permissions.service';
 
 function extractToken(req: Request): string | null {
   const authorizationHeader = req.headers.authorization;
@@ -62,9 +63,10 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
       status: user.role.status,
     },
   };
-  req.authPermissions = user.role.rolePermissions.map(
-    (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
-  );
+
+  // Use effective permissions (role + user overrides)
+  const effective = await getEffectivePermissions(user.id);
+  req.authPermissions = effective.effectivePermissions;
 
   return next();
 }
