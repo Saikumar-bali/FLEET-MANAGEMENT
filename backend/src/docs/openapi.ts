@@ -910,6 +910,45 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
       },
     },
 
+    // Driver Account Linking (Phase 9)
+    '/users/{id}/link-driver': {
+      post: {
+        tags: ['Users'],
+        summary: 'Link a driver to a user',
+        description: 'Link an existing driver to a user account. Target user must have driver role.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', properties: { driverId: { type: 'string' } }, required: ['driverId'] } } },
+        },
+        responses: {
+          '200': { description: 'Driver linked successfully' },
+          '400': { description: 'User already linked or role is not driver' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_update or driver_update permission' },
+          '404': { description: 'User or driver not found' },
+          '409': { description: 'Driver already linked to another user' },
+        },
+      },
+    },
+    '/users/{id}/unlink-driver': {
+      delete: {
+        tags: ['Users'],
+        summary: 'Unlink a driver from a user',
+        description: 'Remove the driver profile link from a user account.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Driver unlinked successfully' },
+          '400': { description: 'User has no linked driver' },
+          '401': { description: 'Authentication required' },
+          '403': { description: 'Missing user_update permission' },
+          '404': { description: 'User not found' },
+        },
+      },
+    },
+
     // Vehicles
     '/vehicles': {
       get: {
@@ -1957,12 +1996,6 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/drivers/me/vehicle': {
       get: { tags: ['Drivers'], summary: 'Get my assigned vehicle', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Vehicle or null' } } },
-    },
-    '/users/{id}/link-driver': {
-      post: { tags: ['Users'], summary: 'Link a driver profile to a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['driverId'], properties: { driverId: { type: 'string' } } } } } }, responses: { '200': { description: 'User updated' }, '409': { description: 'Driver already linked' } } },
-    },
-    '/users/{id}/unlink-driver': {
-      delete: { tags: ['Users'], summary: 'Unlink driver from a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'User updated' }, '400': { description: 'User has no linked driver' } } },
     },
   },
 };

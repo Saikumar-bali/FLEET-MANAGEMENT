@@ -1,14 +1,28 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createDriver, getDriver, updateDriver, updateDriverStatus, getUsers } from '../services/api';
+import { createDriver, getDriver, updateDriver, updateDriverStatus } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { DriverRecord, UserRecord } from '../types/auth';
+import type { DriverRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
+
+type LinkedUserSummary = {
+  id: string;
+  name: string;
+  username: string | null;
+  email: string;
+  mobile: string | null;
+  status: string;
+  userDriverId: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  role: { id: string; name: string; key: string };
+};
 
 type DriverForm = {
   name: string;
@@ -55,8 +69,7 @@ export function DriverDetailPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionTab>('personal');
   const [statusValue, setStatusValue] = useState('');
-  const [linkedUser, setLinkedUser] = useState<UserRecord | null>(null);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [linkedUser, setLinkedUser] = useState<LinkedUserSummary | null>(null);
 
   useEffect(() => {
     if (isNew || !id) return;
@@ -68,6 +81,7 @@ export function DriverDetailPage() {
         const response = await getDriver(auth.accessToken, id);
         setDriver(response.data);
         setStatusValue(response.data.status);
+        setLinkedUser(response.data.linkedUser ?? null);
         setForm({
           name: response.data.name,
           mobile: response.data.mobile,
@@ -86,23 +100,6 @@ export function DriverDetailPage() {
       }
     };
     void load();
-  }, [auth.accessToken, id, isNew]);
-
-  useEffect(() => {
-    if (isNew || !id || !auth.accessToken) return;
-    const loadLinkedUser = async () => {
-      setIsLoadingUsers(true);
-      try {
-        const usersRes = await getUsers(auth.accessToken!);
-        const found = usersRes.data.find((u) => u.userDriverId === id);
-        setLinkedUser(found ?? null);
-      } catch {
-        // Silently fail
-      } finally {
-        setIsLoadingUsers(false);
-      }
-    };
-    void loadLinkedUser();
   }, [auth.accessToken, id, isNew]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -330,9 +327,7 @@ export function DriverDetailPage() {
         {!isNew && activeSection === 'account' ? (
           <div className="card form-section-grid">
             <h4 className="role-edit-h4">Linked Login Account</h4>
-            {isLoadingUsers ? (
-              <p className="helper-text">Loading account info...</p>
-            ) : linkedUser ? (
+            {linkedUser ? (
               <div>
                 <div className="detail-grid">
                   <div>

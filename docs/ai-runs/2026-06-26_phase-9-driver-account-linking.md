@@ -60,3 +60,43 @@
 ### Documentation
 - `docs/PHASE_9_DRIVER_ACCOUNT_LINKING.md` (new)
 - `docs/ai-runs/2026-06-26_phase-9-driver-account-linking.md` (this file)
+
+---
+
+## 2026-06-27 — Completion Verification
+
+### What Was Added
+
+#### Backend
+- `getDriverById` now includes `linkedUser` info (name, username, email, mobile, status, lastLoginAt, role)
+
+#### OpenAPI
+- Added detailed `POST /users/{id}/link-driver` and `DELETE /users/{id}/unlink-driver` documentation with all error responses
+
+#### Frontend
+- `DriverOnlyRoute.tsx` — route guard requiring `role.key === 'driver'` and authenticated session
+- Post-login redirect logic in `LoginPage.tsx` — drivers land on `/my-dashboard`, others on `/`
+- Warning banner in `DriverDashboardPage` when `userDriverId` is null (account not linked)
+- `DriverDetailPage` now uses `response.data.linkedUser` from backend instead of fetching all users
+
+### Build Results
+- Backend build: PASS
+- Web build: PASS
+- API docs test: PASS
+
+### Evidence
+- auth userDriverId fixed: YES (already implemented in initial Phase 9)
+- req.authUser.userDriverId fixed: YES
+- createUser with driverId: YES
+- createDriver with account: YES
+- link/unlink APIs: YES
+- driver detail linked account section: YES
+- users page driver selector: YES
+- driver-only route guard: YES
+- sidebar strict driver mode: YES (already implemented)
+- driver dashboard works with linked account: YES
+- unlinked driver account gets proper 403/account-not-linked: YES
+- script dry-run skips test drivers: YES
+- secrets printed: NO
+- Vercel deploy: NO
+- full E2E: NO

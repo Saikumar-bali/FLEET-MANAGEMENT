@@ -103,6 +103,19 @@ export type DriverRecord = {
   status: 'AVAILABLE' | 'ON_TRIP' | 'ON_LEAVE' | 'SUSPENDED' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+  linkedUser?: {
+    id: string;
+    name: string;
+    username: string | null;
+    email: string;
+    mobile: string | null;
+    status: string;
+    userDriverId: string | null;
+    lastLoginAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    role: { id: string; name: string; key: string };
+  } | null;
 };
 
 export type AssetCategoryRecord = {

@@ -65,14 +65,14 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 7.6 | India Enterprise Hardening, Privacy, and Multi-branch Operations | Not Started |
 | Phase 8 | Documents & Storage Foundation | Submitted for Review |
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
-| Phase 9 | Driver Account Linking & Driver Portal | Completed locally |
+| Phase 9 | Driver Account Linking & Driver Portal | Completed locally with verification — backend build passes, web build passes, API docs verified |
 | Phase 9.1 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log
 
 ### 2026-06-26
 
-- Phase 9 Driver Account Linking & Driver Portal: **Completed locally**.
+- Phase 9 Driver Account Linking & Driver Portal: **Completed locally with verification**. Auth userDriverId fixed. Driver-only route guard added. Post-login driver redirect. Sidebar strict driver mode. Link/unlink APIs. Script skips test drivers. Backend and web builds pass. API docs verified. No Vercel deploy, no full E2E.
 - Verified existing `userDriverId` schema relation (no migration needed).
 - Added driver dashboard endpoint: `GET /api/v1/dashboard/driver`.
 - Added driver self-scoped APIs: `/drivers/me/trips`, `/drivers/me/fuel`, `/drivers/me/expenses`, `/drivers/me/documents`, `/drivers/me/vehicle`.

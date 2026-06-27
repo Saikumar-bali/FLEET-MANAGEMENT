@@ -72,6 +72,18 @@ model Driver {
 - My Trips
 - My Documents
 - Hidden: Finance, Roles, Users (admin-only)
+- Non-driver users attempting to access driver pages see Access Denied
+
+### Route Guards
+- `DriverOnlyRoute` component wraps all `/my-*` routes
+- Requires `role.key === 'driver'` and authenticated session
+- Non-driver users redirected to Access Denied page
+- Unlinked drivers (role=driver but no userDriverId) can reach driver pages but APIs return 403
+
+### Post-Login Redirect
+- Drivers land on `/my-dashboard` after login
+- Admin/manager/super_admin land on `/` (Overview)
+- Unlinked drivers see a warning banner on `/my-dashboard`
 
 ### Admin/Manager Features
 - Users page: driver selector when creating driver users

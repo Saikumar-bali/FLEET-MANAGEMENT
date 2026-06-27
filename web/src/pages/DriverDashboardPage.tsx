@@ -92,6 +92,13 @@ export function DriverDashboardPage() {
     <PageShell>
       <PageHeader title="My Dashboard" />
 
+      {!auth.user?.userDriverId ? (
+        <div className="warning-banner" style={{ marginBottom: 'var(--space-4)' }}>
+          <strong>Driver account not linked.</strong> Your login is not connected to a driver profile.
+          Contact your administrator to set up account linking.
+        </div>
+      ) : null}
+
       <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
         <div className="section-header">
           <div>

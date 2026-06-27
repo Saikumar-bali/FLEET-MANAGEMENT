@@ -11,6 +11,9 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (auth.accessToken && auth.user) {
+    if (auth.user.role?.key === 'driver') {
+      return <Navigate to="/my-dashboard" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

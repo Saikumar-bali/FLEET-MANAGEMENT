@@ -29,6 +29,7 @@ import { DriverDashboardPage } from '../pages/DriverDashboardPage';
 import { MyTripsPage } from '../pages/MyTripsPage';
 import { MyDocumentsPage } from '../pages/MyDocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
+import { DriverOnlyRoute } from '../routes/DriverOnlyRoute';
 import { lazy, Suspense } from 'react';
 
 const FinancePage = lazy(() => import('../pages/FinancePage'));
@@ -50,9 +51,11 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/my-dashboard" element={<DriverDashboardPage />} />
-                <Route path="/my-trips" element={<MyTripsPage />} />
-                <Route path="/my-documents" element={<MyDocumentsPage />} />
+                <Route element={<DriverOnlyRoute />}>
+                  <Route path="/my-dashboard" element={<DriverDashboardPage />} />
+                  <Route path="/my-trips" element={<MyTripsPage />} />
+                  <Route path="/my-documents" element={<MyDocumentsPage />} />
+                </Route>
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />
