@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
+import type { RequestUser } from '../../types/auth';
 
 async function getDriverIdFromUser(userId: string): Promise<string> {
   const user = await prisma.user.findUnique({
@@ -12,6 +13,77 @@ async function getDriverIdFromUser(userId: string): Promise<string> {
   }
 
   return user.userDriverId;
+}
+
+function generateTripNumber(): string {
+  const prefix = 'TRIP';
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${ts}-${rand}`;
+}
+
+export async function createMyTrip(authUser: RequestUser, input: {
+  tripType: string;
+  originName: string;
+  destinationName: string;
+  vehicleId?: string;
+  plannedStartAt?: string;
+  notes?: string;
+}) {
+  const driverId = await getDriverIdFromUser(authUser.id);
+
+  // If no vehicleId, find assigned vehicle
+  let vehicleId = input.vehicleId;
+  if (!vehicleId) {
+    const assignedVehicle = await prisma.vehicle.findFirst({
+      where: { currentDriverId: driverId },
+    });
+    if (assignedVehicle) {
+      vehicleId = assignedVehicle.id;
+    }
+  }
+
+  if (!vehicleId) {
+    throw new AppError('No vehicle specified and no assigned vehicle found. Please contact your administrator.', 400);
+  }
+
+  // Verify vehicle exists
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle) {
+    throw new AppError('Vehicle not found', 404);
+  }
+
+  // Generate trip number
+  const tripNumber = generateTripNumber();
+
+  const trip = await prisma.trip.create({
+    data: {
+      tripNumber,
+      tripType: input.tripType as any,
+      status: 'DRAFT',
+      vehicleId,
+      driverId,
+      originName: input.originName,
+      destinationName: input.destinationName,
+      plannedStartAt: input.plannedStartAt ? new Date(input.plannedStartAt) : null,
+      notes: input.notes || null,
+      createdById: authUser.id,
+    },
+    include: {
+      vehicle: { select: { id: true, vehicleNumber: true, vehicleType: true, status: true } },
+      driver: { select: { id: true, name: true, mobile: true, status: true } },
+    },
+  });
+
+  return {
+    ...trip,
+    plannedStartAt: trip.plannedStartAt?.toISOString() ?? null,
+    actualStartAt: trip.actualStartAt?.toISOString() ?? null,
+    plannedEndAt: trip.plannedEndAt?.toISOString() ?? null,
+    actualEndAt: trip.actualEndAt?.toISOString() ?? null,
+    createdAt: trip.createdAt.toISOString(),
+    updatedAt: trip.updatedAt.toISOString(),
+  };
 }
 
 export async function getMyTrips(userId: string, query: { status?: string; page: number; limit: number }) {

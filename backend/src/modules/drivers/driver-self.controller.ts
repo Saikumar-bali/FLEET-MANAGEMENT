@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
+import { createAuditLog } from '../audit/audit.service';
 import {
   getMyTrips,
   getMyFuelEntries,
   getMyExpenses,
   getMyDocuments,
   getMyVehicle,
+  createMyTrip,
 } from './driver-self.service';
 
 export async function getMyTripsController(req: Request, res: Response) {
@@ -15,6 +17,20 @@ export async function getMyTripsController(req: Request, res: Response) {
     limit: Number(req.query.limit) || 20,
   });
   return sendSuccess(res, result);
+}
+
+export async function createMyTripController(req: Request, res: Response) {
+  const result = await createMyTrip(req.authUser!, req.body);
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'driver.trip.create',
+    entityType: 'trip',
+    entityId: result.id,
+    metadata: { tripNumber: result.tripNumber, origin: req.body.originName, destination: req.body.destinationName },
+  });
+
+  return sendSuccess(res, result, 'Trip created successfully', 201);
 }
 
 export async function getMyFuelEntriesController(req: Request, res: Response) {

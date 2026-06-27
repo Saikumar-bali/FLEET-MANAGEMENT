@@ -13,6 +13,7 @@ import {
   updateDriverStatusController,
 } from './drivers.controller';
 import {
+  createMyTripController,
   getMyTripsController,
   getMyFuelEntriesController,
   getMyExpensesController,
@@ -45,6 +46,11 @@ router.get(
 router.get(
   '/me/trips',
   asyncHandler(getMyTripsController),
+);
+router.post(
+  '/me/trips',
+  requirePermission('driver_trip_create'),
+  asyncHandler(createMyTripController),
 );
 router.get(
   '/me/fuel',

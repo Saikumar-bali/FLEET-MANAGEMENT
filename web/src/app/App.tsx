@@ -29,8 +29,11 @@ import { DriverDashboardPage } from '../pages/DriverDashboardPage';
 import { MyProfilePage } from '../pages/MyProfilePage';
 import { MyTripsPage } from '../pages/MyTripsPage';
 import { MyDocumentsPage } from '../pages/MyDocumentsPage';
+import { MyTripCreatePage } from '../pages/driver/MyTripCreatePage';
+import { MyTripDetailPage } from '../pages/driver/MyTripDetailPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { DriverOnlyRoute } from '../routes/DriverOnlyRoute';
+import { PermissionRoute } from '../routes/PermissionRoute';
 import { lazy, Suspense } from 'react';
 
 const FinancePage = lazy(() => import('../pages/FinancePage'));
@@ -55,8 +58,21 @@ function App() {
                 <Route element={<DriverOnlyRoute />}>
                   <Route path="/my-dashboard" element={<DriverDashboardPage />} />
                   <Route path="/my-trips" element={<MyTripsPage />} />
+                  <Route path="/my-trips/new" element={<PermissionRoute requiredPermissions={['driver_trip_create']} />}>
+                    <Route path="" element={<MyTripCreatePage />} />
+                  </Route>
+                  <Route path="/my-trips/:id" element={<MyTripDetailPage />} />
                   <Route path="/my-documents" element={<MyDocumentsPage />} />
                   <Route path="/my-profile" element={<MyProfilePage />} />
+                  <Route path="/my-fuel" element={<div className="centered-state"><p>My Fuel Entries</p></div>} />
+                  <Route path="/my-fuel/new" element={<div className="centered-state"><p>Quick Fuel Entry</p></div>} />
+                  <Route path="/my-expenses" element={<div className="centered-state"><p>My Expenses</p></div>} />
+                  <Route path="/my-expenses/new" element={<div className="centered-state"><p>Create Expense</p></div>} />
+                  <Route path="/my-vehicle" element={<div className="centered-state"><p>My Vehicle</p></div>} />
+                  <Route path="/my-vehicle/inspection" element={<div className="centered-state"><p>Vehicle Inspection</p></div>} />
+                  <Route path="/my-vehicle/report-issue" element={<div className="centered-state"><p>Report Vehicle Issue</p></div>} />
+                  <Route path="/my-maintenance/report" element={<div className="centered-state"><p>Report Maintenance</p></div>} />
+                  <Route path="/my-repairs/report" element={<div className="centered-state"><p>Report Repair</p></div>} />
                 </Route>
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
