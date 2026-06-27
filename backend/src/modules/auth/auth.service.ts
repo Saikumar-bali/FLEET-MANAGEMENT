@@ -11,6 +11,7 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
   const permissionKeys = user.role.rolePermissions.map(
     (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
   );
+
   const safeUser: RequestUser = {
     id: user.id,
     name: user.name,
@@ -18,6 +19,16 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
     email: user.email,
     mobile: user.mobile,
     status: user.status,
+    userDriverId: user.userDriverId,
+    linkedDriver: user.userDriver
+      ? {
+          id: user.userDriver.id,
+          name: user.userDriver.name,
+          mobile: user.userDriver.mobile,
+          licenseNumber: user.userDriver.licenseNumber,
+          status: user.userDriver.status,
+        }
+      : null,
     role: {
       id: user.role.id,
       name: user.role.name,
@@ -50,6 +61,9 @@ async function getUserByIdentifier(identifier: string) {
           },
         },
       },
+      userDriver: {
+        select: { id: true, name: true, mobile: true, licenseNumber: true, status: true },
+      },
     },
   });
 }
@@ -66,6 +80,9 @@ async function getUserById(userId: string) {
             },
           },
         },
+      },
+      userDriver: {
+        select: { id: true, name: true, mobile: true, licenseNumber: true, status: true },
       },
     },
   });
@@ -157,6 +174,9 @@ export async function refreshSession(req: Request, refreshToken: string) {
                 },
               },
             },
+          },
+          userDriver: {
+            select: { id: true, name: true, mobile: true, licenseNumber: true, status: true },
           },
         },
       },

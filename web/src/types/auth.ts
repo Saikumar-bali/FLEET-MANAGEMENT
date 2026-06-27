@@ -6,6 +6,13 @@ export type AuthUser = {
   mobile: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   userDriverId: string | null;
+  linkedDriver?: {
+    id: string;
+    name: string;
+    mobile: string;
+    licenseNumber: string;
+    status: string;
+  } | null;
   role: {
     id: string;
     name: string;

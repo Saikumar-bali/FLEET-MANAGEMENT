@@ -54,6 +54,7 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
     email: user.email,
     mobile: user.mobile,
     status: user.status,
+    userDriverId: user.userDriverId,
     role: {
       id: user.role.id,
       name: user.role.name,
