@@ -263,7 +263,7 @@ export async function assignVehicleToDriver(driverId: string, vehicleId: string,
   await prisma.vehicle.update({ where: { id: vehicleId }, data: { currentDriverId: driverId } });
 
   await createAuditLog(req, {
-    userId: null,
+    userId: req?.authUser?.id ?? null,
     action: 'driver.vehicle.assign',
     entityType: 'driver',
     entityId: driverId,
@@ -283,7 +283,7 @@ export async function unassignVehicleFromDriver(driverId: string, req: Request |
   await prisma.vehicle.update({ where: { id: vehicle.id }, data: { currentDriverId: null } });
 
   await createAuditLog(req, {
-    userId: null,
+    userId: req?.authUser?.id ?? null,
     action: 'driver.vehicle.unassign',
     entityType: 'driver',
     entityId: driverId,

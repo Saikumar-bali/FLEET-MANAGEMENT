@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, getDriver, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice } from '../services/api';
+import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, getDriver, getDrivers, assignVehicleToDriver, unassignVehicleFromDriver, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config/api';
 import type { VehicleRecord, VehicleInsuranceDetail, VehiclePermitDetail, VehicleFitnessDetail, VehiclePucDetail, VehicleRoadTaxDetail, VehicleFastagDetail, VehicleGpsDeviceDetail, VehicleComplianceHistory } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
@@ -185,9 +184,8 @@ export function VehicleDetailPage() {
         } else {
           setCurrentDriver(null);
         }
-        const driversRes = await fetch(`${API_BASE_URL}/drivers?limit=200`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
-        const driversData = await driversRes.json();
-        setDriversList(driversData.data?.items || []);
+        const driversRes = await getDrivers(auth.accessToken!, { limit: 200 });
+        setDriversList(driversRes.data?.items || []);
       } catch { setCurrentDriver(null); }
     };
     void load();
@@ -314,13 +312,9 @@ export function VehicleDetailPage() {
     if (!auth.accessToken || !id || !selectedDriverId) return;
     setIsAssigningDriver(true);
     try {
-      await fetch(`${API_BASE_URL}/drivers/${selectedDriverId}/assign-vehicle`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vehicleId: id }),
-      }).then(r => r.json());
+      await assignVehicleToDriver(auth.accessToken, selectedDriverId, id);
       setSelectedDriverId('');
-      setMessage('Driver assigned to vehicle successfully.');
+      setMessage('Driver assigned to vehicle.');
       const vehicleRes = await getVehicle(auth.accessToken!, id!);
       setVehicle(vehicleRes.data);
       setStatusValue(vehicleRes.data.status);
@@ -338,10 +332,7 @@ export function VehicleDetailPage() {
     if (!auth.accessToken || !id || !currentDriver) return;
     setIsAssigningDriver(true);
     try {
-      await fetch(`${API_BASE_URL}/drivers/${currentDriver.id}/unassign-vehicle`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${auth.accessToken}` },
-      }).then(r => r.json());
+      await unassignVehicleFromDriver(auth.accessToken, currentDriver.id);
       setMessage('Driver unassigned from vehicle.');
       const vehicleRes = await getVehicle(auth.accessToken!, id!);
       setVehicle(vehicleRes.data);

@@ -18,6 +18,7 @@ import {
   getDriverEffectivePermissionsController,
   getDriverOperationsSummaryController,
   getActiveDriversController,
+  getDriverMenuPreviewController,
 } from './drivers.controller';
 import {
   createMyTripController,
@@ -132,6 +133,13 @@ router.get(
   '/active-operations',
   requireAnyPermission(['driver_view', 'driver_update']),
   asyncHandler(getActiveDriversController),
+);
+
+router.get(
+  '/:id/driver-menu-preview',
+  requireAnyPermission(['driver_view', 'driver_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverMenuPreviewController),
 );
 
 router.get(

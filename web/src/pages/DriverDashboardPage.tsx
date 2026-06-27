@@ -11,6 +11,7 @@ import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { StatusPill } from '../components/ui/StatusPill';
 import { ActionButton } from '../components/ui/ActionToolbar';
 import { MapPinIcon, FuelIcon, ClockIcon } from '../components/ui/icons';
+import { DRIVER_CAPABILITY_MAP } from '../config/driverCapabilities';
 
 function formatCurrency(value: number) {
   if (!value || value === 0) return '₹0';
@@ -29,21 +30,6 @@ function daysUntil(dateStr: string) {
   const diff = new Date(dateStr).getTime() - Date.now();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
-
-const DRIVER_CAPABILITY_MAP: Record<string, string> = {
-  driver_trip_create: 'Create Trip',
-  driver_trip_start: 'Start Trip',
-  driver_trip_end: 'End Trip',
-  driver_quick_fuel_create: 'Add Fuel',
-  driver_fuel_receipt_upload: 'Upload Fuel Bill',
-  driver_expense_create: 'Expense Claim',
-  driver_pod_upload: 'Upload POD',
-  driver_vehicle_inspection_create: 'Vehicle Inspection',
-  driver_maintenance_report_create: 'Maintenance Report',
-  driver_repair_report_create: 'Repair Report',
-  driver_vehicle_issue_report: 'Report Vehicle Issue',
-  driver_trip_document_upload: 'Upload Trip Document',
-};
 
 export function DriverDashboardPage() {
   const auth = useAuth();

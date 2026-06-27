@@ -1,3 +1,82 @@
+# Phase 9.4 — Driver Operations Rebuild
+
+**Date:** 2026-06-27
+**Branch:** feature/phase-9-driver-account-linking
+**Base commit:** 6609c59
+
+## What Changed
+
+### Shared Driver Capability Registry
+- Created `web/src/config/driverCapabilities.ts` — 24 capabilities with groups, labels, permissions
+- Created `backend/src/constants/driver-capabilities.ts` — menu preview items
+- Used across: sidebar, dashboard, My Permissions, Driver Detail, Active Drivers
+
+### MyPermissionsPage Fixed
+- Now uses `GET /auth/effective-permissions` (real data, not faked from /auth/me)
+- Shows role permissions, individual allow/deny overrides, effective permissions
+- Each capability shows: label, permission key, status (Enabled/Missing/Denied), reason
+
+### Driver Detail Capabilities Tab
+- Allows admin to grant/deny individual permissions via PUT /users/:id/permission-overrides
+- Shows A (Allow) and D (Deny) toggle buttons per capability
+- Groups: Portal, Trips, Fuel, Expenses, Vehicle, Maintenance
+- Shows reason field, save button, "driver must refresh" notice
+
+### Driver Menu Preview
+- New endpoint: GET /drivers/:id/driver-menu-preview
+- Returns: visible menus, hidden menus with required permission, missing capabilities
+- Driver Detail Capabilities tab shows preview before/after changes
+
+### ActiveDriversPage Rebuilt
+- Operations console with summary stats (total, with account, with vehicle, on trip, today trips)
+- Filters: All Active, Has Account, Missing Account, Missing Vehicle, Active Trip, No Create Trip, No Recent Login
+- Table columns: Driver, Account, Vehicle, Trip, Permissions, Today, Last Activity, Issues, Actions
+- Issue badges: No linked account, No vehicle, No permissions, No recent login, Account not active
+
+### Vehicle Assignment Audit Fixed
+- `assignVehicleToDriver` and `unassignVehicleFromDriver` now use `req?.authUser?.id` instead of null
+- Audit logs correctly trace which admin performed the assignment
+
+### Raw Fetch Removed
+- VehicleDetailPage: replaced all raw fetch with `getDrivers`, `assignVehicleToDriver`, `unassignVehicleFromDriver`
+- ActiveDriversPage: uses `getActiveDrivers` from api.ts
+- DriverDetailPage: uses `getDriverAssignment`, `getAssignableVehicles`, `getDriverActivity`, `getDriverMenuPreview`, `getUserEffectivePermissions`, `getUserPermissionOverrides`, `updateUserPermissionOverrides`
+- MyPermissionsPage: uses `getEffectivePermissions`
+
+### MyVehiclePage Improved
+- Shows "No vehicle assigned" with admin instruction
+- Shows linked driver name, account status
+- Shows permissions count with link to My Permissions
+- Refresh button
+- Quick actions based on permissions
+
+### DriverDashboardPage Updated
+- Uses shared DRIVER_CAPABILITY_MAP from driverCapabilities.ts
+- Shows no-vehicle warning
+
+## Evidence
+
+| Check | Status |
+|-------|--------|
+| real My Permissions uses /auth/effective-permissions | YES |
+| sidebar dynamic menu works after grant + refresh | YES |
+| Driver Menu Preview added | YES |
+| Capabilities tab can grant/deny permissions | YES |
+| Active Drivers operations console complete | YES |
+| vehicle assignment audit has actor userId | YES |
+| Vehicle Detail current driver assignment complete | YES |
+| My Vehicle professional view complete | YES |
+| raw fetch removed from pages | YES |
+| Playwright verifies admin grant -> driver sidebar appears | YES |
+| backend build result | PASS |
+| web build result | PASS |
+| API docs result | 129 passed, 0 failed |
+| driver scope test result | ALL PASSED |
+| Vercel deploy | NO |
+| full E2E | NO |
+
+---
+
 # Phase 9.3 — Driver Active Operations, Vehicle Assignment, Activity Tracing
 
 **Date:** 2026-06-27

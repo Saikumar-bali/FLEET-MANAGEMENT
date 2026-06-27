@@ -1,36 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getCurrentUser } from '../../services/api';
+import { getEffectivePermissions } from '../../services/api';
 import { PageShell } from '../../components/ui/PageShell';
-
-const CAPABILITY_EXPLANATIONS: Record<string, string> = {
-  driver_trip_create: 'Create Trip requires driver_trip_create',
-  driver_quick_fuel_create: 'Quick Fuel Entry requires driver_quick_fuel_create',
-  driver_fuel_receipt_upload: 'Upload Fuel Bill requires driver_fuel_receipt_upload',
-  driver_assigned_vehicle_view: 'My Vehicle requires driver_assigned_vehicle_view. Vehicle must be assigned by admin before My Vehicle shows data.',
-  driver_trip_view: 'View Trip Details requires driver_trip_view',
-  driver_trip_start: 'Start Trip requires driver_trip_start',
-  driver_trip_end: 'End Trip requires driver_trip_end',
-  driver_trip_cancel: 'Cancel Trip requires driver_trip_cancel',
-  driver_pod_upload: 'Upload POD requires driver_pod_upload',
-  driver_lr_upload: 'Upload LR requires driver_lr_upload',
-  driver_challan_upload: 'Upload Challan requires driver_challan_upload',
-  driver_eway_bill_upload: 'Upload E-Way Bill requires driver_eway_bill_upload',
-  driver_trip_document_upload: 'Upload Trip Document requires driver_trip_document_upload',
-  driver_fuel_view_own: 'View Fuel Entries requires driver_fuel_view_own',
-  driver_expense_create: 'Create Expense requires driver_expense_create',
-  driver_expense_view_own: 'View Expenses requires driver_expense_view_own',
-  driver_expense_receipt_upload: 'Upload Expense Receipt requires driver_expense_receipt_upload',
-  driver_vehicle_inspection_create: 'Vehicle Inspection requires driver_vehicle_inspection_create',
-  driver_vehicle_issue_report: 'Report Vehicle Issue requires driver_vehicle_issue_report',
-  driver_maintenance_report_create: 'Report Maintenance requires driver_maintenance_report_create',
-  driver_repair_report_create: 'Report Repair requires driver_repair_report_create',
-};
-
-const COMMON_DRIVER_PERMISSIONS = [
-  'driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view',
-  'driver_my_documents_view', 'driver_my_profile_view',
-];
+import { DRIVER_CAPABILITIES, DRIVER_CAPABILITY_GROUPS } from '../../config/driverCapabilities';
 
 type EffectivePermissionsResult = {
   rolePermissions: string[];
@@ -39,9 +11,52 @@ type EffectivePermissionsResult = {
   effectivePermissions: string[];
 };
 
+type CapabilityStatus = {
+  id: string;
+  label: string;
+  permission: string;
+  group: string;
+  enabled: boolean;
+  source: 'role' | 'allow' | 'denied' | 'missing';
+  reason: string;
+};
+
+function buildCapabilityStatuses(data: EffectivePermissionsResult): CapabilityStatus[] {
+  const roleSet = new Set(data.rolePermissions);
+  const allowSet = new Set(data.userAllowedPermissions);
+  const denySet = new Set(data.userDeniedPermissions);
+  const effectiveSet = new Set(data.effectivePermissions);
+
+  return DRIVER_CAPABILITIES.map((cap) => {
+    const inRole = roleSet.has(cap.permission);
+    const inAllow = allowSet.has(cap.permission);
+    const inDeny = denySet.has(cap.permission);
+    const isEnabled = effectiveSet.has(cap.permission);
+
+    let source: CapabilityStatus['source'] = 'missing';
+    let reason = 'Not granted. Ask admin to assign this permission.';
+
+    if (inDeny) {
+      source = 'denied';
+      reason = 'Blocked by individual deny override.';
+    } else if (inAllow) {
+      source = 'allow';
+      reason = 'Granted by individual allow override.';
+    } else if (inRole) {
+      source = 'role';
+      reason = 'Granted by role permissions.';
+    } else if (isEnabled) {
+      source = 'allow';
+      reason = 'Granted by override.';
+    }
+
+    return { id: cap.id, label: cap.label, permission: cap.permission, group: cap.group, enabled: isEnabled, source, reason };
+  });
+}
+
 export function MyPermissionsPage() {
   const auth = useAuth();
-  const [permissions, setPermissions] = useState<EffectivePermissionsResult | null>(null);
+  const [data, setData] = useState<EffectivePermissionsResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
@@ -49,17 +64,11 @@ export function MyPermissionsPage() {
     if (!auth.accessToken) return;
     setIsLoading(true);
     try {
-      const res = await getCurrentUser(auth.accessToken);
-      const perms = res.data.permissions;
-      setPermissions({
-        rolePermissions: perms,
-        userAllowedPermissions: [],
-        userDeniedPermissions: [],
-        effectivePermissions: perms,
-      });
+      const res = await getEffectivePermissions(auth.accessToken);
+      setData(res.data);
       setLastRefreshed(new Date());
     } catch {
-      setPermissions(null);
+      setData(null);
     } finally {
       setIsLoading(false);
     }
@@ -74,8 +83,9 @@ export function MyPermissionsPage() {
 
   if (isLoading) return <PageShell><div className="centered-state">Loading permissions...</div></PageShell>;
 
-  const effectiveKeys = permissions?.effectivePermissions ?? auth.permissions;
-  const missingCommon = COMMON_DRIVER_PERMISSIONS.filter(p => !effectiveKeys.includes(p));
+  const capabilities = data ? buildCapabilityStatuses(data) : [];
+  const enabledCount = capabilities.filter((c) => c.enabled).length;
+  const missingRequired = capabilities.filter((c) => !c.enabled && ['driver_trip_create', 'driver_assigned_vehicle_view', 'driver_quick_fuel_create', 'driver_fuel_receipt_upload', 'driver_expense_create'].includes(c.permission));
 
   return (
     <PageShell>
@@ -85,7 +95,7 @@ export function MyPermissionsPage() {
         <div className="section-header">
           <div>
             <h3 className="chart-card-title">Permission Summary</h3>
-            <p className="chart-card-subtitle">Your effective permissions for the driver portal</p>
+            <p className="chart-card-subtitle">{enabledCount} of {capabilities.length} capabilities enabled</p>
           </div>
           <div className="action-panel">
             <button type="button" className="primary-button" onClick={handleRefresh}>Refresh Permissions</button>
@@ -94,71 +104,65 @@ export function MyPermissionsPage() {
         <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
           <div className="detail-grid">
             <div><p className="detail-label">Role</p><p className="detail-value">{auth.user?.role?.name ?? 'N/A'}</p></div>
-            <div><p className="detail-label">Linked Driver ID</p><p className="detail-value">{auth.user?.linkedDriver?.id ?? 'Not linked'}</p></div>
-            <div><p className="detail-label">Linked Driver Name</p><p className="detail-value">{auth.user?.linkedDriver?.name ?? 'N/A'}</p></div>
+            <div><p className="detail-label">Linked Driver</p><p className="detail-value">{auth.user?.linkedDriver?.name ?? 'Not linked'}</p></div>
             <div><p className="detail-label">Account Status</p><p className="detail-value">{auth.user?.status ?? 'N/A'}</p></div>
             <div><p className="detail-label">Last Refreshed</p><p className="detail-value">{lastRefreshed ? lastRefreshed.toLocaleString() : 'Never'}</p></div>
-            <div><p className="detail-label">Total Effective Permissions</p><p className="detail-value">{effectiveKeys.length}</p></div>
           </div>
         </div>
       </div>
 
-      {missingCommon.length > 0 && (
-        <div className="warning-banner" style={{ marginBottom: 'var(--space-4)' }}>
-          <strong>Missing common capabilities:</strong> {missingCommon.join(', ')}. Contact admin to grant these.
-        </div>
-      )}
-
-      <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
-        <h3 className="chart-card-title" style={{ padding: 'var(--space-4) var(--space-4) 0' }}>Effective Permissions</h3>
-        <div style={{ padding: 'var(--space-3) var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {effectiveKeys.length === 0 ? (
-            <p className="muted-copy">No effective permissions found.</p>
-          ) : (
-            effectiveKeys.map(p => (
-              <span key={p} style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', background: 'var(--color-success-bg, #e8f5e9)', color: 'var(--color-success-text, #2e7d32)', border: '1px solid var(--color-success-border, #a5d6a7)' }}>{p}</span>
-            ))
-          )}
-        </div>
-      </div>
-
-      {permissions?.userAllowedPermissions && permissions.userAllowedPermissions.length > 0 && (
-        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
-          <h3 className="chart-card-title" style={{ padding: 'var(--space-4) var(--space-4) 0' }}>Individual Allow Overrides</h3>
-          <div style={{ padding: 'var(--space-3) var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {permissions.userAllowedPermissions.map(p => (
-              <span key={p} style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9' }}>{p}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {permissions?.userDeniedPermissions && permissions.userDeniedPermissions.length > 0 && (
-        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
-          <h3 className="chart-card-title" style={{ padding: 'var(--space-4) var(--space-4) 0' }}>Individual Deny Overrides</h3>
-          <div style={{ padding: 'var(--space-3) var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {permissions.userDeniedPermissions.map(p => (
-              <span key={p} style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '12px', background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a' }}>{p}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="card">
-        <h3 className="chart-card-title" style={{ padding: 'var(--space-4) var(--space-4) 0' }}>Permission Explanations</h3>
-        <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-          {Object.entries(CAPABILITY_EXPLANATIONS).map(([perm, explanation]) => {
-            const has = effectiveKeys.includes(perm);
-            return (
-              <div key={perm} style={{ padding: '8px 0', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: has ? '#4caf50' : '#f44336', flexShrink: 0 }} />
-                <code style={{ fontSize: '12px', minWidth: '220px' }}>{perm}</code>
-                <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{explanation}</span>
+      {data && (
+        <>
+          {data.userAllowedPermissions.length > 0 && (
+            <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+              <h4 className="role-edit-h4" style={{ padding: 'var(--space-3) var(--space-4)' }}>Individual Allow Overrides</h4>
+              <div style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {data.userAllowedPermissions.map((p) => (
+                  <span key={p} style={{ padding: '3px 8px', borderRadius: '10px', fontSize: '11px', background: '#e3f2fd', color: '#1565c0', border: '1px solid #90caf9' }}>{p}</span>
+                ))}
               </div>
-            );
-          })}
+            </div>
+          )}
+          {data.userDeniedPermissions.length > 0 && (
+            <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+              <h4 className="role-edit-h4" style={{ padding: 'var(--space-3) var(--space-4)' }}>Individual Deny Overrides</h4>
+              <div style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {data.userDeniedPermissions.map((p) => (
+                  <span key={p} style={{ padding: '3px 8px', borderRadius: '10px', fontSize: '11px', background: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a' }}>{p}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {missingRequired.length > 0 && (
+        <div className="warning-banner" style={{ marginBottom: 'var(--space-4)' }}>
+          <strong>Missing required capabilities:</strong> {missingRequired.map((c) => c.label).join(', ')}. Contact admin to grant these.
         </div>
-      </div>
+      )}
+
+      {DRIVER_CAPABILITY_GROUPS.map((group) => {
+        const groupCaps = capabilities.filter((c) => c.group === group.key);
+        return (
+          <div key={group.key} className="card" style={{ marginBottom: 'var(--space-4)' }}>
+            <h4 className="role-edit-h4" style={{ padding: 'var(--space-3) var(--space-4)' }}>{group.label}</h4>
+            <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+              {groupCaps.map((cap) => (
+                <div key={cap.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: cap.enabled ? '#4caf50' : cap.source === 'denied' ? '#f44336' : '#ff9800', flexShrink: 0 }} />
+                  <span style={{ minWidth: '180px', fontSize: '13px', fontWeight: 500 }}>{cap.label}</span>
+                  <code style={{ fontSize: '11px', minWidth: '220px', color: 'var(--color-text-secondary)' }}>{cap.permission}</code>
+                  <span style={{ fontSize: '12px', color: cap.enabled ? 'var(--color-success-text, #2e7d32)' : cap.source === 'denied' ? '#c62828' : 'var(--color-text-secondary)' }}>
+                    {cap.enabled ? 'Enabled' : cap.source === 'denied' ? 'Denied' : 'Missing'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', flex: 1 }}>{cap.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </PageShell>
   );
 }

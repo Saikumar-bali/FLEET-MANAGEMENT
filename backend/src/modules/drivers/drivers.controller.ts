@@ -15,7 +15,7 @@ import {
   unassignVehicleFromDriver,
   getActiveDrivers,
 } from './drivers.service';
-import { getDriverActivity, getDriverEffectivePermissions, getDriverOperationsSummary } from './driver-activity.service';
+import { getDriverActivity, getDriverEffectivePermissions, getDriverOperationsSummary, getDriverMenuPreview } from './driver-activity.service';
 
 export async function listDriversController(req: Request, res: Response) {
   const result = await listDrivers({
@@ -150,5 +150,10 @@ export async function getDriverOperationsSummaryController(req: Request, res: Re
 
 export async function getActiveDriversController(req: Request, res: Response) {
   const result = await getActiveDrivers();
+  return sendSuccess(res, result);
+}
+
+export async function getDriverMenuPreviewController(req: Request, res: Response) {
+  const result = await getDriverMenuPreview(String(req.params.id));
   return sendSuccess(res, result);
 }

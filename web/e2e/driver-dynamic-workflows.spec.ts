@@ -107,7 +107,15 @@ test.describe('Driver Dynamic Workflows', () => {
       body: JSON.stringify({ permissionKeys: updatedPermKeys }),
     });
 
-    // ─── Step 2: Driver A logs in and sees Create Trip in sidebar ───
+    // ─── Step 2: Admin opens Active Drivers page ───
+    const adminPage = await page.context().newPage();
+    await loginViaUI(adminPage, ADMIN_USER!, ADMIN_PASSWORD!);
+    await adminPage.goto(`${WEB_URL}/active-drivers`);
+    await adminPage.waitForTimeout(2000);
+    const activeDriversContent = await adminPage.textContent('body');
+    expect(activeDriversContent).toContain('Active Drivers');
+
+    // ─── Step 3: Driver A logs in and sees Create Trip in sidebar ───
     await loginViaUI(page, DRIVER_A_USER!, DRIVER_A_PASSWORD!);
     await page.goto(`${WEB_URL}/my-dashboard`);
 
@@ -162,8 +170,6 @@ test.describe('Driver Dynamic Workflows', () => {
     }
 
     // ─── Step 6: Admin verifies trip and Created By ───
-    const adminPage = await page.context().newPage();
-    await loginViaUI(adminPage, ADMIN_USER!, ADMIN_PASSWORD!);
     await adminPage.goto(`${WEB_URL}/trips`);
     await adminPage.waitForTimeout(2000);
 

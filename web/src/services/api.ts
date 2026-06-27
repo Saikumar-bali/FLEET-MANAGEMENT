@@ -1112,3 +1112,72 @@ export function getMyDocuments(token: string, params?: { page?: number; limit?: 
 export function getMyVehicle(token: string) {
   return request<VehicleRecord | null>('/drivers/me/vehicle', { token });
 }
+
+// ─── Phase 9.3: Driver Operations APIs ───
+
+export function getEffectivePermissions(token: string) {
+  return request<{ rolePermissions: string[]; userAllowedPermissions: string[]; userDeniedPermissions: string[]; effectivePermissions: string[] }>('/auth/effective-permissions', { token });
+}
+
+export function getActiveDrivers(token: string) {
+  return request<any[]>('/drivers/active-operations', { token });
+}
+
+export function getDriverAssignment(token: string, driverId: string) {
+  return request<any>(`/drivers/${driverId}/assignment`, { token });
+}
+
+export function assignVehicleToDriver(token: string, driverId: string, vehicleId: string) {
+  return request<any>(`/drivers/${driverId}/assign-vehicle`, {
+    method: 'POST',
+    body: JSON.stringify({ vehicleId }),
+    token,
+  });
+}
+
+export function unassignVehicleFromDriver(token: string, driverId: string) {
+  return request<any>(`/drivers/${driverId}/unassign-vehicle`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export function getDriverActivity(token: string, driverId: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<any>(`/drivers/${driverId}/activity${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getDriverEffectivePermissions(token: string, driverId: string) {
+  return request<{ rolePermissions: string[]; userAllowedPermissions: string[]; userDeniedPermissions: string[]; effectivePermissions: string[] }>(`/drivers/${driverId}/effective-permissions`, { token });
+}
+
+export function getDriverOperationsSummary(token: string, driverId: string) {
+  return request<any>(`/drivers/${driverId}/operations-summary`, { token });
+}
+
+export function getDriverMenuPreview(token: string, driverId: string) {
+  return request<any>(`/drivers/${driverId}/driver-menu-preview`, { token });
+}
+
+export function getUserEffectivePermissions(token: string, userId: string) {
+  return request<{ rolePermissions: string[]; userAllowedPermissions: string[]; userDeniedPermissions: string[]; effectivePermissions: string[] }>(`/users/${userId}/effective-permissions`, { token });
+}
+
+export function getUserPermissionOverrides(token: string, userId: string) {
+  return request<any[]>(`/users/${userId}/permission-overrides`, { token });
+}
+
+export function updateUserPermissionOverrides(token: string, userId: string, payload: { allow?: string[]; deny?: string[]; reason?: string; expiresAt?: string | null }) {
+  return request<{ rolePermissions: string[]; userAllowedPermissions: string[]; userDeniedPermissions: string[]; effectivePermissions: string[] }>(`/users/${userId}/permission-overrides`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function getAssignableVehicles(token: string) {
+  return request<PaginatedResponse<VehicleRecord>>('/vehicles?limit=200', { token });
+}

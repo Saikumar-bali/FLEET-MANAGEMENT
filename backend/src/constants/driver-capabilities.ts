@@ -1,0 +1,31 @@
+export const DRIVER_CAPABILITY_PERMISSIONS = [
+  'driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view',
+  'driver_my_documents_view', 'driver_my_profile_view',
+  'driver_trip_create', 'driver_trip_view', 'driver_trip_start', 'driver_trip_end',
+  'driver_trip_cancel', 'driver_trip_document_upload', 'driver_pod_upload',
+  'driver_lr_upload', 'driver_challan_upload', 'driver_eway_bill_upload',
+  'driver_quick_fuel_create', 'driver_fuel_receipt_upload', 'driver_fuel_view_own',
+  'driver_expense_create', 'driver_expense_view_own', 'driver_expense_receipt_upload',
+  'driver_assigned_vehicle_view', 'driver_vehicle_inspection_create',
+  'driver_vehicle_issue_report', 'driver_maintenance_report_create',
+  'driver_repair_report_create',
+] as const;
+
+export const DRIVER_MENU_PREVIEW_ITEMS = [
+  { label: 'My Dashboard', path: '/my-dashboard', permission: null, alwaysVisible: true },
+  { label: 'My Trips', path: '/my-trips', permission: null, alwaysVisible: true },
+  { label: 'My Documents', path: '/my-documents', permission: null, alwaysVisible: true },
+  { label: 'My Profile', path: '/my-profile', permission: null, alwaysVisible: true },
+  { label: 'My Permissions', path: '/my-permissions', permission: null, alwaysVisible: true },
+  { label: 'My Vehicle', path: '/my-vehicle', permission: 'driver_assigned_vehicle_view', alwaysVisible: false },
+  { label: 'Create Trip', path: '/my-trips/new', permission: 'driver_trip_create', alwaysVisible: false },
+  { label: 'Vehicle Inspection', path: '/my-vehicle/inspection', permission: 'driver_vehicle_inspection_create', alwaysVisible: false },
+  { label: 'Report Vehicle Issue', path: '/my-vehicle/report-issue', permission: 'driver_vehicle_issue_report', alwaysVisible: false },
+  { label: 'Quick Fuel Entry', path: '/my-fuel/new', permission: 'driver_quick_fuel_create', alwaysVisible: false },
+  { label: 'Upload Fuel Bill', path: '/my-fuel/upload-receipt', permission: 'driver_fuel_receipt_upload', alwaysVisible: false },
+  { label: 'My Fuel Entries', path: '/my-fuel', permission: 'driver_fuel_view_own', alwaysVisible: false },
+  { label: 'Create Expense Claim', path: '/my-expenses/new', permission: 'driver_expense_create', alwaysVisible: false },
+  { label: 'My Expenses', path: '/my-expenses', permission: 'driver_expense_view_own', alwaysVisible: false },
+  { label: 'Report Maintenance', path: '/my-maintenance/report', permission: 'driver_maintenance_report_create', alwaysVisible: false },
+  { label: 'Report Repair', path: '/my-repairs/report', permission: 'driver_repair_report_create', alwaysVisible: false },
+] as const;

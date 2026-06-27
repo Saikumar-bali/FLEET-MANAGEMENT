@@ -67,7 +67,8 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
 | Phase 9 | Driver Account Linking & Driver Portal | Completed locally — auth userDriverId wired, linkedDriver summary, effective permissions, user permission overrides, strict sidebar, route guard, MyProfilePage, backend/web build pass, API docs verified |
 | Phase 9.2 | Driver Dynamic Workflows & Permission Clarity | Completed locally — Roles UI driver grouping + warnings, permission refresh flow, driver dashboard /my-* routes + dynamic actions + My Capabilities, backend expense/document stats, Created By + Driver badge, cross-driver isolation, Playwright E2E, placeholder pages implemented, all builds pass |
-| Phase 9.3 | Driver Active Operations, Vehicle Assignment, Activity Tracing | Completed locally — MyPermissionsPage diagnostic panel, dynamic sidebar restore, Roles UI warnings, DriverDetail Assigned Vehicle/Capabilities/Activity tabs, vehicle assignment APIs, VehicleDetail Current Driver, ActiveDriversPage, driver-activity.service tracing, enhanced audit logs, improved MyVehiclePage with no-vehicle warning, driver dashboard vehicle warning + permissions refresh, updated Playwright E2E + scope test, all builds + API docs + scope test pass |
+| Phase 9.3 | Driver Active Operations, Vehicle Assignment, Activity Tracing | Completed locally |
+| Phase 9.4 | Driver Operations Rebuild - Professional-grade driver operations console | Completed locally — shared driver capability registry, real effective-permissions, Capabilities grant/deny, Driver Menu Preview, ActiveDriversPage operations console, audit userId fixed, raw fetch removed |
 | Phase 9.1 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
 
 ## Implementation Log
