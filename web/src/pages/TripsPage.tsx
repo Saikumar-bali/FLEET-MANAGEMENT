@@ -105,6 +105,20 @@ export function TripsPage() {
         t.plannedStartAt ? new Date(t.plannedStartAt).toLocaleDateString() : '-',
     },
     {
+      key: 'createdBy',
+      header: 'Created By',
+      render: (t: TripRecord) => (
+        <div>
+          <span>{t.createdBy?.name ?? 'System'}</span>
+          {t.createdBy?.username && (
+            <span className="table-secondary" style={{ display: 'block', fontSize: '0.75rem' }}>
+              @{t.createdBy.username}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'actualStartAt',
       header: 'Actual Start',
       render: (t: TripRecord) =>

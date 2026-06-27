@@ -23,6 +23,8 @@
     "repair:rbac-finance": "ts-node scripts/repair-rbac-finance-permissions.ts",
     "seed:api": "ts-node scripts/api-seed.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
+    "test:driver-workflow-scope": "ts-node scripts/driver-workflow-scope-test.ts",
+    "rbac:repair": "ts-node scripts/repair-driver-permissions.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

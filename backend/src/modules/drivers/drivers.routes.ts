@@ -102,6 +102,7 @@ router.post(
 );
 router.get(
   '/me/documents',
+  requirePermission('driver_my_documents_view'),
   asyncHandler(getMyDocumentsController),
 );
 router.get(
@@ -118,22 +119,6 @@ router.post(
   '/me/repair-reports',
   requirePermission('driver_repair_report_create'),
   asyncHandler(createMyRepairReportController),
-);
-router.get(
-  '/me/fuel',
-  asyncHandler(getMyFuelEntriesController),
-);
-router.get(
-  '/me/expenses',
-  asyncHandler(getMyExpensesController),
-);
-router.get(
-  '/me/documents',
-  asyncHandler(getMyDocumentsController),
-);
-router.get(
-  '/me/vehicle',
-  asyncHandler(getMyVehicleController),
 );
 
 router.get(
