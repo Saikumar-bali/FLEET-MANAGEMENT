@@ -157,7 +157,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
 
         {showDriverPermissionHint && !isCollapsed && (
           <div className="sidebar-driver-hint" style={{ padding: '8px 16px', fontSize: '12px', color: 'var(--color-text-secondary)', borderTop: '1px solid var(--color-border)' }}>
-            Missing actions? Ask admin to assign Driver Portal permissions, then refresh permissions.
+            Missing actions? Open My Permissions to check, or ask admin to assign Driver Portal permissions, then refresh.
           </div>
         )}
 

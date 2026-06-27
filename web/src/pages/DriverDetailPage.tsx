@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
+import { API_BASE_URL } from '../config/api';
 
 type LinkedUserSummary = {
   id: string;
@@ -46,7 +47,7 @@ const initialForm: DriverForm = {
   experienceYears: '',
 };
 
-type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'account';
+type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'account' | 'vehicle' | 'capabilities' | 'activity';
 
 export function DriverDetailPage() {
   const { id } = useParams();
@@ -62,6 +63,12 @@ export function DriverDetailPage() {
   const [activeSection, setActiveSection] = useState<SectionTab>('personal');
   const [statusValue, setStatusValue] = useState('');
   const [linkedUser, setLinkedUser] = useState<LinkedUserSummary | null>(null);
+  const [assignmentData, setAssignmentData] = useState<any>(null);
+  const [activityData, setActivityData] = useState<any>(null);
+  const [permissionsData, setPermissionsData] = useState<any>(null);
+  const [assignVehicleId, setAssignVehicleId] = useState('');
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
   const canManageDriverAccount = auth.user?.role?.key !== 'driver' && auth.hasAnyPermission(['user_view', 'user_update']);
 
   useEffect(() => {
@@ -105,6 +112,46 @@ export function DriverDetailPage() {
       } catch {
         setLinkedUser(null);
       }
+    };
+    void load();
+  }, [auth.accessToken, id, isNew, activeSection, canManageDriverAccount]);
+
+  // Load vehicle assignment data
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken || activeSection !== 'vehicle' || !canManageDriverAccount) return;
+    const load = async () => {
+      try {
+        const [assignRes, vehiclesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/drivers/${id}/assignment`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json()),
+          fetch(`${API_BASE_URL}/vehicles?limit=100`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json()),
+        ]);
+        setAssignmentData(assignRes.data);
+        setVehicles(vehiclesRes.data?.items || []);
+      } catch { setAssignmentData(null); }
+    };
+    void load();
+  }, [auth.accessToken, id, isNew, activeSection, canManageDriverAccount]);
+
+  // Load activity data
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken || activeSection !== 'activity' || !canManageDriverAccount) return;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/drivers/${id}/activity?limit=50`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json());
+        setActivityData(res.data);
+      } catch { setActivityData(null); }
+    };
+    void load();
+  }, [auth.accessToken, id, isNew, activeSection, canManageDriverAccount]);
+
+  // Load permissions data
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken || activeSection !== 'capabilities' || !canManageDriverAccount) return;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/drivers/${id}/effective-permissions`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json());
+        setPermissionsData(res.data);
+      } catch { setPermissionsData(null); }
     };
     void load();
   }, [auth.accessToken, id, isNew, activeSection, canManageDriverAccount]);
@@ -162,6 +209,38 @@ export function DriverDetailPage() {
     }
   }
 
+  async function handleAssignVehicle() {
+    if (!auth.accessToken || !id || !assignVehicleId) return;
+    setIsAssigning(true);
+    try {
+      await fetch(`${API_BASE_URL}/drivers/${id}/assign-vehicle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleId: assignVehicleId }),
+      }).then(r => r.json());
+      setAssignVehicleId('');
+      setMessage('Vehicle assigned successfully.');
+      const res = await fetch(`${API_BASE_URL}/drivers/${id}/assignment`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json());
+      setAssignmentData(res.data);
+    } catch { setError('Failed to assign vehicle.'); }
+    finally { setIsAssigning(false); }
+  }
+
+  async function handleUnassignVehicle() {
+    if (!auth.accessToken || !id) return;
+    setIsAssigning(true);
+    try {
+      await fetch(`${API_BASE_URL}/drivers/${id}/unassign-vehicle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      }).then(r => r.json());
+      setMessage('Vehicle unassigned successfully.');
+      const res = await fetch(`${API_BASE_URL}/drivers/${id}/assignment`, { headers: { Authorization: `Bearer ${auth.accessToken}` } }).then(r => r.json());
+      setAssignmentData(res.data);
+    } catch { setError('Failed to unassign vehicle.'); }
+    finally { setIsAssigning(false); }
+  }
+
   if (isLoading) return <LoadingState message="Loading driver..." />;
   if (error && !driver && !isNew) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
@@ -176,6 +255,9 @@ export function DriverDetailPage() {
   ];
   if (canManageDriverAccount) {
     sectionTabs.push({ key: 'account', label: 'Login Account' });
+    sectionTabs.push({ key: 'vehicle', label: 'Assigned Vehicle' });
+    sectionTabs.push({ key: 'capabilities', label: 'Capabilities' });
+    sectionTabs.push({ key: 'activity', label: 'Activity' });
   }
   // Reset activeSection if current section is no longer available
   const availableSections = new Set(sectionTabs.map((t) => t.key));
@@ -383,6 +465,121 @@ export function DriverDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+        ) : null}
+
+        {!isNew && effectiveSection === 'vehicle' && canManageDriverAccount ? (
+          <div className="card form-section-grid">
+            <h4 className="role-edit-h4">Assigned Vehicle</h4>
+            {assignmentData ? (
+              <>
+                {assignmentData.assignedVehicles && assignmentData.assignedVehicles.length > 0 ? (
+                  <div>
+                    <div className="detail-grid">
+                      {assignmentData.assignedVehicles.map((v: any) => (
+                        <div key={v.id}>
+                          <p className="detail-label">Vehicle Number</p>
+                          <p className="detail-value">{v.vehicleNumber}</p>
+                          <p className="detail-label">Type</p>
+                          <p className="detail-value">{v.vehicleType}</p>
+                          <p className="detail-label">Status</p>
+                          <p className="detail-value">{v.status}</p>
+                          <p className="detail-label">Odometer</p>
+                          <p className="detail-value">{v.currentOdometer?.toLocaleString()} km</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: 'var(--space-3)' }}>
+                      <button type="button" className="secondary-button" onClick={() => void handleUnassignVehicle()} disabled={isAssigning}>
+                        {isAssigning ? 'Unassigning...' : 'Unassign Vehicle'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="helper-text" style={{ color: '#ff9800' }}>No vehicle assigned to this driver.</p>
+                    {assignmentData.linkedUser && (
+                      <p className="helper-text" style={{ marginTop: '8px' }}>Linked user: {assignmentData.linkedUser.username || assignmentData.linkedUser.name} ({assignmentData.linkedUser.status})</p>
+                    )}
+                    {!assignmentData.linkedUser && (
+                      <p className="helper-text" style={{ color: '#f44336', marginTop: '8px' }}>Driver has no linked login account. Create one first before assigning a vehicle.</p>
+                    )}
+                  </div>
+                )}
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <h4 className="role-edit-h4">Assign Vehicle</h4>
+                  <div className="action-panel">
+                    <select value={assignVehicleId} onChange={(e) => setAssignVehicleId(e.target.value)}>
+                      <option value="">Select a vehicle...</option>
+                      {vehicles.filter((v: any) => !v.currentDriverId).map((v: any) => (
+                        <option key={v.id} value={v.id}>{v.vehicleNumber} ({v.vehicleType})</option>
+                      ))}
+                    </select>
+                    <button type="button" className="primary-button" onClick={() => void handleAssignVehicle()} disabled={isAssigning || !assignVehicleId}>
+                      {isAssigning ? 'Assigning...' : 'Assign Vehicle'}
+                    </button>
+                  </div>
+                </div>
+                {assignmentData.activeTrip && (
+                  <div style={{ marginTop: 'var(--space-3)', padding: '12px', background: 'var(--color-info-bg, #e3f2fd)', borderRadius: '6px' }}>
+                    <p style={{ margin: 0, fontSize: '13px' }}><strong>Active Trip:</strong> {assignmentData.activeTrip.tripNumber} — {assignmentData.activeTrip.originName} → {assignmentData.activeTrip.destinationName}</p>
+                  </div>
+                )}
+              </>
+            ) : <p className="helper-text">Loading...</p>}
+          </div>
+        ) : null}
+
+        {!isNew && effectiveSection === 'capabilities' && canManageDriverAccount ? (
+          <div className="card form-section-grid">
+            <h4 className="role-edit-h4">Driver Capabilities</h4>
+            {permissionsData ? (
+              <div>
+                <div className="detail-grid">
+                  <div><p className="detail-label">Role Permissions</p><p className="detail-value">{permissionsData.rolePermissions?.length ?? 0}</p></div>
+                  <div><p className="detail-label">Individual Allow Overrides</p><p className="detail-value">{permissionsData.userAllowedPermissions?.length ?? 0}</p></div>
+                  <div><p className="detail-label">Individual Deny Overrides</p><p className="detail-value">{permissionsData.userDeniedPermissions?.length ?? 0}</p></div>
+                  <div><p className="detail-label">Effective Permissions</p><p className="detail-value">{permissionsData.effectivePermissions?.length ?? 0}</p></div>
+                </div>
+                <div style={{ marginTop: 'var(--space-3)' }}>
+                  <h5 style={{ fontSize: '14px', marginBottom: '8px' }}>Effective Permissions:</h5>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {(permissionsData.effectivePermissions ?? []).map((p: string) => (
+                      <span key={p} style={{ padding: '3px 8px', borderRadius: '10px', fontSize: '11px', background: 'var(--color-success-bg, #e8f5e9)', color: 'var(--color-success-text, #2e7d32)', border: '1px solid var(--color-success-border, #a5d6a7)' }}>{p}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : <p className="helper-text">Loading...</p>}
+          </div>
+        ) : null}
+
+        {!isNew && effectiveSection === 'activity' && canManageDriverAccount ? (
+          <div className="card form-section-grid">
+            <h4 className="role-edit-h4">Driver Activity</h4>
+            {activityData ? (
+              <>
+                {activityData.items && activityData.items.length > 0 ? (
+                  <table className="data-table">
+                    <thead>
+                      <tr><th>Action</th><th>Entity</th><th>Entity ID</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                      {activityData.items.map((log: any) => (
+                        <tr key={log.id}>
+                          <td><code style={{ fontSize: '12px' }}>{log.action}</code></td>
+                          <td>{log.entityType}</td>
+                          <td style={{ fontSize: '12px', fontFamily: 'monospace' }}>{log.entityId ? log.entityId.substring(0, 12) + '...' : '—'}</td>
+                          <td>{new Date(log.createdAt).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="helper-text">No activity records found.</p>
+                )}
+              </>
+            ) : <p className="helper-text">Loading...</p>}
           </div>
         ) : null}
 

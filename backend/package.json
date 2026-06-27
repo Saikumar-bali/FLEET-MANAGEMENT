@@ -25,6 +25,7 @@
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
     "test:driver-workflow-scope": "ts-node scripts/driver-workflow-scope-test.ts",
     "rbac:repair": "ts-node scripts/repair-driver-permissions.ts",
+    "grant:driver-trip-create": "ts-node scripts/grant-driver-trip-create.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

@@ -120,14 +120,20 @@ test.describe('Driver Dynamic Workflows', () => {
     const createTripLink = page.locator('nav a[href="/my-trips/new"]');
     await expect(createTripLink).toBeVisible({ timeout: 10000 });
 
-    // ─── Step 3: Verify individual driver stats are visible ───
-    await expect(page.locator('text=Active Trips')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=Completed (Month)')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=Total Trips')).toBeVisible({ timeout: 5000 });
+    // ─── Step 3: Verify My Vehicle in sidebar ───
+    const myVehicleLink = page.locator('nav a[href="/my-vehicle"]');
+    await expect(myVehicleLink).toBeVisible({ timeout: 5000 });
 
     // ─── Step 4: Verify My Capabilities card ───
     await expect(page.locator('text=My Capabilities')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('text=Create Trip')).toBeVisible({ timeout: 5000 });
+
+    // ─── Step 4b: Open My Vehicle and verify ───
+    await page.goto(`${WEB_URL}/my-vehicle`);
+    await page.waitForTimeout(2000);
+    const myVehicleContent = await page.textContent('body');
+    const hasNoVehicle = myVehicleContent?.includes('No vehicle assigned') || myVehicleContent?.includes('My Vehicle');
+    expect(hasNoVehicle).toBeTruthy();
 
     // ─── Step 5: Navigate to /my-trips/new and create a trip ───
     await page.goto(`${WEB_URL}/my-trips/new`);

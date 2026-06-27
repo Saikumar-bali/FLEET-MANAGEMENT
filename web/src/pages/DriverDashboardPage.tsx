@@ -131,6 +131,12 @@ export function DriverDashboardPage() {
         </div>
       ) : null}
 
+      {auth.user?.userDriverId && !currentVehicle ? (
+        <div className="warning-banner" style={{ marginBottom: 'var(--space-4)' }}>
+          <strong>No vehicle assigned.</strong> Ask admin to assign a vehicle in Driver Detail or Vehicle Detail.
+        </div>
+      ) : null}
+
       <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
         <div className="section-header">
           <div>
@@ -240,7 +246,11 @@ export function DriverDashboardPage() {
           <div className="chart-card-header">
             <div>
               <h3 className="chart-card-title">My Capabilities</h3>
-              <p className="chart-card-subtitle">Your enabled driver actions</p>
+              <p className="chart-card-subtitle">Your enabled driver actions ({capabilities.length})</p>
+            </div>
+            <div className="action-panel">
+              <a href="/my-permissions" className="chart-card-link">View Details</a>
+              <button type="button" className="ghost-button" onClick={() => auth.refreshCurrentUser()}>Refresh</button>
             </div>
           </div>
           <div style={{ padding: '0 var(--space-4) var(--space-4)', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>

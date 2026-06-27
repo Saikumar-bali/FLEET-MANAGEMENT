@@ -2,7 +2,10 @@ import crypto from 'node:crypto';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { hashPassword } from '../../utils/auth';
+import { createAuditLog } from '../audit/audit.service';
+import { getEffectivePermissions } from '../permissions/effective-permissions.service';
 import type { Prisma } from '@prisma/client';
+import type { Request } from 'express';
 
 export async function listDrivers(query: { search?: string; status?: string; unlinkedOnly?: boolean; page: number; limit: number }) {
   const where: Prisma.DriverWhereInput = {};
@@ -223,4 +226,135 @@ export async function updateDriverStatus(driverId: string, status: string) {
     where: { id: driverId },
     data: { status: status as any },
   });
+}
+
+export async function getDriverAssignment(driverId: string) {
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    include: { vehicles: { select: { id: true, vehicleNumber: true, vehicleType: true, status: true, currentOdometer: true } } },
+  });
+  if (!driver) throw new AppError('Driver not found', 404);
+
+  const user = await prisma.user.findFirst({
+    where: { userDriverId: driverId },
+    select: { id: true, name: true, username: true, status: true, lastLoginAt: true },
+  });
+
+  const activeTrip = await prisma.trip.findFirst({
+    where: { driverId, status: 'STARTED' },
+    select: { id: true, tripNumber: true, originName: true, destinationName: true },
+  });
+
+  return { driver: { id: driver.id, name: driver.name, status: driver.status }, linkedUser: user, assignedVehicles: driver.vehicles, activeTrip };
+}
+
+export async function assignVehicleToDriver(driverId: string, vehicleId: string, req: Request | null) {
+  const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+  if (!driver) throw new AppError('Driver not found', 404);
+  if (driver.status === 'INACTIVE' || driver.status === 'SUSPENDED') throw new AppError('Driver must be active or available to assign a vehicle', 400);
+
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+  if (!vehicle) throw new AppError('Vehicle not found', 404);
+
+  if (vehicle.currentDriverId && vehicle.currentDriverId !== driverId) {
+    throw new AppError('Vehicle is already assigned to another driver', 400);
+  }
+
+  await prisma.vehicle.update({ where: { id: vehicleId }, data: { currentDriverId: driverId } });
+
+  await createAuditLog(req, {
+    userId: null,
+    action: 'driver.vehicle.assign',
+    entityType: 'driver',
+    entityId: driverId,
+    metadata: { vehicleId, vehicleNumber: vehicle.vehicleNumber, driverName: driver.name },
+  });
+
+  return { vehicle: await prisma.vehicle.findUnique({ where: { id: vehicleId } }) };
+}
+
+export async function unassignVehicleFromDriver(driverId: string, req: Request | null) {
+  const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+  if (!driver) throw new AppError('Driver not found', 404);
+
+  const vehicle = await prisma.vehicle.findFirst({ where: { currentDriverId: driverId } });
+  if (!vehicle) throw new AppError('No vehicle assigned to this driver', 400);
+
+  await prisma.vehicle.update({ where: { id: vehicle.id }, data: { currentDriverId: null } });
+
+  await createAuditLog(req, {
+    userId: null,
+    action: 'driver.vehicle.unassign',
+    entityType: 'driver',
+    entityId: driverId,
+    metadata: { vehicleId: vehicle.id, vehicleNumber: vehicle.vehicleNumber, driverName: driver.name },
+  });
+
+  return { message: 'Vehicle unassigned', vehicle: { id: vehicle.id, vehicleNumber: vehicle.vehicleNumber } };
+}
+
+export async function getActiveDrivers() {
+  const drivers = await prisma.driver.findMany({
+    where: { status: { not: 'INACTIVE' } },
+    orderBy: { name: 'asc' },
+    include: {
+      linkedUsers: {
+        select: { id: true, name: true, username: true, status: true, lastLoginAt: true, role: { select: { name: true, key: true } } },
+      },
+      vehicles: {
+        select: { id: true, vehicleNumber: true, vehicleType: true, status: true },
+      },
+    },
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const results = await Promise.all(
+    drivers.map(async (driver) => {
+      const linkedUser = driver.linkedUsers[0] || null;
+      const currentVehicle = driver.vehicles[0] || null;
+
+      const [activeTrip, todayTrips, todayFuel, todayExpenses] = await Promise.all([
+        prisma.trip.findFirst({ where: { driverId: driver.id, status: 'STARTED' }, select: { id: true, tripNumber: true } }),
+        prisma.trip.count({ where: { driverId: driver.id, createdAt: { gte: today } } }),
+        prisma.fuelEntry.count({ where: { driverId: driver.id, createdAt: { gte: today } } }),
+        prisma.expense.count({ where: { driverId: driver.id, createdAt: { gte: today } } }),
+      ]);
+
+      let effectivePermissionsCount = 0;
+      if (linkedUser) {
+        const ep = await getEffectivePermissions(linkedUser.id);
+        effectivePermissionsCount = ep.effectivePermissions.length;
+      }
+
+      let recentAction = null;
+      if (linkedUser) {
+        const log = await prisma.auditLog.findFirst({ where: { userId: linkedUser.id }, orderBy: { createdAt: 'desc' }, select: { action: true, createdAt: true } });
+        recentAction = log ? { action: log.action, at: log.createdAt.toISOString() } : null;
+      }
+
+      let statusLabel: string = driver.status;
+      if (!linkedUser) statusLabel = 'NO_ACCOUNT';
+      else if (!currentVehicle) statusLabel = 'NO_VEHICLE';
+      else if (activeTrip) statusLabel = 'ON_TRIP';
+      else if (linkedUser.status !== 'ACTIVE') statusLabel = 'OFFLINE';
+
+      return {
+        id: driver.id,
+        name: driver.name,
+        mobile: driver.mobile,
+        status: driver.status,
+        statusLabel,
+        linkedAccount: linkedUser ? { id: linkedUser.id, username: linkedUser.username, status: linkedUser.status, lastLoginAt: linkedUser.lastLoginAt?.toISOString() ?? null } : null,
+        currentVehicle: currentVehicle ? { id: currentVehicle.id, vehicleNumber: currentVehicle.vehicleNumber, vehicleType: currentVehicle.vehicleType, status: currentVehicle.status } : null,
+        activeTrip,
+        effectivePermissionsCount,
+        recentAction,
+        todayStats: { trips: todayTrips, fuel: todayFuel, expenses: todayExpenses },
+      };
+    }),
+  );
+
+  return results;
 }

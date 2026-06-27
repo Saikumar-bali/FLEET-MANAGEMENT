@@ -309,7 +309,7 @@ export function RolesPage() {
       setRoles((currentRoles) =>
         currentRoles.map((role) => (role.id === selectedRoleId ? response.data : role)),
       );
-      setPageMessage('Permissions updated successfully.');
+      setPageMessage('Permissions saved. Driver must refresh permissions or log in again. Admin instruction: Tell the driver to open My Permissions and click Refresh, or log out and log in again.');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setPermissionError(caughtError.message);

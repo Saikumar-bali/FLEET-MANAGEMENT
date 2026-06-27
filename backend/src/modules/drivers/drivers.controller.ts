@@ -10,7 +10,12 @@ import {
   listDrivers,
   updateDriver,
   updateDriverStatus,
+  getDriverAssignment,
+  assignVehicleToDriver,
+  unassignVehicleFromDriver,
+  getActiveDrivers,
 } from './drivers.service';
+import { getDriverActivity, getDriverEffectivePermissions, getDriverOperationsSummary } from './driver-activity.service';
 
 export async function listDriversController(req: Request, res: Response) {
   const result = await listDrivers({
@@ -106,4 +111,44 @@ export async function getDriverLinkedAccountController(req: Request, res: Respon
   });
 
   return sendSuccess(res, { driver: { id: driver.id, name: driver.name }, linkedUser });
+}
+
+export async function getDriverAssignmentController(req: Request, res: Response) {
+  const result = await getDriverAssignment(String(req.params.id));
+  return sendSuccess(res, result);
+}
+
+export async function assignVehicleController(req: Request, res: Response) {
+  const { vehicleId } = req.body;
+  if (!vehicleId) throw new AppError('vehicleId is required', 400);
+  const result = await assignVehicleToDriver(String(req.params.id), vehicleId, req);
+  return sendSuccess(res, result, 'Vehicle assigned to driver successfully');
+}
+
+export async function unassignVehicleController(req: Request, res: Response) {
+  const result = await unassignVehicleFromDriver(String(req.params.id), req);
+  return sendSuccess(res, result, 'Vehicle unassigned from driver successfully');
+}
+
+export async function getDriverActivityController(req: Request, res: Response) {
+  const result = await getDriverActivity(String(req.params.id), {
+    page: Number(req.query.page) || 1,
+    limit: Number(req.query.limit) || 50,
+  });
+  return sendSuccess(res, result);
+}
+
+export async function getDriverEffectivePermissionsController(req: Request, res: Response) {
+  const result = await getDriverEffectivePermissions(String(req.params.id));
+  return sendSuccess(res, result);
+}
+
+export async function getDriverOperationsSummaryController(req: Request, res: Response) {
+  const result = await getDriverOperationsSummary(String(req.params.id));
+  return sendSuccess(res, result);
+}
+
+export async function getActiveDriversController(req: Request, res: Response) {
+  const result = await getActiveDrivers();
+  return sendSuccess(res, result);
 }

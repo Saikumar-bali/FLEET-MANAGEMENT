@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice } from '../services/api';
+import { createVehicle, getVehicle, updateVehicle, updateVehicleStatus, getDriver, listInsurance, listPermits, listFitness, listPuc, listRoadTax, getFastag, getGpsDevice, listComplianceHistory, createInsurance, updateInsurance, createPermit, createFitness, createPuc, createRoadTax, upsertFastag, upsertGpsDevice } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/api';
 import type { VehicleRecord, VehicleInsuranceDetail, VehiclePermitDetail, VehicleFitnessDetail, VehiclePucDetail, VehicleRoadTaxDetail, VehicleFastagDetail, VehicleGpsDeviceDetail, VehicleComplianceHistory } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
@@ -120,6 +121,11 @@ export function VehicleDetailPage() {
   const [showGpsForm, setShowGpsForm] = useState(false);
   const [gpsForm, setGpsForm] = useState<GpsForm>(emptyGps);
 
+  const [currentDriver, setCurrentDriver] = useState<any>(null);
+  const [driversList, setDriversList] = useState<any[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [isAssigningDriver, setIsAssigningDriver] = useState(false);
+
   useEffect(() => {
     if (isNew || !id) return;
     const load = async () => {
@@ -165,6 +171,27 @@ export function VehicleDetailPage() {
   };
 
   useEffect(() => { void loadCompliance(); }, [activeSection, auth.accessToken, id, isNew]);
+
+  // Load current driver and available drivers
+  useEffect(() => {
+    if (isNew || !id || !auth.accessToken) return;
+    const load = async () => {
+      try {
+        const vehicleRes = await getVehicle(auth.accessToken!, id!);
+        const v = vehicleRes.data as any;
+        if (v.currentDriverId) {
+          const driverRes = await getDriver(auth.accessToken!, v.currentDriverId);
+          setCurrentDriver(driverRes.data);
+        } else {
+          setCurrentDriver(null);
+        }
+        const driversRes = await fetch(`${API_BASE_URL}/drivers?limit=200`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+        const driversData = await driversRes.json();
+        setDriversList(driversData.data?.items || []);
+      } catch { setCurrentDriver(null); }
+    };
+    void load();
+  }, [auth.accessToken, id, isNew]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!auth.accessToken) return;
@@ -283,6 +310,47 @@ export function VehicleDetailPage() {
     catch (err) { setError(err instanceof ApiError ? err.message : 'Failed to save GPS device.'); }
   }
 
+  async function handleAssignDriver() {
+    if (!auth.accessToken || !id || !selectedDriverId) return;
+    setIsAssigningDriver(true);
+    try {
+      await fetch(`${API_BASE_URL}/drivers/${selectedDriverId}/assign-vehicle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleId: id }),
+      }).then(r => r.json());
+      setSelectedDriverId('');
+      setMessage('Driver assigned to vehicle successfully.');
+      const vehicleRes = await getVehicle(auth.accessToken!, id!);
+      setVehicle(vehicleRes.data);
+      setStatusValue(vehicleRes.data.status);
+      if ((vehicleRes.data as any).currentDriverId) {
+        const driverRes = await getDriver(auth.accessToken!, (vehicleRes.data as any).currentDriverId);
+        setCurrentDriver(driverRes.data);
+      } else {
+        setCurrentDriver(null);
+      }
+    } catch { setError('Failed to assign driver.'); }
+    finally { setIsAssigningDriver(false); }
+  }
+
+  async function handleUnassignDriver() {
+    if (!auth.accessToken || !id || !currentDriver) return;
+    setIsAssigningDriver(true);
+    try {
+      await fetch(`${API_BASE_URL}/drivers/${currentDriver.id}/unassign-vehicle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${auth.accessToken}` },
+      }).then(r => r.json());
+      setMessage('Driver unassigned from vehicle.');
+      const vehicleRes = await getVehicle(auth.accessToken!, id!);
+      setVehicle(vehicleRes.data);
+      setStatusValue(vehicleRes.data.status);
+      setCurrentDriver(null);
+    } catch { setError('Failed to unassign driver.'); }
+    finally { setIsAssigningDriver(false); }
+  }
+
 
   return (
     <section className="page-content">
@@ -322,6 +390,38 @@ export function VehicleDetailPage() {
               <label><span className="field-label">Fuel Type *</span><select value={form.fuelType} onChange={(e) => setForm((f) => ({ ...f, fuelType: e.target.value }))} disabled={!isNew && !canEdit}><option value="DIESEL">Diesel</option><option value="PETROL">Petrol</option><option value="CNG">CNG</option><option value="LPG">LPG</option><option value="ELECTRIC">Electric</option><option value="HYBRID">Hybrid</option></select></label>
             </div>
             <label><span className="field-label">Current Odometer (km)</span><input type="number" min={0} value={form.currentOdometer} onChange={(e) => setForm((f) => ({ ...f, currentOdometer: e.target.value }))} disabled={!canEdit} /></label>
+            {!isNew && (
+              <div style={{ marginTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
+                <h4 className="role-edit-h4">Current Driver</h4>
+                {currentDriver ? (
+                  <div className="detail-grid">
+                    <div><p className="detail-label">Driver Name</p><p className="detail-value"><a href={`/drivers/${currentDriver.id}`}>{currentDriver.name}</a></p></div>
+                    <div><p className="detail-label">Mobile</p><p className="detail-value">{currentDriver.mobile}</p></div>
+                    <div><p className="detail-label">Status</p><p className="detail-value">{currentDriver.status}</p></div>
+                    <div style={{ marginTop: 'var(--space-3)' }}>
+                      <button type="button" className="secondary-button" onClick={() => void handleUnassignDriver()} disabled={isAssigningDriver}>
+                        {isAssigningDriver ? 'Unassigning...' : 'Unassign Driver'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="helper-text" style={{ color: '#ff9800' }}>No driver assigned to this vehicle.</p>
+                    <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select value={selectedDriverId} onChange={(e) => setSelectedDriverId(e.target.value)} disabled={!canEdit}>
+                        <option value="">Select a driver...</option>
+                        {driversList.map((d: any) => (
+                          <option key={d.id} value={d.id}>{d.name} ({d.mobile}) — {d.status}</option>
+                        ))}
+                      </select>
+                      <button type="button" className="primary-button" onClick={() => void handleAssignDriver()} disabled={isAssigningDriver || !selectedDriverId || !canEdit}>
+                        {isAssigningDriver ? 'Assigning...' : 'Assign Driver'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : null}
         {!isNew && activeSection === 'registration' ? (

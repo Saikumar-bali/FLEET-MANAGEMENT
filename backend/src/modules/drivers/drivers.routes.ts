@@ -11,6 +11,13 @@ import {
   listDriversController,
   updateDriverController,
   updateDriverStatusController,
+  getDriverAssignmentController,
+  assignVehicleController,
+  unassignVehicleController,
+  getDriverActivityController,
+  getDriverEffectivePermissionsController,
+  getDriverOperationsSummaryController,
+  getActiveDriversController,
 } from './drivers.controller';
 import {
   createMyTripController,
@@ -119,6 +126,54 @@ router.post(
   '/me/repair-reports',
   requirePermission('driver_repair_report_create'),
   asyncHandler(createMyRepairReportController),
+);
+
+router.get(
+  '/active-operations',
+  requireAnyPermission(['driver_view', 'driver_update']),
+  asyncHandler(getActiveDriversController),
+);
+
+router.get(
+  '/:id/assignment',
+  requirePermission('driver_view'),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverAssignmentController),
+);
+
+router.post(
+  '/:id/assign-vehicle',
+  requireAnyPermission(['driver_update', 'vehicle_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(assignVehicleController),
+);
+
+router.post(
+  '/:id/unassign-vehicle',
+  requireAnyPermission(['driver_update', 'vehicle_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(unassignVehicleController),
+);
+
+router.get(
+  '/:id/activity',
+  requireAnyPermission(['driver_view', 'driver_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverActivityController),
+);
+
+router.get(
+  '/:id/effective-permissions',
+  requireAnyPermission(['driver_view', 'driver_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverEffectivePermissionsController),
+);
+
+router.get(
+  '/:id/operations-summary',
+  requireAnyPermission(['driver_view', 'driver_update']),
+  validateRequest({ params: driverIdParamsSchema }),
+  asyncHandler(getDriverOperationsSummaryController),
 );
 
 router.get(

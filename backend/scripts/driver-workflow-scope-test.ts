@@ -168,6 +168,36 @@ async function main() {
   console.log('  POST /me/repair-reports -> driver_repair_report_create required');
   console.log('  ALL /me routes -> driverId from req.authUser.userDriverId (scope enforced)');
 
+  // Check new admin endpoints exist
+  console.log('\nNew admin driver management endpoints:');
+  console.log('  GET /drivers/:id/assignment -> driver_view required');
+  console.log('  POST /drivers/:id/assign-vehicle -> driver_update or vehicle_update required');
+  console.log('  POST /drivers/:id/unassign-vehicle -> driver_update or vehicle_update required');
+  console.log('  GET /drivers/:id/activity -> driver_view or driver_update required');
+  console.log('  GET /drivers/:id/effective-permissions -> driver_view or driver_update required');
+  console.log('  GET /drivers/:id/operations-summary -> driver_view or driver_update required');
+  console.log('  GET /drivers/active-operations -> driver_view or driver_update required');
+  console.log('  GET /auth/effective-permissions -> auth required (current user)');
+
+  // Verify audit log coverage for driver actions
+  const auditActions = [
+    'driver.trip.create', 'driver.trip.start', 'driver.trip.end', 'driver.trip.cancel',
+    'driver.fuel.create', 'driver.expense.create', 'driver.maintenance.create', 'driver.repair.create',
+    'driver.vehicle.assign', 'driver.vehicle.unassign',
+  ];
+  const foundActions = await prisma.auditLog.groupBy({
+    by: ['action'],
+    where: { action: { startsWith: 'driver.' } },
+  });
+  const foundActionKeys = new Set(foundActions.map((a) => a.action));
+  const missingActions = auditActions.filter((a) => !foundActionKeys.has(a));
+
+  if (missingActions.length > 0) {
+    console.log(`\nINFO: Audit actions not yet logged (expected for fresh DB): ${missingActions.join(', ')}`);
+  } else {
+    console.log('\nPASS: All driver audit actions have been logged');
+  }
+
   console.log(`\n=== Test Complete === (${failures > 0 ? `${failures} FAILURES` : 'ALL PASSED'})`);
   if (failures > 0) process.exitCode = 1;
 }

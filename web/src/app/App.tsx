@@ -42,6 +42,8 @@ import { MyVehicleIssueReportPage } from '../pages/driver/MyVehicleIssueReportPa
 import { MyMaintenanceReportPage } from '../pages/driver/MyMaintenanceReportPage';
 import { MyRepairReportPage } from '../pages/driver/MyRepairReportPage';
 import { MyTripDocumentUploadPage } from '../pages/driver/MyTripDocumentUploadPage';
+import { MyPermissionsPage } from '../pages/driver/MyPermissionsPage';
+import { ActiveDriversPage } from '../pages/ActiveDriversPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { DriverOnlyRoute } from '../routes/DriverOnlyRoute';
 import { PermissionRoute } from '../routes/PermissionRoute';
@@ -111,6 +113,7 @@ function App() {
                   </Route>
                   <Route path="/my-documents" element={<MyDocumentsPage />} />
                   <Route path="/my-profile" element={<MyProfilePage />} />
+                  <Route path="/my-permissions" element={<MyPermissionsPage />} />
                 </Route>
                 <Route path="/" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
@@ -120,6 +123,7 @@ function App() {
                 <Route element={<ProtectedRoute requiredPermissions={['driver_view']} />}>
                   <Route path="/drivers" element={<DriversPage />} />
                   <Route path="/drivers/:id" element={<DriverDetailPage />} />
+                  <Route path="/active-drivers" element={<ActiveDriversPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['asset_view']} />}>
                   <Route path="/assets" element={<AssetsPage />} />

@@ -59,6 +59,16 @@ export const navigationItems: NavigationItem[] = [
     pageDescription: 'Your driver profile information',
     driverScoped: true,
   },
+  {
+    label: 'My Permissions',
+    path: '/my-permissions',
+    description: 'View your effective permissions',
+    permissionKeys: [],
+    section: 'MY',
+    pageTitle: 'My Permissions',
+    pageDescription: 'Your effective permissions and role details',
+    driverScoped: true,
+  },
   // ─── Driver-scoped permission-based items ───
   // Trips section
   {
@@ -281,6 +291,15 @@ export const navigationItems: NavigationItem[] = [
     section: 'MANAGE',
     pageTitle: 'Drivers',
     pageDescription: 'Driver master records',
+  },
+  {
+    label: 'Active Drivers',
+    path: '/active-drivers',
+    description: 'Monitor driver operations and assignments',
+    permissionKeys: ['driver_view'],
+    section: 'MANAGE',
+    pageTitle: 'Active Drivers',
+    pageDescription: 'Monitor active drivers and operations',
   },
   {
     label: 'Assets',
