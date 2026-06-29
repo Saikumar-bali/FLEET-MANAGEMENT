@@ -11,71 +11,72 @@
 - `624aaf2` — fix: audit entityId now points to actual record IDs (override/scope)
 - `c13cf77` — feat: user access management UI (Phase 2)
 - `96b2bb8` — fix: activity metadata search, resilient MyAccess scopes, stable e2e test
+- `953aba1` — feat: Phase 2 hardening - self-access endpoints, users summary, activity fix, stable e2e
 
 ## Status
 Phase 1 backend foundation: Complete.
-Phase 2 user access UI: Complete.
+Phase 2 user access UI: Complete (hardened).
 Module-level scope enforcement: Pending (Phase 3).
 
-## Changes
-### Backend
-- Added `GET /api/v1/users/:id/activity` endpoint in both primary and alias routes
-- Activity searches audit logs where userId OR entityId OR metadata.targetUserId matches the target user
-- Metadata search uses `string_contains` for `"targetUserId":"<id>"` pattern
+## Phase 2 Hardening (953aba1)
 
-### Frontend: API Layer
-Added typed functions in `web/src/services/api.ts`:
-- `getUserEffectivePermissions`
-- `getUserPermissionOverrides`
-- `setUserPermissionOverride`
-- `removeUserPermissionOverride`
-- `getUserDataScopes`
-- `grantUserDataScope`
-- `removeUserDataScope`
-- `getUserActivity`
-- `getMyEffectivePermissions`
+### Backend: Self-access endpoints (no user_view required)
+- `GET /api/v1/access/me/effective-permissions` — uses `req.authUser.id`
+- `GET /api/v1/access/me/data-scopes` — uses `req.authUser.id`
+- `GET /api/v1/access/me/activity` — uses `req.authUser.id`
+- `GET /api/v1/access/me/summary` — returns user, role, permissions, scopes, activity
 
-### Frontend: Pages
-- **UsersPage**: Added "Manage Access" button per row that navigates to `/users/:id`
-- **UserDetailPage**: 8-tab page with Profile, Account, Role, Effective Permissions, Permission Overrides, Data Scopes, Activity, Menu Preview tabs
-  - Effective Permissions: shows role perms, ALLOW overrides, DENY overrides, final effective list with DENY-win logic
-  - Permission Overrides: search permissions, filter by module, add ALLOW/DENY with reason/expiry, remove
-  - Data Scopes: grant/remove scopes with type, ID, access level, reason, expiry
-  - Activity: timeline of audit logs
-  - Menu Preview: visible/hidden menus with missing permission reasons
-- **MyAccessPage**: Self-service diagnostics accessible to every logged-in user at `/my-access`
-  - Shows account info, role, effective permissions, data scopes, visible menus, hidden menus with missing permission reasons
-  - Data scopes loaded separately to handle users without `user_view` permission gracefully
+### Backend: Users access summary
+- `GET /api/v1/access/users/summary` — requires `user_view`
+- Returns per-user counts: effectivePermissionsCount, dataScopesCount, overridesCount, recentActivityAction, recentActivityAt
 
-### Frontend: Routing
-- `/users/:id` — protected by `user_view`
-- `/my-access` — accessible to all authenticated users
+### Backend: Activity endpoint fix
+- `GET /api/v1/access/users/:id/activity` now also queries `metadata.actorUserId`
+- Four-way OR: `userId`, `entityId`, `metadata.targetUserId`, `metadata.actorUserId`
 
-## Key Rules Enforced
-- Non-super_admin cannot grant critical permissions (role_view, permission_assign, user_update, etc.)
-- Non-super_admin cannot grant GLOBAL scope
-- Non-super_admin cannot grant MANAGE scope
-- DENY wins over ALLOW/role permissions
-- Expired overrides are ignored
-- Backend errors shown clearly in UI
+### Frontend: MyAccessPage
+- Uses self-access endpoint (`/access/me/summary`) exclusively
+- No longer calls `/access/users/:id/data-scopes`
+- Shows: account, role, effective permissions, data scopes, recent activity, visible/hidden menus
+- Hidden menus show missing permissions
+- Shows disclaimer: "Scope-based menu checks are pending Phase 3."
 
-## Final Evidence Results (2026-06-29)
+### Frontend: UsersPage
+- Added columns: Perms count, Scopes count, Overrides count, Recent activity
+- Uses `getUsersAccessSummary` API helper
+
+### Frontend: UserDetailPage
+- After override/scope changes, activity tab data refreshes
+- Shows GLOBAL/MANAGE super_admin-only warning in Data Scopes tab
+- Activity tab shows actor/target from metadata
+
+### Frontend: API service layer
+- Added: `getMyDataScopes`, `getMyActivity`, `getMyAccessSummary`, `getUsersAccessSummary`
+- `getMyEffectivePermissions` now uses `/access/me/effective-permissions`
+
+### OpenAPI
+- Added 6 new endpoints to spec: `/access/me/*` (4), `/access/users/summary`, `/access/users/{id}/activity`
+
+### Playwright test
+- Uses API for mutations (override/scope), UI for verification
+- No silent skip — throws on missing credentials
+- Tests: ALLOW override, DENY override, scope grant/remove, Activity tab, My Access page
+- Both tests pass
+
+## Final Evidence Results (953aba1)
 - Backend build: **PASS**
 - Web build: **PASS**
 - API docs: **PASS** (126/126)
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28 assertions)
 - Access diagnose: **PASS** (18 users)
-- Playwright targeted test: **PASS** (2/2 tests)
-  - super_admin end-to-end: PASS (override add, scope grant/remove, activity audit)
-  - user My Access page: PASS
-- User Detail page: YES
-- Effective Permissions tab: YES
-- Permission Overrides tab: YES
-- Data Scopes tab: YES
-- Activity tab: YES
-- My Access page: YES
-- API service layer added: YES
+- Playwright headed: **PASS** (2/2 tests)
+- My Access self endpoints: **YES**
+- My Access works without user_view: **YES**
+- Activity query includes metadata.targetUserId: **YES**
+- Activity query includes metadata.actorUserId: **YES**
+- Users access summary counts: **YES**
+- Playwright no silent skip: **YES**
 - Full E2E: NO
 - Deploy: NO
 - Full reseed: NO
