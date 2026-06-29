@@ -25,6 +25,7 @@
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
     "test:account-scope": "ts-node scripts/account-scope-test.ts",
     "access:diagnose": "ts-node scripts/access-diagnose.ts",
+    "access:smoke": "ts-node scripts/access-service-smoke.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

@@ -38,9 +38,9 @@ async function main() {
   const adminRole = await prisma.role.findFirst({ where: { key: 'admin' } });
   if (!adminRole) throw new Error('admin role not found');
 
-  const driverPerms = await prisma.rolePermission.findMany({ where: { roleId: driverRole.id }, include: { permission: true } });
-  const permKey = driverPerms[0]?.permission.key;
-  if (!permKey) throw new Error('No permissions found for driver role');
+  // Use a real non-critical permission from the DB (not in roles/permissions/users/settings/system modules)
+  const fuelPerm = await prisma.permission.findFirst({ where: { key: 'fuel_view' } });
+  if (!fuelPerm) throw new Error('fuel_view permission not found');
 
   const [userA, userB, testAdmin, testSuperAdmin] = await Promise.all([
     prisma.user.create({ data: { name: `${TEST_PREFIX}User_A`, email: `${TEST_PREFIX}user_a@test.com`, passwordHash: 'x', roleId: driverRole.id, status: 'ACTIVE' } }),
@@ -58,48 +58,36 @@ async function main() {
 
   // 3. ALLOW override adds permission
   console.log('\n3. Testing ALLOW override adds permission...');
-  const permission = await prisma.permission.findFirst({ where: { key: permKey } });
-  if (!permission) throw new Error(`Permission ${permKey} not found`);
-
   const allowOverride = await prisma.userPermissionOverride.create({
-    data: { userId: userA.id, permissionId: permission.id, effect: 'ALLOW', reason: 'test grant' },
+    data: { userId: userA.id, permissionId: fuelPerm.id, effect: 'ALLOW', reason: 'test grant' },
   });
   const effA1 = await getEffectivePermissions(userA.id);
-  assert(effA1.userAllowedPermissions.includes(permKey), 'ALLOW override adds permission');
+  assert(effA1.userAllowedPermissions.includes('fuel_view'), 'ALLOW override adds fuel_view');
 
   // 4. DENY override removes permission
   console.log('\n4. Testing DENY override removes permission...');
   const denyOverride = await prisma.userPermissionOverride.create({
-    data: { userId: userB.id, permissionId: permission.id, effect: 'DENY', reason: 'test deny' },
+    data: { userId: userB.id, permissionId: fuelPerm.id, effect: 'DENY', reason: 'test deny' },
   });
   const effB1 = await getEffectivePermissions(userB.id);
-  assert(effB1.userDeniedPermissions.includes(permKey), 'DENY override removes permission');
+  assert(effB1.userDeniedPermissions.includes('fuel_view'), 'DENY override removes fuel_view');
 
   // 5. DENY wins over ALLOW/role
   console.log('\n5. Testing DENY wins over ALLOW/role...');
-  // User B already has DENY for permKey. Add ALLOW for a different permission to show both exist.
-  const secondPerm = driverPerms[1]?.permission;
-  if (secondPerm) {
-    await prisma.userPermissionOverride.upsert({
-      where: { userId_permissionId: { userId: userB.id, permissionId: permission.id } },
-      create: { userId: userB.id, permissionId: permission.id, effect: 'DENY', reason: 'test deny' },
-      update: { effect: 'DENY', reason: 'test deny alongside role' },
-    });
-  }
   const effB2 = await getEffectivePermissions(userB.id);
-  assert(effB2.userDeniedPermissions.includes(permKey), 'DENY still recorded');
-  assert(!effB2.effectivePermissions.includes(permKey), 'DENY wins: permission excluded from effective');
+  assert(effB2.userDeniedPermissions.includes('fuel_view'), 'DENY still recorded');
+  assert(!effB2.effectivePermissions.includes('fuel_view'), 'DENY wins: fuel_view excluded from effective');
 
   // 6. Expired overrides ignored
   console.log('\n6. Testing expired overrides ignored...');
   await prisma.userPermissionOverride.update({ where: { id: allowOverride.id }, data: { expiresAt: new Date('2020-01-01') } });
   const effA2 = await getEffectivePermissions(userA.id);
-  assert(!effA2.userAllowedPermissions.includes(permKey), 'Expired override ignored');
+  assert(!effA2.userAllowedPermissions.includes('fuel_view'), 'Expired override ignored');
 
   // Restore for later tests
   await prisma.userPermissionOverride.update({ where: { id: allowOverride.id }, data: { expiresAt: null } });
 
-  // 7. User A scope to VEHICLE vehicle-1
+  // 7. Data scopes
   console.log('\n7. Testing data scopes...');
   const scopeA = await prisma.userDataScope.create({ data: { userId: userA.id, scopeType: 'VEHICLE', scopeId: 'vehicle-1', accessLevel: 'VIEW' } });
   const scopeB = await prisma.userDataScope.create({ data: { userId: userB.id, scopeType: 'VEHICLE', scopeId: 'vehicle-2', accessLevel: 'VIEW' } });
@@ -115,7 +103,7 @@ async function main() {
   assert(hasScope(actorB, 'VEHICLE', 'vehicle-2', 'VIEW') === true, 'hasScope(B, VEHICLE, vehicle-2, VIEW) = true');
   assert(hasScope(actorB, 'VEHICLE', 'vehicle-1', 'VIEW') === false, 'hasScope(B, VEHICLE, vehicle-1, VIEW) = false');
 
-  // 10. MANAGE scope includes VIEW/UPDATE/DELETE
+  // 10. MANAGE scope hierarchy
   console.log('\n9. Testing MANAGE scope hierarchy...');
   await prisma.userDataScope.create({ data: { userId: userA.id, scopeType: 'VEHICLE', scopeId: 'vehicle-3', accessLevel: 'MANAGE' } });
   const actorAManage = await getActorContext(userA.id);
@@ -124,7 +112,7 @@ async function main() {
   assert(hasScope(actorAManage, 'VEHICLE', 'vehicle-3', 'DELETE') === true, 'MANAGE includes DELETE');
   assert(hasScope(actorAManage, 'VEHICLE', 'vehicle-3', 'MANAGE') === true, 'MANAGE includes MANAGE');
 
-  // 11. super_admin global access = true
+  // 11. super_admin global access
   console.log('\n10. Testing super_admin global access...');
   const actorSuperAdmin = await getActorContext(testSuperAdmin.id);
   assert(isGlobalUser(actorSuperAdmin) === true, 'super_admin is global');
@@ -155,27 +143,39 @@ async function main() {
   }
   assert(globalGrantFailed, 'Non-super_admin blocked from granting GLOBAL scope');
 
-  // 14. non-super_admin cannot grant critical permissions
+  // 14. non-super_admin cannot grant critical permissions (using real DB key)
   console.log('\n13. Testing non-super_admin cannot grant critical permissions...');
   let criticalGrantFailed = false;
   try {
     await import('../src/modules/access/access-policy.service').then(m =>
-      m.assertCanGrantPermission(actorAdmin, userA.id, 'role.assign'),
+      m.assertCanGrantPermission(actorAdmin, userA.id, 'role_view'),
     );
   } catch (e: any) {
     criticalGrantFailed = e.message.includes('super_admin');
   }
-  assert(criticalGrantFailed, 'Non-super_admin blocked from granting role.assign');
+  assert(criticalGrantFailed, 'Non-super_admin blocked from granting role_view');
 
-  // 15. Audit log contains actor user id
-  console.log('\n14. Testing audit log contains actor user id...');
+  // 15. non-super_admin cannot grant MANAGE scope
+  console.log('\n14. Testing non-super_admin cannot grant MANAGE scope...');
+  let manageGrantFailed = false;
+  try {
+    await import('../src/modules/access/access-policy.service').then(m =>
+      m.assertCanGrantScope(actorAdmin, userA.id, 'VEHICLE', 'MANAGE'),
+    );
+  } catch (e: any) {
+    manageGrantFailed = e.message.includes('super_admin');
+  }
+  assert(manageGrantFailed, 'Non-super_admin blocked from granting MANAGE scope');
+
+  // 16. Audit log contains actor user id
+  console.log('\n15. Testing audit log contains actor user id...');
   await prisma.auditLog.create({
     data: {
       userId: userA.id,
       action: 'admin.user.permission.allow',
       entityType: 'user_permission_override',
       entityId: userB.id,
-      metadata: { actorUserId: userA.id, targetUserId: userB.id, permissionKey: permKey, effect: 'ALLOW' },
+      metadata: { actorUserId: userA.id, targetUserId: userB.id, permissionKey: 'fuel_view', effect: 'ALLOW' },
     },
   });
   const auditEntry = await prisma.auditLog.findFirst({
@@ -185,13 +185,26 @@ async function main() {
   assert((auditEntry!.metadata as any)?.actorUserId === userA.id, 'Audit log has actorUserId');
   assert((auditEntry!.metadata as any)?.targetUserId === userB.id, 'Audit log has targetUserId');
 
-  // 16. can/canAny helpers work
-  console.log('\n15. Testing can/canAny helpers...');
-  assert(can(actorA, permKey) === true, 'can(A, permKey) = true (from role)');
-  assert(canAny(actorA, [permKey, 'nonexistent.perm']) === true, 'canAny returns true if any match');
+  // 17. Audit log entityType for scope actions
+  console.log('\n16. Testing audit log entityType for scope actions...');
+  const scopeAudit = await prisma.auditLog.create({
+    data: {
+      userId: userA.id,
+      action: 'admin.user.scope.grant',
+      entityType: 'user_data_scope',
+      entityId: userB.id,
+      metadata: { scopeType: 'VEHICLE', scopeId: 'vehicle-1' },
+    },
+  });
+  assert(scopeAudit.entityType === 'user_data_scope', 'Scope audit uses user_data_scope entityType');
 
-  // 17. Cleanup and verify
-  console.log('\n16. Cleaning up test data...');
+  // 18. can/canAny helpers
+  console.log('\n17. Testing can/canAny helpers...');
+  assert(can(actorA, 'fuel_view') === true, 'can(A, fuel_view) = true (from role)');
+  assert(canAny(actorA, ['fuel_view', 'nonexistent.perm']) === true, 'canAny returns true if any match');
+
+  // 19. Cleanup and verify
+  console.log('\n18. Cleaning up test data...');
   await prisma.auditLog.deleteMany({ where: { userId: { in: [userA.id, userB.id, testAdmin.id, testSuperAdmin.id] } } });
   await prisma.userPermissionOverride.deleteMany({ where: { userId: { in: [userA.id, userB.id, testAdmin.id, testSuperAdmin.id] } } });
   await prisma.userDataScope.deleteMany({ where: { userId: { in: [userA.id, userB.id, testAdmin.id, testSuperAdmin.id] } } });

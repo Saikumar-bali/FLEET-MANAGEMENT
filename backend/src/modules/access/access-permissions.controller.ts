@@ -28,20 +28,32 @@ export async function setPermissionOverrideController(req: Request, res: Respons
   const id = req.params.id as string;
   const { permissionId, permissionKey, effect, reason, expiresAt } = req.body;
 
-  const permKey = permissionKey || (permissionId ? (await prisma.permission.findUnique({ where: { id: permissionId } }))?.key : undefined);
-
-  if (!permKey || !effect) {
-    throw new AppError('permissionKey (or permissionId) and effect are required', 400);
+  if (!permissionKey && !permissionId) {
+    throw new AppError('permissionKey or permissionId is required', 400);
   }
 
-  if (!['ALLOW', 'DENY'].includes(effect)) {
+  if (!effect || !['ALLOW', 'DENY'].includes(effect)) {
     throw new AppError('effect must be ALLOW or DENY', 400);
+  }
+
+  let resolvedKey: string;
+  if (permissionId) {
+    const perm = await prisma.permission.findUnique({ where: { id: permissionId } });
+    if (!perm) {
+      throw new AppError('Permission not found', 404);
+    }
+    if (permissionKey && perm.key !== permissionKey) {
+      throw new AppError('permissionId and permissionKey do not match', 400);
+    }
+    resolvedKey = perm.key;
+  } else {
+    resolvedKey = permissionKey;
   }
 
   const result = await setPermissionOverride(
     req.authUser!.id,
     id,
-    permKey,
+    resolvedKey,
     effect,
     reason,
     expiresAt ? new Date(expiresAt) : undefined,
