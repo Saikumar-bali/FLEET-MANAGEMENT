@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermission } from '../../middlewares/permissions';
-import { sendSuccess } from '../../utils/response';
 import {
   listPermissionOverridesController,
   setPermissionOverrideController,
@@ -18,43 +17,43 @@ const router = Router();
 router.use(asyncHandler(authMiddleware));
 
 router.get(
-  '/users/:id/effective-permissions',
+  '/:id/effective-permissions',
   requirePermission('user_view'),
   asyncHandler(effectivePermissionsController),
 );
 
 router.get(
-  '/users/:id/permission-overrides',
+  '/:id/permission-overrides',
   requirePermission('user_view'),
   asyncHandler(listPermissionOverridesController),
 );
 
 router.put(
-  '/users/:id/permission-overrides',
+  '/:id/permission-overrides',
   requirePermission('permission_assign'),
   asyncHandler(setPermissionOverrideController),
 );
 
 router.delete(
-  '/users/:id/permission-overrides/:permissionId',
+  '/:id/permission-overrides/:permissionId',
   requirePermission('permission_assign'),
   asyncHandler(removePermissionOverrideController),
 );
 
 router.get(
-  '/users/:id/data-scopes',
+  '/:id/data-scopes',
   requirePermission('user_view'),
   asyncHandler(listDataScopesController),
 );
 
 router.put(
-  '/users/:id/data-scopes',
+  '/:id/data-scopes',
   requirePermission('permission_assign'),
   asyncHandler(grantDataScopeController),
 );
 
 router.delete(
-  '/users/:id/data-scopes/:scopeId',
+  '/:id/data-scopes/:scopeId',
   requirePermission('permission_assign'),
   asyncHandler(removeDataScopeController),
 );

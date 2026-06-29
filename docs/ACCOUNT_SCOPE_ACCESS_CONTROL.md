@@ -49,10 +49,18 @@ Data scopes determine what records a user can see or modify based on ownership o
 |------------|-------------|---------|
 | `OWN` | Only records owned by the user | A driver sees only their own trips |
 | `DRIVER` | Records assigned to specific drivers | A dispatcher sees trips for their assigned drivers |
-| `VEHICLE` | Records associated with specific vehicles | A fleet manager sees all trips for vehicles they manage |
-| `TRIP` | Records related to specific trips | A trip coordinator sees all data for trips they coordinate |
+| `VEHICLE` | Records associated with specific vehicles | `VEHICLE vehicle-1` — access to vehicle-1's records |
+| `TRIP` | Records related to specific trips | `TRIP trip-123` — access to trip-123's data |
 | `BRANCH` | Records within a specific branch | A branch manager sees all records in their branch |
-| `ALL` | All records in the system | An admin sees everything |
+| `ALL` | All records in the system | An admin with GLOBAL scope sees everything |
+| `GLOBAL` | System-wide bypass | `GLOBAL MANAGE` — full management access across all modules |
+
+### Access Level Hierarchy
+When multiple scopes overlap, the highest access level wins:
+
+`MANAGE > DELETE > UPDATE > CREATE > VIEW`
+
+For example, a user with `VEHICLE vehicle-1 CREATE` and `VEHICLE vehicle-1 MANAGE` gets `MANAGE` for vehicle-1.
 
 ### How They Work
 Data scopes are evaluated against record ownership or assignment fields. For example, a trip record might have `driverId` and `vehicleId` fields that are checked against the user's scopes.
@@ -80,15 +88,33 @@ Menus are filtered based on the user's effective permissions:
 - If the user lacks required permissions, the menu item is hidden
 - Data scopes further filter what records appear in menu sections
 
+## Current Phase
+
+**Backend foundation only.** No UI yet, no driver workflow yet. This phase covers the access-policy service, API endpoints, and test harness. UI and workflow integration are planned for subsequent phases.
+
 ## Admin/Super Admin Exception
 
-The `admin` and `super_admin` roles are **global by default**:
-- They bypass all data scope restrictions
-- They can see and modify all records in the system
-- They don't need explicit scopes to access data
-- Their effective permissions include all system permissions
+### super_admin
+- **Global by role.** Bypasses all data scope restrictions.
+- Can see and modify all records in the system.
+- Effective permissions include all system permissions.
 
-This is by design to ensure system administrators can always access and manage all data.
+### admin
+- **NOT automatically global.** Requires explicit `GLOBAL` scope or `MANAGE` scope, or a matching module scope to access data.
+- Must be granted scopes or permission overrides to access cross-module data.
+
+### GLOBAL Scope
+- Can only be granted by `super_admin`.
+- Provides system-wide data access (bypasses all data scope restrictions).
+
+### MANAGE Scope
+- Requires `super_admin`, or `admin` with the `permission_assign` permission.
+- Grants ability to manage (create, update, delete) across a module.
+
+### Critical Permissions
+Critical permissions (`role.*`, `permission.*`, `system.*`) can only be granted by `super_admin`. Non-super_admin users (including admin) cannot grant these via overrides or scope assignments.
+
+This is by design to ensure separation of privilege and prevent escalation.
 
 ## Manual Account Creation Flow
 
@@ -152,7 +178,7 @@ Ensure the user has appropriate data scopes:
 ## Running Tests
 
 ### Account Scope Tests
-Run the account scope tests to verify access control:
+Run the account scope tests to verify access control (16 checks including admin rules, GLOBAL scope restriction, audit, access-policy):
 ```bash
 npm --prefix backend run test:account-scope
 ```

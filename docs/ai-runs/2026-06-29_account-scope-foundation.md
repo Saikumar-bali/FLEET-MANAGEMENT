@@ -8,12 +8,23 @@
 
 Implemented a comprehensive account-scoped access control system that provides fine-grained permissions per user, independent of their role. This includes user permission overrides (ALLOW/DENY) and data scopes (OWN, DRIVER, VEHICLE, TRIP, etc.) to control what records users can see and modify.
 
+### Hardened Phase Additions
+- **Admin not global**: `admin` role is no longer automatically global. Requires explicit `GLOBAL`/`MANAGE` scope or matching module scope.
+- **GLOBAL scope restricted**: Can only be granted by `super_admin`.
+- **Critical permission grants blocked**: Non-super_admin users cannot grant `role.*`, `permission.*`, or `system.*` permissions.
+- **Access level hierarchy**: `MANAGE > DELETE > UPDATE > CREATE > VIEW` — highest wins on overlap.
+- **API responses standardized**: All access endpoints use `sendSuccess`/`sendError` for consistent response format.
+
 ## Key Decisions
 
 1. **No DB Reseed**: Preserved all existing data and configurations
 2. **Manual Migrations**: Added new tables and columns without destructive changes
 3. **Safe Additive Changes**: All changes are backward-compatible and can be rolled back
 4. **Role-Based Foundation**: Extended existing RBAC system with per-user overrides
+5. **Hardened Admin**: Admin is no longer globally scoped — explicit scopes required
+6. **Restricted GLOBAL**: Only super_admin can grant GLOBAL scope
+7. **Critical Permission Guard**: `assertCanGrantPermission` blocks non-super_admin from granting role.*, permission.*, system.*
+8. **Scope Guard**: `assertCanGrantScope` enforces GLOBAL scope restriction
 
 ## Architecture Overview
 
@@ -28,6 +39,9 @@ Implemented a comprehensive account-scoped access control system that provides f
 - Evaluates permissions against requested actions
 - Combines role permissions with user overrides
 - Checks data scopes for record-level access
+- Enforces access level hierarchy (`MANAGE > DELETE > UPDATE > CREATE > VIEW`)
+- `assertCanGrantPermission`: Blocks non-super_admin from granting `role.*`, `permission.*`, `system.*`
+- `assertCanGrantScope`: Blocks non-super_admin from granting `GLOBAL` scope
 
 #### EffectivePermissions Service
 - Computes the final permission set for a user
@@ -112,6 +126,9 @@ enum DataScopeType {
 - `GET /api/v1/access/diagnose/:userId` - Diagnose access issues for a user
 - `POST /api/v1/access/test-permission` - Test if a user has a specific permission
 
+### API Paths
+Primary paths use `/api/v1/access/users/:id/*`. Alias paths also available at `/api/v1/users/:id/*` for backward compatibility.
+
 ## Frontend Changes
 
 ### types/auth.ts Updates
@@ -147,7 +164,7 @@ export type DataScopeType = 'OWN' | 'DRIVER' | 'VEHICLE' | 'TRIP' | 'BRANCH' | '
 - ✅ No ESLint warnings
 
 ### Test Verification
-- ✅ All 12 account-scope tests pass
+- ✅ All 16 account-scope tests pass (admin rules, GLOBAL scope restriction, audit, access-policy)
 - ✅ Existing RBAC tests continue to pass
 - ✅ No regressions in existing functionality
 
