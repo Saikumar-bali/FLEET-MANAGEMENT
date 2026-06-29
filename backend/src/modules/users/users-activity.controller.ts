@@ -10,6 +10,11 @@ export async function getUserActivityController(req: Request, res: Response) {
       OR: [
         { userId: targetUserId },
         { entityId: targetUserId },
+        {
+          metadata: {
+            string_contains: `"targetUserId":"${targetUserId}"`,
+          },
+        },
       ],
     },
     orderBy: { createdAt: 'desc' },
