@@ -1727,6 +1727,21 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/auth/effective-permissions': {
       get: { tags: ['Auth'], summary: 'Get effective permissions for current user', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Effective permissions breakdown (role, allowed, denied, effective)' } } },
     },
+    '/access/me/effective-permissions': {
+      get: { tags: ['Access Control'], summary: 'Get my effective permissions (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Effective permissions for current user' } } },
+    },
+    '/access/me/data-scopes': {
+      get: { tags: ['Access Control'], summary: 'Get my data scopes (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Data scopes for current user' } } },
+    },
+    '/access/me/activity': {
+      get: { tags: ['Access Control'], summary: 'Get my activity (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Activity logs for current user' } } },
+    },
+    '/access/me/summary': {
+      get: { tags: ['Access Control'], summary: 'Get my full access summary (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Full access summary including user, role, permissions, scopes, activity' } } },
+    },
+    '/access/users/summary': {
+      get: { tags: ['Access Control'], summary: 'Get access summary for all users', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Array of user access summaries with counts' } } },
+    },
     '/access/users/{id}/effective-permissions': {
       get: { tags: ['Access Control'], summary: 'Get effective permissions for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Effective permissions breakdown' } } },
     },
@@ -1743,6 +1758,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/access/users/{id}/data-scopes/{scopeId}': {
       delete: { tags: ['Access Control'], summary: 'Remove data scope', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
+    },
+    '/access/users/{id}/activity': {
+      get: { tags: ['Access Control'], summary: 'Get user activity timeline', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Activity logs for the specified user' } } },
     },
     // ─── Access Control Aliases (under /users) ───
     '/users/{id}/effective-permissions': {
@@ -1761,6 +1779,9 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/users/{id}/data-scopes/{scopeId}': {
       delete: { tags: ['Access Control'], summary: 'Remove data scope (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
+    },
+    '/users/{id}/activity': {
+      get: { tags: ['Access Control'], summary: 'Get user activity timeline (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Activity logs for the specified user' } } },
     },
   },
 };

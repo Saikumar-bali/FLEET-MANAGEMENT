@@ -18,6 +18,79 @@ export async function effectivePermissionsController(req: Request, res: Response
   sendSuccess(res, result);
 }
 
+export async function selfEffectivePermissionsController(req: Request, res: Response) {
+  const userId = req.authUser!.id;
+  const result = await getEffectivePermissions(userId);
+  sendSuccess(res, result);
+}
+
+export async function selfDataScopesController(req: Request, res: Response) {
+  const userId = req.authUser!.id;
+  const scopes = await listDataScopes(userId);
+  sendSuccess(res, scopes);
+}
+
+export async function selfSummaryController(req: Request, res: Response) {
+  const userId = req.authUser!.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      role: {
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      },
+      permissionOverrides: {
+        where: {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        include: { permission: true },
+      },
+      dataScopes: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const rolePermissions = user.role.rolePermissions.map(rp => rp.permission.key);
+  const userAllowedPermissions = user.permissionOverrides.filter(o => o.effect === 'ALLOW').map(o => o.permission.key);
+  const userDeniedPermissions = user.permissionOverrides.filter(o => o.effect === 'DENY').map(o => o.permission.key);
+  const deniedSet = new Set(userDeniedPermissions);
+  const combined = new Set(rolePermissions);
+  for (const k of userAllowedPermissions) combined.add(k);
+  for (const k of userDeniedPermissions) combined.delete(k);
+  const effectivePermissions = Array.from(combined);
+
+  const recentActivity = await prisma.auditLog.findMany({
+    where: {
+      OR: [
+        { userId },
+        { entityId: userId },
+        { metadata: { string_contains: `"targetUserId":"${userId}"` } },
+        { metadata: { string_contains: `"actorUserId":"${userId}"` } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  });
+
+  sendSuccess(res, {
+    user: { id: user.id, name: user.name, email: user.email, username: user.username, status: user.status },
+    role: { id: user.role.id, name: user.role.name, key: user.role.key },
+    effectivePermissions,
+    rolePermissions,
+    userAllowedPermissions,
+    userDeniedPermissions,
+    dataScopes: user.dataScopes,
+    recentActivity,
+  });
+}
+
 export async function listPermissionOverridesController(req: Request, res: Response) {
   const id = req.params.id as string;
   const overrides = await listPermissionOverrides(id);
