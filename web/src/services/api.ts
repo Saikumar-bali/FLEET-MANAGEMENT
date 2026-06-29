@@ -11,37 +11,41 @@ import type {
   DashboardOverview,
   DocumentRecord,
   DriverRecord,
+  EffectivePermissionsResponse,
+  ExpenseRecord,
+  FinanceAccount,
+  FinanceCategory,
+  FinanceDashboardSummary,
+  FinanceTransaction,
+  FuelRecord,
+  MaintenanceRecord,
   PaginatedResponse,
+  PaymentRecord,
   PermissionRecord,
+  PnlSummary,
+  RepairRecord,
   RoleRecord,
+  TripBilling,
   TripHistoryRecord,
   TripRecord,
+  UserActivityRecord,
+  UserDataScopeRecord,
+  UserPermissionOverrideRecord,
   UserRecord,
-  VehicleRecord,
-  FuelRecord,
-  ExpenseRecord,
-  MaintenanceRecord,
-  RepairRecord,
+  VehicleComplianceDocument,
+  VehicleComplianceHistory,
+  VehicleFitnessDetail,
   VehicleRegistrationDetail,
+  Vendor,
+  VehicleRecord,
   VehicleInsuranceDetail,
   VehiclePermitDetail,
-  VehicleFitnessDetail,
   VehiclePucDetail,
   VehicleRoadTaxDetail,
   VehicleFastagDetail,
   VehicleGpsDeviceDetail,
-  VehicleComplianceDocument,
-  VehicleComplianceHistory,
   ComplianceDashboard,
-  FinanceAccount,
-  FinanceCategory,
-  Vendor,
   Customer,
-  TripBilling,
-  FinanceTransaction,
-  PaymentRecord,
-  FinanceDashboardSummary,
-  PnlSummary,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -835,3 +839,63 @@ export function deletePayment(token: string, id: string) { return request<null>(
 
 export function getFinanceDashboardSummary(token: string) { return request<FinanceDashboardSummary>('/finance/dashboard-summary', { token }); }
 export function getFinancePnl(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PnlSummary>(`/finance/pnl${q ? `?${q}` : ''}`, { token }); }
+
+// ─── Phase 2: User Access Management API ───
+
+export function getUserEffectivePermissions(token: string, userId: string) {
+  return request<EffectivePermissionsResponse>(`/access/users/${userId}/effective-permissions`, { token });
+}
+
+export function getUserPermissionOverrides(token: string, userId: string) {
+  return request<UserPermissionOverrideRecord[]>(`/access/users/${userId}/permission-overrides`, { token });
+}
+
+export function setUserPermissionOverride(
+  token: string,
+  userId: string,
+  payload: { permissionKey: string; effect: 'ALLOW' | 'DENY'; reason?: string; expiresAt?: string },
+) {
+  return request<UserPermissionOverrideRecord>(`/access/users/${userId}/permission-overrides`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function removeUserPermissionOverride(token: string, userId: string, permissionId: string) {
+  return request<null>(`/access/users/${userId}/permission-overrides/${permissionId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function getUserDataScopes(token: string, userId: string) {
+  return request<UserDataScopeRecord[]>(`/access/users/${userId}/data-scopes`, { token });
+}
+
+export function grantUserDataScope(
+  token: string,
+  userId: string,
+  payload: { scopeType: string; scopeId?: string; accessLevel: string; reason?: string; expiresAt?: string },
+) {
+  return request<UserDataScopeRecord>(`/access/users/${userId}/data-scopes`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function removeUserDataScope(token: string, userId: string, scopeId: string) {
+  return request<null>(`/access/users/${userId}/data-scopes/${scopeId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function getUserActivity(token: string, userId: string) {
+  return request<UserActivityRecord[]>(`/access/users/${userId}/activity`, { token });
+}
+
+export function getMyEffectivePermissions(token: string) {
+  return request<EffectivePermissionsResponse>('/auth/effective-permissions', { token });
+}

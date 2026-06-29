@@ -194,6 +194,15 @@ export const navigationItems: NavigationItem[] = [
     pageTitle: 'Users',
     pageDescription: 'User access management',
   },
+  {
+    label: 'My Access',
+    path: '/my-access',
+    description: 'Your permissions, scopes, and visible menus',
+    permissionKeys: [],
+    section: 'EXPLORE',
+    pageTitle: 'My Access',
+    pageDescription: 'Current session and permission summary',
+  },
 ];
 
 export const sidebarSections: SidebarSection[] = [
