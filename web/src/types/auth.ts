@@ -25,6 +25,17 @@ export type AuthPayload = {
   refreshToken: string;
   user: AuthUser;
   permissions: string[];
+  effectivePermissions: string[];
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  dataScopes: Array<{
+    id: string;
+    scopeType: string;
+    scopeId: string | null;
+    accessLevel: string;
+    expiresAt: string | null;
+  }>;
 };
 
 export type RoleRecord = {

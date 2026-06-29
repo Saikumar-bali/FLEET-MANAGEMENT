@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/appError';
 import { verifyAccessToken } from '../utils/auth';
+import { getEffectivePermissions } from '../modules/access/effective-permissions.service';
+import { getActorContext } from '../modules/access/actor-context.service';
 
 function extractToken(req: Request): string | null {
   const authorizationHeader = req.headers.authorization;
@@ -47,6 +49,8 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
     return next(new AppError('User is not authorized', 401));
   }
 
+  const effectivePermissions = await getEffectivePermissions(user.id);
+
   req.authUser = {
     id: user.id,
     name: user.name,
@@ -61,9 +65,16 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
       status: user.role.status,
     },
   };
-  req.authPermissions = user.role.rolePermissions.map(
-    (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
-  );
+  req.authPermissions = effectivePermissions.effectivePermissions;
+  req.authEffectivePermissions = effectivePermissions;
+
+  try {
+    const actorContext = await getActorContext(user.id);
+    req.authActorContext = actorContext;
+    req.authDataScopes = actorContext.dataScopes;
+  } catch {
+    // Non-critical: middleware continues without actor context
+  }
 
   return next();
 }

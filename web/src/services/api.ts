@@ -125,9 +125,26 @@ export function refresh(refreshToken: string) {
 }
 
 export function getCurrentUser(token: string) {
-  return request<{ user: AuthPayload['user']; permissions: string[] }>('/auth/me', {
+  return request<{
+    user: AuthPayload['user'];
+    permissions: string[];
+    effectivePermissions: string[];
+    rolePermissions: string[];
+    userAllowedPermissions: string[];
+    userDeniedPermissions: string[];
+    dataScopes: AuthPayload['dataScopes'];
+  }>('/auth/me', {
     token,
   });
+}
+
+export function getEffectivePermissions(token: string) {
+  return request<{
+    rolePermissions: string[];
+    userAllowedPermissions: string[];
+    userDeniedPermissions: string[];
+    effectivePermissions: string[];
+  }>('/auth/effective-permissions', { token });
 }
 
 export function getRoles(token: string) {

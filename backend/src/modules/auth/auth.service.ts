@@ -3,11 +3,12 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { createAccessToken, generateRefreshToken, hashToken, verifyPassword } from '../../utils/auth';
 import { createAuditLog } from '../audit/audit.service';
-import type { RequestUser } from '../../types/auth';
+import type { RequestUser, EffectivePermissions, DataScopeEntry } from '../../types/auth';
+import { getEffectivePermissions } from '../access/effective-permissions.service';
 
 type UserWithRolePermissions = Awaited<ReturnType<typeof getUserById>>;
 
-function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
+function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>, effective?: EffectivePermissions, dataScopes?: DataScopeEntry[]) {
   const permissionKeys = user.role.rolePermissions.map(
     (rolePermission: { permission: { key: string } }) => rolePermission.permission.key,
   );
@@ -28,7 +29,12 @@ function mapUserWithPermissions(user: NonNullable<UserWithRolePermissions>) {
 
   return {
     user: safeUser,
-    permissions: permissionKeys,
+    permissions: effective?.effectivePermissions ?? permissionKeys,
+    rolePermissions: effective?.rolePermissions ?? permissionKeys,
+    effectivePermissions: effective?.effectivePermissions ?? permissionKeys,
+    userAllowedPermissions: effective?.userAllowedPermissions ?? [],
+    userDeniedPermissions: effective?.userDeniedPermissions ?? [],
+    dataScopes: dataScopes ?? [],
   };
 }
 
@@ -98,7 +104,24 @@ export async function login(req: Request, identifier: string, password: string) 
     throw new AppError('Invalid username/email or password', 401);
   }
 
-  const authUser = mapUserWithPermissions(user);
+  const effectivePermissions = await getEffectivePermissions(user.id);
+  const userData = await prisma.user.findUnique({
+    where: { id: user.id },
+    include: {
+      dataScopes: {
+        where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      },
+    },
+  });
+  const dataScopes: DataScopeEntry[] = userData?.dataScopes.map(ds => ({
+    id: ds.id,
+    scopeType: ds.scopeType,
+    scopeId: ds.scopeId,
+    accessLevel: ds.accessLevel,
+    expiresAt: ds.expiresAt,
+  })) ?? [];
+
+  const authUser = mapUserWithPermissions(user, effectivePermissions, dataScopes);
   const accessToken = createAccessToken(authUser.user);
   const refreshToken = generateRefreshToken();
 
@@ -128,6 +151,11 @@ export async function login(req: Request, identifier: string, password: string) 
     refreshToken: refreshToken.token,
     user: authUser.user,
     permissions: authUser.permissions,
+    effectivePermissions: authUser.effectivePermissions,
+    rolePermissions: authUser.rolePermissions,
+    userAllowedPermissions: authUser.userAllowedPermissions,
+    userDeniedPermissions: authUser.userDeniedPermissions,
+    dataScopes: authUser.dataScopes,
   };
 }
 
@@ -138,7 +166,32 @@ export async function getCurrentUser(userId: string) {
     throw new AppError('User not found', 404);
   }
 
-  return mapUserWithPermissions(user);
+  const effectivePermissions = await getEffectivePermissions(userId);
+  const userData = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      dataScopes: {
+        where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      },
+    },
+  });
+  const dataScopes: DataScopeEntry[] = userData?.dataScopes.map(ds => ({
+    id: ds.id,
+    scopeType: ds.scopeType,
+    scopeId: ds.scopeId,
+    accessLevel: ds.accessLevel,
+    expiresAt: ds.expiresAt,
+  })) ?? [];
+
+  const result = mapUserWithPermissions(user, effectivePermissions, dataScopes);
+  return {
+    ...result,
+    effectivePermissions: result.effectivePermissions,
+    rolePermissions: result.rolePermissions,
+    userAllowedPermissions: result.userAllowedPermissions,
+    userDeniedPermissions: result.userDeniedPermissions,
+    dataScopes: result.dataScopes,
+  };
 }
 
 export async function refreshSession(req: Request, refreshToken: string) {
@@ -171,8 +224,25 @@ export async function refreshSession(req: Request, refreshToken: string) {
     throw new AppError('User is not allowed to refresh this session', 401);
   }
 
+  const effectivePermissions = await getEffectivePermissions(existingToken.userId);
+  const userData = await prisma.user.findUnique({
+    where: { id: existingToken.userId },
+    include: {
+      dataScopes: {
+        where: { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+      },
+    },
+  });
+  const dataScopes: DataScopeEntry[] = userData?.dataScopes.map(ds => ({
+    id: ds.id,
+    scopeType: ds.scopeType,
+    scopeId: ds.scopeId,
+    accessLevel: ds.accessLevel,
+    expiresAt: ds.expiresAt,
+  })) ?? [];
+
   const rotatedToken = generateRefreshToken();
-  const authUser = mapUserWithPermissions(existingToken.user);
+  const authUser = mapUserWithPermissions(existingToken.user, effectivePermissions, dataScopes);
   const accessToken = createAccessToken(authUser.user);
 
   await prisma.$transaction([
@@ -201,6 +271,11 @@ export async function refreshSession(req: Request, refreshToken: string) {
     refreshToken: rotatedToken.token,
     user: authUser.user,
     permissions: authUser.permissions,
+    effectivePermissions: authUser.effectivePermissions,
+    rolePermissions: authUser.rolePermissions,
+    userAllowedPermissions: authUser.userAllowedPermissions,
+    userDeniedPermissions: authUser.userDeniedPermissions,
+    dataScopes: authUser.dataScopes,
   };
 }
 

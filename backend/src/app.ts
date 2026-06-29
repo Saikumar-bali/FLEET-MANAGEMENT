@@ -22,6 +22,7 @@ import vehicleComplianceRoutes from './modules/vehicle-compliance/vehicle-compli
 import financeRoutes from './modules/finance/finance.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import docsRoutes from './modules/docs/docs.routes';
+import accessRoutes from './modules/access/access-permissions.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/v1/docs', docsRoutes);
 app.use('/api/v1', vehicleComplianceRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/access', accessRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 
