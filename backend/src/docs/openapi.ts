@@ -1744,5 +1744,23 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/access/users/{id}/data-scopes/{scopeId}': {
       delete: { tags: ['Access Control'], summary: 'Remove data scope', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
     },
+    // ─── Access Control Aliases (under /users) ───
+    '/users/{id}/effective-permissions': {
+      get: { tags: ['Access Control'], summary: 'Get effective permissions for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Effective permissions breakdown' } } },
+    },
+    '/users/{id}/permission-overrides': {
+      get: { tags: ['Access Control'], summary: 'List permission overrides for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of permission overrides' } } },
+      put: { tags: ['Access Control'], summary: 'Set permission override (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['effect'], properties: { permissionKey: { type: 'string' }, permissionId: { type: 'string' }, effect: { type: 'string', enum: ['ALLOW', 'DENY'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Permission override set' } } },
+    },
+    '/users/{id}/permission-overrides/{permissionId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove permission override (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'permissionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permission override removed' } } },
+    },
+    '/users/{id}/data-scopes': {
+      get: { tags: ['Access Control'], summary: 'List data scopes for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of data scopes' } } },
+      put: { tags: ['Access Control'], summary: 'Grant data scope to user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['scopeType', 'accessLevel'], properties: { scopeType: { type: 'string', enum: ['OWN', 'USER', 'DRIVER', 'VEHICLE', 'TRIP', 'ASSET', 'CUSTOMER', 'VENDOR', 'BRANCH', 'DEPARTMENT', 'FINANCE', 'GLOBAL'] }, scopeId: { type: 'string' }, accessLevel: { type: 'string', enum: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Data scope granted' } } },
+    },
+    '/users/{id}/data-scopes/{scopeId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove data scope (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
+    },
   },
 };

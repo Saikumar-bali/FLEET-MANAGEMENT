@@ -114,11 +114,11 @@ export function assertOwnOrScoped(
   throw new AppError('Access denied: you can only access your own records or records within your data scopes', 403);
 }
 
-const CRITICAL_MODULE_PREFIXES = ['role', 'permission', 'system'];
-
 const MODULES_BLOCKED_FOR_NON_SUPER_ADMIN = [
-  'role',
-  'permission',
+  'roles',
+  'permissions',
+  'users',
+  'settings',
   'system',
 ];
 
@@ -133,14 +133,13 @@ export async function assertCanGrantPermission(
 
   if (actor.isSuperAdmin) return;
 
-  const blocked = MODULES_BLOCKED_FOR_NON_SUPER_ADMIN.some(m => permissionKey.startsWith(m + '.'));
-  if (blocked) {
-    throw new AppError('Only super_admin can grant critical permissions (role, permission, system)', 403);
-  }
-
   const permission = await prisma.permission.findFirst({ where: { key: permissionKey } });
   if (!permission) {
     throw new AppError(`Permission not found: ${permissionKey}`, 404);
+  }
+
+  if (MODULES_BLOCKED_FOR_NON_SUPER_ADMIN.includes(permission.module)) {
+    throw new AppError('Only super_admin can grant critical permissions (roles, permissions, users, settings, system)', 403);
   }
 }
 
@@ -161,8 +160,6 @@ export async function assertCanGrantScope(
   }
 
   if (accessLevel === 'MANAGE') {
-    if (!actor.isAdmin) {
-      throw new AppError('Only super_admin or admin can grant MANAGE scope', 403);
-    }
+    throw new AppError('Only super_admin can grant MANAGE scope', 403);
   }
 }
