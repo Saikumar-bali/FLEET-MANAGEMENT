@@ -1,6 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import { getEffectivePermissions } from './effective-permissions.service';
 import type { RequestUser } from '../../types/auth';
+import { AppError } from '../../utils/appError';
 
 export type DataScopeEntry = {
   id: string;
@@ -34,14 +35,27 @@ export async function getActorContext(userId: string): Promise<ActorContext> {
   });
 
   if (!user) {
-    throw new Error('User not found');
+    throw new AppError('User not found', 404);
   }
 
   const effectivePerms = await getEffectivePermissions(userId);
   const roleKey = user.role.key;
   const isSuperAdmin = roleKey === 'super_admin';
   const isAdmin = roleKey === 'admin';
-  const isGlobalUser = isSuperAdmin || isAdmin;
+
+  const dataScopes: DataScopeEntry[] = user.dataScopes.map(ds => ({
+    id: ds.id,
+    scopeType: ds.scopeType,
+    scopeId: ds.scopeId,
+    accessLevel: ds.accessLevel,
+    expiresAt: ds.expiresAt,
+  }));
+
+  const hasGlobalManageScope = dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
+
+  const isGlobalUser = isSuperAdmin || hasGlobalManageScope;
 
   return {
     user: {
@@ -63,12 +77,24 @@ export async function getActorContext(userId: string): Promise<ActorContext> {
     isAdmin,
     isGlobalUser,
     effectivePermissions: effectivePerms.effectivePermissions,
-    dataScopes: user.dataScopes.map(ds => ({
-      id: ds.id,
-      scopeType: ds.scopeType,
-      scopeId: ds.scopeId,
-      accessLevel: ds.accessLevel,
-      expiresAt: ds.expiresAt,
-    })),
+    dataScopes,
   };
+}
+
+export function canAccessGlobal(actor: ActorContext, permissionKey?: string, scopeType?: string): boolean {
+  if (actor.isSuperAdmin) return true;
+
+  if (permissionKey && !actor.effectivePermissions.includes(permissionKey)) {
+    return false;
+  }
+
+  if (scopeType) {
+    return actor.dataScopes.some(
+      ds => ds.scopeType === scopeType && ds.accessLevel === 'MANAGE',
+    );
+  }
+
+  return actor.dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
 }

@@ -1,4 +1,18 @@
 import type { ActorContext, DataScopeEntry } from './actor-context.service';
+import { prisma } from '../../lib/prisma';
+import { AppError } from '../../utils/appError';
+
+const ACCESS_LEVEL_HIERARCHY: Record<string, string[]> = {
+  VIEW: ['VIEW'],
+  CREATE: ['VIEW', 'CREATE'],
+  UPDATE: ['VIEW', 'UPDATE'],
+  DELETE: ['VIEW', 'DELETE'],
+  MANAGE: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
+};
+
+function levelIncludes(required: string, granted: string): boolean {
+  return ACCESS_LEVEL_HIERARCHY[granted]?.includes(required) ?? false;
+}
 
 export function isGlobalUser(actor: ActorContext): boolean {
   return actor.isGlobalUser;
@@ -18,14 +32,23 @@ export function hasScope(
   scopeId: string,
   accessLevel?: string,
 ): boolean {
-  if (actor.isGlobalUser) {
-    return true;
-  }
+  if (actor.isSuperAdmin) return true;
+
+  const globalManage = actor.dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
+  if (globalManage) return true;
 
   return actor.dataScopes.some((ds: DataScopeEntry) => {
     if (ds.scopeType !== scopeType) return false;
-    if (ds.scopeId !== null && ds.scopeId !== scopeId) return false;
-    if (accessLevel && ds.accessLevel !== accessLevel) return false;
+
+    const scopeIdMatch = ds.scopeId === null || ds.scopeId === scopeId;
+    if (!scopeIdMatch) return false;
+
+    if (accessLevel) {
+      return levelIncludes(accessLevel, ds.accessLevel);
+    }
+
     return true;
   });
 }
@@ -35,16 +58,22 @@ export function getScopedWhere(
   scopeType: string,
   idField = 'id',
 ): Record<string, unknown> | undefined {
-  if (actor.isGlobalUser) {
-    return undefined;
-  }
+  if (actor.isSuperAdmin) return undefined;
 
-  const scopes = actor.dataScopes.filter(ds => ds.scopeType === scopeType && ds.scopeId !== null);
-  if (scopes.length === 0) {
+  const globalManage = actor.dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
+  if (globalManage) return undefined;
+
+  const scopedIds = actor.dataScopes
+    .filter(ds => ds.scopeType === scopeType && ds.scopeId !== null)
+    .map(ds => ds.scopeId!);
+
+  if (scopedIds.length === 0) {
     return { [idField]: '__NO_ACCESS__' };
   }
 
-  return { [idField]: { in: scopes.map(ds => ds.scopeId) } };
+  return { [idField]: { in: scopedIds } };
 }
 
 export function assertCanAccessRecord(
@@ -53,11 +82,17 @@ export function assertCanAccessRecord(
   recordUserId: string | null | undefined,
   recordScopeId?: string,
 ): void {
-  if (actor.isGlobalUser) return;
+  if (actor.isSuperAdmin) return;
+
+  const globalManage = actor.dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
+  if (globalManage) return;
+
   if (recordUserId && recordUserId === actor.user.id) return;
   if (recordScopeId && hasScope(actor, scopeType, recordScopeId)) return;
 
-  throw new Error('Access denied: insufficient data scope');
+  throw new AppError('Access denied: insufficient data scope', 403);
 }
 
 export function assertOwnOrScoped(
@@ -66,9 +101,68 @@ export function assertOwnOrScoped(
   scopeType?: string,
   scopeId?: string,
 ): void {
-  if (actor.isGlobalUser) return;
+  if (actor.isSuperAdmin) return;
+
+  const globalManage = actor.dataScopes.some(
+    ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE',
+  );
+  if (globalManage) return;
+
   if (ownerUserId && ownerUserId === actor.user.id) return;
   if (scopeType && scopeId && hasScope(actor, scopeType, scopeId)) return;
 
-  throw new Error('Access denied: you can only access your own records or records within your data scopes');
+  throw new AppError('Access denied: you can only access your own records or records within your data scopes', 403);
+}
+
+const CRITICAL_MODULE_PREFIXES = ['role', 'permission', 'system'];
+
+const MODULES_BLOCKED_FOR_NON_SUPER_ADMIN = [
+  'role',
+  'permission',
+  'system',
+];
+
+export async function assertCanGrantPermission(
+  actor: ActorContext,
+  targetUserId: string,
+  permissionKey: string,
+): Promise<void> {
+  if (actor.user.id === targetUserId && !actor.isSuperAdmin) {
+    throw new AppError('Cannot modify own permission overrides unless super_admin', 403);
+  }
+
+  if (actor.isSuperAdmin) return;
+
+  const blocked = MODULES_BLOCKED_FOR_NON_SUPER_ADMIN.some(m => permissionKey.startsWith(m + '.'));
+  if (blocked) {
+    throw new AppError('Only super_admin can grant critical permissions (role, permission, system)', 403);
+  }
+
+  const permission = await prisma.permission.findFirst({ where: { key: permissionKey } });
+  if (!permission) {
+    throw new AppError(`Permission not found: ${permissionKey}`, 404);
+  }
+}
+
+export async function assertCanGrantScope(
+  actor: ActorContext,
+  targetUserId: string,
+  scopeType: string,
+  accessLevel: string,
+): Promise<void> {
+  if (actor.user.id === targetUserId && !actor.isSuperAdmin) {
+    throw new AppError('Cannot grant scope to self unless super_admin', 403);
+  }
+
+  if (actor.isSuperAdmin) return;
+
+  if (scopeType === 'GLOBAL') {
+    throw new AppError('Only super_admin can grant GLOBAL scope', 403);
+  }
+
+  if (accessLevel === 'MANAGE') {
+    if (!actor.isAdmin) {
+      throw new AppError('Only super_admin or admin can grant MANAGE scope', 403);
+    }
+  }
 }

@@ -71,7 +71,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 12 | Finance RBAC | Completed |
 | Phase 12.1 | Documents RBAC | Completed |
 | Phase 13 | Fuel Receipts | Completed |
-| Phase 14 | Account Scope Foundation | Completed |
+| Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
 
 ## Implementation Log
 
@@ -91,17 +91,24 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 
 ### 2026-06-29
 
-- Phase 14 Account Scope Foundation: **Completed**.
+- Phase 14 Account Scope Foundation: **Completed (Hardened)**.
 - Implemented account-isolated access control system.
 - Added UserPermissionOverride and UserDataScope models.
 - Added ALLOW/DENY per-user permission overrides.
-- Added data scopes: OWN, DRIVER, VEHICLE, TRIP, BRANCH, ALL.
+- Added data scopes: OWN, DRIVER, VEHICLE, TRIP, BRANCH, ALL, GLOBAL.
 - Added effective permissions computation service.
+- Added access level hierarchy: `MANAGE > DELETE > UPDATE > CREATE > VIEW`.
 - Added API endpoints: auth/effective-permissions, access/* routes.
+- **Hardened**: admin no longer automatically global — requires explicit GLOBAL/MANAGE scope.
+- **Hardened**: GLOBAL scope restricted to super_admin only.
+- **Hardened**: Critical permission grants (role.*, permission.*, system.*) blocked for non-super_admin.
+- **Hardened**: access-policy.service has `assertCanGrantPermission` and `assertCanGrantScope`.
+- **Hardened**: API responses standardized to use `sendSuccess`/`sendError`.
+- API paths: `/api/v1/access/users/:id/*` (primary) and `/api/v1/users/:id/*` (alias).
 - Updated frontend types with effective permissions.
 - Added My Access page for users to view their permissions.
 - All builds pass: backend and frontend.
-- All 12 account-scope tests pass.
+- All 16 account-scope tests pass (admin rules, GLOBAL scope restriction, audit, access-policy).
 - No database reseed required; manual migrations only.
 - Documentation created: ACCOUNT_SCOPE_ACCESS_CONTROL.md.
 
