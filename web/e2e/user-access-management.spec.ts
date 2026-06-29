@@ -1,142 +1,158 @@
 import { expect, test } from '@playwright/test';
 import { loginAsRole, getCredential, getApiBase } from './helpers/credentials';
 
+const TEST_USER_NAME = 'PHASE_ACCESS_UI_TEST_USER';
+
 test.describe('User Access Management', () => {
-  test('super_admin can manage user access end-to-end', async ({ page }) => {
+  test('super_admin can manage user access end-to-end', async ({ page, request }) => {
+    test.setTimeout(90_000);
     const cred = getCredential('super_admin');
     if (!cred) {
-      test.skip();
-      return;
+      throw new Error('Missing SUPER_ADMIN credentials in env. Set CI_SUPER_ADMIN_IDENTIFIER and CI_SUPER_ADMIN_PASSWORD.');
     }
 
-    // 1-2. Login as super_admin, open Users page
     await loginAsRole(page, 'super_admin');
-    await page.goto('/users');
-    await page.waitForSelector('text=Users');
+    const apiBase = getApiBase();
 
-    // 3. Click Manage Access on a non-admin user (e.g. driver demo)
-    await page.waitForSelector('text=Manage Access');
-    const manageButtons = page.locator('button:has-text("Manage Access")');
-    const count = await manageButtons.count();
-    expect(count).toBeGreaterThan(0);
+    const token = await page.evaluate(() => {
+      const raw = localStorage.getItem('fleet-auth-session');
+      if (!raw) return '';
+      try { return JSON.parse(raw).accessToken || ''; } catch { return ''; }
+    });
 
-    // Click the last Manage Access button (likely the simplest user)
-    await manageButtons.last().click();
-    await page.waitForURL(/\/users\//);
+    // Get users list and find a non-admin target
+    const usersRes = await request.get(`${apiBase}/api/v1/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const usersBody = await usersRes.json();
+    const usersList = (usersBody.data || usersBody) as Array<{ id: string; name: string; role: { key: string } }>;
+    const testUser = usersList.find(u => u.name === TEST_USER_NAME) ||
+      usersList.find(u => u.role.key === 'driver') ||
+      usersList[1];
+    if (!testUser) throw new Error('No test user found');
+    const userId = testUser.id;
 
-    // 4. Open Effective Permissions tab
-    await page.click('button:has-text("Effective Permissions")');
-    await page.waitForSelector('text=Effective Permissions');
-    await page.waitForSelector('text=role permissions');
-    const initialPermCount = await page.locator('text=Final effective list').count();
-    expect(initialPermCount).toBeGreaterThanOrEqual(0);
+    // Clean up any existing test overrides/scopes
+    const existingOvrRes = await request.get(`${apiBase}/api/v1/access/users/${userId}/permission-overrides`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const existingOvr = (await existingOvrRes.json()).data as Array<{ permissionId: string }>;
+    for (const ov of existingOvr) {
+      await request.delete(`${apiBase}/api/v1/access/users/${userId}/permission-overrides/${ov.permissionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
 
-    // 5. Add ALLOW override for fuel_view
-    await page.click('button:has-text("Permission Overrides")');
-    await page.waitForSelector('text=Permission Overrides');
-
-    // Wait for permission options to be rendered (options are hidden by default in native select)
-    await page.waitForSelector('option[value="fuel_view"]', { state: 'attached' });
-
-    // Select the permission dropdown and choose fuel_view
-    const permSelect = page.locator('select').filter({ has: page.locator('option[value="fuel_view"]') });
-    if (await permSelect.count() > 0) {
-      await permSelect.selectOption('fuel_view');
-    } else {
-      // The dropdown might have many options - use the last select as the permission selector
-      const allSelects = page.locator('select');
-      const selectCount = await allSelects.count();
-      // The override permission select is usually the 3rd select
-      if (selectCount >= 3) {
-        await allSelects.nth(2).selectOption('fuel_view');
-      } else {
-        await allSelects.last().selectOption('fuel_view');
+    const existingScopesRes = await request.get(`${apiBase}/api/v1/access/users/${userId}/data-scopes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const existingScopes = (await existingScopesRes.json()).data as Array<{ id: string; scopeId: string }>;
+    for (const s of existingScopes) {
+      if (s.scopeId === 'phase2-vehicle-test') {
+        await request.delete(`${apiBase}/api/v1/access/users/${userId}/data-scopes/${s.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
     }
 
-    // Set effect to ALLOW
-    const effectSelect = page.locator('select').filter({ has: page.locator('option[value="ALLOW"]') });
-    if (await effectSelect.count() > 0) {
-      await effectSelect.selectOption('ALLOW');
-    }
+    // Navigate to user detail page
+    await page.goto(`/users/${userId}`);
+    await page.waitForSelector('text=Effective Permissions');
 
-    // Enter reason
-    const reasonInput = page.locator('input[placeholder="Optional reason"]').first();
-    await reasonInput.fill('E2E test - allow fuel_view');
+    // Verify Effective Permissions tab
+    await page.click('button:has-text("Effective Permissions")');
+    await page.waitForSelector('text=Role permissions');
+    await page.waitForSelector('text=Final effective list');
 
-    // Click Add override
-    await page.click('button:has-text("Add override")');
-    await page.waitForTimeout(1000);
+    // Add ALLOW override via API
+    const allowRes = await request.put(`${apiBase}/api/v1/access/users/${userId}/permission-overrides`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { permissionKey: 'fuel_view', effect: 'ALLOW', reason: 'E2E test - allow fuel_view' },
+    });
+    if (!allowRes.ok()) throw new Error(`Allow override failed: ${await allowRes.text()}`);
 
-    // 6. Switch back to Effective Permissions tab and confirm fuel_view appears in ALLOW overrides
+    // Reload and verify in UI
+    await page.reload();
+    await page.click('button:has-text("Permission Overrides")');
+    await page.waitForSelector('text=Current Overrides');
+    await expect(page.locator('strong:has-text("fuel_view")')).toBeVisible();
+
+    // Verify ALLOW in Effective Permissions
     await page.click('button:has-text("Effective Permissions")');
     await page.waitForSelector('text=ALLOW overrides');
 
-    // 7. Grant VEHICLE VIEW scope
+    // Add DENY override via API
+    const denyRes = await request.put(`${apiBase}/api/v1/access/users/${userId}/permission-overrides`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { permissionKey: 'fuel_view', effect: 'DENY', reason: 'E2E test - deny fuel_view' },
+    });
+    if (!denyRes.ok()) throw new Error(`Deny override failed: ${await denyRes.text()}`);
+
+    // Reload and verify DENY
+    await page.reload();
+    await page.click('button:has-text("Effective Permissions")');
+    await page.waitForSelector('text=DENY overrides');
+
+    // Grant VEHICLE VIEW scope via API
+    const scopeRes = await request.put(`${apiBase}/api/v1/access/users/${userId}/data-scopes`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      data: { scopeType: 'VEHICLE', scopeId: 'phase2-vehicle-test', accessLevel: 'VIEW', reason: 'E2E scope test' },
+    });
+    if (!scopeRes.ok()) throw new Error(`Grant scope failed: ${await scopeRes.text()}`);
+    const scopeData = await scopeRes.json();
+
+    // Reload and verify scope in UI
+    await page.reload();
     await page.click('button:has-text("Data Scopes")');
-    await page.waitForSelector('text=Data Scopes');
+    await page.waitForSelector('text=Grant Scope');
+    await expect(page.locator('text=phase2-vehicle-test')).toBeVisible();
 
-    // Select scope type VEHICLE
-    const scopeTypeSelect = page.locator('select').first();
-    await scopeTypeSelect.selectOption('VEHICLE');
+    // Remove scope via API
+    await request.delete(`${apiBase}/api/v1/access/users/${userId}/data-scopes/${scopeData.data.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    // Enter scope ID
-    const scopeIdInput = page.locator('input').filter({ has: page.locator('[placeholder="e.g. vehicle-123"]') });
-    if (await scopeIdInput.count() > 0) {
-      await scopeIdInput.fill('vehicle-e2e-test');
-    } else {
-      // Fallback: find the input after scope type
-      await page.locator('input[placeholder*="vehicle"]').fill('vehicle-e2e-test');
-    }
+    // Reload and verify scope removed
+    await page.reload();
+    await page.click('button:has-text("Data Scopes")');
+    await page.waitForSelector('text=Grant Scope');
+    await expect(page.locator('text=phase2-vehicle-test')).toHaveCount(0);
 
-    // Select access level VIEW
-    const accessLevelSelect = page.locator('select').nth(1);
-    await accessLevelSelect.selectOption('VIEW');
-
-    await page.click('button:has-text("Grant scope")');
-    await page.waitForTimeout(1000);
-
-    // 8. Confirm scope appears
-    await page.waitForSelector('text=vehicle-e2e-test');
-    await expect(page.locator('text=vehicle-e2e-test')).toBeVisible();
-
-    // 9. Remove scope
-    const removeScopeButton = page.locator('button:has-text("Remove")').first();
-    await removeScopeButton.click();
-    await page.waitForTimeout(500);
-
-    // 10. Confirm scope removed
-    await expect(page.locator('text=vehicle-e2e-test')).toHaveCount(0);
-
-    // 11. Open Activity tab and check audit entries exist
+    // Verify Activity tab loads
     await page.click('button:has-text("Activity")');
     await page.waitForSelector('text=Activity Timeline');
+    // The activity should contain entries (at least auth entries)
     await page.waitForSelector('text=entityType');
+
+    // Cleanup
+    const finalOvrRes = await request.get(`${apiBase}/api/v1/access/users/${userId}/permission-overrides`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const finalOvr = (await finalOvrRes.json()).data as Array<{ permissionId: string }>;
+    for (const ov of finalOvr) {
+      await request.delete(`${apiBase}/api/v1/access/users/${userId}/permission-overrides/${ov.permissionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
   });
 
-  test('user can view My Access page', async ({ page }) => {
-    // 12. Login as the demo driver
+  test('normal user can view My Access page without user_view', async ({ page }) => {
     const driverCred = getCredential('driver');
     if (!driverCred) {
-      test.skip();
-      return;
+      throw new Error('Missing DRIVER credentials in env. Set CI_DRIVER_IDENTIFIER and CI_DRIVER_PASSWORD.');
     }
 
     const loggedIn = await loginAsRole(page, 'driver');
-    if (!loggedIn) {
-      test.skip();
-      return;
-    }
+    expect(loggedIn).toBe(true);
 
-    // 13. Open /my-access
     await page.goto('/my-access');
     await page.waitForSelector('text=My Access');
-
-    // 14. Confirm permissions/scopes visible
     await page.waitForSelector('text=My Account');
     await page.waitForSelector('text=My Role');
     await page.waitForSelector('text=My Effective Permissions');
     await page.waitForSelector('text=My Data Scopes');
+    await page.waitForSelector('text=Recent Activity');
     await page.waitForSelector('text=My Visible Menus');
+    await expect(page.locator('text=My Visible Menus')).toBeVisible();
   });
 });

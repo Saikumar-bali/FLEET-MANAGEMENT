@@ -19,6 +19,7 @@ import type {
   FinanceTransaction,
   FuelRecord,
   MaintenanceRecord,
+  MyAccessSummary,
   PaginatedResponse,
   PaymentRecord,
   PermissionRecord,
@@ -28,6 +29,7 @@ import type {
   TripBilling,
   TripHistoryRecord,
   TripRecord,
+  UserAccessSummaryRecord,
   UserActivityRecord,
   UserDataScopeRecord,
   UserPermissionOverrideRecord,
@@ -842,6 +844,29 @@ export function getFinancePnl(token: string, params?: WorkflowQuery) { const q =
 
 // ─── Phase 2: User Access Management API ───
 
+// Self-access endpoints (no user_view required)
+export function getMyEffectivePermissions(token: string) {
+  return request<EffectivePermissionsResponse>('/access/me/effective-permissions', { token });
+}
+
+export function getMyDataScopes(token: string) {
+  return request<UserDataScopeRecord[]>('/access/me/data-scopes', { token });
+}
+
+export function getMyActivity(token: string) {
+  return request<UserActivityRecord[]>('/access/me/activity', { token });
+}
+
+export function getMyAccessSummary(token: string) {
+  return request<MyAccessSummary>('/access/me/summary', { token });
+}
+
+// Users access summary (requires user_view)
+export function getUsersAccessSummary(token: string) {
+  return request<UserAccessSummaryRecord[]>('/access/users/summary', { token });
+}
+
+// Per-user endpoints (requires user_view)
 export function getUserEffectivePermissions(token: string, userId: string) {
   return request<EffectivePermissionsResponse>(`/access/users/${userId}/effective-permissions`, { token });
 }
@@ -894,8 +919,4 @@ export function removeUserDataScope(token: string, userId: string, scopeId: stri
 
 export function getUserActivity(token: string, userId: string) {
   return request<UserActivityRecord[]>(`/access/users/${userId}/activity`, { token });
-}
-
-export function getMyEffectivePermissions(token: string) {
-  return request<EffectivePermissionsResponse>('/auth/effective-permissions', { token });
 }

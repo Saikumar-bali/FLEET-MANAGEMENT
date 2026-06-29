@@ -7,13 +7,17 @@ import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { FormSection } from '../components/FormSection';
 import { navigationItems } from '../config/navigation';
-import { getMyEffectivePermissions, getUserDataScopes } from '../services/api';
-import type { EffectivePermissionsResponse, UserDataScopeRecord } from '../types/auth';
+import { getMyAccessSummary } from '../services/api';
+import type { MyAccessSummary, UserActivityRecord } from '../types/auth';
+
+function formatDate(d: string | null | undefined) {
+  if (!d) return 'Never';
+  return new Date(d).toLocaleString();
+}
 
 export function MyAccessPage() {
   const auth = useAuth();
-  const [effectivePerms, setEffectivePerms] = useState<EffectivePermissionsResponse | null>(null);
-  const [dataScopes, setDataScopes] = useState<UserDataScopeRecord[]>([]);
+  const [summary, setSummary] = useState<MyAccessSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -23,16 +27,10 @@ export function MyAccessPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const effRes = await getMyEffectivePermissions(auth.accessToken);
-      setEffectivePerms(effRes.data);
+      const res = await getMyAccessSummary(auth.accessToken);
+      setSummary(res.data);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load access data.');
-    }
-    try {
-      const scopesRes = await getUserDataScopes(auth.accessToken, auth.user!.id);
-      setDataScopes(scopesRes.data);
-    } catch {
-      // self-service users may not have user_view permission
     }
     setIsLoading(false);
   };
@@ -46,21 +44,21 @@ export function MyAccessPage() {
   };
 
   const { visibleMenus, hiddenMenus } = useMemo(() => {
-    if (!effectivePerms) return { visibleMenus: [], hiddenMenus: [] as typeof navigationItems };
+    if (!summary) return { visibleMenus: [], hiddenMenus: [] as typeof navigationItems };
     const visible: typeof navigationItems = [];
     const hidden: typeof navigationItems = [];
     for (const item of navigationItems) {
-      if (item.permissionKeys.length === 0 || item.permissionKeys.some(k => effectivePerms.effectivePermissions.includes(k))) {
+      if (item.permissionKeys.length === 0 || item.permissionKeys.some(k => summary.effectivePermissions.includes(k))) {
         visible.push(item);
       } else {
         hidden.push(item);
       }
     }
     return { visibleMenus: visible, hiddenMenus: hidden };
-  }, [effectivePerms]);
+  }, [summary]);
 
-  if (isLoading && !effectivePerms) return <LoadingState message="Loading your access information..." />;
-  if (error && !effectivePerms) return <ErrorState message={error} onRetry={loadData} />;
+  if (isLoading && !summary) return <LoadingState message="Loading your access information..." />;
+  if (error && !summary) return <ErrorState message={error} onRetry={loadData} />;
 
   return (
     <section className="page-content">
@@ -84,19 +82,19 @@ export function MyAccessPage() {
             <div className="detail-grid">
               <div>
                 <p className="detail-label">Name</p>
-                <p className="detail-value">{auth.user?.name}</p>
+                <p className="detail-value">{summary?.user.name ?? auth.user?.name}</p>
               </div>
               <div>
                 <p className="detail-label">Email</p>
-                <p className="detail-value">{auth.user?.email}</p>
+                <p className="detail-value">{summary?.user.email ?? auth.user?.email}</p>
               </div>
               <div>
                 <p className="detail-label">Username</p>
-                <p className="detail-value">@{auth.user?.username ?? 'unset'}</p>
+                <p className="detail-value">@{summary?.user.username ?? auth.user?.username ?? 'unset'}</p>
               </div>
               <div>
                 <p className="detail-label">Status</p>
-                <StatusBadge status={auth.user?.status ?? 'ACTIVE'} />
+                <StatusBadge status={(summary?.user.status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') ?? auth.user?.status ?? 'ACTIVE'} />
               </div>
             </div>
           </FormSection>
@@ -108,15 +106,11 @@ export function MyAccessPage() {
             <div className="detail-grid">
               <div>
                 <p className="detail-label">Role</p>
-                <p className="detail-value">{auth.user?.role.name}</p>
+                <p className="detail-value">{summary?.role.name ?? auth.user?.role.name}</p>
               </div>
               <div>
                 <p className="detail-label">Role key</p>
-                <p className="detail-value">{auth.user?.role.key}</p>
-              </div>
-              <div>
-                <p className="detail-label">Role status</p>
-                <StatusBadge status={auth.user?.role.status ?? 'ACTIVE'} />
+                <p className="detail-value">{summary?.role.key ?? auth.user?.role.key}</p>
               </div>
             </div>
           </FormSection>
@@ -124,38 +118,38 @@ export function MyAccessPage() {
 
         {/* Effective Permissions */}
         <article className="card">
-          <FormSection title="My Effective Permissions" description={`${effectivePerms?.effectivePermissions.length ?? 0} effective permission(s).`}>
+          <FormSection title="My Effective Permissions" description={`${summary?.effectivePermissions.length ?? 0} effective permission(s).`}>
             {auth.user?.role.key === 'super_admin' && (
               <div className="info-banner">You have super_admin access — all permissions are granted.</div>
             )}
-            {effectivePerms && (
+            {summary && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <h4>Role permissions ({effectivePerms.rolePermissions.length})</h4>
+                  <h4>Role permissions ({summary.rolePermissions.length})</h4>
                   <ul style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
-                    {effectivePerms.rolePermissions.map(p => <li key={p}>{p}</li>)}
+                    {summary.rolePermissions.map(p => <li key={p}>{p}</li>)}
                   </ul>
                 </div>
                 <div>
-                  <h4>ALLOW overrides ({effectivePerms.userAllowedPermissions.length})</h4>
+                  <h4>ALLOW overrides ({summary.userAllowedPermissions.length})</h4>
                   <ul style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
-                    {effectivePerms.userAllowedPermissions.map(p => <li key={p}>{p}</li>)}
+                    {summary.userAllowedPermissions.map(p => <li key={p}>{p}</li>)}
                   </ul>
                 </div>
                 <div>
-                  <h4>DENY overrides ({effectivePerms.userDeniedPermissions.length})</h4>
+                  <h4>DENY overrides ({summary.userDeniedPermissions.length})</h4>
                   <ul style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.85rem' }}>
-                    {effectivePerms.userDeniedPermissions.map(p => <li key={p}>{p}</li>)}
+                    {summary.userDeniedPermissions.map(p => <li key={p}>{p}</li>)}
                   </ul>
                 </div>
               </div>
             )}
-            {effectivePerms && (
+            {summary && (
               <>
                 <hr />
                 <h4>Full effective list</h4>
                 <div style={{ maxHeight: '300px', overflowY: 'auto', fontSize: '0.85rem', columns: '3 200px' }}>
-                  {effectivePerms.effectivePermissions.map(p => <div key={p}>{p}</div>)}
+                  {summary.effectivePermissions.map(p => <div key={p}>{p}</div>)}
                 </div>
               </>
             )}
@@ -164,12 +158,12 @@ export function MyAccessPage() {
 
         {/* Data Scopes */}
         <article className="card">
-          <FormSection title="My Data Scopes" description={`${dataScopes.length} scope(s) assigned.`}>
-            {dataScopes.length === 0 ? (
+          <FormSection title="My Data Scopes" description={`${summary?.dataScopes.length ?? 0} scope(s) assigned.`}>
+            {(!summary || summary.dataScopes.length === 0) ? (
               <p>No data scopes assigned. You can only access your own records.</p>
             ) : (
               <ul>
-                {dataScopes.map(s => (
+                {summary.dataScopes.map(s => (
                   <li key={s.id}>
                     <strong>{s.scopeType}</strong>
                     {s.scopeId ? ` / ${s.scopeId}` : ' (all)'}
@@ -181,6 +175,29 @@ export function MyAccessPage() {
                   </li>
                 ))}
               </ul>
+            )}
+          </FormSection>
+        </article>
+
+        {/* Recent Activity */}
+        <article className="card">
+          <FormSection title="Recent Activity" description={`${summary?.recentActivity.length ?? 0} recent event(s).`}>
+            {(!summary || summary.recentActivity.length === 0) ? (
+              <p>No recent activity recorded.</p>
+            ) : (
+              <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                {summary.recentActivity.map((a: UserActivityRecord) => (
+                  <div key={a.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong>{a.action}</strong>
+                      <span className="table-secondary">{formatDate(a.createdAt)}</span>
+                    </div>
+                    <div className="table-secondary">
+                      entityType: {a.entityType} | entityId: {a.entityId || '-'}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </FormSection>
         </article>
@@ -210,6 +227,9 @@ export function MyAccessPage() {
                   </li>
                 ))}
               </ul>
+              <div className="info-banner" style={{ marginTop: '1rem' }}>
+                Scope-based menu checks are pending Phase 3.
+              </div>
             </FormSection>
           )}
         </article>

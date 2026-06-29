@@ -14,11 +14,12 @@ import {
   createUser as createUserRequest,
   getRoles,
   getUsers,
+  getUsersAccessSummary,
   updateUser as updateUserRequest,
   updateUserPassword as updateUserPasswordRequest,
   updateUserStatus as updateUserStatusRequest,
 } from '../services/api';
-import type { RoleRecord, UserRecord } from '../types/auth';
+import type { RoleRecord, UserAccessSummaryRecord, UserRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
 type UserFormState = {
@@ -65,6 +66,7 @@ export function UsersPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [accessSummaries, setAccessSummaries] = useState<UserAccessSummaryRecord[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<UserFormState>(initialUserFormState);
   const [editForm, setEditForm] = useState<UserFormState>(initialUserFormState);
@@ -113,6 +115,19 @@ export function UsersPage() {
     }));
   };
 
+  const loadAccessSummaries = async () => {
+    if (!auth.accessToken || !auth.hasPermission('user_view')) {
+      return;
+    }
+
+    try {
+      const response = await getUsersAccessSummary(auth.accessToken);
+      setAccessSummaries(response.data);
+    } catch {
+      // Non-critical: summaries are supplementary
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       if (!auth.accessToken) {
@@ -124,7 +139,7 @@ export function UsersPage() {
       setRolesError(null);
 
       try {
-        await Promise.all([loadUsers(), loadRoles()]);
+        await Promise.all([loadUsers(), loadRoles(), loadAccessSummaries()]);
       } catch (caughtError) {
         if (caughtError instanceof ApiError) {
           setPageError(caughtError.message);
@@ -378,6 +393,48 @@ export function UsersPage() {
                   key: 'lastLoginAt',
                   header: 'Last login',
                   render: (user) => user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never',
+                },
+                {
+                  key: 'effectivePerms',
+                  header: 'Perms',
+                  render: (user) => {
+                    const s = accessSummaries.find(a => a.userId === user.id);
+                    return s ? s.effectivePermissionsCount : '-';
+                  },
+                  width: '70px',
+                },
+                {
+                  key: 'scopes',
+                  header: 'Scopes',
+                  render: (user) => {
+                    const s = accessSummaries.find(a => a.userId === user.id);
+                    return s ? s.dataScopesCount : '-';
+                  },
+                  width: '70px',
+                },
+                {
+                  key: 'overrides',
+                  header: 'Overrides',
+                  render: (user) => {
+                    const s = accessSummaries.find(a => a.userId === user.id);
+                    return s ? s.overridesCount : '-';
+                  },
+                  width: '80px',
+                },
+                {
+                  key: 'recentActivity',
+                  header: 'Recent activity',
+                  render: (user) => {
+                    const s = accessSummaries.find(a => a.userId === user.id);
+                    if (!s?.recentActivityAction) return 'None';
+                    return (
+                      <span title={s.recentActivityAction}>
+                        {s.recentActivityAction.replace(/^admin\./, '')}
+                        {s.recentActivityAt ? ` (${new Date(s.recentActivityAt).toLocaleDateString()})` : ''}
+                      </span>
+                    );
+                  },
+                  width: '180px',
                 },
                 {
                   key: 'manage-access',

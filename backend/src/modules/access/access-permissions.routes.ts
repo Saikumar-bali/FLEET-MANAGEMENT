@@ -11,13 +11,45 @@ import {
   grantDataScopeController,
   removeDataScopeController,
   effectivePermissionsController,
+  selfEffectivePermissionsController,
+  selfDataScopesController,
+  selfSummaryController,
 } from './access-permissions.controller';
-import { getUserActivityController } from '../users/users-activity.controller';
+import { getUserActivityController, getSelfActivityController, getUsersAccessSummaryController } from '../users/users-activity.controller';
 
 const router = Router();
 
 router.use(asyncHandler(authMiddleware));
 
+// ─── Self-access endpoints (no user_view required) ───
+router.get(
+  '/me/effective-permissions',
+  asyncHandler(selfEffectivePermissionsController),
+);
+
+router.get(
+  '/me/data-scopes',
+  asyncHandler(selfDataScopesController),
+);
+
+router.get(
+  '/me/activity',
+  asyncHandler(getSelfActivityController),
+);
+
+router.get(
+  '/me/summary',
+  asyncHandler(selfSummaryController),
+);
+
+// ─── Users access summary (requires user_view) ───
+router.get(
+  '/users/summary',
+  requirePermission('user_view'),
+  asyncHandler(getUsersAccessSummaryController),
+);
+
+// ─── Per-user endpoints (requires user_view) ───
 router.get(
   '/users/:id/effective-permissions',
   requirePermission('user_view'),

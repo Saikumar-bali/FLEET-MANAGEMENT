@@ -856,3 +856,23 @@ export type UserActivityRecord = {
   userAgent: string | null;
   createdAt: string;
 };
+
+export type UserAccessSummaryRecord = {
+  userId: string;
+  effectivePermissionsCount: number;
+  dataScopesCount: number;
+  overridesCount: number;
+  recentActivityAction: string | null;
+  recentActivityAt: string | null;
+};
+
+export type MyAccessSummary = {
+  user: { id: string; name: string; email: string; username: string | null; status: string };
+  role: { id: string; name: string; key: string };
+  effectivePermissions: string[];
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  dataScopes: UserDataScopeRecord[];
+  recentActivity: UserActivityRecord[];
+};

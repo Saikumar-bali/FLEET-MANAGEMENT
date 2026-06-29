@@ -176,6 +176,16 @@ export function UserDetailPage() {
     } finally { setIsSaving(false); }
   }
 
+  async function refreshActivity() {
+    if (!auth.accessToken || !id) return;
+    try {
+      const actRes = await getUserActivity(auth.accessToken, id);
+      setActivity(actRes.data);
+    } catch {
+      // non-critical
+    }
+  }
+
   async function handleAddOverride() {
     if (!auth.accessToken || !id || !overridePermKey) return;
     setIsSavingOverride(true); setOverrideError(null);
@@ -196,9 +206,9 @@ export function UserDetailPage() {
         return [...prev, res.data];
       });
       setOverridePermKey(''); setOverrideReason(''); setOverrideExpiresAt('');
-      // Refresh effective permissions
       const effRes = await getUserEffectivePermissions(auth.accessToken, id);
       setEffectivePerms(effRes.data);
+      await refreshActivity();
     } catch (e) {
       setOverrideError(e instanceof ApiError ? e.message : 'Failed to set override.');
     } finally { setIsSavingOverride(false); }
@@ -211,6 +221,7 @@ export function UserDetailPage() {
       setOverrides(prev => prev.filter(o => o.permissionId !== permissionId));
       const effRes = await getUserEffectivePermissions(auth.accessToken, id);
       setEffectivePerms(effRes.data);
+      await refreshActivity();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to remove override.');
     }
@@ -229,6 +240,7 @@ export function UserDetailPage() {
       });
       setDataScopes(prev => [...prev, res.data]);
       setScopeId(''); setScopeReason(''); setScopeExpiresAt('');
+      await refreshActivity();
     } catch (e) {
       setScopeError(e instanceof ApiError ? e.message : 'Failed to grant scope.');
     } finally { setIsSavingScope(false); }
@@ -239,6 +251,7 @@ export function UserDetailPage() {
     try {
       await removeUserDataScope(auth.accessToken, id, scopeRecordId);
       setDataScopes(prev => prev.filter(s => s.id !== scopeRecordId));
+      await refreshActivity();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to remove scope.');
     }
@@ -506,6 +519,9 @@ export function UserDetailPage() {
       {activeTab === 'scopes' && (
         <article className="card">
           {scopeError ? <div className="error-banner">{scopeError}</div> : null}
+          {!isSuperAdmin && (
+            <div className="info-banner">GLOBAL and MANAGE scopes are super_admin-only.</div>
+          )}
 
           <FormSection title="Grant Scope" description="Add a data scope to this user.">
             <div className="form-grid">
@@ -579,22 +595,32 @@ export function UserDetailPage() {
             <p>No activity recorded.</p>
           ) : (
             <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {activity.map(a => (
-                <div key={a.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>{a.action}</strong>
-                    <span className="table-secondary">{formatDate(a.createdAt)}</span>
-                  </div>
-                  <div className="table-secondary">
-                    entityType: {a.entityType} | entityId: {a.entityId || '-'}
-                  </div>
-                  {a.metadata && Object.keys(a.metadata).length > 0 && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>
-                      {JSON.stringify(a.metadata)}
+              {activity.map(a => {
+                const meta = a.metadata as Record<string, unknown> | null;
+                const actorUserId = meta?.actorUserId as string | undefined;
+                const targetUserId = meta?.targetUserId as string | undefined;
+                const permissionKey = meta?.permissionKey as string | undefined;
+                const effect = meta?.effect as string | undefined;
+                const scopeType = meta?.scopeType as string | undefined;
+                return (
+                  <div key={a.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong>{a.action}</strong>
+                      <span className="table-secondary">{formatDate(a.createdAt)}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="table-secondary">
+                      entityType: {a.entityType} | entityId: {a.entityId || '-'}
+                    </div>
+                    {actorUserId && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-muted)' }}>
+                        actor: {actorUserId}{targetUserId && targetUserId !== actorUserId ? ` → target: ${targetUserId}` : ''}
+                        {permissionKey ? ` | ${permissionKey}` : ''}{effect ? ` (${effect})` : ''}
+                        {scopeType ? ` | scope: ${scopeType}` : ''}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </article>
