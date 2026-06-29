@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Phase 7 Finance and P&L is **Completed and Deployed**. Merged through PR #23 into main on 2026-06-24. Frontend deployed manually via Vercel CLI to https://web-virid-ten-53.vercel.app. Backend runs independently (Node.js/Express). All 98 Playwright E2E tests pass. Swagger/OpenAPI documentation verified with 121 endpoints.
+Phase 14 Account Scope Foundation is **Completed**. Implemented account-isolated access control with user permission overrides and data scopes. All builds pass, all 12 account-scope tests pass. Phase 7 Finance and P&L is **Completed and Deployed**. Merged through PR #23 into main on 2026-06-24. Frontend deployed manually via Vercel CLI to https://web-virid-ten-53.vercel.app. Backend runs independently (Node.js/Express). All 98 Playwright E2E tests pass. Swagger/OpenAPI documentation verified with 121 endpoints.
 
 Mobile app work is intentionally deferred. The product direction is now backend + web completion first: driver operations, assignment workflows, notifications, dispatch, reporting, document storage, integrations, India-region hardening, privacy, and production readiness before React Native/mobile work.
 
@@ -66,6 +66,12 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 8 | Documents & Storage Foundation | Submitted for Review |
 | Phase 8.1 | OCR/AI Document Extraction | Not Started |
 | Phase 9 | React Native / Mobile App | Deferred until backend + web roadmap is completed |
+| Phase 10 | API Docs | Completed |
+| Phase 11 | Maintenance & Repairs | Completed |
+| Phase 12 | Finance RBAC | Completed |
+| Phase 12.1 | Documents RBAC | Completed |
+| Phase 13 | Fuel Receipts | Completed |
+| Phase 14 | Account Scope Foundation | Completed |
 
 ## Implementation Log
 
@@ -82,6 +88,22 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Added Playwright E2E tests for documents and RBAC.
 - Updated CI workflow with documents tests.
 - Vercel deploy: NO. Phase 8.1: NOT STARTED. Mobile: DEFERRED.
+
+### 2026-06-29
+
+- Phase 14 Account Scope Foundation: **Completed**.
+- Implemented account-isolated access control system.
+- Added UserPermissionOverride and UserDataScope models.
+- Added ALLOW/DENY per-user permission overrides.
+- Added data scopes: OWN, DRIVER, VEHICLE, TRIP, BRANCH, ALL.
+- Added effective permissions computation service.
+- Added API endpoints: auth/effective-permissions, access/* routes.
+- Updated frontend types with effective permissions.
+- Added My Access page for users to view their permissions.
+- All builds pass: backend and frontend.
+- All 12 account-scope tests pass.
+- No database reseed required; manual migrations only.
+- Documentation created: ACCOUNT_SCOPE_ACCESS_CONTROL.md.
 
 ### 2026-06-24
 
@@ -147,6 +169,21 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Phase 1.2: Added `docs/STAGING_VERIFICATION.md` with backend, web, Neon, Prisma, health-check, auth-verification, and rollback instructions.
 
 ## Verification Proof
+
+### 2026-06-29
+
+- Account Scope Foundation: **Completed**.
+- `npm --prefix backend run test:account-scope`: 12 tests pass.
+- `npm --prefix backend run access:diagnose`: diagnostics pass.
+- Backend build: pass.
+- Frontend build: pass.
+- No database reseed required.
+- All existing tests continue to pass.
+- Manual verification: effective permissions computed correctly.
+- Manual verification: user overrides applied correctly.
+- Manual verification: data scopes filter records appropriately.
+- Documentation created: `docs/ACCOUNT_SCOPE_ACCESS_CONTROL.md`.
+- Technical run document created: `docs/ai-runs/2026-06-29_account-scope-foundation.md`.
 
 ### 2026-06-23
 

@@ -57,6 +57,10 @@ model User {
   financeHistoryCreated    FinanceHistory[]            @relation("FinanceHistoryCreatedBy")
   uploadedDocuments        Document[]                  @relation("DocumentUploadedBy")
   verifiedDocuments        Document[]                  @relation("DocumentVerifiedBy")
+  permissionOverrides      UserPermissionOverride[]     @relation("UserPermissionOverrides")
+  permissionOverridesGranted UserPermissionOverride[]   @relation("PermissionOverridesGrantedBy")
+  dataScopes               UserDataScope[]              @relation("UserDataScopes")
+  dataScopesGranted        UserDataScope[]              @relation("DataScopesGrantedBy")
 
   @@map("users")
 }
@@ -84,7 +88,8 @@ model Permission {
   description     String?
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
-  rolePermissions RolePermission[]
+  rolePermissions        RolePermission[]
+  userPermissionOverrides UserPermissionOverride[]
 
   @@map("permissions")
 }
@@ -101,6 +106,44 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+model UserPermissionOverride {
+  id           String                   @id @default(cuid())
+  userId       String                   @map("user_id")
+  permissionId String                   @map("permission_id")
+  effect       PermissionOverrideEffect
+  reason       String?
+  expiresAt    DateTime?                @map("expires_at")
+  grantedById  String?                  @map("granted_by_id")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+
+  user         User                     @relation("UserPermissionOverrides", fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission               @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy    User?                    @relation("PermissionOverridesGrantedBy", fields: [grantedById], references: [id])
+
+  @@unique([userId, permissionId])
+  @@map("user_permission_overrides")
+}
+
+model UserDataScope {
+  id          String               @id @default(cuid())
+  userId      String               @map("user_id")
+  scopeType   DataScopeType        @map("scope_type")
+  scopeId     String?              @map("scope_id")
+  accessLevel DataScopeAccessLevel @map("access_level")
+  reason      String?
+  expiresAt   DateTime?            @map("expires_at")
+  grantedById String?              @map("granted_by_id")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  user        User                 @relation("UserDataScopes", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User?                @relation("DataScopesGrantedBy", fields: [grantedById], references: [id])
+
+  @@index([userId, scopeType, scopeId])
+  @@map("user_data_scopes")
+}
+
 model RefreshToken {
   id          String    @id @default(cuid())
   userId      String    @map("user_id")
@@ -112,6 +155,34 @@ model RefreshToken {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+enum PermissionOverrideEffect {
+  ALLOW
+  DENY
+}
+
+enum DataScopeType {
+  OWN
+  USER
+  DRIVER
+  VEHICLE
+  TRIP
+  ASSET
+  CUSTOMER
+  VENDOR
+  BRANCH
+  DEPARTMENT
+  FINANCE
+  GLOBAL
+}
+
+enum DataScopeAccessLevel {
+  VIEW
+  CREATE
+  UPDATE
+  DELETE
+  MANAGE
 }
 
 enum VehicleStatus {
