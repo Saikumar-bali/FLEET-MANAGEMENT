@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
@@ -61,6 +62,7 @@ function getEditFormState(user: UserRecord): UserFormState {
 
 export function UsersPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -376,6 +378,20 @@ export function UsersPage() {
                   key: 'lastLoginAt',
                   header: 'Last login',
                   render: (user) => user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never',
+                },
+                {
+                  key: 'manage-access',
+                  header: '',
+                  render: (user) => (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/users/${user.id}`); }}
+                    >
+                      Manage Access
+                    </button>
+                  ),
+                  width: '150px',
                 },
               ]}
               data={users}

@@ -2,11 +2,44 @@
 
 ## Overview
 
-This document explains the account-isolated access control system that determines what each user can see and do in the Fleet Management application. The system is built on three layers:
+This document explains the account-isolated access control system that determines what each user can see and do in the Fleet Management application. The system is built on four layers:
 
 1. **Role Permissions** - Base permissions assigned to roles
 2. **User Permission Overrides** - Per-user ALLOW/DENY overrides on top of role permissions
 3. **Data Scopes** - What records a user can see/change based on ownership or assignment
+4. **User Access Management UI** - Frontend pages for managing and diagnosing access
+
+## Phase Status
+
+- **Phase 1 (Backend Foundation)**: Complete
+- **Phase 2 (User Access Management UI)**: Complete
+- **Phase 3 (Module-level scope enforcement)**: Pending
+
+## API Endpoints
+
+### Access Control Endpoints (primary: `/api/v1/access/users/:id/*`)
+### Access Control Endpoints (alias: `/api/v1/users/:id/*`)
+
+| Endpoint | Method | Description | Permission Required |
+|---|---|---|---|
+| `/effective-permissions` | GET | Get effective permissions for a user | `user_view` |
+| `/permission-overrides` | GET | List permission overrides | `user_view` |
+| `/permission-overrides` | PUT | Set permission override (ALLOW/DENY) | `permission_assign` |
+| `/permission-overrides/:permissionId` | DELETE | Remove permission override | `permission_assign` |
+| `/data-scopes` | GET | List data scopes | `user_view` |
+| `/data-scopes` | PUT | Grant data scope | `permission_assign` |
+| `/data-scopes/:scopeId` | DELETE | Remove data scope | `permission_assign` |
+| `/activity` | GET | Get user activity timeline | `user_view` |
+
+Both `/access/users/:id/*` (primary) and `/users/:id/*` (alias) are available.
+
+### User Access UI Pages
+
+| Route | Page | Description |
+|---|---|---|
+| `/users` | UsersPage | User directory with Manage Access actions |
+| `/users/:id` | UserDetailPage | 8-tab detail page (Profile, Account, Role, Effective Permissions, Permission Overrides, Data Scopes, Activity, Menu Preview) |
+| `/my-access` | MyAccessPage | Self-service access diagnostics for every logged-in user |
 
 The **effective permissions** for a user are computed as:  
 `Role Permissions + ALLOW Overrides - DENY Overrides`

@@ -12,6 +12,7 @@ import {
   removeDataScopeController,
   effectivePermissionsController,
 } from './access-permissions.controller';
+import { getUserActivityController } from '../users/users-activity.controller';
 
 const router = Router();
 
@@ -57,6 +58,12 @@ router.delete(
   '/users/:id/data-scopes/:scopeId',
   requirePermission('permission_assign'),
   asyncHandler(removeDataScopeController),
+);
+
+router.get(
+  '/users/:id/activity',
+  requirePermission('user_view'),
+  asyncHandler(getUserActivityController),
 );
 
 export default router;

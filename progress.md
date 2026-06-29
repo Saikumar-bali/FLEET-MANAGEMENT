@@ -72,10 +72,11 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 12.1 | Documents RBAC | Completed |
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
+| Phase 14.1 | User Access Management UI | Completed (UserDetailPage, MyAccessPage, activity endpoint, API service layer, Playwright test) |
 
 ## Implementation Log
 
-### 2026-06-25
+### 2026-06-29
 
 - Phase 8 Documents & Storage Foundation: **Submitted for Review**.
 - Implemented storage abstraction with local provider and S3 stub.
@@ -111,6 +112,23 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - All 16 account-scope tests pass (admin rules, GLOBAL scope restriction, audit, access-policy).
 - No database reseed required; manual migrations only.
 - Documentation created: ACCOUNT_SCOPE_ACCESS_CONTROL.md.
+- **Fix**: Permission classifier uses real DB modules (roles, permissions, users, settings, system) not dot-prefix.
+- **Fix**: Audit entityId now points to actual override/scope record IDs.
+- **Fix**: Audit entityType derived correctly per action.
+- **Fix**: Permission controller validates permissionId/permissionKey match.
+- **Fix**: MANAGE scope restricted to super_admin only (not admin).
+- Added OpenAPI alias routes under /users/{id}/*.
+- Added service-level smoke tests (28/28 passing).
+- 18/18 account-scope tests pass.
+- **Phase 2 (User Access Management UI)**: Complete.
+- Added UserDetailPage with 8 tabs: Profile, Account, Role, Effective Permissions, Permission Overrides, Data Scopes, Activity, Menu Preview.
+- Added MyAccessPage with self-service diagnostics (permissions, scopes, visible/hidden menus with missing permission reasons).
+- Added activity endpoint: GET /api/v1/users/:id/activity.
+- Added typed API service layer: getUserEffectivePermissions, getUserPermissionOverrides, setUserPermissionOverride, getUserDataScopes, grantUserDataScope, removeUserDataScope, getUserActivity, getMyEffectivePermissions.
+- Updated UsersPage with "Manage Access" button per row.
+- Updated sidebar navigation with "My Access" entry.
+- Added Playwright E2E test: user-access-management.spec.ts.
+- All focused checks pass. No full E2E run. No deploy.
 
 ### 2026-06-24
 

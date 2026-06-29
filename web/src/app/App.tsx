@@ -9,6 +9,8 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
 import { UsersPage } from '../pages/UsersPage';
+import { UserDetailPage } from '../pages/UserDetailPage';
+import { MyAccessPage } from '../pages/MyAccessPage';
 import { VehiclesPage } from '../pages/VehiclesPage';
 import { VehicleDetailPage } from '../pages/VehicleDetailPage';
 import { DriversPage } from '../pages/DriversPage';
@@ -118,7 +120,9 @@ function App() {
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['user_view']} />}>
                   <Route path="/users" element={<UsersPage />} />
+                  <Route path="/users/:id" element={<UserDetailPage />} />
                 </Route>
+                <Route path="/my-access" element={<MyAccessPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

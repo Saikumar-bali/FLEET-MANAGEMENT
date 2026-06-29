@@ -800,3 +800,59 @@ export interface PnlSummary {
     total: number;
   }>;
 }
+
+// ─── Phase 2: User Access Management Types ───
+
+export type EffectivePermissionsResponse = {
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  effectivePermissions: string[];
+  dataScopes: Array<{
+    id: string;
+    scopeType: string;
+    scopeId: string | null;
+    accessLevel: string;
+    expiresAt: string | null;
+  }>;
+};
+
+export type UserPermissionOverrideRecord = {
+  id: string;
+  userId: string;
+  permissionId: string;
+  effect: 'ALLOW' | 'DENY';
+  reason: string | null;
+  expiresAt: string | null;
+  grantedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  permission: PermissionRecord;
+  grantedBy: { id: string; name: string } | null;
+};
+
+export type UserDataScopeRecord = {
+  id: string;
+  userId: string;
+  scopeType: string;
+  scopeId: string | null;
+  accessLevel: string;
+  reason: string | null;
+  expiresAt: string | null;
+  grantedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  grantedBy: { id: string; name: string } | null;
+};
+
+export type UserActivityRecord = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+};
