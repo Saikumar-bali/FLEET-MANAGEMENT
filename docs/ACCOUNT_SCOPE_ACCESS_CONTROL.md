@@ -12,16 +12,27 @@ This document explains the account-isolated access control system that determine
 ## Phase Status
 
 - **Phase 1 (Backend Foundation)**: Complete
-- **Phase 2 (User Access Management UI)**: Complete
+- **Phase 2 (User Access Management UI)**: Complete (hardened)
 - **Phase 3 (Module-level scope enforcement)**: Pending
 
 ## API Endpoints
+
+### Self-Access Endpoints (`/api/v1/access/me/*`)
+No `user_view` required — only authentication.
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/effective-permissions` | GET | Current user's effective permissions |
+| `/data-scopes` | GET | Current user's data scopes |
+| `/activity` | GET | Current user's activity timeline |
+| `/summary` | GET | Full access summary (user, role, permissions, scopes, activity) |
 
 ### Access Control Endpoints (primary: `/api/v1/access/users/:id/*`)
 ### Access Control Endpoints (alias: `/api/v1/users/:id/*`)
 
 | Endpoint | Method | Description | Permission Required |
 |---|---|---|---|
+| `/summary` | GET | Access summary for all users (counts) | `user_view` |
 | `/effective-permissions` | GET | Get effective permissions for a user | `user_view` |
 | `/permission-overrides` | GET | List permission overrides | `user_view` |
 | `/permission-overrides` | PUT | Set permission override (ALLOW/DENY) | `permission_assign` |

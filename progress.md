@@ -72,7 +72,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 12.1 | Documents RBAC | Completed |
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
-| Phase 14.1 | User Access Management UI | Completed (UserDetailPage, MyAccessPage, activity endpoint, API service layer, Playwright 2/2 PASS) — commit 96b2bb8 |
+| Phase 14.1 | User Access Management UI | Completed + Hardened (self-access endpoints, users summary, activity fix, Playwright 2/2 PASS) — commit 953aba1 |
 
 ## Implementation Log
 
