@@ -23,17 +23,18 @@ export function MyAccessPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [effRes, scopesRes] = await Promise.all([
-        getMyEffectivePermissions(auth.accessToken),
-        getUserDataScopes(auth.accessToken, auth.user!.id),
-      ]);
+      const effRes = await getMyEffectivePermissions(auth.accessToken);
       setEffectivePerms(effRes.data);
-      setDataScopes(scopesRes.data);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load access data.');
-    } finally {
-      setIsLoading(false);
     }
+    try {
+      const scopesRes = await getUserDataScopes(auth.accessToken, auth.user!.id);
+      setDataScopes(scopesRes.data);
+    } catch {
+      // self-service users may not have user_view permission
+    }
+    setIsLoading(false);
   };
 
   useEffect(() => { void loadData(); }, [auth.accessToken]);
