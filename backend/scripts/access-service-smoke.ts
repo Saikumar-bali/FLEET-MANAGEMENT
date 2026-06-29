@@ -55,14 +55,14 @@ async function main() {
   assert(overrideResult.effect === 'ALLOW', 'Override effect is ALLOW');
   assert(overrideResult.grantedById === actor.id, 'Override grantedById is actor');
 
-  // Verify audit: entityType should be user_permission_override
+  // Verify audit: entityType and entityId should be the actual override record
   const permAudit = await prisma.auditLog.findFirst({
     where: { userId: actor.id, action: 'admin.user.permission.allow' },
     orderBy: { createdAt: 'desc' },
   });
   assert(permAudit !== null, 'Permission audit entry exists');
   assert(permAudit!.entityType === 'user_permission_override', 'Audit entityType is user_permission_override');
-  assert(permAudit!.entityId === target.id, 'Audit entityId is target');
+  assert(permAudit!.entityId === overrideResult.id, 'Audit entityId equals override record id');
   assert((permAudit!.metadata as any)?.actorUserId === actor.id, 'Audit metadata has actorUserId');
   assert((permAudit!.metadata as any)?.permissionKey === 'fuel_view', 'Audit metadata has permissionKey');
 
@@ -83,6 +83,9 @@ async function main() {
 
   // 5. removePermissionOverride
   console.log('\n5. removePermissionOverride...');
+  const overrideToRemove = await prisma.userPermissionOverride.findFirst({
+    where: { userId: target.id, permissionId: fuelViewPerm.id },
+  });
   await removePermissionOverride(actor.id, target.id, fuelViewPerm.id);
   const overrides3 = await listPermissionOverrides(target.id);
   assert(overrides3.length === 0, 'Override removed');
@@ -93,6 +96,7 @@ async function main() {
   });
   assert(removeAudit !== null, 'Remove audit entry exists');
   assert(removeAudit!.entityType === 'user_permission_override', 'Remove audit entityType correct');
+  assert(removeAudit!.entityId === overrideToRemove!.id, 'Remove audit entityId equals removed override id');
 
   // 6. grantDataScope
   console.log('\n6. grantDataScope...');
@@ -102,13 +106,14 @@ async function main() {
   assert(scopeResult.accessLevel === 'VIEW', 'Access level is VIEW');
   assert(scopeResult.grantedById === actor.id, 'Scope grantedById is actor');
 
-  // Verify audit: entityType should be user_data_scope
+  // Verify audit: entityType and entityId should be the actual scope record
   const scopeAudit = await prisma.auditLog.findFirst({
     where: { userId: actor.id, action: 'admin.user.scope.grant' },
     orderBy: { createdAt: 'desc' },
   });
   assert(scopeAudit !== null, 'Scope audit entry exists');
   assert(scopeAudit!.entityType === 'user_data_scope', 'Scope audit entityType is user_data_scope');
+  assert(scopeAudit!.entityId === scopeResult.id, 'Scope audit entityId equals scope record id');
   assert((scopeAudit!.metadata as any)?.scopeType === 'VEHICLE', 'Scope audit metadata has scopeType');
 
   // 7. listDataScopes
@@ -119,6 +124,7 @@ async function main() {
 
   // 8. removeDataScope
   console.log('\n8. removeDataScope...');
+  const scopeToRemove = await prisma.userDataScope.findUnique({ where: { id: scopeResult.id } });
   await removeDataScope(actor.id, scopeResult.id);
   const scopes2 = await listDataScopes(target.id);
   assert(scopes2.length === 0, 'Scope removed');
@@ -129,6 +135,7 @@ async function main() {
   });
   assert(removeScopeAudit !== null, 'Remove scope audit exists');
   assert(removeScopeAudit!.entityType === 'user_data_scope', 'Remove scope audit entityType correct');
+  assert(removeScopeAudit!.entityId === scopeToRemove!.id, 'Remove scope audit entityId equals removed scope id');
 
   // 9. Error: non-super_admin cannot grant critical permission
   console.log('\n9. Error: non-super_admin blocked from critical permission...');

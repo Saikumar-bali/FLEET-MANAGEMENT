@@ -53,6 +53,8 @@ export async function setPermissionOverride(
   await recordAccessActivity({
     actorId,
     action: effect === 'DENY' ? 'admin.user.permission.deny' : 'admin.user.permission.allow',
+    entityType: 'user_permission_override',
+    entityId: result.id,
     targetUserId,
     details: { actorUserId: actorId, targetUserId, permissionKey, effect, reason, expiresAt },
   });
@@ -75,6 +77,10 @@ export async function removePermissionOverride(
     throw new AppError('Permission not found', 404);
   }
 
+  const existingOverride = await prisma.userPermissionOverride.findUnique({
+    where: { userId_permissionId: { userId: targetUserId, permissionId } },
+  });
+
   await prisma.userPermissionOverride.deleteMany({
     where: { userId: targetUserId, permissionId },
   });
@@ -82,6 +88,8 @@ export async function removePermissionOverride(
   await recordAccessActivity({
     actorId,
     action: 'admin.user.permission.remove',
+    entityType: 'user_permission_override',
+    entityId: existingOverride?.id ?? targetUserId,
     targetUserId,
     details: { actorUserId: actorId, targetUserId, permissionKey: permission.key },
   });
@@ -137,6 +145,8 @@ export async function grantDataScope(
   await recordAccessActivity({
     actorId,
     action: 'admin.user.scope.grant',
+    entityType: 'user_data_scope',
+    entityId: result.id,
     targetUserId,
     details: { actorUserId: actorId, targetUserId, scopeType, scopeId, accessLevel, reason, expiresAt },
   });
@@ -158,8 +168,10 @@ export async function removeDataScope(
   await recordAccessActivity({
     actorId,
     action: 'admin.user.scope.remove',
+    entityType: 'user_data_scope',
+    entityId: scope.id,
     targetUserId: scope.userId,
-    details: { actorUserId: actorId, targetUserId: scope.userId, scopeId, scopeType: scope.scopeType },
+    details: { actorUserId: actorId, targetUserId: scope.userId, scopeId, scopeType: scope.scopeType, accessLevel: scope.accessLevel },
   });
 }
 
