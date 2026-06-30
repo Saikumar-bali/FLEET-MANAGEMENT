@@ -61,7 +61,8 @@
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28)
 - Access diagnose: **PASS** (21 users)
-- Module-scope test: **PASS** (16 sections, all assertions)
+- Module-scope test: **PASS** (15 sections, all assertions)
+- Module-scope API test: **PASS** (14 API checks, all assertions)
 - Full E2E: NO
 - Deploy: NO
 

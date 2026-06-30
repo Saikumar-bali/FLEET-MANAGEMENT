@@ -27,6 +27,7 @@
     "access:diagnose": "ts-node scripts/access-diagnose.ts",
     "access:smoke": "ts-node scripts/access-service-smoke.ts",
     "test:module-scope": "ts-node scripts/module-scope-test.ts",
+    "test:module-scope-api": "ts-node scripts/module-scope-api-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",
