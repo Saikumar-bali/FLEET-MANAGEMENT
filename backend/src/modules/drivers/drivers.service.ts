@@ -2,7 +2,7 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import type { Prisma } from '@prisma/client';
 
-export async function listDrivers(query: { search?: string; status?: string; page: number; limit: number }) {
+export async function listDrivers(query: { search?: string; status?: string; page: number; limit: number; extraWhere?: Record<string, unknown> }) {
   const where: Prisma.DriverWhereInput = {};
 
   if (query.search) {
@@ -16,6 +16,8 @@ export async function listDrivers(query: { search?: string; status?: string; pag
   if (query.status) {
     where.status = query.status as any;
   }
+
+  if (query.extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), query.extraWhere] : [query.extraWhere]; }
 
   const [items, total] = await Promise.all([
     prisma.driver.findMany({

@@ -35,7 +35,7 @@ function maintenanceData(input: Partial<MaintenanceInput>) {
   };
 }
 
-export async function listMaintenance(query: any) {
+export async function listMaintenance(query: any, extraWhere?: Record<string, unknown>) {
   const where: Prisma.MaintenanceRequestWhereInput = {};
   if (query.search) where.OR = [
     { category: { contains: query.search, mode: 'insensitive' } },
@@ -48,6 +48,7 @@ export async function listMaintenance(query: any) {
   if (query.status) where.status = query.status;
   if (query.priority) where.priority = query.priority;
   where.requestDate = dateRange(query.dateFrom, query.dateTo);
+  if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }
   const [items, total] = await Promise.all([
     prisma.maintenanceRequest.findMany({ where, include: workflowInclude, orderBy: { requestDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.maintenanceRequest.count({ where }),
