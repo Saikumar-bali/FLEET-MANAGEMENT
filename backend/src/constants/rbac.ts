@@ -121,6 +121,11 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'customers_delete', module: 'customers', action: 'delete', description: 'Delete customers' },
   { key: 'pnl_view', module: 'pnl', action: 'view', description: 'View P&L reports' },
   { key: 'finance_history_view', module: 'finance_history', action: 'view', description: 'View finance history' },
+  { key: 'profile_link_view', module: 'profile_link', action: 'view', description: 'View profile links' },
+  { key: 'profile_link_create', module: 'profile_link', action: 'create', description: 'Create profile links' },
+  { key: 'profile_link_update', module: 'profile_link', action: 'update', description: 'Update profile links' },
+  { key: 'profile_link_delete', module: 'profile_link', action: 'delete', description: 'Delete profile links' },
+  { key: 'profile_link_revoke', module: 'profile_link', action: 'revoke', description: 'Revoke profile links' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -348,5 +353,6 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'role_view',
     'user_view',
     'permission_view',
+    'profile_link_view',
   ],
 };

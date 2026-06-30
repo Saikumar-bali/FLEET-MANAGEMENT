@@ -866,6 +866,17 @@ export type UserAccessSummaryRecord = {
   recentActivityAt: string | null;
 };
 
+export type ProfileLinkRecord = {
+  id: string;
+  userId: string;
+  profileType: string;
+  profileId: string;
+  isPrimary: boolean;
+  status: string;
+  linkedAt: string;
+  linkedBy: { id: string; name: string; email: string } | null;
+};
+
 export type MyAccessSummary = {
   user: { id: string; name: string; email: string; username: string | null; status: string };
   role: { id: string; name: string; key: string };
@@ -875,4 +886,7 @@ export type MyAccessSummary = {
   userDeniedPermissions: string[];
   dataScopes: UserDataScopeRecord[];
   recentActivity: UserActivityRecord[];
+  profileLinks: ProfileLinkRecord[];
+  primaryDriverProfile: { id: string; name: string; mobile: string; status: string } | null;
+  profileTypes: string[];
 };

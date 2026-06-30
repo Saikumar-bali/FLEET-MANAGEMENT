@@ -74,8 +74,25 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
 | Phase 14.1 | User Access Management UI | Completed + Hardened (env-only password, mutation guards, remote guard, Playwright 2/2 PASS) |
 | Phase 15 | Module-Level Scoped Enforcement | Completed — linkedEntityType-only validation, API smoke test (16 checks), helper test (15 sections), all focused checks PASS |
+| Phase 16 | Generic User/Profile Linking + Driver Portal Foundation | Completed — UserProfileLink model, profile link APIs, /me/profile-links, /me/driver-profile, diagnose/repair scripts, 17/17 tests PASS, all focused checks PASS |
 
 ## Implementation Log
+
+### 2026-06-30
+
+- Phase 16 Generic User/Profile Linking + Driver Portal Foundation: **Completed**.
+- Implemented generic UserProfileLink model with 7 profile types.
+- Created profile link service, controller, and routes with full CRUD.
+- Added self API (/me/profile-links) and admin API endpoints.
+- Added profile_link_view/create/update/delete/revoke permissions.
+- Updated /me/summary to include profileLinks, primaryDriverProfile, profileTypes.
+- Created driver portal foundation APIs (/me/driver-*).
+- Created diagnose and repair scripts (dry-run by default).
+- Created 17 test cases covering all scenarios.
+- Updated MyAccessPage to display linked profiles.
+- Updated OpenAPI with Profile Links and Driver Portal endpoints.
+- No auto user creation, no password printing, no secret exposure.
+- Full E2E: NO. Deploy: NO. Mobile: DEFERRED.
 
 ### 2026-06-29
 
@@ -222,6 +239,22 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Phase 1.2: Added `docs/STAGING_VERIFICATION.md` with backend, web, Neon, Prisma, health-check, auth-verification, and rollback instructions.
 
 ## Verification Proof
+
+### 2026-06-30
+
+- Phase 16 User Profile Linking: **Completed**.
+- `npm run backend:build`: PASS.
+- `npm run web:build`: PASS.
+- `npm --prefix backend run test:api-docs`: 126/126 PASS.
+- `npm --prefix backend run test:account-scope`: PASS.
+- `npm --prefix backend run access:smoke`: PASS.
+- `npm --prefix backend run access:diagnose`: PASS.
+- `npm --prefix backend run test:module-scope`: PASS.
+- `npm --prefix backend run test:module-scope-api`: PASS.
+- `npm --prefix backend run test:user-profile-link`: 17/17 PASS.
+- `npm --prefix backend run profile-link:diagnose`: PASS.
+- Prisma migration: 20260630000000_add_user_profile_links applied.
+- Deploy: NO. Full E2E: NO. Mobile: DEFERRED.
 
 ### 2026-06-29
 

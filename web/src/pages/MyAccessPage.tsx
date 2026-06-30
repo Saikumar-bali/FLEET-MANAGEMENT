@@ -8,7 +8,7 @@ import { ErrorState } from '../components/ErrorState';
 import { FormSection } from '../components/FormSection';
 import { navigationItems } from '../config/navigation';
 import { getMyAccessSummary } from '../services/api';
-import type { MyAccessSummary, UserActivityRecord } from '../types/auth';
+import type { MyAccessSummary, UserActivityRecord, ProfileLinkRecord } from '../types/auth';
 
 function formatDate(d: string | null | undefined) {
   if (!d) return 'Never';
@@ -175,6 +175,53 @@ export function MyAccessPage() {
                   </li>
                 ))}
               </ul>
+            )}
+          </FormSection>
+        </article>
+
+        {/* Profile Links */}
+        <article className="card">
+          <FormSection title="My Profile Links" description={`${summary?.profileLinks.length ?? 0} linked profile(s).`}>
+            {(!summary || summary.profileLinks.length === 0) ? (
+              <p>No profiles linked to your account.</p>
+            ) : (
+              <ul>
+                {summary.profileLinks.map((pl: ProfileLinkRecord) => (
+                  <li key={pl.id} style={{ padding: '0.25rem 0' }}>
+                    <strong>{pl.profileType}</strong>
+                    {' — '}
+                    {pl.profileId}
+                    {pl.isPrimary && <span style={{ color: 'var(--color-primary)' }}> (primary)</span>}
+                    {' '}
+                    <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} />
+                    {pl.linkedBy && <span className="table-secondary"> by {pl.linkedBy.name}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {summary?.primaryDriverProfile && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4>Primary Driver Profile</h4>
+                <div className="detail-grid">
+                  <div>
+                    <p className="detail-label">Name</p>
+                    <p className="detail-value">{summary.primaryDriverProfile.name}</p>
+                  </div>
+                  <div>
+                    <p className="detail-label">Mobile</p>
+                    <p className="detail-value">{summary.primaryDriverProfile.mobile}</p>
+                  </div>
+                  <div>
+                    <p className="detail-label">Status</p>
+                    <StatusBadge status={summary.primaryDriverProfile.status as 'AVAILABLE' | 'ON_TRIP' | 'ON_LEAVE' | 'SUSPENDED' | 'INACTIVE'} />
+                  </div>
+                </div>
+              </div>
+            )}
+            {summary?.profileTypes && summary.profileTypes.length > 0 && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <p className="detail-label">Linked profile types: {summary.profileTypes.join(', ')}</p>
+              </div>
             )}
           </FormSection>
         </article>
