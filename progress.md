@@ -73,7 +73,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
 | Phase 14.1 | User Access Management UI | Completed + Hardened (env-only password, mutation guards, remote guard, Playwright 2/2 PASS) |
-| Phase 15 | Module-Level Scoped Enforcement | Completed + Hardened — VEHICLE/DRIVER record-level fixed, access levels enforced, update target validation, safe test role, all 8 modules tested, module-scope PASS |
+| Phase 15 | Module-Level Scoped Enforcement | Completed + Fully Wired — assertCanChangeResourceScope in all 8 controllers, CREATE≠VIEW, owner bypass restricted, list filters VIEW-level, safe test roles, all 16-section test PASS |
 
 ## Implementation Log
 

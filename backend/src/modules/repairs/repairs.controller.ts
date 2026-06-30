@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
-import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource } from '../access/scoped-enforcement.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import { createRepair, getRepair, listRepairs, transitionRepair, updateRepair } from './repairs.service';
 
@@ -41,6 +41,7 @@ export async function updateRepairController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getRepair(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const item = await updateRepair(String(req.params.id), req.body);
   await createAuditLog(req, { userId: req.authUser?.id, action: 'repair.update', entityType: 'repair', entityId: item.id });

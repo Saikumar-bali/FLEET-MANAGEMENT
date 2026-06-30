@@ -1,4 +1,4 @@
-import type { ActorContext } from './actor-context.service';
+import type { ActorContext, DataScopeEntry } from './actor-context.service';
 import { can, hasScope, isGlobalUser } from './access-policy.service';
 import { getResourceMapping, type ResourceType } from './resource-scope-map';
 import { AppError } from '../../utils/appError';
@@ -15,8 +15,31 @@ function checkPermission(actor: ActorContext, permissionKey: string): void {
   }
 }
 
-function scopeIncludesLevel(actor: ActorContext, scopeType: string, scopeId: string, requiredLevel: string): boolean {
-  return hasScope(actor, scopeType, scopeId, requiredLevel);
+function scopeCanSatisfyLevel(ds: DataScopeEntry, requiredLevel: string): boolean {
+  if (ds.accessLevel === 'MANAGE') return true;
+  if (requiredLevel === 'VIEW') {
+    return ds.accessLevel === 'VIEW' || ds.accessLevel === 'UPDATE' || ds.accessLevel === 'DELETE' || ds.accessLevel === 'MANAGE';
+  }
+  if (requiredLevel === 'CREATE') {
+    return ds.accessLevel === 'CREATE' || ds.accessLevel === 'MANAGE';
+  }
+  if (requiredLevel === 'UPDATE') {
+    return ds.accessLevel === 'UPDATE' || ds.accessLevel === 'MANAGE';
+  }
+  if (requiredLevel === 'DELETE') {
+    return ds.accessLevel === 'DELETE' || ds.accessLevel === 'MANAGE';
+  }
+  return false;
+}
+
+function hasScopeAtLevel(actor: ActorContext, scopeType: string, scopeId: string, requiredLevel: string): boolean {
+  if (actor.isSuperAdmin) return true;
+  if (actor.dataScopes.some(ds => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE')) return true;
+  return actor.dataScopes.some(ds => {
+    if (ds.scopeType !== scopeType) return false;
+    if (ds.scopeId !== null && ds.scopeId !== scopeId) return false;
+    return scopeCanSatisfyLevel(ds, requiredLevel);
+  });
 }
 
 function checkScopeForRecord(
@@ -30,17 +53,17 @@ function checkScopeForRecord(
   const mapping = getResourceMapping(resourceType);
 
   const createdById = record[mapping.ownerField || 'createdById'] as string | null | undefined;
-  if (createdById === actor.user.id) return;
+  if (requiredLevel === 'VIEW' && createdById === actor.user.id) return;
 
   if (resourceType === 'VEHICLE') {
     const recordId = record.id as string;
-    if (recordId && scopeIncludesLevel(actor, 'VEHICLE', recordId, requiredLevel)) return;
+    if (recordId && hasScopeAtLevel(actor, 'VEHICLE', recordId, requiredLevel)) return;
     deny(`Access denied: insufficient data scope (need ${requiredLevel} on VEHICLE ${recordId})`);
   }
 
   if (resourceType === 'DRIVER') {
     const recordId = record.id as string;
-    if (recordId && scopeIncludesLevel(actor, 'DRIVER', recordId, requiredLevel)) return;
+    if (recordId && hasScopeAtLevel(actor, 'DRIVER', recordId, requiredLevel)) return;
     deny(`Access denied: insufficient data scope (need ${requiredLevel} on DRIVER ${recordId})`);
   }
 
@@ -48,13 +71,13 @@ function checkScopeForRecord(
   const driverId = record.driverId as string | null | undefined;
   const tripId = record.tripId as string | null | undefined;
 
-  if (vehicleId && scopeIncludesLevel(actor, 'VEHICLE', vehicleId, requiredLevel)) return;
-  if (driverId && scopeIncludesLevel(actor, 'DRIVER', driverId, requiredLevel)) return;
-  if (tripId && scopeIncludesLevel(actor, 'TRIP', tripId, requiredLevel)) return;
+  if (vehicleId && hasScopeAtLevel(actor, 'VEHICLE', vehicleId, requiredLevel)) return;
+  if (driverId && hasScopeAtLevel(actor, 'DRIVER', driverId, requiredLevel)) return;
+  if (tripId && hasScopeAtLevel(actor, 'TRIP', tripId, requiredLevel)) return;
 
   if (resourceType === 'TRIP') {
     const recordId = record.id as string;
-    if (recordId && scopeIncludesLevel(actor, 'TRIP', recordId, requiredLevel)) return;
+    if (recordId && hasScopeAtLevel(actor, 'TRIP', recordId, requiredLevel)) return;
   }
 
   deny(`Access denied: insufficient data scope (need ${requiredLevel} scope for this record)`);
@@ -78,7 +101,7 @@ function checkScopeForInput(
 
   if (checks.length === 0) return;
 
-  const allSatisfied = checks.every(c => scopeIncludesLevel(actor, c.scopeType, c.scopeId, requiredLevel));
+  const allSatisfied = checks.every(c => hasScopeAtLevel(actor, c.scopeType, c.scopeId, requiredLevel));
   if (!allSatisfied) {
     deny(`Access denied: insufficient data scope (need ${requiredLevel} scope for target resources)`);
   }
@@ -132,31 +155,23 @@ export function assertCanChangeResourceScope(
 ): void {
   if (isGlobalUser(actor)) return;
 
-  const mapping = getResourceMapping(resourceType);
-
   const currentVehicleId = currentRecord.vehicleId as string | null | undefined;
   const newVehicleId = updateInput.vehicleId as string | null | undefined;
   if (newVehicleId !== undefined && newVehicleId !== currentVehicleId) {
-    if (!newVehicleId) {
-      deny('Access denied: cannot remove vehicle reference');
-    }
+    if (!newVehicleId) deny('Access denied: cannot remove vehicle reference');
     checkScopeForInput(actor, { vehicleId: newVehicleId }, 'UPDATE');
   }
 
   const currentDriverId = currentRecord.driverId as string | null | undefined;
   const newDriverId = updateInput.driverId as string | null | undefined;
   if (newDriverId !== undefined && newDriverId !== currentDriverId) {
-    if (newDriverId) {
-      checkScopeForInput(actor, { driverId: newDriverId }, 'UPDATE');
-    }
+    if (newDriverId) checkScopeForInput(actor, { driverId: newDriverId }, 'UPDATE');
   }
 
   const currentTripId = currentRecord.tripId as string | null | undefined;
   const newTripId = updateInput.tripId as string | null | undefined;
   if (newTripId !== undefined && newTripId !== currentTripId) {
-    if (newTripId) {
-      checkScopeForInput(actor, { tripId: newTripId }, 'UPDATE');
-    }
+    if (newTripId) checkScopeForInput(actor, { tripId: newTripId }, 'UPDATE');
   }
 
   const currentLinkedEntityId = currentRecord.linkedEntityId as string | null | undefined;
@@ -169,19 +184,12 @@ export function assertCanChangeResourceScope(
   }
 
   if (resourceType === 'VEHICLE') {
-    const currentId = currentRecord.id as string;
     const inputVehicleId = updateInput.vehicleId as string | undefined;
-    if (inputVehicleId && inputVehicleId !== currentId) {
-      deny('Access denied: cannot change vehicle identity');
-    }
+    if (inputVehicleId && inputVehicleId !== currentRecord.id) deny('Access denied: cannot change vehicle identity');
   }
-
   if (resourceType === 'DRIVER') {
-    const currentId = currentRecord.id as string;
     const inputDriverId = updateInput.driverId as string | undefined;
-    if (inputDriverId && inputDriverId !== currentId) {
-      deny('Access denied: cannot change driver identity');
-    }
+    if (inputDriverId && inputDriverId !== currentRecord.id) deny('Access denied: cannot change driver identity');
   }
 }
 
@@ -203,7 +211,7 @@ export function getScopedWhereForResource(
   if (mapping.relationFields.vehicleId) {
     const vField = mapping.relationFields.vehicleId;
     const vehicleScopeIds = actor.dataScopes
-      .filter(ds => ds.scopeType === 'VEHICLE' && ds.scopeId !== null)
+      .filter(ds => ds.scopeType === 'VEHICLE' && ds.scopeId !== null && scopeCanSatisfyLevel(ds, 'VIEW'))
       .map(ds => ds.scopeId!);
     if (vehicleScopeIds.length > 0) {
       conditions.push({ [vField]: { in: vehicleScopeIds } });
@@ -213,7 +221,7 @@ export function getScopedWhereForResource(
   if (mapping.relationFields.driverId) {
     const dField = mapping.relationFields.driverId;
     const driverScopeIds = actor.dataScopes
-      .filter(ds => ds.scopeType === 'DRIVER' && ds.scopeId !== null)
+      .filter(ds => ds.scopeType === 'DRIVER' && ds.scopeId !== null && scopeCanSatisfyLevel(ds, 'VIEW'))
       .map(ds => ds.scopeId!);
     if (driverScopeIds.length > 0) {
       conditions.push({ [dField]: { in: driverScopeIds } });
@@ -223,17 +231,14 @@ export function getScopedWhereForResource(
   if (mapping.relationFields.tripId && scopeType === 'TRIP') {
     const tripField = mapping.relationFields.tripId;
     const tripScopeIds = actor.dataScopes
-      .filter(ds => ds.scopeType === 'TRIP' && ds.scopeId !== null)
+      .filter(ds => ds.scopeType === 'TRIP' && ds.scopeId !== null && scopeCanSatisfyLevel(ds, 'VIEW'))
       .map(ds => ds.scopeId!);
     if (tripScopeIds.length > 0) {
       conditions.push({ [tripField]: { in: tripScopeIds } });
     }
   }
 
-  if (conditions.length === 0) {
-    return { id: '__NO_ACCESS__' };
-  }
-
+  if (conditions.length === 0) return { id: '__NO_ACCESS__' };
   if (conditions.length === 1) return conditions[0];
   return { OR: conditions };
 }
