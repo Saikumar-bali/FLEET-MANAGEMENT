@@ -13,31 +13,23 @@ import {
   revokeProfileLinkController,
   deleteProfileLinkController,
   selfProfileLinksController,
-  createSelfProfileLinkController,
+  createProfileLinkForUserController,
 } from './user-profile-links.controller';
 
 const router = Router();
 
 router.use(asyncHandler(authMiddleware));
 
-// ─── Self endpoints (no permission required beyond auth) ───
+// ─── Self endpoints (read-only) ───
 router.get(
   '/me/profile-links',
   asyncHandler(selfProfileLinksController),
 );
 
-router.post(
-  '/me/profile-links',
-  validateRequest({
-    body: z.object({
-      profileType: z.enum(['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT']),
-      profileId: z.string().min(1),
-      isPrimary: z.boolean().optional(),
-      metadata: z.record(z.string(), z.unknown()).optional(),
-    }),
-  }),
-  asyncHandler(createSelfProfileLinkController),
-);
+// ─── User-scoped admin aliases (under /users/:userId) ───
+// NOTE: These are registered on the same router but the path prefix in app.ts is /api/v1/user-profile-links
+// We need separate routes under /users/:userId path — these are handled via a separate router mounted at /api/v1/users
+// See user-profile-links-user-aliases.ts for that
 
 // ─── Admin endpoints ───
 router.get(

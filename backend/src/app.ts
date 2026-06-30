@@ -25,6 +25,7 @@ import docsRoutes from './modules/docs/docs.routes';
 import accessRoutes from './modules/access/access-permissions.routes';
 import accessAliasRoutes from './modules/access/access-alias.routes';
 import userProfileLinkRoutes from './modules/user-profile-links/user-profile-links.routes';
+import userProfileLinkUserAliasRoutes from './modules/user-profile-links/user-profile-links-user-aliases.routes';
 import driverPortalRoutes from './modules/user-profile-links/driver-portal.routes';
 import { sendError } from './utils/response';
 
@@ -70,6 +71,7 @@ app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/access', accessRoutes);
 app.use('/api/v1/users', accessAliasRoutes);
+app.use('/api/v1/users', userProfileLinkUserAliasRoutes);
 app.use('/api/v1/user-profile-links', userProfileLinkRoutes);
 app.use('/api/v1', driverPortalRoutes);
 

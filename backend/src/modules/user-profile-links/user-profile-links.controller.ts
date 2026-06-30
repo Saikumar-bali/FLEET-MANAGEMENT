@@ -10,6 +10,7 @@ import {
   revokeProfileLink,
   deleteProfileLink,
 } from './user-profile-links.service';
+import { validateProfileLinkCreate } from './user-profile-links.scope-validation';
 import type { ProfileType } from '@prisma/client';
 
 export async function listProfileLinksController(req: Request, res: Response) {
@@ -99,7 +100,7 @@ export async function deleteProfileLinkController(req: Request, res: Response) {
   return sendSuccess(res, null, 'Profile link deleted');
 }
 
-// ─── Self endpoints ───
+// ─── Self endpoints (read-only) ───
 
 export async function selfProfileLinksController(req: Request, res: Response) {
   const links = await getUserProfileLinks(
@@ -109,18 +110,27 @@ export async function selfProfileLinksController(req: Request, res: Response) {
   return sendSuccess(res, links);
 }
 
-export async function createSelfProfileLinkController(req: Request, res: Response) {
+// ─── User-scoped admin endpoint ───
+
+export async function createProfileLinkForUserController(req: Request, res: Response) {
+  const targetUserId = String(req.params.userId);
+  const actorUserId = req.authUser!.id;
+
+  // Validate actor has scope to create this link
+  await validateProfileLinkCreate(actorUserId, targetUserId, req.body.profileType, req.body.profileId);
+
   const link = await createProfileLink(
-    { ...req.body, userId: req.authUser!.id },
-    req.authUser!.id,
+    { ...req.body, userId: targetUserId },
+    actorUserId,
   );
 
   await createAuditLog(req, {
-    userId: req.authUser!.id,
-    action: 'profile_link.self_create',
+    userId: actorUserId,
+    action: 'profile_link.admin_create',
     entityType: 'user_profile_link',
     entityId: link.id,
     metadata: {
+      targetUserId: link.userId,
       profileType: link.profileType,
       profileId: link.profileId,
       isPrimary: link.isPrimary,
