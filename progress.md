@@ -72,7 +72,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 12.1 | Documents RBAC | Completed |
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
-| Phase 14.1 | User Access Management UI | Completed + Hardened (self-access endpoints, users summary, activity fix, Playwright 2/2 PASS) — commit 953aba1 |
+| Phase 14.1 | User Access Management UI | Completed + Hardened (deterministic test user, safe cleanup, exact activity verification, Playwright 2/2 PASS) — commit a0bc643 |
 
 ## Implementation Log
 
@@ -129,6 +129,21 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Updated sidebar navigation with "My Access" entry.
 - Added Playwright E2E test: user-access-management.spec.ts.
 - All focused checks pass. No full E2E run. No deploy.
+
+### 2026-06-30
+
+- Phase 14.1 User Access Management UI: **Safety Hardening**.
+- Playwright test now uses deterministic PHASE_ACCESS_UI_TEST_USER only.
+- No fallback to random driver or users[1]. No real user mutation.
+- Cleanup limited to PHASE_ACCESS_UI_TEST-prefixed overrides and scopes.
+- Activity tab verifies exact admin.user.permission.allow, admin.user.permission.deny, admin.user.scope.grant, admin.user.scope.remove.
+- DENY-proof assertion uses exact regex to avoid fuel_view_own false positive.
+- My Access page test verifies Hidden Menus section and Phase 3 disclaimer.
+- Backend activity metadata search fixed: $queryRaw LIKE wildcards now use $queryRawUnsafe with SQL concatenation.
+- Session cleared before test user login to prevent stale auth redirect.
+- All focused checks pass: web build PASS, API docs PASS (126/126), account-scope PASS (18/18), access smoke PASS (28/28), access diagnose PASS (16 users), Playwright PASS (2/2).
+- Backend build: prisma generate EPERM on Windows (file lock), tsc --noEmit clean.
+- No full E2E run. No deploy. No full reseed.
 
 ### 2026-06-24
 
