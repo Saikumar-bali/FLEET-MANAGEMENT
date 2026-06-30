@@ -228,6 +228,20 @@ async function main() {
     await assertCanChangeResourceScope(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id }), rec({ linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }));
   }, 'Doc linkedEntity to VehicleA ok');
 
+  console.log('\n=== 11b. linkedEntityType-only change validation ===');
+  await expect403(async () => {
+    assertCanUpdateResource(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }));
+    await assertCanChangeResourceScope(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }), rec({ linkedEntityType: 'TRIP' }));
+  }, 'Doc linkedEntityType-only to TRIP blocked (no linkedEntityId)');
+  await expect403(async () => {
+    assertCanUpdateResource(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }));
+    await assertCanChangeResourceScope(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }), rec({ linkedEntityType: 'UNKNOWN' }));
+  }, 'Doc linkedEntityType-only to UNKNOWN blocked');
+  await expect403(async () => {
+    assertCanUpdateResource(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }));
+    await assertCanChangeResourceScope(actorA, 'DOCUMENT', rec({ id: docA.id, vehicleId: vehicleA.id, linkedEntityType: 'VEHICLE', linkedEntityId: vehicleA.id }), rec({ linkedEntityType: 'TRIP', linkedEntityId: vehicleA.id }));
+  }, 'Doc linkedEntityType to TRIP with Vehicle A id blocked');
+
   console.log('\n=== 12. super_admin global access ===');
   await expectSuccess(async () => { assertCanReadResource(actorSA, 'VEHICLE', rec({ id: vehicleA.id })); }, 'SA reads VehicleA');
   await expectSuccess(async () => { assertCanReadResource(actorSA, 'TRIP', rec({ id: tripA.id, vehicleId: vehicleA.id })); }, 'SA reads TripA');

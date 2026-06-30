@@ -190,6 +190,15 @@ async function main() {
   if (patchDocOk.status === 200) pass('Document linked to TripA (200)');
   else fail(`Document link: expected 200 got ${patchDocOk.status}`);
 
+  console.log('\n=== 9b. PUT /documents/:id — linkedEntityType-only change blocked ===');
+  const patchDocTypeOnly = await apiCall('PUT', `/api/v1/documents/${docForPatch.id}`, tokenA, { linkedEntityType: 'VEHICLE' });
+  if (patchDocTypeOnly.status === 403) pass('Doc linkedEntityType-only to VEHICLE blocked (403)');
+  else fail(`Doc type-only: expected 403 got ${patchDocTypeOnly.status}`);
+
+  const patchDocUnknown = await apiCall('PUT', `/api/v1/documents/${docForPatch.id}`, tokenA, { linkedEntityType: 'UNKNOWN' });
+  if (patchDocUnknown.status === 403) pass('Doc linkedEntityType-only to UNKNOWN blocked (403)');
+  else fail(`Doc unknown type: expected 403 got ${patchDocUnknown.status}`);
+
   console.log('\n=== 10. GET /vehicles — list scoped ===');
   const listVeh = await apiCall('GET', '/api/v1/vehicles', tokenA);
   if (listVeh.status === 200) {
