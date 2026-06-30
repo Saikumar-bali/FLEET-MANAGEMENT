@@ -1,46 +1,58 @@
-# Phase 15: Module-Level Scoped Enforcement — Run Record
+# Module-Level Scope Enforcement — Run Record
 
 ## Date
-2026-06-30
+2026-06-30 (hardened)
 
 ## Branch
 `phase-account-scope-foundation`
 
-## Status
-Phase 15 backend scoped enforcement: **Complete** for 8 modules.
-UI changes: Minimal (403 error handling only).
-Phase 3 (driver portal): Not started.
+## What Was Fixed
 
-## What Was Implemented
+### Blocker 1: VEHICLE record-level access
+- Removed `scopeType !== 'VEHICLE'` guard in `checkScopeForRecord`
+- VEHICLE and DRIVER resources now check `hasScope(actor, scopeType, record.id)` directly
+- All 8 resource types pass record-level scope checks
 
-### Resource Mapping (`resource-scope-map.ts`)
-- Maps 8 resource types to permissions, scopeTypes, and relation fields
-- TRIP, VEHICLE, DRIVER, FUEL_ENTRY, EXPENSE, DOCUMENT, MAINTENANCE, REPAIR
+### Blocker 2: Scope access levels enforced
+- `checkScopeForRecord` now accepts `requiredAccessLevel` parameter
+- `assertCanReadResource` requires VIEW level
+- `assertCanCreateResource` requires CREATE level
+- `assertCanUpdateResource` requires UPDATE level
+- `assertCanDeleteResource` requires DELETE level
+- MANAGE includes all levels via `hasScope` hierarchy
 
-### Scoped Enforcement Service (`scoped-enforcement.service.ts`)
-- `getScopedWhereForResource()` — generates Prisma where clauses for list filtering
-- `assertCanReadResource()` — checks view permission + data scope
-- `assertCanCreateResource()` — checks create permission + scope for referenced resources
-- `assertCanUpdateResource()` — checks update permission + data scope
-- `assertCanDeleteResource()` — checks delete permission + data scope
+### Blocker 3: Update target scope validation
+- Added `assertCanChangeResourceScope()` function
+- Validates new vehicleId/driverId/tripId/linkedEntityId in update input
+- Blocks moving records to out-of-scope targets
+- Prevents changing vehicle/driver identity
 
-### Controller Changes (8 controllers)
-All 8 controllers now:
-1. Get actor context via `getActorContext(req.authUser.id)`
-2. Apply scoped where clauses for list endpoints
-3. Assert record-level access for get/update/delete/create endpoints
+### Blocker 4: Test no longer mutates real roles
+- Creates dedicated `PHASE_MODULE_SCOPE_TEST_ROLE` with all needed permissions
+- Creates dedicated `PHASE_MODULE_SCOPE_TEST_NO_PERM` for missing-permission tests
+- Cleanup deletes test roles, users, records, and data scopes
+- Never modifies driver/admin/super_admin production roles
 
-### Service Changes (8 services)
-All 8 list functions accept optional `extraWhere` parameter merged into query.
+### Blocker 5: Missing-permission test accurate
+- Uses dedicated no-permission role instead of same driver role
+- Asserts denial reason is "missing permission" not "missing scope"
 
-### Module-Scope Test
-- Creates isolated test resources (users, vehicles, trips, fuel, expenses)
-- Verifies UserA only sees A-scoped records, UserB only sees B-scoped records
-- Verifies cross-account denial (403)
-- Verifies super_admin global access
-- Verifies admin without GLOBAL scope is NOT global
-- Verifies create-time scope validation
-- Cleans up all test artifacts
+## Test Coverage (15 sections)
+1. VEHICLE record-level scope
+2. DRIVER record-level scope
+3. TRIP record-level scope
+4. FUEL record-level scope
+5. EXPENSE record-level scope
+6. DOCUMENT record-level scope
+7. MAINTENANCE record-level scope
+8. REPAIR record-level scope
+9. Scope access level enforcement (VIEW cannot update/delete)
+10. Create scope level enforcement (VIEW cannot create)
+11. Update target scope validation (out-of-scope blocked)
+12. Missing permission test (no permission role)
+13. super_admin global access
+14. Admin not automatically global
+15. List filtering via scoped where (Vehicle, Trip, Fuel)
 
 ## Evidence Results
 - Backend TypeScript: **PASS** (tsc --noEmit clean)
@@ -48,8 +60,7 @@ All 8 list functions accept optional `extraWhere` parameter merged into query.
 - API docs: **PASS** (126/126)
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28)
-- Access diagnose: **PASS** (21 users)
+- Access diagnose: **PASS** (19 users)
 - Module-scope test: **PASS** (all assertions)
 - Full E2E: NO
 - Deploy: NO
-- Full reseed: NO
