@@ -15,29 +15,73 @@ function checkPermission(actor: ActorContext, permissionKey: string): void {
   }
 }
 
+function scopeIncludesLevel(actor: ActorContext, scopeType: string, scopeId: string, requiredLevel: string): boolean {
+  return hasScope(actor, scopeType, scopeId, requiredLevel);
+}
+
 function checkScopeForRecord(
   actor: ActorContext,
   resourceType: ResourceType,
   record: RecordWithRelations,
+  requiredLevel: string = 'VIEW',
 ): void {
   if (isGlobalUser(actor)) return;
 
   const mapping = getResourceMapping(resourceType);
-  const scopeType = mapping.scopeType;
+
+  const createdById = record[mapping.ownerField || 'createdById'] as string | null | undefined;
+  if (createdById === actor.user.id) return;
+
+  if (resourceType === 'VEHICLE') {
+    const recordId = record.id as string;
+    if (recordId && scopeIncludesLevel(actor, 'VEHICLE', recordId, requiredLevel)) return;
+    deny(`Access denied: insufficient data scope (need ${requiredLevel} on VEHICLE ${recordId})`);
+  }
+
+  if (resourceType === 'DRIVER') {
+    const recordId = record.id as string;
+    if (recordId && scopeIncludesLevel(actor, 'DRIVER', recordId, requiredLevel)) return;
+    deny(`Access denied: insufficient data scope (need ${requiredLevel} on DRIVER ${recordId})`);
+  }
 
   const vehicleId = record.vehicleId as string | null | undefined;
   const driverId = record.driverId as string | null | undefined;
   const tripId = record.tripId as string | null | undefined;
-  const createdById = record[mapping.ownerField || 'createdById'] as string | null | undefined;
 
-  if (createdById === actor.user.id) return;
+  if (vehicleId && scopeIncludesLevel(actor, 'VEHICLE', vehicleId, requiredLevel)) return;
+  if (driverId && scopeIncludesLevel(actor, 'DRIVER', driverId, requiredLevel)) return;
+  if (tripId && scopeIncludesLevel(actor, 'TRIP', tripId, requiredLevel)) return;
 
-  if (vehicleId && hasScope(actor, 'VEHICLE', vehicleId)) return;
-  if (driverId && hasScope(actor, 'DRIVER', driverId)) return;
-  if (tripId && hasScope(actor, 'TRIP', tripId)) return;
-  if (scopeType !== 'VEHICLE' && hasScope(actor, scopeType, record.id as string)) return;
+  if (resourceType === 'TRIP') {
+    const recordId = record.id as string;
+    if (recordId && scopeIncludesLevel(actor, 'TRIP', recordId, requiredLevel)) return;
+  }
 
-  deny('Access denied: record not in your data scope');
+  deny(`Access denied: insufficient data scope (need ${requiredLevel} scope for this record)`);
+}
+
+function checkScopeForInput(
+  actor: ActorContext,
+  input: RecordWithRelations,
+  requiredLevel: string = 'CREATE',
+): void {
+  if (isGlobalUser(actor)) return;
+
+  const vehicleId = input.vehicleId as string | undefined;
+  const driverId = input.driverId as string | undefined;
+  const tripId = input.tripId as string | undefined;
+
+  const checks: Array<{ scopeType: string; scopeId: string }> = [];
+  if (vehicleId) checks.push({ scopeType: 'VEHICLE', scopeId: vehicleId });
+  if (driverId) checks.push({ scopeType: 'DRIVER', scopeId: driverId });
+  if (tripId) checks.push({ scopeType: 'TRIP', scopeId: tripId });
+
+  if (checks.length === 0) return;
+
+  const allSatisfied = checks.every(c => scopeIncludesLevel(actor, c.scopeType, c.scopeId, requiredLevel));
+  if (!allSatisfied) {
+    deny(`Access denied: insufficient data scope (need ${requiredLevel} scope for target resources)`);
+  }
 }
 
 export function assertCanReadResource(
@@ -47,7 +91,7 @@ export function assertCanReadResource(
 ): void {
   const mapping = getResourceMapping(resourceType);
   checkPermission(actor, mapping.permissions.view);
-  checkScopeForRecord(actor, resourceType, record);
+  checkScopeForRecord(actor, resourceType, record, 'VIEW');
 }
 
 export function assertCanCreateResource(
@@ -57,22 +101,7 @@ export function assertCanCreateResource(
 ): void {
   const mapping = getResourceMapping(resourceType);
   checkPermission(actor, mapping.permissions.create);
-
-  if (isGlobalUser(actor)) return;
-
-  const vehicleId = input.vehicleId as string | undefined;
-  const driverId = input.driverId as string | undefined;
-  const tripId = input.tripId as string | undefined;
-
-  const hasAnyScope = vehicleId && hasScope(actor, 'VEHICLE', vehicleId) ||
-    driverId && hasScope(actor, 'DRIVER', driverId) ||
-    tripId && hasScope(actor, 'TRIP', tripId);
-
-  if (vehicleId || driverId || tripId) {
-    if (!hasAnyScope) {
-      deny('Access denied: cannot create record for resource outside your data scope');
-    }
-  }
+  checkScopeForInput(actor, input, 'CREATE');
 }
 
 export function assertCanUpdateResource(
@@ -82,7 +111,7 @@ export function assertCanUpdateResource(
 ): void {
   const mapping = getResourceMapping(resourceType);
   checkPermission(actor, mapping.permissions.update);
-  checkScopeForRecord(actor, resourceType, record);
+  checkScopeForRecord(actor, resourceType, record, 'UPDATE');
 }
 
 export function assertCanDeleteResource(
@@ -92,7 +121,68 @@ export function assertCanDeleteResource(
 ): void {
   const mapping = getResourceMapping(resourceType);
   checkPermission(actor, mapping.permissions.delete);
-  checkScopeForRecord(actor, resourceType, record);
+  checkScopeForRecord(actor, resourceType, record, 'DELETE');
+}
+
+export function assertCanChangeResourceScope(
+  actor: ActorContext,
+  resourceType: ResourceType,
+  currentRecord: RecordWithRelations,
+  updateInput: RecordWithRelations,
+): void {
+  if (isGlobalUser(actor)) return;
+
+  const mapping = getResourceMapping(resourceType);
+
+  const currentVehicleId = currentRecord.vehicleId as string | null | undefined;
+  const newVehicleId = updateInput.vehicleId as string | null | undefined;
+  if (newVehicleId !== undefined && newVehicleId !== currentVehicleId) {
+    if (!newVehicleId) {
+      deny('Access denied: cannot remove vehicle reference');
+    }
+    checkScopeForInput(actor, { vehicleId: newVehicleId }, 'UPDATE');
+  }
+
+  const currentDriverId = currentRecord.driverId as string | null | undefined;
+  const newDriverId = updateInput.driverId as string | null | undefined;
+  if (newDriverId !== undefined && newDriverId !== currentDriverId) {
+    if (newDriverId) {
+      checkScopeForInput(actor, { driverId: newDriverId }, 'UPDATE');
+    }
+  }
+
+  const currentTripId = currentRecord.tripId as string | null | undefined;
+  const newTripId = updateInput.tripId as string | null | undefined;
+  if (newTripId !== undefined && newTripId !== currentTripId) {
+    if (newTripId) {
+      checkScopeForInput(actor, { tripId: newTripId }, 'UPDATE');
+    }
+  }
+
+  const currentLinkedEntityId = currentRecord.linkedEntityId as string | null | undefined;
+  const newLinkedEntityId = updateInput.linkedEntityId as string | null | undefined;
+  if (newLinkedEntityId !== undefined && newLinkedEntityId !== currentLinkedEntityId) {
+    const linkedType = (updateInput.linkedEntityType || currentRecord.linkedEntityType) as string | undefined;
+    if (linkedType === 'VEHICLE' && newLinkedEntityId) {
+      checkScopeForInput(actor, { vehicleId: newLinkedEntityId }, 'UPDATE');
+    }
+  }
+
+  if (resourceType === 'VEHICLE') {
+    const currentId = currentRecord.id as string;
+    const inputVehicleId = updateInput.vehicleId as string | undefined;
+    if (inputVehicleId && inputVehicleId !== currentId) {
+      deny('Access denied: cannot change vehicle identity');
+    }
+  }
+
+  if (resourceType === 'DRIVER') {
+    const currentId = currentRecord.id as string;
+    const inputDriverId = updateInput.driverId as string | undefined;
+    if (inputDriverId && inputDriverId !== currentId) {
+      deny('Access denied: cannot change driver identity');
+    }
+  }
 }
 
 export function getScopedWhereForResource(

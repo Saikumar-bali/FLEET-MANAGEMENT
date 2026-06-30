@@ -119,10 +119,10 @@ export const RESOURCE_MAP: Record<ResourceType, ResourceMapping> = {
     prismaModel: 'document',
     scopeType: 'VEHICLE',
     permissions: {
-      view: 'document_view',
-      create: 'document_create',
-      update: 'document_update',
-      delete: 'document_delete',
+      view: 'documents_view',
+      create: 'documents_upload',
+      update: 'documents_update',
+      delete: 'documents_delete',
     },
     relationFields: {
       vehicleId: 'vehicleId',
