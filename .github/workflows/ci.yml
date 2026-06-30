@@ -80,6 +80,8 @@ jobs:
         working-directory: backend
       - run: npm run profile-link:diagnose
         working-directory: backend
+      - run: npm run test:driver-portal-security
+        working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest

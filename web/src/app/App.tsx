@@ -28,6 +28,14 @@ import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
+import { DriverPortalLayout } from '../pages/driver-portal/DriverPortalLayout';
+import { DriverPortalHome } from '../pages/driver-portal/DriverPortalHome';
+import { DriverProfilePage } from '../pages/driver-portal/DriverProfilePage';
+import { DriverTripsPage } from '../pages/driver-portal/DriverTripsPage';
+import { DriverVehiclesPage } from '../pages/driver-portal/DriverVehiclesPage';
+import { DriverDocumentsPage } from '../pages/driver-portal/DriverDocumentsPage';
+import { DriverFuelPage } from '../pages/driver-portal/DriverFuelPage';
+import { DriverExpensesPage } from '../pages/driver-portal/DriverExpensesPage';
 import { lazy, Suspense } from 'react';
 
 const FinancePage = lazy(() => import('../pages/FinancePage'));
@@ -123,6 +131,15 @@ function App() {
                   <Route path="/users/:id" element={<UserDetailPage />} />
                 </Route>
                 <Route path="/my-access" element={<MyAccessPage />} />
+                <Route element={<DriverPortalLayout />}>
+                  <Route path="/driver-portal" element={<DriverPortalHome />} />
+                  <Route path="/driver-portal/profile" element={<DriverProfilePage />} />
+                  <Route path="/driver-portal/trips" element={<DriverTripsPage />} />
+                  <Route path="/driver-portal/vehicles" element={<DriverVehiclesPage />} />
+                  <Route path="/driver-portal/documents" element={<DriverDocumentsPage />} />
+                  <Route path="/driver-portal/fuel" element={<DriverFuelPage />} />
+                  <Route path="/driver-portal/expenses" element={<DriverExpensesPage />} />
+                </Route>
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

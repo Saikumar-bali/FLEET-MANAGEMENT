@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { sidebarSections } from '../config/navigation';
 import { useAuth } from '../context/AuthContext';
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
+import { getMyAccessSummary } from '../services/api';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -46,6 +47,18 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
   const auth = useAuth();
   const location = useLocation();
   const accountChipRef = useRef<HTMLButtonElement>(null);
+  const [hasDriverProfile, setHasDriverProfile] = useState(false);
+
+  useEffect(() => {
+    if (!auth.accessToken) return;
+    getMyAccessSummary(auth.accessToken)
+      .then((res) => {
+        const summary = res.data;
+        const has = summary.profileTypes.includes('DRIVER') || !!summary.primaryDriverProfile;
+        setHasDriverProfile(has);
+      })
+      .catch(() => {});
+  }, [auth.accessToken]);
 
   const visibleSections = sidebarSections.map((section) => ({
     ...section,
@@ -128,6 +141,24 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
               </div>
             </div>
           ))}
+
+          {hasDriverProfile && (
+            <div>
+              <p className="sidebar-section-label">DRIVER</p>
+              <div className="sidebar-nav">
+                <NavLink
+                  to="/driver-portal"
+                  onClick={onClose}
+                  className={`nav-item${isActive('/driver-portal') ? ' nav-item-active' : ''}`}
+                >
+                  <span className="nav-item-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                  </span>
+                  <span className="nav-item-label">Driver Portal</span>
+                </NavLink>
+              </div>
+            </div>
+          )}
         </nav>
 
         <div className="sidebar-footer">
