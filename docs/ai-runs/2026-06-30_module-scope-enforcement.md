@@ -54,22 +54,20 @@
 14. Admin not automatically global
 15. List filtering via scoped where (Vehicle, Trip, Fuel)
 
-## Evidence Results (latest)
+## Evidence Results
 - Backend TypeScript: **PASS** (tsc --noEmit clean)
 - Web build: **PASS**
 - API docs: **PASS** (126/126)
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28)
-- Access diagnose: **PASS** (21 users)
+- Access diagnose: **PASS** (15 users)
 - Module-scope test: **PASS** (15 sections, all assertions)
-- Module-scope API test: **PASS** (14 API checks, all assertions)
+- Module-scope API test: **PASS** (16 API checks)
+- GitHub Actions: Not triggered (CI workflow only targets phase-8-documents-storage)
 - Full E2E: NO
 - Deploy: NO
 
 ## Latest Session Fixes
-1. **assertCanChangeResourceScope wired into all 8 update controllers** — Trip, Fuel, Expense, Document, Maintenance, Repair, Vehicle, Driver
-2. **CREATE no longer grants VIEW** — hierarchy changed to `CREATE: ['CREATE']` only
-3. **List filters respect VIEW level** — `scopeCanSatisfyLevel(ds, 'VIEW')` excludes CREATE-only scopes
-4. **Owner bypass restricted** — `createdById` only allows VIEW, not UPDATE/DELETE
-5. **Controller/service wiring tested** — tests exercise the exact call pattern controllers use
-6. **Dedicated test roles** — never mutates production driver/admin/super_admin roles
+1. **linkedEntityType-only change validation** — detects type-only changes, denies if effective pair is out-of-scope or unknown
+2. **API smoke test requires local backend** — locked to 127.0.0.1, PORT env fallback to 4000
+3. **16 API smoke checks pass** — GET/PATCH/POST/PUT across vehicles, trips, fuel, expenses, documents, drivers
