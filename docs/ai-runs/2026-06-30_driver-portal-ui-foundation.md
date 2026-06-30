@@ -11,7 +11,7 @@ Create a secure, read-only driver portal UI that uses existing `/me/driver-*` AP
 5. **Routes** — All `/driver-portal/*` routes added to `App.tsx` inside ProtectedRoute
 6. **MyAccess integration** — "Open Driver Portal" link when driver profile exists
 7. **Sidebar integration** — Conditional "Driver Portal" menu item based on profile link data
-8. **Playwright test** — 5 tests for portal access, cross-driver isolation, unlinked state
+8. **Playwright test** — 5 tests for portal access, cross-driver isolation, unlinked state (CREATED, MANUAL ONLY, NOT CI-GATED YET)
 9. **CI integration** — `test:driver-portal-security` added to CI workflow
 
 ## Verification
