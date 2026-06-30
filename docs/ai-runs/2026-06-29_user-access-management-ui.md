@@ -83,6 +83,16 @@ Module-level scope enforcement: Pending (Phase 3).
 - Only scopes with reason starting with PHASE_ACCESS_UI_TEST or scopeId = phase2-vehicle-test are deleted
 - Final cleanup also removes test-prefixed scopes after activity verification
 
+### Hardcoded password removed
+- Test password comes from env only: E2E_ACCESS_TEST_PASSWORD or CI_ACCESS_TEST_PASSWORD
+- Test user identifier from env: E2E_ACCESS_TEST_IDENTIFIER or CI_ACCESS_TEST_IDENTIFIER
+- No fallback password, no password in code, no password in docs
+
+### Test-user mutation guarded
+- E2E_ALLOW_TEST_USER_MUTATION=true required to create or reset PHASE_ACCESS_UI_TEST_USER
+- If not set, test fails with clear message telling operator to create test user manually
+- Remote API bases require E2E_ALLOW_REMOTE_TEST_MUTATION=true (disposable staging only)
+
 ### Activity tab exact verification
 - Verifies all four admin.user.* actions: permission.allow, permission.deny, scope.grant, scope.remove
 - Activity metadata search uses `$queryRawUnsafe` with SQL concatenation for correct LIKE wildcards
@@ -95,14 +105,18 @@ Module-level scope enforcement: Pending (Phase 3).
 - Verifies Phase 3 disclaimer text
 - Properly clears session before test user login
 
-## Final Evidence Results (a0bc643)
+## Final Evidence Results (current session)
 - Backend build: **PASS** (prisma generate EPERM on Windows — tsc --noEmit clean)
 - Web build: **PASS**
 - API docs: **PASS** (126/126)
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28 assertions)
-- Access diagnose: **PASS** (16 users)
+- Access diagnose: **PASS** (15 users)
 - Playwright headed: **PASS** (2/2 tests)
+- Hardcoded test password removed: **YES**
+- Env-only test password: **YES**
+- Test-user mutation guarded: **YES**
+- Remote mutation guarded: **YES**
 - Deterministic test user only: **YES**
 - No real user override deletion: **YES**
 - Cleanup limited to PHASE_ACCESS_UI_TEST artifacts: **YES**
