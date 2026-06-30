@@ -208,33 +208,47 @@ export async function assertCanChangeResourceScope(
     if (newTripId) checkScopeForInput(actor, { tripId: newTripId }, 'UPDATE');
   }
 
+  const currentLinkedEntityType = currentRecord.linkedEntityType as string | null | undefined;
   const currentLinkedEntityId = currentRecord.linkedEntityId as string | null | undefined;
+  const newLinkedEntityType = updateInput.linkedEntityType as string | null | undefined;
   const newLinkedEntityId = updateInput.linkedEntityId as string | null | undefined;
-  if (newLinkedEntityId !== undefined && newLinkedEntityId !== currentLinkedEntityId) {
-    const linkedType = (updateInput.linkedEntityType || currentRecord.linkedEntityType) as string;
-    if (!linkedType) deny('Access denied: linkedEntityType is required when changing linkedEntityId');
-    if (!newLinkedEntityId) return;
-    switch (linkedType) {
-      case 'VEHICLE':
-        checkScopeForInput(actor, { vehicleId: newLinkedEntityId }, 'UPDATE');
-        break;
-      case 'DRIVER':
-        checkScopeForInput(actor, { driverId: newLinkedEntityId }, 'UPDATE');
-        break;
-      case 'TRIP':
-        checkScopeForInput(actor, { tripId: newLinkedEntityId }, 'UPDATE');
-        break;
-      case 'FUEL_ENTRY':
-      case 'FUEL':
-      case 'EXPENSE':
-      case 'MAINTENANCE':
-      case 'REPAIR': {
-        const resolved = await resolveLinkedEntityScope(actor, linkedType, newLinkedEntityId);
-        checkScopeForInput(actor, resolved, 'UPDATE');
-        break;
+
+  const effectiveLinkedEntityType = newLinkedEntityType ?? currentLinkedEntityType;
+  const effectiveLinkedEntityId = newLinkedEntityId ?? currentLinkedEntityId;
+
+  const linkedTypeChanged = newLinkedEntityType !== undefined && newLinkedEntityType !== currentLinkedEntityType;
+  const linkedIdChanged = newLinkedEntityId !== undefined && newLinkedEntityId !== currentLinkedEntityId;
+
+  if (linkedTypeChanged || linkedIdChanged) {
+    if (effectiveLinkedEntityType && !effectiveLinkedEntityId) {
+      deny('Access denied: linkedEntityType requires a linkedEntityId');
+    }
+    if (!effectiveLinkedEntityType && effectiveLinkedEntityId) {
+      deny('Access denied: linkedEntityId requires a linkedEntityType');
+    }
+    if (effectiveLinkedEntityType && effectiveLinkedEntityId) {
+      switch (effectiveLinkedEntityType) {
+        case 'VEHICLE':
+          checkScopeForInput(actor, { vehicleId: effectiveLinkedEntityId }, 'UPDATE');
+          break;
+        case 'DRIVER':
+          checkScopeForInput(actor, { driverId: effectiveLinkedEntityId }, 'UPDATE');
+          break;
+        case 'TRIP':
+          checkScopeForInput(actor, { tripId: effectiveLinkedEntityId }, 'UPDATE');
+          break;
+        case 'FUEL_ENTRY':
+        case 'FUEL':
+        case 'EXPENSE':
+        case 'MAINTENANCE':
+        case 'REPAIR': {
+          const resolved = await resolveLinkedEntityScope(actor, effectiveLinkedEntityType, effectiveLinkedEntityId);
+          checkScopeForInput(actor, resolved, 'UPDATE');
+          break;
+        }
+        default:
+          deny(`Access denied: unknown linkedEntityType "${effectiveLinkedEntityType}"`);
       }
-      default:
-        deny(`Access denied: unknown linkedEntityType "${linkedType}"`);
     }
   }
 
