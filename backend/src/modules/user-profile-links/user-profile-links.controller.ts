@@ -41,10 +41,15 @@ export async function getUserProfileLinksController(req: Request, res: Response)
 }
 
 export async function createProfileLinkController(req: Request, res: Response) {
-  const link = await createProfileLink(req.body, req.authUser!.id);
+  const actorUserId = req.authUser!.id;
+  const { userId, profileType, profileId } = req.body;
+
+  await validateProfileLinkCreate(actorUserId, userId, profileType, profileId);
+
+  const link = await createProfileLink(req.body, actorUserId);
 
   await createAuditLog(req, {
-    userId: req.authUser!.id,
+    userId: actorUserId,
     action: 'profile_link.create',
     entityType: 'user_profile_link',
     entityId: link.id,

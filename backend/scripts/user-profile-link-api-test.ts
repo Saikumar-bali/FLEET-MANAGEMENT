@@ -5,13 +5,17 @@
  * 1. GET /me/profile-links returns only own links
  * 2. POST /me/profile-links is 404 (endpoint removed)
  * 3. POST /users/:userId/profile-links requires permission
- * 4. Admin without DRIVER scope cannot link target driver
- * 5. Admin/super_admin with proper scope can link
- * 6. /me/driver-profile returns only linked driver
- * 7. /me/driver-trips does not return another driver's trips
- * 8. Revoked link blocks /me/driver-profile
- * 9. Duplicate active link still rejected
- * 10. Primary link behavior still works
+ * 4. Admin without DRIVER scope cannot link target driver (user-scoped alias)
+ * 5. Admin/super_admin with proper scope can link (user-scoped alias)
+ * 6. Admin without DRIVER scope cannot link target driver (old admin route)
+ * 7. super_admin can link via old admin route
+ * 8. Actor with DRIVER scope can link via old admin route
+ * 9. Normal user calls removed self-create → 404
+ * 10. /me/driver-profile returns only linked driver
+ * 11. /me/driver-trips does not return another driver's trips
+ * 12. Revoked link blocks /me/driver-profile
+ * 13. Duplicate active link still rejected
+ * 14. Primary link behavior still works
  *
  * Uses local backend only (http://127.0.0.1:4000).
  * Test data prefix: PHASE_PROFILE_LINK_TEST
@@ -334,8 +338,8 @@ async function main() {
     }
   }
 
-  // ─── Test 4: Admin without DRIVER scope cannot link target driver ───
-  console.log('\n4. Admin without DRIVER scope cannot link target driver');
+  // ─── Test 4: Admin without DRIVER scope cannot link target driver (user-scoped alias) ───
+  console.log('\n4. Admin without DRIVER scope cannot link target driver (POST /users/:userId/profile-links)');
 
   if (adminToken2) {
     const res = await request('POST', `/api/v1/users/${targetUserB.id}/profile-links`, adminToken2, {
@@ -344,16 +348,53 @@ async function main() {
     });
     // Admin with profile_link_create but NO DRIVER data scope should get 403
     if (res.status === 403) {
-      pass('Admin without DRIVER scope blocked from creating DRIVER link');
+      pass('Admin without DRIVER scope blocked on user-scoped alias route');
     } else {
-      fail(`Expected 403, got ${res.status}: ${JSON.stringify(res.data)}`);
+      fail(`Expected 403 on user-scoped alias, got ${res.status}: ${JSON.stringify(res.data)}`);
     }
   }
 
-  // ─── Test 5: super_admin can link (via service layer — API uses same validation) ───
-  console.log('\n5. super_admin can link via admin API');
+  // ─── Test 5: Admin without DRIVER scope cannot link target driver (old admin route) ───
+  console.log('\n5. Admin without DRIVER scope cannot link target driver (POST /user-profile-links)');
 
-  // super_admin bypasses scope check. Use the direct admin route.
+  if (adminToken2) {
+    const res = await request('POST', '/api/v1/user-profile-links', adminToken2, {
+      userId: targetUserB.id,
+      profileType: 'DRIVER',
+      profileId: driver2.id,
+    });
+    // Admin with profile_link_create but NO DRIVER data scope should get 403
+    if (res.status === 403) {
+      pass('Admin without DRIVER scope blocked on old admin route');
+    } else {
+      fail(`Expected 403 on old admin route, got ${res.status}: ${JSON.stringify(res.data)}`);
+    }
+  }
+
+  // ─── Test 6: super_admin can link via user-scoped alias route ───
+  console.log('\n6. super_admin can link via user-scoped alias route');
+
+  if (superAdminToken) {
+    const res = await request('POST', `/api/v1/users/${targetUserB.id}/profile-links`, superAdminToken, {
+      profileType: 'DRIVER',
+      profileId: driver2.id,
+      isPrimary: true,
+    });
+    if (res.status === 201) {
+      pass('super_admin can create DRIVER link via user-scoped alias');
+    } else {
+      fail(`Expected 201 on user-scoped alias, got ${res.status}: ${JSON.stringify(res.data)}`);
+    }
+  }
+
+  // ─── Test 7: super_admin can link via old admin route ───
+  console.log('\n7. super_admin can link via old admin route');
+
+  // Clean up any existing active link for targetUserB + driver2 from test 6
+  await prisma.userProfileLink.deleteMany({
+    where: { userId: targetUserB.id, profileType: 'DRIVER', profileId: driver2.id, status: 'ACTIVE' },
+  });
+
   if (superAdminToken) {
     const res = await request('POST', '/api/v1/user-profile-links', superAdminToken, {
       userId: targetUserB.id,
@@ -362,12 +403,12 @@ async function main() {
       isPrimary: true,
     });
     if (res.status === 201) {
-      pass('super_admin can create DRIVER profile link');
+      pass('super_admin can create DRIVER link via old admin route');
     } else {
-      fail(`Expected 201, got ${res.status}: ${JSON.stringify(res.data)}`);
+      fail(`Expected 201 on old admin route, got ${res.status}: ${JSON.stringify(res.data)}`);
     }
   } else {
-    // If no super_admin token available, create via service layer
+    // Fallback: create via service layer
     const link = await prisma.userProfileLink.create({
       data: {
         userId: targetUserB.id,
@@ -381,8 +422,23 @@ async function main() {
     pass('Created DRIVER link for UserB via service (no super_admin token available)');
   }
 
-  // ─── Test 6: /me/driver-profile returns only linked driver ───
-  console.log('\n6. /me/driver-profile returns only linked driver');
+  // ─── Test 8: Normal user calls removed self-create → 404 ───
+  console.log('\n8. Normal user self-create POST /user-profile-links/me/profile-links returns 404');
+
+  if (targetAToken) {
+    const res = await request('POST', '/api/v1/user-profile-links/me/profile-links', targetAToken, {
+      profileType: 'DRIVER',
+      profileId: driver1.id,
+    });
+    if (res.status === 404) {
+      pass('Self-create endpoint returns 404 (removed)');
+    } else {
+      fail(`Expected 404 on self-create, got ${res.status}`);
+    }
+  }
+
+  // ─── Test 9: /me/driver-profile returns only linked driver ───
+  console.log('\n9. /me/driver-profile returns only linked driver');
 
   if (targetAToken) {
     const res = await request('GET', '/api/v1/me/driver-profile', targetAToken);
@@ -398,8 +454,8 @@ async function main() {
     }
   }
 
-  // ─── Test 7: /me/driver-trips does not return another driver's trips ───
-  console.log('\n7. /me/driver-trips scoped to linked driver');
+  // ─── Test 10: /me/driver-trips does not return another driver's trips ───
+  console.log('\n10. /me/driver-trips scoped to linked driver');
 
   // Create a trip for driver2 using proper required fields
   const testVehicle = await prisma.vehicle.findFirst({ where: {} });
@@ -438,8 +494,8 @@ async function main() {
     }
   }
 
-  // ─── Test 8: Revoked link blocks /me/driver-profile ───
-  console.log('\n8. Revoked link blocks /me/driver-profile');
+  // ─── Test 11: Revoked link blocks /me/driver-profile ───
+  console.log('\n11. Revoked link blocks /me/driver-profile');
 
   // Revoke UserA's link
   await prisma.userProfileLink.update({
@@ -456,8 +512,8 @@ async function main() {
     }
   }
 
-  // ─── Test 9: Duplicate active link still rejected ───
-  console.log('\n9. Duplicate active link rejected at service level');
+  // ─── Test 12: Duplicate active link still rejected ───
+  console.log('\n12. Duplicate active link rejected at service level');
 
   const { createProfileLink } = await import('../src/modules/user-profile-links/user-profile-links.service');
   try {
@@ -474,8 +530,8 @@ async function main() {
     }
   }
 
-  // ─── Test 10: Primary link behavior still works ───
-  console.log('\n10. Primary link behavior works');
+  // ─── Test 13: Primary link behavior still works ───
+  console.log('\n13. Primary link behavior works');
 
   const newLink = await createProfileLink(
     { userId: targetUserA.id, profileType: 'DRIVER', profileId: driver2.id, isPrimary: true },

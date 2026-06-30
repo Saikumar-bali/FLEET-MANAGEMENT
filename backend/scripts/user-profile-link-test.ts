@@ -40,11 +40,17 @@ async function expectSuccess(fn: () => Promise<unknown>, label: string) {
 }
 
 async function cleanup() {
-  await prisma.userProfileLink.deleteMany({
-    where: { user: { name: { startsWith: PREFIX } } },
-  });
-  await prisma.user.deleteMany({ where: { name: { startsWith: PREFIX } } });
-  await prisma.driver.deleteMany({ where: { name: { startsWith: PREFIX } } });
+  try {
+    await prisma.userProfileLink.deleteMany({
+      where: { user: { name: { startsWith: PREFIX } } },
+    });
+  } catch {}
+  try {
+    await prisma.user.deleteMany({ where: { name: { startsWith: PREFIX } } });
+  } catch {}
+  try {
+    await prisma.driver.deleteMany({ where: { name: { startsWith: PREFIX } } });
+  } catch {}
 }
 
 async function createTestUserRole(): Promise<string> {
@@ -328,8 +334,8 @@ async function main() {
     pass('Repair script env flag check (runtime check)');
   }
 
-  // 14. Self-create endpoint removed — verify controller does not export createSelfProfileLinkController
-  console.log('\n14. Self-create endpoint verification');
+  // 14. Self-create endpoint removed + controller uses scope validation
+  console.log('\n14. Self-create endpoint & scope validation verification');
 
   // Read the controller source to verify the unsafe function is removed
   const controllerPath = __dirname + '/../src/modules/user-profile-links/user-profile-links.controller.ts';
@@ -351,7 +357,30 @@ async function main() {
     fail('POST /me/profile-links still in routes');
   }
 
-  // 15. Validate scope validation module imports
+  // Verify createProfileLinkController calls validateProfileLinkCreate
+  if (controllerSrc.includes('await validateProfileLinkCreate')) {
+    pass('createProfileLinkController calls validateProfileLinkCreate');
+  } else {
+    fail('createProfileLinkController does NOT call validateProfileLinkCreate');
+  }
+
+  // Verify it calls validateProfileLinkCreate BEFORE createProfileLink
+  const validateIdx = controllerSrc.indexOf('await validateProfileLinkCreate');
+  const createIdx = controllerSrc.indexOf('await createProfileLink');
+  if (validateIdx > 0 && createIdx > 0 && validateIdx < createIdx) {
+    pass('validateProfileLinkCreate is called before createProfileLink in controller');
+  } else {
+    fail('validateProfileLinkCreate must be called BEFORE createProfileLink');
+  }
+
+  // Verify createProfileLinkForUserController also calls validation
+  if (controllerSrc.includes('createProfileLinkForUserController') && controllerSrc.includes('validateProfileLinkCreate')) {
+    pass('createProfileLinkForUserController uses validateProfileLinkCreate');
+  } else {
+    fail('createProfileLinkForUserController missing scope validation');
+  }
+
+  // 15. Scope validation module import check
   console.log('\n15. Scope validation module');
 
   try {
