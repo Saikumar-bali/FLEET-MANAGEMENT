@@ -1803,28 +1803,31 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
       get: { tags: ['Profile Links'], summary: 'Get profile links for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'List of profile links for user' } } },
     },
     '/me/profile-links': {
-      get: { tags: ['Profile Links'], summary: 'Get current user profile links', security: [{ bearerAuth: [] }], parameters: [{ name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'Current user profile links' } } },
-      post: { tags: ['Profile Links'], summary: 'Create profile link for current user', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['profileType', 'profileId'], properties: { profileType: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] }, profileId: { type: 'string' }, isPrimary: { type: 'boolean' }, metadata: { type: 'object' } } } } } }, responses: { '201': { description: 'Profile link created' } } },
+      get: { tags: ['Profile Links'], summary: 'Get current user profile links (read-only)', security: [{ bearerAuth: [] }], parameters: [{ name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'Current user profile links' } } },
+    },
+    '/users/{userId}/profile-links': {
+      get: { tags: ['Profile Links'], summary: 'Get profile links for a user (admin, requires profile_link_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'List of profile links for user' } } },
+      post: { tags: ['Profile Links'], summary: 'Create profile link for user (admin, requires profile_link_create + DRIVER scope)', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['profileType', 'profileId'], properties: { profileType: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] }, profileId: { type: 'string' }, isPrimary: { type: 'boolean' }, metadata: { type: 'object' } } } } } }, responses: { '201': { description: 'Profile link created' }, '403': { description: 'Insufficient scope or permission' } } },
     },
 
-    // ─── Driver Portal ───
+    // ─── Driver Portal (data scoped by active UserProfileLink, read-only) ───
     '/me/driver-profile': {
-      get: { tags: ['Driver Portal'], summary: 'Get linked driver profile', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Driver profile' }, '404': { description: 'No linked driver profile' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get linked driver profile (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Driver profile for active linked driver' }, '404': { description: 'No linked driver profile or link revoked' } } },
     },
     '/me/driver-trips': {
-      get: { tags: ['Driver Portal'], summary: 'Get trips for linked driver', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated trips for linked driver' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get trips for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated trips for linked driver' } } },
     },
     '/me/driver-vehicles': {
-      get: { tags: ['Driver Portal'], summary: 'Get vehicles for linked driver', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Vehicles associated with linked driver' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get vehicles for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Vehicles associated with linked driver' } } },
     },
     '/me/driver-documents': {
-      get: { tags: ['Driver Portal'], summary: 'Get documents for linked driver', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated documents for linked driver' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get documents for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated documents for linked driver' } } },
     },
     '/me/driver-fuel': {
-      get: { tags: ['Driver Portal'], summary: 'Get fuel entries for linked driver', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated fuel entries for linked driver' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get fuel entries for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated fuel entries for linked driver' } } },
     },
     '/me/driver-expenses': {
-      get: { tags: ['Driver Portal'], summary: 'Get expenses for linked driver', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated expenses for linked driver' } } },
+      get: { tags: ['Driver Portal'], summary: 'Get expenses for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated expenses for linked driver' } } },
     },
   },
 };

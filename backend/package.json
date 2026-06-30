@@ -31,6 +31,7 @@
     "profile-link:diagnose": "ts-node scripts/driver-profile-link-diagnose.ts",
     "profile-link:repair": "ts-node scripts/driver-profile-link-repair.ts",
     "test:user-profile-link": "ts-node scripts/user-profile-link-test.ts",
+    "test:user-profile-link-api": "ts-node scripts/user-profile-link-api-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

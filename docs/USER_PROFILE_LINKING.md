@@ -1,7 +1,7 @@
 # User Profile Linking
 
 **Phase**: 16 — Generic User/Profile Linking  
-**Status**: Completed  
+**Status**: Security-Hardened  
 **Date**: 2026-06-30
 
 ## Overview
@@ -37,28 +37,56 @@ A generic, safe link between login accounts (User) and business profiles. This i
 - Cannot link to inactive profiles
 - Duplicate active links rejected
 - Setting isPrimary=true unsets previous primary for same userId/profileType
-- Actor must have permission and scope to link
+- **Actor must have permission and DRIVER scope to create DRIVER links**
+- super_admin bypasses scope checks
+- GLOBAL/MANAGE scope bypasses scope checks
+- Non-DRIVER profile types restricted to super_admin until scope validation is implemented
 
 ## API Endpoints
 
-### Self API (authentication only)
-- `GET /api/v1/me/profile-links` — List current user's profile links
-- `POST /api/v1/me/profile-links` — Create profile link for current user
+### Self API (authentication only, read-only)
+- `GET /api/v1/user-profile-links/me/profile-links` — List current user's profile links
+
+**Note**: Self-create endpoint (`POST /api/v1/user-profile-links/me/profile-links`) has been REMOVED for security. Normal users cannot self-link to driver profiles.
 
 ### Admin API (requires profile_link_* permissions)
-- `GET /api/v1/user-profile-links` — List all profile links
-- `GET /api/v1/user-profile-links/:id` — Get profile link by ID
-- `GET /api/v1/user-profile-links/user/:userId` — Get links for a user
-- `POST /api/v1/user-profile-links` — Create profile link
-- `PATCH /api/v1/user-profile-links/:id` — Update profile link
-- `PATCH /api/v1/user-profile-links/:id/revoke` — Revoke profile link
-- `DELETE /api/v1/user-profile-links/:id` — Delete profile link
+- `GET /api/v1/user-profile-links` — List all profile links (admin, requires profile_link_view)
+- `GET /api/v1/user-profile-links/:id` — Get profile link by ID (admin, requires profile_link_view)
+- `GET /api/v1/user-profile-links/user/:userId` — Get links for a user (admin, requires profile_link_view)
+- `POST /api/v1/user-profile-links` — Create profile link (admin, requires profile_link_create)
+- `PATCH /api/v1/user-profile-links/:id` — Update profile link (admin, requires profile_link_update)
+- `PATCH /api/v1/user-profile-links/:id/revoke` — Revoke profile link (admin, requires profile_link_revoke)
+- `DELETE /api/v1/user-profile-links/:id` — Delete profile link (admin, requires profile_link_delete)
+
+### User-Scoped Admin Aliases
+- `GET /api/v1/users/:userId/profile-links` — Get links for a user (requires profile_link_view)
+- `POST /api/v1/users/:userId/profile-links` — Create link for a user (requires profile_link_create + scope)
 
 ### Access Summary
 - `GET /api/v1/access/me/summary` now includes:
   - `profileLinks` — All active profile links for current user
   - `primaryDriverProfile` — Primary driver profile details (if linked)
   - `profileTypes` — List of linked profile types
+
+## Security Model
+
+### Link Creation Authorization
+For DRIVER profile links, the actor must satisfy ALL of:
+1. Have `profile_link_create` permission
+2. Have DRIVER data scope (UPDATE or MANAGE level) on the target driver
+3. OR be super_admin (bypasses all scope checks)
+4. OR have GLOBAL/MANAGE data scope (bypasses all scope checks)
+
+For non-DRIVER profile types:
+- Restricted to super_admin only until scope validation is implemented
+- Fail-closed approach: throws 403 for non-super_admin actors
+
+### Cross-Driver Leak Prevention
+- Normal users CANNOT self-create links to any profile
+- Only authorized admins can create links
+- Admins without DRIVER scope CANNOT link to drivers they don't have access to
+- Driver portal APIs only return data for the ACTIVELY linked driver
+- Revoked links immediately block portal access
 
 ## Permissions
 
@@ -100,11 +128,29 @@ DRIVER_PROFILE_LINK_REPAIR_APPLY=true npm run profile-link:repair  # Apply
 - Does NOT print secrets
 - Dry-run by default
 
-## Security
+## Tests
 
-- No automatic user creation
-- No password generation
-- No secret printing
-- Self API requires only authentication
-- Admin APIs require specific permissions
-- Audit logged for every create/update/revoke
+### Service-Level Tests (`test:user-profile-link`)
+- Create, duplicate rejection, primary behavior, user isolation
+- Revoked link blocks driver access
+- Self-create endpoint removed (verified via source inspection)
+- Scope validation module loads correctly
+
+### API-Level Tests (`test:user-profile-link-api`)
+- GET /me/profile-links returns only own links
+- POST /me/profile-links returns 404 (unsafe endpoint removed)
+- POST /users/:userId/profile-links requires permission
+- Admin without DRIVER scope blocked from creating DRIVER link
+- super_admin can link
+- /me/driver-profile returns only linked driver
+- /me/driver-trips does not return another driver's trips
+- Revoked link blocks /me/driver-profile
+- Duplicate active link rejected
+- Primary link behavior works
+
+## Security Status
+
+- Unsafe self-create endpoint removed: **YES**
+- Normal users cannot self-link to drivers: **YES**
+- Admin link creation enforces DRIVER scope: **YES**
+- Driver portal cross-driver leak tested: **YES**

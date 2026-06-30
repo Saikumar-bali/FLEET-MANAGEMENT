@@ -26,19 +26,24 @@ async function expect404(fn: () => Promise<unknown>, label: string) {
   }
 }
 
+async function expect403(fn: () => Promise<unknown>, label: string) {
+  try { await fn(); fail(`${label}: expected 403`); }
+  catch (e: any) {
+    if (e.statusCode === 403) pass(`${label}: forbidden — ${e.message}`);
+    else fail(`${label}: expected 403 got ${e.statusCode}: ${e.message}`);
+  }
+}
+
 async function expectSuccess(fn: () => Promise<unknown>, label: string) {
   try { await fn(); pass(label); }
   catch (e: any) { fail(`${label}: unexpected: ${e.statusCode ?? ''} ${e.message}`); }
 }
 
 async function cleanup() {
-  // Clean up test profile links
   await prisma.userProfileLink.deleteMany({
     where: { user: { name: { startsWith: PREFIX } } },
   });
-  // Clean up test users
   await prisma.user.deleteMany({ where: { name: { startsWith: PREFIX } } });
-  // Clean up test drivers
   await prisma.driver.deleteMany({ where: { name: { startsWith: PREFIX } } });
 }
 
@@ -65,11 +70,32 @@ async function createTestUserRole(): Promise<string> {
   return role.id;
 }
 
+async function createTestDriverOnlyRole(): Promise<string> {
+  const existing = await prisma.role.findFirst({ where: { key: `${PREFIX.toLowerCase()}_driver_only_role` } });
+  if (existing) return existing.id;
+
+  const role = await prisma.role.create({
+    data: { name: `${PREFIX}_DRIVER_ONLY_ROLE`, key: `${PREFIX.toLowerCase()}_driver_only_role`, status: 'ACTIVE' },
+  });
+
+  // Only driver_view — NO profile_link_create
+  const permKeys = ['profile_link_view', 'driver_view'];
+  for (const key of permKeys) {
+    const perm = await prisma.permission.findFirst({ where: { key } });
+    if (perm) {
+      await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: perm.id } });
+    }
+  }
+
+  return role.id;
+}
+
 async function main() {
   console.log('=== User Profile Link Test ===\n');
 
   await cleanup();
   const roleId = await createTestUserRole();
+  const driverOnlyRoleId = await createTestDriverOnlyRole();
 
   // 1. Create test users and drivers
   console.log('1. Create test users and drivers');
@@ -96,6 +122,18 @@ async function main() {
     },
   });
 
+  // UserC has no profile_link_create permission
+  const userC = await prisma.user.create({
+    data: {
+      name: `${PREFIX}_USER_C_NO_PERM`,
+      email: `${PREFIX.toLowerCase()}_user_c@test.local`,
+      username: `${PREFIX.toLowerCase()}_user_c`,
+      passwordHash: 'not-a-real-hash',
+      roleId: driverOnlyRoleId,
+      status: 'ACTIVE',
+    },
+  });
+
   const driver1 = await prisma.driver.create({
     data: {
       name: `${PREFIX}_DRIVER_1`,
@@ -114,9 +152,9 @@ async function main() {
     },
   });
 
-  pass(`Created test users (${userA.id}, ${userB.id}) and drivers (${driver1.id}, ${driver2.id})`);
+  pass(`Created test users (${userA.id}, ${userB.id}, ${userC.id}) and drivers (${driver1.id}, ${driver2.id})`);
 
-  // 2. Create driver profile link
+  // 2. Create driver profile link (admin creates for userA)
   console.log('\n2. Create driver profile link');
 
   const link1 = await createProfileLink({ userId: userA.id, profileType: 'DRIVER', profileId: driver1.id, isPrimary: true }, userA.id);
@@ -144,7 +182,7 @@ async function main() {
     fail('Link1 should be non-primary after setting Link2 as primary');
   }
 
-  // 5. /me/profile-links returns only current user links
+  // 5. User profile links filtered by user
   console.log('\n5. User profile links filtered by user');
 
   const userALinks = await getUserProfileLinks(userA.id);
@@ -188,7 +226,7 @@ async function main() {
     fail(`UserA should have DRIVER profile type`);
   }
 
-  // 8. User A cannot access User B driver data
+  // 8. User A cannot access User B driver data (isolation)
   console.log('\n8. User isolation');
 
   const userBHasDriver = await getDriverIdForUser(userB.id);
@@ -221,29 +259,35 @@ async function main() {
     fail(`Expected ${driver1.id}, got ${driverIdAfterRevoke}`);
   }
 
-  // 10. Diagnose script test (verify it runs)
-  console.log('\n10. Diagnose script (import check)');
+  // 10. After revoking ALL links, getDriverIdForUser returns null
+  console.log('\n10. Revoking all links removes driver access');
+
+  await revokeProfileLink(link1.id);
+  const driverIdAfterAllRevoked = await getDriverIdForUser(userA.id);
+  if (driverIdAfterAllRevoked === null) {
+    pass('After revoking all links, getDriverIdForUser returns null');
+  } else {
+    fail(`Expected null after revoking all, got ${driverIdAfterAllRevoked}`);
+  }
+
+  // 11. Diagnose script test (verify it runs)
+  console.log('\n11. Diagnose script (import check)');
 
   try {
-    // Just verify the module can be imported and the function exists
     const diag = await import('../scripts/driver-profile-link-diagnose');
     pass('Diagnose script module imported successfully');
   } catch (e: any) {
-    // The script runs main() on import, which is expected to fail without DB
-    // We just check that the module structure is valid
     pass('Diagnose script module structure valid (runtime check skipped)');
   }
 
-  // 11. Repair script dry-run does not mutate data
-  console.log('\n11. Repair script dry-run');
+  // 12. Repair script dry-run does not mutate data
+  console.log('\n12. Repair script dry-run');
 
   const linksBeforeRepair = await prisma.userProfileLink.count({
     where: { profileType: 'DRIVER', status: 'ACTIVE' },
   });
 
   try {
-    // Import the repair module - it runs main() which checks for env flag
-    // In dry-run mode (default), it should not create any new links
     const { execSync } = await import('child_process');
     const result = execSync('npx ts-node scripts/driver-profile-link-repair.ts', {
       cwd: process.cwd(),
@@ -261,12 +305,11 @@ async function main() {
       fail(`Repair dry-run changed data: ${linksBeforeRepair} -> ${linksAfterRepair}`);
     }
   } catch (e: any) {
-    // Script may fail due to env issues, that's ok for test
     pass('Repair script dry-run executed (runtime check)');
   }
 
-  // 12. Repair apply requires env flag
-  console.log('\n12. Repair apply requires env flag');
+  // 13. Repair apply requires env flag
+  console.log('\n13. Repair apply requires env flag');
 
   try {
     const { execSync } = await import('child_process');
@@ -283,6 +326,43 @@ async function main() {
     }
   } catch (e: any) {
     pass('Repair script env flag check (runtime check)');
+  }
+
+  // 14. Self-create endpoint removed — verify controller does not export createSelfProfileLinkController
+  console.log('\n14. Self-create endpoint verification');
+
+  // Read the controller source to verify the unsafe function is removed
+  const controllerPath = __dirname + '/../src/modules/user-profile-links/user-profile-links.controller.ts';
+  const routesPath = __dirname + '/../src/modules/user-profile-links/user-profile-links.routes.ts';
+
+  const controllerSrc = require('fs').readFileSync(controllerPath, 'utf-8');
+  if (!controllerSrc.includes('createSelfProfileLinkController')) {
+    pass('createSelfProfileLinkController removed from controller');
+  } else {
+    fail('createSelfProfileLinkController still present in controller');
+  }
+
+  // Verify the routes file does not have a POST to /me/profile-links
+  const routesSrc = require('fs').readFileSync(routesPath, 'utf-8');
+  const hasSelfPost = routesSrc.match(/router\.post\s*\(\s*['"]\/me\/profile-links['"]/);
+  if (!hasSelfPost) {
+    pass('POST /me/profile-links removed from routes');
+  } else {
+    fail('POST /me/profile-links still in routes');
+  }
+
+  // 15. Validate scope validation module imports
+  console.log('\n15. Scope validation module');
+
+  try {
+    const scopeMod = await import('../src/modules/user-profile-links/user-profile-links.scope-validation');
+    if (typeof scopeMod.validateProfileLinkCreate === 'function') {
+      pass('Scope validation module loaded with validateProfileLinkCreate');
+    } else {
+      fail('Scope validation module missing validateProfileLinkCreate');
+    }
+  } catch (e: any) {
+    fail(`Scope validation module import failed: ${e.message}`);
   }
 
   // Cleanup
