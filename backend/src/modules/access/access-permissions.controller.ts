@@ -11,6 +11,7 @@ import {
   listDataScopes,
 } from './access-permissions.service';
 import { getEffectivePermissions } from './effective-permissions.service';
+import { getUserProfileLinks, getDriverIdForUser, getProfileTypesForUser } from '../user-profile-links/user-profile-links.service';
 
 export async function effectivePermissionsController(req: Request, res: Response) {
   const userId = req.params.id as string || req.authUser!.id;
@@ -79,6 +80,20 @@ export async function selfSummaryController(req: Request, res: Response) {
     take: 20,
   });
 
+  // Profile links
+  const profileLinks = await getUserProfileLinks(userId);
+  const profileTypes = await getProfileTypesForUser(userId);
+  const driverId = await getDriverIdForUser(userId);
+  let primaryDriverProfile = null;
+
+  if (driverId) {
+    const driver = await prisma.driver.findUnique({
+      where: { id: driverId },
+      select: { id: true, name: true, mobile: true, status: true },
+    });
+    primaryDriverProfile = driver;
+  }
+
   sendSuccess(res, {
     user: { id: user.id, name: user.name, email: user.email, username: user.username, status: user.status },
     role: { id: user.role.id, name: user.role.name, key: user.role.key },
@@ -88,6 +103,9 @@ export async function selfSummaryController(req: Request, res: Response) {
     userDeniedPermissions,
     dataScopes: user.dataScopes,
     recentActivity,
+    profileLinks,
+    primaryDriverProfile,
+    profileTypes,
   });
 }
 

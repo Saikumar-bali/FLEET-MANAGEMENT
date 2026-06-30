@@ -61,6 +61,8 @@ model User {
   permissionOverridesGranted UserPermissionOverride[]   @relation("PermissionOverridesGrantedBy")
   dataScopes               UserDataScope[]              @relation("UserDataScopes")
   dataScopesGranted        UserDataScope[]              @relation("DataScopesGrantedBy")
+  profileLinks             UserProfileLink[]            @relation("UserProfileLinkUser")
+  profileLinksLinkedBy     UserProfileLink[]            @relation("UserProfileLinkLinkedBy")
 
   @@map("users")
 }
@@ -1446,6 +1448,47 @@ model FinanceHistory {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("finance_history")
+}
+
+// ─── Phase 16: Generic User/Profile Linking ───
+
+enum ProfileType {
+  DRIVER
+  MECHANIC
+  EMPLOYEE
+  FINANCE
+  COLLECTOR
+  VENDOR_CONTACT
+  CUSTOMER_CONTACT
+}
+
+enum UserProfileLinkStatus {
+  ACTIVE
+  INACTIVE
+  REVOKED
+}
+
+model UserProfileLink {
+  id          String                @id @default(cuid())
+  userId      String                @map("user_id")
+  profileType ProfileType           @map("profile_type")
+  profileId   String                @map("profile_id")
+  isPrimary   Boolean               @default(false) @map("is_primary")
+  status      UserProfileLinkStatus @default(ACTIVE)
+  linkedById  String?               @map("linked_by_id")
+  linkedAt    DateTime              @default(now()) @map("linked_at")
+  unlinkedAt  DateTime?             @map("unlinked_at")
+  metadata    Json?
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  user      User @relation("UserProfileLinkUser", fields: [userId], references: [id], onDelete: Cascade)
+  linkedBy  User? @relation("UserProfileLinkLinkedBy", fields: [linkedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, profileType, profileId, status])
+  @@index([userId, profileType])
+  @@index([profileType, profileId])
+  @@map("user_profile_links")
 }
 
 model AuditLog {
