@@ -11,13 +11,8 @@ export async function getUserActivityController(req: Request, res: Response) {
         { userId: targetUserId },
         { entityId: targetUserId },
         {
-          metadata: {
-            string_contains: `"targetUserId":"${targetUserId}"`,
-          },
-        },
-        {
-          metadata: {
-            string_contains: `"actorUserId":"${targetUserId}"`,
+          id: {
+            in: await findActivityIdsByMetadata(targetUserId),
           },
         },
       ],
@@ -38,13 +33,8 @@ export async function getSelfActivityController(req: Request, res: Response) {
         { userId },
         { entityId: userId },
         {
-          metadata: {
-            string_contains: `"targetUserId":"${userId}"`,
-          },
-        },
-        {
-          metadata: {
-            string_contains: `"actorUserId":"${userId}"`,
+          id: {
+            in: await findActivityIdsByMetadata(userId),
           },
         },
       ],
@@ -54,6 +44,14 @@ export async function getSelfActivityController(req: Request, res: Response) {
   });
 
   sendSuccess(res, logs);
+}
+
+async function findActivityIdsByMetadata(userId: string): Promise<string[]> {
+  const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    `SELECT id FROM "audit_logs" WHERE CAST(metadata AS TEXT) LIKE '%' || $1 || '%'`,
+    userId,
+  );
+  return rows.map(r => r.id);
 }
 
 export async function getUsersAccessSummaryController(_req: Request, res: Response) {
@@ -91,7 +89,11 @@ export async function getUsersAccessSummaryController(_req: Request, res: Respon
           OR: [
             { userId: user.id },
             { entityId: user.id },
-            { metadata: { string_contains: `"targetUserId":"${user.id}"` } },
+            {
+              id: {
+                in: await findActivityIdsByMetadata(user.id),
+              },
+            },
           ],
         },
         orderBy: { createdAt: 'desc' },
