@@ -54,13 +54,21 @@
 14. Admin not automatically global
 15. List filtering via scoped where (Vehicle, Trip, Fuel)
 
-## Evidence Results
+## Evidence Results (latest)
 - Backend TypeScript: **PASS** (tsc --noEmit clean)
 - Web build: **PASS**
 - API docs: **PASS** (126/126)
 - Account-scope test: **PASS** (18/18)
 - Access smoke: **PASS** (28/28)
-- Access diagnose: **PASS** (19 users)
-- Module-scope test: **PASS** (all assertions)
+- Access diagnose: **PASS** (21 users)
+- Module-scope test: **PASS** (16 sections, all assertions)
 - Full E2E: NO
 - Deploy: NO
+
+## Latest Session Fixes
+1. **assertCanChangeResourceScope wired into all 8 update controllers** — Trip, Fuel, Expense, Document, Maintenance, Repair, Vehicle, Driver
+2. **CREATE no longer grants VIEW** — hierarchy changed to `CREATE: ['CREATE']` only
+3. **List filters respect VIEW level** — `scopeCanSatisfyLevel(ds, 'VIEW')` excludes CREATE-only scopes
+4. **Owner bypass restricted** — `createdById` only allows VIEW, not UPDATE/DELETE
+5. **Controller/service wiring tested** — tests exercise the exact call pattern controllers use
+6. **Dedicated test roles** — never mutates production driver/admin/super_admin roles

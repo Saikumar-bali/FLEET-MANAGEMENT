@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
-import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource } from '../access/scoped-enforcement.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import { createExpense, getExpense, listExpenses, transitionExpense, updateExpense } from './expenses.service';
 
@@ -41,6 +41,7 @@ export async function updateExpenseController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getExpense(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const item = await updateExpense(String(req.params.id), req.body, req.authPermissions?.includes('expense_approve') ?? false);
   await createAuditLog(req, { userId: req.authUser?.id, action: 'expense.update', entityType: 'expense', entityId: item.id });

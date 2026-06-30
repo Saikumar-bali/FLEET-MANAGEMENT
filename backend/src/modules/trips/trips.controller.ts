@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
-import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanDeleteResource } from '../access/scoped-enforcement.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanDeleteResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import {
   cancelTrip,
@@ -66,6 +66,7 @@ export async function updateTripController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getTripById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await updateTrip(String(req.params.id), req.body, req.authUser?.id);
 
@@ -84,6 +85,7 @@ export async function scheduleTripController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getTripById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await scheduleTrip(String(req.params.id), req.body, req.authUser?.id);
 

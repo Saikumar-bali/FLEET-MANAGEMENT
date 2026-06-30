@@ -4,7 +4,7 @@ import { AppError } from '../../utils/appError';
 
 const ACCESS_LEVEL_HIERARCHY: Record<string, string[]> = {
   VIEW: ['VIEW'],
-  CREATE: ['VIEW', 'CREATE'],
+  CREATE: ['CREATE'],
   UPDATE: ['VIEW', 'UPDATE'],
   DELETE: ['VIEW', 'DELETE'],
   MANAGE: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'],
