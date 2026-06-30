@@ -59,11 +59,24 @@ All in `web/src/services/api.ts`:
 
 ### Playwright E2E Test
 `web/e2e/driver-portal.spec.ts`
+- Status: **CREATED, MANUAL ONLY, NOT CI-GATED YET**
+- Uses `E2E_BASE_URL` for frontend (not API URL)
+- Missing credentials fail with actionable error message (no silent skips)
 - Linked driver opens portal
 - Pages load without cross-driver data
 - Unlinked user sees clean empty state
 - Direct navigation works
 - No admin controls visible
+
+**Run manually (not in CI):**
+```bash
+E2E_BASE_URL=http://localhost:5173 \
+E2E_DRIVER_USER_IDENTIFIER=admin@fleet-ci.test \
+E2E_DRIVER_USER_PASSWORD=Admin123! \
+E2E_UNLINKED_USER_IDENTIFIER=viewer@fleet-ci.test \
+E2E_UNLINKED_USER_PASSWORD=Viewer123! \
+npx playwright test e2e/driver-portal.spec.ts
+```
 
 ## Files Changed
 - `backend/src/modules/user-profile-links/driver-portal.controller.ts` (unchanged)

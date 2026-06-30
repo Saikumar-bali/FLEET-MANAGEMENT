@@ -59,7 +59,23 @@ async function cleanup() {
     });
   } catch {}
   try {
+    await prisma.trip.deleteMany({ where: { tripNumber: { startsWith: PREFIX } } });
+  } catch {}
+  try {
+    await prisma.fuelEntry.deleteMany({
+      where: { driver: { name: { startsWith: PREFIX } } },
+    });
+  } catch {}
+  try {
+    await prisma.expense.deleteMany({
+      where: { driver: { name: { startsWith: PREFIX } } },
+    });
+  } catch {}
+  try {
     await prisma.user.deleteMany({ where: { name: { startsWith: PREFIX } } });
+  } catch {}
+  try {
+    await prisma.vehicle.deleteMany({ where: { vehicleNumber: { startsWith: PREFIX } } });
   } catch {}
   try {
     await prisma.driver.deleteMany({ where: { name: { startsWith: PREFIX } } });
@@ -272,9 +288,10 @@ async function main() {
   // ─── Test 2: Linked driver trips only include own driverId ───
   console.log('\n--- Test 2: Trips scoped to own driver ---');
   // Create trips for both drivers
+  const ts = Date.now();
   const vehicle1 = await prisma.vehicle.create({
     data: {
-      vehicleNumber: `${PREFIX}_VEH1`,
+      vehicleNumber: `${PREFIX}_VEH1_${ts}`,
       vehicleType: 'TRUCK',
       fuelType: 'DIESEL',
       status: 'AVAILABLE',
@@ -282,7 +299,7 @@ async function main() {
   });
   const vehicle2 = await prisma.vehicle.create({
     data: {
-      vehicleNumber: `${PREFIX}_VEH2`,
+      vehicleNumber: `${PREFIX}_VEH2_${ts}`,
       vehicleType: 'TRUCK',
       fuelType: 'DIESEL',
       status: 'AVAILABLE',
@@ -291,7 +308,7 @@ async function main() {
 
   const trip1 = await prisma.trip.create({
     data: {
-      tripNumber: `${PREFIX}_TRIP1`,
+      tripNumber: `${PREFIX}_TRIP1_${ts}`,
       tripType: 'DELIVERY',
       status: 'COMPLETED',
       vehicleId: vehicle1.id,
@@ -302,7 +319,7 @@ async function main() {
   });
   const trip2 = await prisma.trip.create({
     data: {
-      tripNumber: `${PREFIX}_TRIP2`,
+      tripNumber: `${PREFIX}_TRIP2_${ts}`,
       tripType: 'DELIVERY',
       status: 'COMPLETED',
       vehicleId: vehicle2.id,
@@ -536,26 +553,8 @@ async function main() {
 
   // ─── Cleanup ───
   console.log('\n--- Cleanup ---');
-  try {
-    await prisma.userProfileLink.deleteMany({
-      where: { user: { name: { startsWith: PREFIX } } },
-    });
-    await prisma.trip.deleteMany({
-      where: { tripNumber: { startsWith: PREFIX } },
-    });
-    await prisma.fuelEntry.deleteMany({
-      where: { driverId: { in: [driver1.id, driver2.id] } },
-    });
-    await prisma.expense.deleteMany({
-      where: { driverId: { in: [driver1.id, driver2.id] } },
-    });
-    await prisma.user.deleteMany({ where: { name: { startsWith: PREFIX } } });
-    await prisma.driver.deleteMany({ where: { name: { startsWith: PREFIX } } });
-    await prisma.vehicle.deleteMany({ where: { vehicleNumber: { startsWith: PREFIX } } });
-    pass('Cleanup complete');
-  } catch (e: any) {
-    fail(`Cleanup error: ${e.message}`);
-  }
+  await cleanup();
+  pass('Cleanup complete');
 
   // ─── Summary ───
   console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
