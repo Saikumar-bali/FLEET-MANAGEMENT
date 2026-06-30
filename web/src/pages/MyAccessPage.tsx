@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
@@ -221,6 +222,17 @@ export function MyAccessPage() {
             {summary?.profileTypes && summary.profileTypes.length > 0 && (
               <div style={{ marginTop: '0.5rem' }}>
                 <p className="detail-label">Linked profile types: {summary.profileTypes.join(', ')}</p>
+              </div>
+            )}
+            {summary?.profileTypes.includes('DRIVER') || summary?.primaryDriverProfile ? (
+              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Link to="/driver-portal" className="primary-button" style={{ textDecoration: 'none' }}>
+                  Open Driver Portal
+                </Link>
+              </div>
+            ) : (
+              <div style={{ marginTop: '1rem' }}>
+                <p className="detail-label" style={{ color: 'var(--color-text-tertiary)' }}>No linked driver profile</p>
               </div>
             )}
           </FormSection>

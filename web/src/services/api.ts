@@ -11,6 +11,12 @@ import type {
   DashboardOverview,
   DocumentRecord,
   DriverRecord,
+  DriverPortalProfile,
+  DriverPortalTrip,
+  DriverPortalVehicle,
+  DriverPortalDocument,
+  DriverPortalFuelEntry,
+  DriverPortalExpense,
   EffectivePermissionsResponse,
   ExpenseRecord,
   FinanceAccount,
@@ -919,4 +925,46 @@ export function removeUserDataScope(token: string, userId: string, scopeId: stri
 
 export function getUserActivity(token: string, userId: string) {
   return request<UserActivityRecord[]>(`/access/users/${userId}/activity`, { token });
+}
+
+// ─── Phase 17: Driver Portal API (read-only, uses /me/driver-* only) ───
+
+export function getMyDriverProfile(token: string) {
+  return request<DriverPortalProfile>('/me/driver-profile', { token });
+}
+
+export function getMyDriverTrips(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalTrip[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-trips${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverVehicles(token: string) {
+  return request<DriverPortalVehicle[]>('/me/driver-vehicles', { token });
+}
+
+export function getMyDriverDocuments(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalDocument[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverFuel(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalFuelEntry[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-fuel${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverExpenses(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalExpense[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-expenses${qs ? `?${qs}` : ''}`, { token });
 }

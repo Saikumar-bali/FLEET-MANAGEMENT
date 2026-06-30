@@ -75,6 +75,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 14.1 | User Access Management UI | Completed + Hardened (env-only password, mutation guards, remote guard, Playwright 2/2 PASS) |
 | Phase 15 | Module-Level Scoped Enforcement | Completed — linkedEntityType-only validation, API smoke test (16 checks), helper test (15 sections), all focused checks PASS |
 | Phase 16 | Generic User/Profile Linking + Driver Portal Foundation | Security-Hardened — self-create removed, scope validation, cross-driver leak tested, 21+11 tests PASS, all focused checks PASS |
+| Phase 17 | Driver Portal UI Foundation | Completed — Read-only driver portal UI, /me/driver-* APIs only, 23 security tests PASS, all focused checks PASS |
 
 ## Implementation Log
 
@@ -87,6 +88,18 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Added profile_link_view/create/update/delete/revoke permissions.
 - Updated /me/summary to include profileLinks, primaryDriverProfile, profileTypes.
 - Created driver portal foundation APIs (/me/driver-*).
+
+### 2026-06-30 (Phase 17)
+
+- Phase 17 Driver Portal UI Foundation: **Completed**.
+- Created 7 read-only driver portal pages: Home, Profile, Trips, Vehicles, Documents, Fuel, Expenses.
+- Added DriverPortalLayout with conditional nav and unlinked-user state.
+- Added typed API client functions for all /me/driver-* endpoints.
+- Integrated "Open Driver Portal" link in MyAccessPage for linked drivers.
+- Added conditional Driver Portal sidebar menu item based on profile link data.
+- Created backend driver-portal-security-test.ts with 23 tests.
+- Created Playwright driver-portal.spec.ts with 5 tests.
+- All focused checks PASS.
 - Created diagnose and repair scripts (dry-run by default).
 - Created 17 test cases covering all scenarios.
 - Updated MyAccessPage to display linked profiles.

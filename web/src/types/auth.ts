@@ -890,3 +890,84 @@ export type MyAccessSummary = {
   primaryDriverProfile: { id: string; name: string; mobile: string; status: string } | null;
   profileTypes: string[];
 };
+
+// ─── Phase 17: Driver Portal Types ───
+
+export type DriverPortalProfile = {
+  id: string;
+  name: string;
+  mobile: string;
+  alternateMobile: string | null;
+  licenseNumber: string;
+  licenseExpiry: string | null;
+  address: string | null;
+  emergencyContact: string | null;
+  experienceYears: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DriverPortalTrip = {
+  id: string;
+  tripNumber: string;
+  tripType: string;
+  status: string;
+  vehicleId: string;
+  driverId: string;
+  originName: string;
+  destinationName: string;
+  plannedStartAt: string | null;
+  actualStartAt: string | null;
+  plannedEndAt: string | null;
+  actualEndAt: string | null;
+  distanceKm: number | null;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  driver: { id: string; name: string; mobile: string } | null;
+};
+
+export type DriverPortalVehicle = {
+  id: string;
+  vehicleNumber: string;
+  vehicleType: string;
+  brand: string | null;
+  model: string | null;
+  status: string;
+};
+
+export type DriverPortalDocument = {
+  id: string;
+  title: string;
+  documentType: string;
+  documentCategory: string;
+  expiryDate: string | null;
+  verificationStatus: string;
+  createdAt: string;
+};
+
+export type DriverPortalFuelEntry = {
+  id: string;
+  vehicleId: string;
+  driverId: string;
+  fuelDate: string;
+  fuelType: string;
+  quantityLiters: number | null;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string };
+};
+
+export type DriverPortalExpense = {
+  id: string;
+  vehicleId: string;
+  driverId: string;
+  category: string;
+  expenseDate: string;
+  amount: number;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string };
+};
