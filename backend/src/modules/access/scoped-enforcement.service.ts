@@ -3,6 +3,8 @@ import { can, hasScope, isGlobalUser } from './access-policy.service';
 import { getResourceMapping, type ResourceType } from './resource-scope-map';
 import { AppError } from '../../utils/appError';
 
+import { prisma } from '../../lib/prisma';
+
 type RecordWithRelations = Record<string, unknown>;
 
 function deny(message: string): never {
@@ -147,12 +149,44 @@ export function assertCanDeleteResource(
   checkScopeForRecord(actor, resourceType, record, 'DELETE');
 }
 
-export function assertCanChangeResourceScope(
+async function resolveLinkedEntityScope(
+  actor: ActorContext,
+  linkedType: string,
+  linkedEntityId: string,
+): Promise<RecordWithRelations> {
+  switch (linkedType) {
+    case 'FUEL_ENTRY':
+    case 'FUEL': {
+      const record = await prisma.fuelEntry.findUnique({ where: { id: linkedEntityId }, select: { vehicleId: true, driverId: true, tripId: true } });
+      if (!record) deny(`Access denied: ${linkedType} ${linkedEntityId} not found`);
+      return record as RecordWithRelations;
+    }
+    case 'EXPENSE': {
+      const record = await prisma.expense.findUnique({ where: { id: linkedEntityId }, select: { vehicleId: true, driverId: true, tripId: true } });
+      if (!record) deny(`Access denied: expense ${linkedEntityId} not found`);
+      return record as RecordWithRelations;
+    }
+    case 'MAINTENANCE': {
+      const record = await prisma.maintenanceRequest.findUnique({ where: { id: linkedEntityId }, select: { vehicleId: true, driverId: true, tripId: true } });
+      if (!record) deny(`Access denied: maintenance ${linkedEntityId} not found`);
+      return record as RecordWithRelations;
+    }
+    case 'REPAIR': {
+      const record = await prisma.repair.findUnique({ where: { id: linkedEntityId }, select: { vehicleId: true, driverId: true, tripId: true } });
+      if (!record) deny(`Access denied: repair ${linkedEntityId} not found`);
+      return record as RecordWithRelations;
+    }
+    default:
+      deny(`Access denied: cannot resolve linkedEntityType "${linkedType}"`);
+  }
+}
+
+export async function assertCanChangeResourceScope(
   actor: ActorContext,
   resourceType: ResourceType,
   currentRecord: RecordWithRelations,
   updateInput: RecordWithRelations,
-): void {
+): Promise<void> {
   if (isGlobalUser(actor)) return;
 
   const currentVehicleId = currentRecord.vehicleId as string | null | undefined;
@@ -177,9 +211,30 @@ export function assertCanChangeResourceScope(
   const currentLinkedEntityId = currentRecord.linkedEntityId as string | null | undefined;
   const newLinkedEntityId = updateInput.linkedEntityId as string | null | undefined;
   if (newLinkedEntityId !== undefined && newLinkedEntityId !== currentLinkedEntityId) {
-    const linkedType = (updateInput.linkedEntityType || currentRecord.linkedEntityType) as string | undefined;
-    if (linkedType === 'VEHICLE' && newLinkedEntityId) {
-      checkScopeForInput(actor, { vehicleId: newLinkedEntityId }, 'UPDATE');
+    const linkedType = (updateInput.linkedEntityType || currentRecord.linkedEntityType) as string;
+    if (!linkedType) deny('Access denied: linkedEntityType is required when changing linkedEntityId');
+    if (!newLinkedEntityId) return;
+    switch (linkedType) {
+      case 'VEHICLE':
+        checkScopeForInput(actor, { vehicleId: newLinkedEntityId }, 'UPDATE');
+        break;
+      case 'DRIVER':
+        checkScopeForInput(actor, { driverId: newLinkedEntityId }, 'UPDATE');
+        break;
+      case 'TRIP':
+        checkScopeForInput(actor, { tripId: newLinkedEntityId }, 'UPDATE');
+        break;
+      case 'FUEL_ENTRY':
+      case 'FUEL':
+      case 'EXPENSE':
+      case 'MAINTENANCE':
+      case 'REPAIR': {
+        const resolved = await resolveLinkedEntityScope(actor, linkedType, newLinkedEntityId);
+        checkScopeForInput(actor, resolved, 'UPDATE');
+        break;
+      }
+      default:
+        deny(`Access denied: unknown linkedEntityType "${linkedType}"`);
     }
   }
 

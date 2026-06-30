@@ -41,7 +41,7 @@ export async function updateRepairController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getRepair(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
-  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const item = await updateRepair(String(req.params.id), req.body);
   await createAuditLog(req, { userId: req.authUser?.id, action: 'repair.update', entityType: 'repair', entityId: item.id });

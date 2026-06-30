@@ -57,7 +57,7 @@ export async function updateVehicleController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getVehicleById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
-  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const vehicle = await updateVehicle(String(req.params.id), req.body);
 
@@ -76,7 +76,7 @@ export async function updateVehicleStatusController(req: Request, res: Response)
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getVehicleById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
-  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const vehicle = await updateVehicleStatus(String(req.params.id), req.body.status);
 

@@ -42,7 +42,7 @@ export async function updateFuelController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getFuel(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
-  assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const item = await updateFuel(String(req.params.id), req.body, req.authPermissions?.includes('fuel_approve') ?? false);
   await createAuditLog(req, { userId: req.authUser?.id, action: 'fuel.update', entityType: 'fuel', entityId: item.id });
