@@ -74,6 +74,12 @@ jobs:
         working-directory: backend
       - run: npm run test:module-scope-api
         working-directory: backend
+      - run: npm run test:user-profile-link
+        working-directory: backend
+      - run: npm run test:user-profile-link-api
+        working-directory: backend
+      - run: npm run profile-link:diagnose
+        working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest
