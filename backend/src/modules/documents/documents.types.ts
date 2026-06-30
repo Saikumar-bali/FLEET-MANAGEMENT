@@ -59,4 +59,5 @@ export type DocumentListQuery = {
   limit?: number;
   sort?: string;
   order?: string;
+  extraWhere?: Record<string, unknown>;
 };

@@ -73,6 +73,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
 | Phase 14.1 | User Access Management UI | Completed + Hardened (env-only password, mutation guards, remote guard, Playwright 2/2 PASS) |
+| Phase 15 | Module-Level Scoped Enforcement | Completed — backend scoped enforcement for 8 modules, module-scope test PASS |
 
 ## Implementation Log
 

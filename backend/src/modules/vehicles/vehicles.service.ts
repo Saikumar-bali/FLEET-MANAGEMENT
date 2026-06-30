@@ -13,7 +13,7 @@ const vehicleInclude = {
   },
 };
 
-export async function listVehicles(query: { search?: string; status?: string; page: number; limit: number }) {
+export async function listVehicles(query: { search?: string; status?: string; page: number; limit: number; extraWhere?: Record<string, unknown> }) {
   const where: Prisma.VehicleWhereInput = {};
 
   if (query.search) {
@@ -29,6 +29,8 @@ export async function listVehicles(query: { search?: string; status?: string; pa
   if (query.status) {
     where.status = query.status as any;
   }
+
+  if (query.extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), query.extraWhere] : [query.extraWhere]; }
 
   const [items, total] = await Promise.all([
     prisma.vehicle.findMany({
