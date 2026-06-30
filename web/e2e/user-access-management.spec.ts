@@ -3,9 +3,52 @@ import { loginAsRole, getCredential, getApiBase } from './helpers/credentials';
 
 const TEST_USER_NAME = 'PHASE_ACCESS_UI_TEST_USER';
 const TEST_USER_EMAIL = 'phase_access_ui_test_user@test.local';
-const TEST_USER_PASSWORD = 'PhaseAccessTest2026!';
 const TEST_REASON_PREFIX = 'PHASE_ACCESS_UI_TEST';
 const TEST_SCOPE_ID = 'phase2-vehicle-test';
+
+const LOCAL_API_BASES = ['http://localhost:4000', 'http://127.0.0.1:4000'];
+
+function resolveEnvValue(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const val = process.env[key]?.trim();
+    if (val) return val;
+  }
+  return undefined;
+}
+
+function getTestUserCredentials(): { identifier: string; password: string } {
+  const identifier = resolveEnvValue('E2E_ACCESS_TEST_IDENTIFIER', 'CI_ACCESS_TEST_IDENTIFIER');
+  const password = resolveEnvValue('E2E_ACCESS_TEST_PASSWORD', 'CI_ACCESS_TEST_PASSWORD');
+  if (!identifier || !password) {
+    throw new Error(
+      'Missing E2E_ACCESS_TEST_PASSWORD or CI_ACCESS_TEST_PASSWORD. ' +
+      'Set E2E_ACCESS_TEST_IDENTIFIER / E2E_ACCESS_TEST_PASSWORD (or CI_ACCESS_TEST_*) in backend/.env.'
+    );
+  }
+  return { identifier, password };
+}
+
+function requireMutationAllowed(apiBase: string): void {
+  const allowMutation = process.env.E2E_ALLOW_TEST_USER_MUTATION?.trim() === 'true';
+  if (!allowMutation) {
+    throw new Error(
+      'Test-user mutation not allowed. ' +
+      'Set E2E_ALLOW_TEST_USER_MUTATION=true in backend/.env to allow creating or resetting PHASE_ACCESS_UI_TEST_USER, ' +
+      'or create the test user manually before running tests.'
+    );
+  }
+
+  const isLocal = LOCAL_API_BASES.some(base => apiBase === base || apiBase.startsWith(base));
+  if (!isLocal) {
+    const allowRemote = process.env.E2E_ALLOW_REMOTE_TEST_MUTATION?.trim() === 'true';
+    if (!allowRemote) {
+      throw new Error(
+        `Remote test-user mutation blocked (API base: ${apiBase}). ` +
+        'Set E2E_ALLOW_REMOTE_TEST_MUTATION=true only for disposable staging.'
+      );
+    }
+  }
+}
 
 async function getAuthToken(page: import('@playwright/test').Page): Promise<string> {
   return page.evaluate(() => {
@@ -54,6 +97,40 @@ async function apiPost(request: import('@playwright/test').APIRequestContext, ap
   return (await res.json()).data;
 }
 
+async function ensureTestUser(
+  request: import('@playwright/test').APIRequestContext,
+  apiBase: string,
+  token: string,
+): Promise<{ id: string }> {
+  const testCreds = getTestUserCredentials();
+  requireMutationAllowed(apiBase);
+
+  const usersList = await apiGet(request, apiBase, token, '/api/v1/users');
+  const existing = (usersList as Array<{ id: string; name: string }>)
+    .find(u => u.name === TEST_USER_NAME);
+
+  if (!existing) {
+    const rolesList = await apiGet(request, apiBase, token, '/api/v1/roles');
+    const driverRole = (rolesList as Array<{ id: string; key: string }>).find(r => r.key === 'driver');
+    if (!driverRole) throw new Error('Driver role not found');
+
+    const created = await apiPost(request, apiBase, token, '/api/v1/users', {
+      name: TEST_USER_NAME,
+      username: 'phase_access_ui_test',
+      email: TEST_USER_EMAIL,
+      password: testCreds.password,
+      roleId: driverRole.id,
+      status: 'ACTIVE',
+    });
+    return { id: created.id };
+  }
+
+  await apiPatch(request, apiBase, token, `/api/v1/users/${existing.id}/password`, {
+    password: testCreds.password,
+  });
+  return { id: existing.id };
+}
+
 test.describe('User Access Management', () => {
   test('super_admin can manage user access end-to-end', async ({ page, request }) => {
     test.setTimeout(120_000);
@@ -67,30 +144,7 @@ test.describe('User Access Management', () => {
     const token = await getAuthToken(page);
 
     // ── Step 1: Find or create deterministic test user ──
-    const usersList = await apiGet(request, apiBase, token, '/api/v1/users');
-    let testUser = (usersList as Array<{ id: string; name: string; role: { id: string; key: string } }>)
-      .find(u => u.name === TEST_USER_NAME);
-
-    if (!testUser) {
-      const rolesList = await apiGet(request, apiBase, token, '/api/v1/roles');
-      const driverRole = (rolesList as Array<{ id: string; key: string }>).find(r => r.key === 'driver');
-      if (!driverRole) throw new Error('Driver role not found');
-
-      testUser = await apiPost(request, apiBase, token, '/api/v1/users', {
-        name: TEST_USER_NAME,
-        username: 'phase_access_ui_test',
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
-        roleId: driverRole.id,
-        status: 'ACTIVE',
-      });
-    } else {
-      await apiPatch(request, apiBase, token, `/api/v1/users/${testUser.id}/password`, {
-        password: TEST_USER_PASSWORD,
-      });
-    }
-
-    const userId = testUser.id;
+    const { id: userId } = await ensureTestUser(request, apiBase, token);
 
     // ── Step 2: Clean up only test-prefixed overrides ──
     const existingOvr = await apiGet(request, apiBase, token, `/api/v1/access/users/${userId}/permission-overrides`);
@@ -150,7 +204,6 @@ test.describe('User Access Management', () => {
     await expect(denySection).toContainText('fuel_view');
 
     // Verify fuel_view is NOT in the Final effective list (DENY wins)
-    // Each permission is in its own <div>, so check no child div has exact text "fuel_view"
     await expect(page.locator('h4:has-text("Final effective list")')).toBeVisible();
     const finalListBlock = page.locator('h4:has-text("Final effective list")').locator('~ div').first();
     const exactFuelView = finalListBlock.locator('div', { hasText: /^fuel_view$/ });
@@ -165,11 +218,8 @@ test.describe('User Access Management', () => {
     await page.click('button:has-text("Data Scopes")');
     await page.waitForSelector('text=Grant Scope');
     await page.waitForSelector('text=Current Scopes');
-    // Verify scopeId visible in the table
     await expect(page.locator('td', { hasText: TEST_SCOPE_ID })).toBeVisible();
-    // Verify scopeType VEHICLE visible in the table
     await expect(page.locator('td strong:has-text("VEHICLE")')).toBeVisible();
-    // Verify accessLevel VIEW visible in the table
     await expect(page.locator('td', { hasText: 'VIEW' })).toBeVisible();
 
     // ── Step 8: Remove scope ──
@@ -223,33 +273,15 @@ test.describe('User Access Management', () => {
     const apiBase = getApiBase();
     const token = await getAuthToken(page);
 
-    const usersList = await apiGet(request, apiBase, token, '/api/v1/users');
-    let testUser = (usersList as Array<{ id: string; name: string }>)
-      .find(u => u.name === TEST_USER_NAME);
+    const { id: userId } = await ensureTestUser(request, apiBase, token);
 
-    if (!testUser) {
-      const rolesList = await apiGet(request, apiBase, token, '/api/v1/roles');
-      const driverRole = (rolesList as Array<{ id: string; key: string }>).find(r => r.key === 'driver');
-      if (!driverRole) throw new Error('Driver role not found');
-      testUser = await apiPost(request, apiBase, token, '/api/v1/users', {
-        name: TEST_USER_NAME,
-        username: 'phase_access_ui_test',
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
-        roleId: driverRole.id,
-        status: 'ACTIVE',
-      });
-    } else {
-      await apiPatch(request, apiBase, token, `/api/v1/users/${testUser.id}/password`, {
-        password: TEST_USER_PASSWORD,
-      });
-    }
+    const testCreds = getTestUserCredentials();
 
     // Clear session, then log in as test user
     await page.evaluate(() => localStorage.clear());
     await page.goto('/login');
-    await page.fill('input[type="text"]', TEST_USER_EMAIL);
-    await page.fill('input[type="password"]', TEST_USER_PASSWORD);
+    await page.fill('input[type="text"]', testCreds.identifier);
+    await page.fill('input[type="password"]', testCreds.password);
     await page.click('button[type="submit"]');
     await page.waitForURL('/');
 

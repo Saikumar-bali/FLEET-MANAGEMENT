@@ -72,7 +72,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 12.1 | Documents RBAC | Completed |
 | Phase 13 | Fuel Receipts | Completed |
 | Phase 14 | Account Scope Foundation | Completed (Hardened: admin not global, GLOBAL restricted, critical permission guard, level hierarchy, standardized responses) |
-| Phase 14.1 | User Access Management UI | Completed + Hardened (deterministic test user, safe cleanup, exact activity verification, Playwright 2/2 PASS) — commit a0bc643 |
+| Phase 14.1 | User Access Management UI | Completed + Hardened (env-only password, mutation guards, remote guard, Playwright 2/2 PASS) |
 
 ## Implementation Log
 
@@ -143,6 +143,18 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 - Session cleared before test user login to prevent stale auth redirect.
 - All focused checks pass: web build PASS, API docs PASS (126/126), account-scope PASS (18/18), access smoke PASS (28/28), access diagnose PASS (16 users), Playwright PASS (2/2).
 - Backend build: prisma generate EPERM on Windows (file lock), tsc --noEmit clean.
+- No full E2E run. No deploy. No full reseed.
+
+### 2026-06-30
+
+- Phase 14.1 User Access Management UI: **Password Safety Hardening**.
+- Removed hardcoded Playwright test password (PhaseAccessTest2026!).
+- Test password now comes from env only: E2E_ACCESS_TEST_PASSWORD or CI_ACCESS_TEST_PASSWORD.
+- Test user identifier from env: E2E_ACCESS_TEST_IDENTIFIER or CI_ACCESS_TEST_IDENTIFIER.
+- Added E2E_ALLOW_TEST_USER_MUTATION=true guard for test user creation/reset.
+- Added remote API base guard: non-local bases require E2E_ALLOW_REMOTE_TEST_MUTATION=true.
+- Added env vars to .env.example with documentation.
+- All focused checks pass: web build PASS, API docs PASS (126/126), account-scope PASS (18/18), access smoke PASS (28/28), access diagnose PASS (15 users), Playwright PASS (2/2).
 - No full E2E run. No deploy. No full reseed.
 
 ### 2026-06-24
