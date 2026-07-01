@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deleteVehicle as deleteVehicleRequest, getVehicles } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import type { VehicleRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -16,6 +17,7 @@ import { StatusBadge } from '../components/StatusBadge';
 export function VehiclesPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,6 @@ export function VehiclesPage() {
   const [viewVehicle, setViewVehicle] = useState<VehicleRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<VehicleRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [pageMessage, setPageMessage] = useState<string | null>(null);
 
   const canCreate = auth.hasPermission('vehicle_create');
   const canDelete = auth.hasPermission('vehicle_delete');
@@ -67,12 +68,13 @@ export function VehiclesPage() {
     setIsDeleting(true);
     try {
       await deleteVehicleRequest(auth.accessToken, deleteTarget.id);
-      setPageMessage(`Vehicle "${deleteTarget.vehicleNumber}" deleted.`);
+      showToast(`Vehicle "${deleteTarget.vehicleNumber}" deleted.`, 'success');
       setVehicles(cur => cur.filter(v => v.id !== deleteTarget.id));
       setDeleteTarget(null);
       if (viewVehicle?.id === deleteTarget.id) setViewVehicle(null);
-    } catch (e) { setError(e instanceof ApiError ? e.message : 'Failed to delete.'); }
-    finally { setIsDeleting(false); }
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : 'Failed to delete vehicle.', 'error');
+    } finally { setIsDeleting(false); }
   }
 
   const columns = [
@@ -110,7 +112,7 @@ export function VehiclesPage() {
       key: 'actions', header: '', width: '120px',
       render: (v: VehicleRecord) => (
         <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
-          onClick={e => { e.stopPropagation(); setViewVehicle(v); setPageMessage(null); }}>View</button>
+          onClick={e => { e.stopPropagation(); setViewVehicle(v); }}>View</button>
       ),
     },
   ];
@@ -138,8 +140,6 @@ export function VehiclesPage() {
             : undefined
         }
       />
-
-      {pageMessage ? <div className="success-banner">{pageMessage}</div> : null}
 
       <div className="card trips-filter-card">
         <div className="trips-filter-row">
@@ -181,7 +181,7 @@ export function VehiclesPage() {
             columns={columns}
             data={vehicles}
             keyExtractor={(v) => v.id}
-            onRowClick={(v) => { setViewVehicle(v); setPageMessage(null); }}
+            onRowClick={(v) => { setViewVehicle(v); }}
             pagination={{
               page,
               limit: 20,
