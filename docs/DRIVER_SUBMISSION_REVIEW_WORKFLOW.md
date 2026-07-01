@@ -128,14 +128,33 @@ All pages feature:
 - Approve/verify actions require entity-specific permissions
 - Reject/request-changes require `driver_submission_review`
 - All actions are scope-enforced via Phase 15
-- Driver cannot approve own submissions
+- Driver cannot approve own submissions (explicit self-review guard)
 - Every action is audit-logged
+
+## Security Hardening
+
+### Issue/Inspection Scoped List Filters
+- issue/inspection list endpoints use `getVehicleScopedWhereForChildRecord()` instead of `getScopedWhereForResource(actor, 'VEHICLE')`
+- The old helper mapped `vehicleId → id` (correct for Vehicle records, wrong for child records)
+- New helper correctly filters by `vehicleId` and `driverId` columns on vehicleIssue/vehicleInspection
+
+### Self-Review Guard
+- `assertNotOwnDriverSubmission(actorUserId, record)` called on all 15 review action endpoints
+- Checks: `createdById`, `uploadedById`, active `UserProfileLink` for the record's `driverId`
+- Blocks even if driver has review permissions granted via overrides
+- Error: "Cannot review your own driver submission" (403)
 
 ## Testing
 
-- Backend test: `npm run test:driver-submission-review` (19 test cases)
-- CI: Included in GitHub Actions pipeline
+- Backend test: `npm run test:driver-submission-review` (44 test cases)
+- CI: Included in GitHub Actions pipeline (all pass)
 - Playwright: Manual-only test at `web/e2e/driver-submission-review.spec.ts`
+
+### Test Results
+- issue/inspection list scoping fixed: YES
+- self-review guard added: YES
+- out-of-scope issue/inspection list tests: YES
+- driver with accidental review permission blocked: YES
 
 ## Deploy
 
