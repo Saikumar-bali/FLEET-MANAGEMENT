@@ -156,15 +156,15 @@ async function main() {
   const managerToken = await getAuthToken(`${PREFIX}_mgr_${ts}`, 'TestPass123!');
   if (!managerToken) { fail('Manager login failed'); process.exit(1); }
 
-  // Grant manager VEHICLE/MANAGE scope on the test vehicle so they can review submissions
+  // Grant manager VEHICLE/UPDATE scope on the test vehicle so they can review submissions
   const scopeRes = await request('PUT', `/api/v1/users/${managerUserId}/data-scopes`, adminToken, {
     scopeType: 'VEHICLE',
     scopeId: vehicleId,
-    accessLevel: 'MANAGE',
+    accessLevel: 'UPDATE',
     reason: 'Test: grant vehicle scope for review test',
   });
   if (scopeRes.status !== 200) { fail(`Grant manager scope: ${JSON.stringify(scopeRes.data)}`); process.exit(1); }
-  pass('Manager user created with VEHICLE/MANAGE scope');
+  pass('Manager user created with VEHICLE/UPDATE scope');
 
   // Create viewer user
   const viewerUserId = viewerRole ? (await request('POST', '/api/v1/users', adminToken, {
