@@ -82,6 +82,8 @@ jobs:
         working-directory: backend
       - run: npm run test:driver-portal-security
         working-directory: backend
+      - run: npm run test:driver-portal-actions
+        working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest

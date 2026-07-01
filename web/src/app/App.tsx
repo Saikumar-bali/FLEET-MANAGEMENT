@@ -36,6 +36,12 @@ import { DriverVehiclesPage } from '../pages/driver-portal/DriverVehiclesPage';
 import { DriverDocumentsPage } from '../pages/driver-portal/DriverDocumentsPage';
 import { DriverFuelPage } from '../pages/driver-portal/DriverFuelPage';
 import { DriverExpensesPage } from '../pages/driver-portal/DriverExpensesPage';
+import { DriverTripCreatePage } from '../pages/driver-portal/DriverTripCreatePage';
+import { DriverFuelCreatePage } from '../pages/driver-portal/DriverFuelCreatePage';
+import { DriverExpenseCreatePage } from '../pages/driver-portal/DriverExpenseCreatePage';
+import { DriverDocumentUploadPage } from '../pages/driver-portal/DriverDocumentUploadPage';
+import { DriverVehicleIssuePage } from '../pages/driver-portal/DriverVehicleIssuePage';
+import { DriverVehicleInspectionPage } from '../pages/driver-portal/DriverVehicleInspectionPage';
 import { lazy, Suspense } from 'react';
 
 const FinancePage = lazy(() => import('../pages/FinancePage'));
@@ -139,6 +145,12 @@ function App() {
                   <Route path="/driver-portal/documents" element={<DriverDocumentsPage />} />
                   <Route path="/driver-portal/fuel" element={<DriverFuelPage />} />
                   <Route path="/driver-portal/expenses" element={<DriverExpensesPage />} />
+                  <Route path="/driver-portal/trips/create" element={<DriverTripCreatePage />} />
+                  <Route path="/driver-portal/fuel/create" element={<DriverFuelCreatePage />} />
+                  <Route path="/driver-portal/expenses/create" element={<DriverExpenseCreatePage />} />
+                  <Route path="/driver-portal/documents/upload" element={<DriverDocumentUploadPage />} />
+                  <Route path="/driver-portal/vehicles/issue" element={<DriverVehicleIssuePage />} />
+                  <Route path="/driver-portal/vehicles/inspect" element={<DriverVehicleInspectionPage />} />
                 </Route>
               </Route>
             </Route>

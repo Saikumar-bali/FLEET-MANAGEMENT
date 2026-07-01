@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyDriverFuel } from '../../services/api';
 import type { DriverPortalFuelEntry } from '../../types/auth';
@@ -12,11 +13,18 @@ function formatCurrency(amount: number) {
 
 export function DriverFuelPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<DriverPortalFuelEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [permissions, setPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!auth.accessToken) return;
+    setPermissions(auth.permissions || []);
+  }, [auth.accessToken, auth.permissions]);
 
   const loadData = (p: number) => {
     if (!auth.accessToken) return;
@@ -32,6 +40,8 @@ export function DriverFuelPage() {
 
   useEffect(() => { loadData(page); }, [auth.accessToken, page]);
 
+  const canCreate = permissions.includes('driver_quick_fuel_create');
+
   if (loading && entries.length === 0) return <LoadingState message="Loading fuel entries..." />;
   if (error && entries.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
 
@@ -41,6 +51,7 @@ export function DriverFuelPage() {
         eyebrow="Driver Portal"
         title="My Fuel Entries"
         description="Fuel entries logged for your trips."
+        actions={canCreate ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/fuel/create')}>Quick Fuel Entry</button> : undefined}
       />
 
       {entries.length === 0 ? (

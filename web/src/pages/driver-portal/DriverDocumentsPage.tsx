@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyDriverDocuments } from '../../services/api';
 import type { DriverPortalDocument } from '../../types/auth';
@@ -8,42 +9,52 @@ import { ErrorState } from '../../components/ErrorState';
 
 export function DriverDocumentsPage() {
   const auth = useAuth();
-  const [documents, setDocuments] = useState<DriverPortalDocument[]>([]);
+  const navigate = useNavigate();
+  const [docs, setDocs] = useState<DriverPortalDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
-  const loadDocs = (p: number) => {
+  useEffect(() => {
+    if (!auth.accessToken) return;
+    setPermissions(auth.permissions || []);
+  }, [auth.accessToken, auth.permissions]);
+
+  const loadData = (p: number) => {
     if (!auth.accessToken) return;
     setLoading(true);
     getMyDriverDocuments(auth.accessToken, { page: p, limit: 20 })
       .then((res) => {
-        setDocuments(res.data?.items || []);
+        setDocs(res.data?.items || []);
         setTotalPages(res.data?.totalPages || 1);
       })
       .catch((e) => setError(e.message || 'Failed to load documents'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadDocs(page); }, [auth.accessToken, page]);
+  useEffect(() => { loadData(page); }, [auth.accessToken, page]);
 
-  if (loading && documents.length === 0) return <LoadingState message="Loading your documents..." />;
-  if (error && documents.length === 0) return <ErrorState message={error} onRetry={() => loadDocs(page)} />;
+  const canUpload = permissions.includes('driver_document_upload');
+
+  if (loading && docs.length === 0) return <LoadingState message="Loading documents..." />;
+  if (error && docs.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
 
   return (
     <section className="page-content">
       <PageHeader
         eyebrow="Driver Portal"
         title="My Documents"
-        description="Documents linked to your driver profile."
+        description="Documents uploaded by you."
+        actions={canUpload ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/documents/upload')}>Upload Document</button> : undefined}
       />
 
-      {documents.length === 0 ? (
+      {docs.length === 0 ? (
         <div className="state-panel">
           <div>
             <h3>No documents found</h3>
-            <p>No documents are linked to your profile yet.</p>
+            <p>You have no documents uploaded yet.</p>
           </div>
         </div>
       ) : (
@@ -55,18 +66,18 @@ export function DriverDocumentsPage() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Category</th>
-                  <th>Expiry</th>
-                  <th>Verification</th>
+                  <th>Status</th>
+                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
-                {documents.map((doc) => (
+                {docs.map((doc) => (
                   <tr key={doc.id}>
                     <td>{doc.title}</td>
-                    <td>{doc.documentType}</td>
+                    <td>{doc.documentType.replace(/_/g, ' ')}</td>
                     <td>{doc.documentCategory}</td>
-                    <td>{doc.expiryDate ? new Date(doc.expiryDate).toLocaleDateString() : '—'}</td>
                     <td><span className="status-badge">{doc.verificationStatus}</span></td>
+                    <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getMyDriverTrips } from '../../services/api';
+import { getMyDriverTrips, startDriverTrip, endDriverTrip, cancelDriverTrip } from '../../services/api';
 import type { DriverPortalTrip } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
@@ -8,11 +9,20 @@ import { ErrorState } from '../../components/ErrorState';
 
 export function DriverTripsPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [trips, setTrips] = useState<DriverPortalTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!auth.accessToken) return;
+    const p = auth.permissions || [];
+    setPermissions(p);
+  }, [auth.accessToken, auth.permissions]);
 
   const loadTrips = (p: number) => {
     if (!auth.accessToken) return;
@@ -28,6 +38,26 @@ export function DriverTripsPage() {
 
   useEffect(() => { loadTrips(page); }, [auth.accessToken, page]);
 
+  const handleAction = async (action: string, tripId: string) => {
+    if (!auth.accessToken) return;
+    setActionLoading(tripId);
+    try {
+      if (action === 'start') await startDriverTrip(auth.accessToken, tripId);
+      else if (action === 'end') await endDriverTrip(auth.accessToken, tripId);
+      else if (action === 'cancel') await cancelDriverTrip(auth.accessToken, tripId);
+      loadTrips(page);
+    } catch (e: any) {
+      setError(e.message || `Failed to ${action} trip`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const canStart = permissions.includes('driver_trip_start');
+  const canEnd = permissions.includes('driver_trip_end');
+  const canCancel = permissions.includes('driver_trip_cancel');
+  const canCreate = permissions.includes('driver_trip_create');
+
   if (loading && trips.length === 0) return <LoadingState message="Loading your trips..." />;
   if (error && trips.length === 0) return <ErrorState message={error} onRetry={() => loadTrips(page)} />;
 
@@ -37,7 +67,10 @@ export function DriverTripsPage() {
         eyebrow="Driver Portal"
         title="My Trips"
         description="Trips assigned to you."
+        actions={canCreate ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/trips/create')}>Create Trip</button> : undefined}
       />
+
+      {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
 
       {trips.length === 0 ? (
         <div className="state-panel">
@@ -57,9 +90,8 @@ export function DriverTripsPage() {
                   <th>Route</th>
                   <th>Vehicle</th>
                   <th>Status</th>
-                  <th>Start</th>
-                  <th>End</th>
                   <th>Distance</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -70,9 +102,32 @@ export function DriverTripsPage() {
                     <td>{trip.originName} → {trip.destinationName}</td>
                     <td>{trip.vehicle.vehicleNumber}</td>
                     <td><span className="status-badge">{trip.status}</span></td>
-                    <td>{trip.actualStartAt ? new Date(trip.actualStartAt).toLocaleDateString() : trip.plannedStartAt ? new Date(trip.plannedStartAt).toLocaleDateString() : '—'}</td>
-                    <td>{trip.actualEndAt ? new Date(trip.actualEndAt).toLocaleDateString() : trip.plannedEndAt ? new Date(trip.plannedEndAt).toLocaleDateString() : '—'}</td>
                     <td>{trip.distanceKm ? `${trip.distanceKm} km` : '—'}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        {canStart && (trip.status === 'DRAFT' || trip.status === 'SCHEDULED') && (
+                          <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            disabled={actionLoading === trip.id}
+                            onClick={() => handleAction('start', trip.id)}>
+                            {actionLoading === trip.id ? '...' : 'Start'}
+                          </button>
+                        )}
+                        {canEnd && trip.status === 'STARTED' && (
+                          <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            disabled={actionLoading === trip.id}
+                            onClick={() => handleAction('end', trip.id)}>
+                            {actionLoading === trip.id ? '...' : 'End'}
+                          </button>
+                        )}
+                        {canCancel && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
+                          <button type="button" className="secondary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                            disabled={actionLoading === trip.id}
+                            onClick={() => handleAction('cancel', trip.id)}>
+                            {actionLoading === trip.id ? '...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

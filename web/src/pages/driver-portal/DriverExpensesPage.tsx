@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyDriverExpenses } from '../../services/api';
 import type { DriverPortalExpense } from '../../types/auth';
@@ -12,18 +13,25 @@ function formatCurrency(amount: number) {
 
 export function DriverExpensesPage() {
   const auth = useAuth();
-  const [expenses, setExpenses] = useState<DriverPortalExpense[]>([]);
+  const navigate = useNavigate();
+  const [entries, setEntries] = useState<DriverPortalExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [permissions, setPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!auth.accessToken) return;
+    setPermissions(auth.permissions || []);
+  }, [auth.accessToken, auth.permissions]);
 
   const loadData = (p: number) => {
     if (!auth.accessToken) return;
     setLoading(true);
     getMyDriverExpenses(auth.accessToken, { page: p, limit: 20 })
       .then((res) => {
-        setExpenses(res.data?.items || []);
+        setEntries(res.data?.items || []);
         setTotalPages(res.data?.totalPages || 1);
       })
       .catch((e) => setError(e.message || 'Failed to load expenses'))
@@ -32,22 +40,25 @@ export function DriverExpensesPage() {
 
   useEffect(() => { loadData(page); }, [auth.accessToken, page]);
 
-  if (loading && expenses.length === 0) return <LoadingState message="Loading expenses..." />;
-  if (error && expenses.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
+  const canCreate = permissions.includes('driver_expense_create');
+
+  if (loading && entries.length === 0) return <LoadingState message="Loading expenses..." />;
+  if (error && entries.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
 
   return (
     <section className="page-content">
       <PageHeader
         eyebrow="Driver Portal"
         title="My Expenses"
-        description="Expenses logged for your trips."
+        description="Expense claims submitted by you."
+        actions={canCreate ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/expenses/create')}>Expense Claim</button> : undefined}
       />
 
-      {expenses.length === 0 ? (
+      {entries.length === 0 ? (
         <div className="state-panel">
           <div>
             <h3>No expenses found</h3>
-            <p>No expenses are recorded for your trips yet.</p>
+            <p>You have no expense claims yet.</p>
           </div>
         </div>
       ) : (
@@ -57,20 +68,22 @@ export function DriverExpensesPage() {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Vehicle</th>
                   <th>Category</th>
+                  <th>Vehicle</th>
                   <th>Amount</th>
+                  <th>Notes</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((exp) => (
-                  <tr key={exp.id}>
-                    <td>{new Date(exp.expenseDate).toLocaleDateString()}</td>
-                    <td>{exp.vehicle.vehicleNumber}</td>
-                    <td>{exp.category}</td>
-                    <td>{formatCurrency(exp.amount)}</td>
-                    <td><span className="status-badge">{exp.status}</span></td>
+                {entries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td>{new Date(entry.expenseDate).toLocaleDateString()}</td>
+                    <td>{entry.category}</td>
+                    <td>{entry.vehicle.vehicleNumber}</td>
+                    <td>{formatCurrency(entry.amount)}</td>
+                    <td>{entry.notes || '—'}</td>
+                    <td><span className="status-badge">{entry.status}</span></td>
                   </tr>
                 ))}
               </tbody>

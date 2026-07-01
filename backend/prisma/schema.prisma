@@ -63,6 +63,8 @@ model User {
   dataScopesGranted        UserDataScope[]              @relation("DataScopesGrantedBy")
   profileLinks             UserProfileLink[]            @relation("UserProfileLinkUser")
   profileLinksLinkedBy     UserProfileLink[]            @relation("UserProfileLinkLinkedBy")
+  vehicleIssuesCreated     VehicleIssue[]               @relation("VehicleIssueCreatedBy")
+  vehicleInspectionsCreated VehicleInspection[]         @relation("VehicleInspectionCreatedBy")
 
   @@map("users")
 }
@@ -397,6 +399,8 @@ model Vehicle {
   complianceDocuments   VehicleComplianceDocument[]
   complianceHistory     VehicleComplianceHistory[]
   documents             Document[]
+  vehicleIssues         VehicleIssue[]
+  vehicleInspections    VehicleInspection[]
 
   @@map("vehicles")
 }
@@ -424,6 +428,8 @@ model Driver {
   financeTransactions FinanceTransaction[]
   tripBillings        TripBilling[]
   documents           Document[]
+  vehicleIssues       VehicleIssue[]
+  vehicleInspections  VehicleInspection[]
 
   @@map("drivers")
 }
@@ -534,6 +540,8 @@ model Trip {
   billing           TripBilling?
   financeTransactions FinanceTransaction[]
   documents           Document[]
+  vehicleIssues       VehicleIssue[]
+  vehicleInspections  VehicleInspection[]
 
   @@index([vehicleId, status])
   @@index([driverId, status])
@@ -791,6 +799,71 @@ model Repair {
   @@index([driverId])
   @@index([status])
   @@map("repairs")
+}
+
+enum VehicleIssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VehicleIssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+model VehicleIssue {
+  id            String              @id @default(cuid())
+  vehicleId     String              @map("vehicle_id")
+  tripId        String?             @map("trip_id")
+  driverId      String              @map("driver_id")
+  title         String
+  description   String?
+  severity      VehicleIssueSeverity @default(MEDIUM)
+  status        VehicleIssueStatus  @default(OPEN)
+  reportedAt    DateTime            @default(now()) @map("reported_at")
+  resolvedAt    DateTime?           @map("resolved_at")
+  resolutionNotes String?           @map("resolution_notes")
+  createdById   String              @map("created_by_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  vehicle       Vehicle             @relation(fields: [vehicleId], references: [id])
+  trip          Trip?               @relation(fields: [tripId], references: [id])
+  driver        Driver              @relation(fields: [driverId], references: [id])
+  createdBy     User                @relation("VehicleIssueCreatedBy", fields: [createdById], references: [id])
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([status])
+  @@map("vehicle_issues")
+}
+
+model VehicleInspection {
+  id              String    @id @default(cuid())
+  vehicleId       String    @map("vehicle_id")
+  driverId        String    @map("driver_id")
+  tripId          String?   @map("trip_id")
+  inspectionDate  DateTime  @default(now()) @map("inspection_date")
+  inspectionType  String    @map("inspection_type")
+  odometerReading Int?      @map("odometer_reading")
+  overallStatus   String    @default("OK") @map("overall_status")
+  notes           String?
+  checklistItems  Json      @default("[]") @map("checklist_items")
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  driver          Driver    @relation(fields: [driverId], references: [id])
+  trip            Trip?     @relation(fields: [tripId], references: [id])
+  createdBy       User      @relation("VehicleInspectionCreatedBy", fields: [createdById], references: [id])
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@map("vehicle_inspections")
 }
 
 // ─── Phase 6.1: India Vehicle Compliance & Document Metadata ───
