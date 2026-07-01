@@ -239,6 +239,36 @@ export async function deleteVehicle(vehicleId: string) {
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (!vehicle) throw new AppError('Vehicle not found', 404);
 
-  await prisma.vehicle.delete({ where: { id: vehicleId } });
+  await prisma.$transaction(async (tx) => {
+    // Delete related records with required vehicleId FK
+    await tx.tripHistory.deleteMany({ where: { trip: { vehicleId } } });
+    await tx.trip.deleteMany({ where: { vehicleId } });
+    await tx.fuelEntry.deleteMany({ where: { vehicleId } });
+    await tx.expense.deleteMany({ where: { vehicleId } });
+    await tx.maintenanceRequest.deleteMany({ where: { vehicleId } });
+    await tx.repair.deleteMany({ where: { vehicleId } });
+    await tx.vehicleIssue.deleteMany({ where: { vehicleId } });
+    await tx.vehicleInspection.deleteMany({ where: { vehicleId } });
+
+    // Nullify optional vehicleId references
+    await tx.document.updateMany({ where: { vehicleId }, data: { vehicleId: null } });
+    await tx.financeTransaction.updateMany({ where: { vehicleId }, data: { vehicleId: null } });
+    await tx.tripBilling.updateMany({ where: { vehicleId }, data: { vehicleId: null } });
+
+    // Delete detail records (these should cascade, but explicit for safety)
+    await tx.vehicleRegistrationDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleInsuranceDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehiclePermitDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleFitnessDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehiclePucDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleRoadTaxDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleFastagDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleGpsDeviceDetail.deleteMany({ where: { vehicleId } });
+    await tx.vehicleComplianceDocument.deleteMany({ where: { vehicleId } });
+    await tx.vehicleComplianceHistory.deleteMany({ where: { vehicleId } });
+
+    await tx.vehicle.delete({ where: { id: vehicleId } });
+  });
+
   return { deleted: true };
 }

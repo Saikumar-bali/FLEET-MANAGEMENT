@@ -5,6 +5,7 @@ import { validateRequest } from '../../middlewares/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createUserController,
+  deleteUserController,
   getUserController,
   listUsersController,
   updateUserController,
@@ -43,6 +44,12 @@ router.patch(
   requirePermission('user_update'),
   validateRequest({ params: userIdParamsSchema, body: updateUserPasswordSchema }),
   asyncHandler(updateUserPasswordController),
+);
+router.delete(
+  '/:id',
+  requirePermission('user_delete'),
+  validateRequest({ params: userIdParamsSchema }),
+  asyncHandler(deleteUserController),
 );
 
 export default router;

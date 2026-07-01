@@ -244,3 +244,54 @@ export async function getProfileTypesForUser(userId: string): Promise<ProfileTyp
 
   return links.map(l => l.profileType);
 }
+
+export async function listAvailableDrivers(search?: string, showAll = false) {
+  const where: Prisma.DriverWhereInput = {};
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { mobile: { contains: search, mode: 'insensitive' } },
+      { licenseNumber: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+  if (!showAll) {
+    where.status = { not: 'INACTIVE' };
+  }
+
+  const drivers = await prisma.driver.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    take: 100,
+  });
+
+  const driverIds = drivers.map(d => d.id);
+  const activeLinks = await prisma.userProfileLink.findMany({
+    where: {
+      profileType: 'DRIVER',
+      profileId: { in: driverIds },
+      status: 'ACTIVE',
+    },
+    select: { profileId: true, userId: true },
+  });
+
+  const linkMap = new Map(activeLinks.map(l => [l.profileId, l.userId]));
+  const linkedUserIds = [...new Set(activeLinks.map(l => l.userId))];
+  const linkedUsers = linkedUserIds.length > 0
+    ? await prisma.user.findMany({
+        where: { id: { in: linkedUserIds } },
+        select: { id: true, username: true },
+      })
+    : [];
+  const userMap = new Map(linkedUsers.map(u => [u.id, u.username]));
+
+  return drivers.map(d => ({
+    driverId: d.id,
+    name: d.name,
+    mobile: d.mobile,
+    licenseNumber: d.licenseNumber,
+    status: d.status,
+    linkedUserId: linkMap.get(d.id) ?? null,
+    linkedUsername: linkMap.get(d.id) ? (userMap.get(linkMap.get(d.id)!) ?? null) : null,
+    isLinked: linkMap.has(d.id),
+  }));
+}

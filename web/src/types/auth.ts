@@ -934,6 +934,11 @@ export type DriverPortalVehicle = {
   brand: string | null;
   model: string | null;
   status: string;
+  currentDriverId: string | null;
+  isCurrent: boolean;
+  lastTripId: string | null;
+  lastTripNumber: string | null;
+  source: 'CURRENT_ASSIGNMENT' | 'TRIP_HISTORY';
 };
 
 export type DriverPortalDocument = {
@@ -957,6 +962,30 @@ export type DriverPortalFuelEntry = {
   status: string;
   createdAt: string;
   vehicle: { id: string; vehicleNumber: string };
+};
+
+export type ReceiptExtractedField = {
+  value: string | number | null;
+  confidence: number;
+  source: string;
+};
+
+export type ReceiptExtractionResult = {
+  extractedFields: {
+    fuelStationName: ReceiptExtractedField;
+    billNumber: ReceiptExtractedField;
+    fuelDate: ReceiptExtractedField;
+    totalAmount: ReceiptExtractedField;
+    quantityLiters: ReceiptExtractedField;
+    pricePerLiter: ReceiptExtractedField;
+    vehicleNumber: ReceiptExtractedField;
+    gstin: ReceiptExtractedField;
+    paymentMode: ReceiptExtractedField;
+  };
+  overallConfidence: number;
+  rawText: string | null;
+  needsReview: boolean;
+  warnings: string[];
 };
 
 export type DriverPortalExpense = {

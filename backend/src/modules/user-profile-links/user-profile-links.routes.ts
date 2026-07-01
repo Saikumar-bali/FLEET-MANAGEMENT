@@ -14,6 +14,7 @@ import {
   deleteProfileLinkController,
   selfProfileLinksController,
   createProfileLinkForUserController,
+  listAvailableDriversController,
 } from './user-profile-links.controller';
 
 const router = Router();
@@ -30,6 +31,13 @@ router.get(
 // NOTE: These are registered on the same router but the path prefix in app.ts is /api/v1/user-profile-links
 // We need separate routes under /users/:userId path — these are handled via a separate router mounted at /api/v1/users
 // See user-profile-links-user-aliases.ts for that
+
+// ─── Available drivers for linking ───
+router.get(
+  '/available-drivers',
+  requirePermission('profile_link_view'),
+  asyncHandler(listAvailableDriversController),
+);
 
 // ─── Admin endpoints ───
 router.get(

@@ -3,6 +3,7 @@ import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import {
   createUser,
+  deleteUser,
   getUserById,
   listUsers,
   updateUser,
@@ -68,6 +69,19 @@ export async function updateUserStatusController(req: Request, res: Response) {
   });
 
   return sendSuccess(res, user, 'User status updated successfully');
+}
+
+export async function deleteUserController(req: Request, res: Response) {
+  await deleteUser(String(req.params.id));
+
+  await createAuditLog(req, {
+    userId: req.authUser?.id,
+    action: 'user.delete',
+    entityType: 'user',
+    entityId: String(req.params.id),
+  });
+
+  return sendSuccess(res, null, 'User deleted successfully');
 }
 
 export async function updateUserPasswordController(req: Request, res: Response) {
