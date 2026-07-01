@@ -4,6 +4,7 @@ import { AppError } from '../../utils/appError';
 import { prisma } from '../../lib/prisma';
 import { getDriverIdForUser } from '../user-profile-links/user-profile-links.service';
 import { createAuditLog } from '../audit/audit.service';
+import { extractFromReceipt } from '../fuel/fuel-receipt-extraction.service';
 
 function generateTripNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -67,18 +68,32 @@ export async function driverVehiclesController(req: Request, res: Response) {
         { trips: { some: { driverId: driver.id } } },
       ],
     },
-    select: {
-      id: true,
-      vehicleNumber: true,
-      vehicleType: true,
-      brand: true,
-      model: true,
-      status: true,
+    include: {
+      trips: {
+        where: { driverId: driver.id },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true, tripNumber: true },
+      },
     },
     distinct: ['id'],
   });
 
-  return sendSuccess(res, vehicles);
+  const result = vehicles.map(v => ({
+    id: v.id,
+    vehicleNumber: v.vehicleNumber,
+    vehicleType: v.vehicleType,
+    brand: v.brand,
+    model: v.model,
+    status: v.status,
+    currentDriverId: driver.id,
+    isCurrent: v.currentDriverId === driver.id,
+    lastTripId: v.trips[0]?.id ?? null,
+    lastTripNumber: v.trips[0]?.tripNumber ?? null,
+    source: v.currentDriverId === driver.id ? ('CURRENT_ASSIGNMENT' as const) : ('TRIP_HISTORY' as const),
+  }));
+
+  return sendSuccess(res, result);
 }
 
 export async function driverDocumentsController(req: Request, res: Response) {
@@ -86,7 +101,37 @@ export async function driverDocumentsController(req: Request, res: Response) {
   const page = Number(req.query.page) || 1;
   const limit = Math.min(Number(req.query.limit) || 20, 100);
 
-  const where = { driverId: driver.id, documentStatus: 'ACTIVE' as const };
+  const driverTripIds = await prisma.trip.findMany({
+    where: { driverId: driver.id },
+    select: { id: true },
+  }).then(rows => rows.map(r => r.id));
+
+  const driverVehicleIds = await prisma.vehicle.findMany({
+    where: {
+      OR: [
+        { currentDriverId: driver.id },
+        { trips: { some: { driverId: driver.id } } },
+      ],
+    },
+    select: { id: true },
+  }).then(rows => rows.map(r => r.id));
+
+  const driverFuelEntryIds = await prisma.fuelEntry.findMany({
+    where: { driverId: driver.id },
+    select: { id: true },
+  }).then(rows => rows.map(r => r.id));
+
+  const where = {
+    documentStatus: 'ACTIVE' as const,
+    OR: [
+      { driverId: driver.id },
+      { tripId: { in: driverTripIds.length > 0 ? driverTripIds : [''] } },
+      { vehicleId: { in: driverVehicleIds.length > 0 ? driverVehicleIds : [''] } },
+      { fuelEntryId: { in: driverFuelEntryIds.length > 0 ? driverFuelEntryIds : [''] } },
+      { uploadedById: req.authUser!.id },
+    ],
+  };
+
   const [items, total] = await Promise.all([
     prisma.document.findMany({
       where,
@@ -101,6 +146,7 @@ export async function driverDocumentsController(req: Request, res: Response) {
         expiryDate: true,
         verificationStatus: true,
         createdAt: true,
+        reviewComments: true,
       },
     }),
     prisma.document.count({ where }),
@@ -435,6 +481,78 @@ export async function driverCreateFuelController(req: Request, res: Response) {
   return sendSuccess(res, entry, 'Fuel entry created', 201);
 }
 
+export async function driverUploadFuelReceiptController(req: Request, res: Response) {
+  const driver = await getLinkedDriver(req.authUser!.id);
+  const userId = req.authUser!.id;
+
+  if (!req.file) {
+    throw new AppError('Receipt file is required', 400);
+  }
+
+  const { vehicleId, fuelDate, totalAmount, quantityLiters, stationName, paymentMode, notes } = req.body;
+
+  const docNumber = generateDocNumber();
+  const originalName = req.file.originalname;
+  const storageKey = `driver-fuel-receipts/${driver.id}/${docNumber}-${originalName}`;
+
+  const doc = await prisma.document.create({
+    data: {
+      documentNumber: docNumber,
+      title: `Fuel Receipt - ${originalName}`,
+      originalFileName: originalName,
+      storedFileName: `${docNumber}-${originalName}`,
+      mimeType: req.file.mimetype,
+      fileSizeBytes: req.file.size,
+      storageKey,
+      documentType: 'FUEL_BILL',
+      documentCategory: 'FINANCE',
+      vehicleId: vehicleId ?? null,
+      driverId: driver.id,
+      uploadedById: userId,
+      documentStatus: 'ACTIVE',
+      verificationStatus: 'PENDING',
+    },
+  });
+
+  await createAuditLog(req, {
+    userId,
+    action: 'driver.fuel.receipt_upload',
+    entityType: 'Document',
+    entityId: doc.id,
+    metadata: { driverId: driver.id, vehicleId, fileSize: req.file.size },
+  });
+
+  const extraction = await extractFromReceipt(storageKey, req.file.mimetype);
+
+  return sendSuccess(res, { document: doc, extraction }, 'Receipt uploaded', 201);
+}
+
+export async function driverExtractFuelReceiptController(req: Request, res: Response) {
+  const driver = await getLinkedDriver(req.authUser!.id);
+  const { documentId } = req.body;
+
+  if (!documentId) {
+    throw new AppError('documentId is required', 400);
+  }
+
+  const doc = await prisma.document.findUnique({ where: { id: documentId } });
+  if (!doc || doc.driverId !== driver.id) {
+    throw new AppError('Document not found or does not belong to you', 404);
+  }
+
+  const extraction = await extractFromReceipt(doc.storageKey, doc.mimeType);
+
+  await createAuditLog(req, {
+    userId: req.authUser!.id,
+    action: 'driver.fuel.receipt_extract',
+    entityType: 'Document',
+    entityId: documentId,
+    metadata: { driverId: driver.id },
+  });
+
+  return sendSuccess(res, extraction, 'Extraction completed');
+}
+
 export async function driverCreateExpenseController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
   const userId = req.authUser!.id;
@@ -474,11 +592,64 @@ export async function driverCreateExpenseController(req: Request, res: Response)
   return sendSuccess(res, entry, 'Expense created', 201);
 }
 
+export async function driverUploadExpenseReceiptController(req: Request, res: Response) {
+  const driver = await getLinkedDriver(req.authUser!.id);
+  const userId = req.authUser!.id;
+
+  if (!req.file) {
+    throw new AppError('Receipt file is required', 400);
+  }
+
+  const { expenseId, vehicleId, tripId, description } = req.body;
+
+  if (expenseId) {
+    const expense = await prisma.expense.findUnique({ where: { id: expenseId } });
+    if (!expense || expense.driverId !== driver.id) {
+      throw new AppError('Expense not found or does not belong to you', 404);
+    }
+  }
+
+  const docNumber = generateDocNumber();
+  const originalName = req.file.originalname;
+  const storageKey = `driver-expense-receipts/${driver.id}/${docNumber}-${originalName}`;
+
+  const doc = await prisma.document.create({
+    data: {
+      documentNumber: docNumber,
+      title: `Expense Receipt - ${originalName}`,
+      originalFileName: originalName,
+      storedFileName: `${docNumber}-${originalName}`,
+      mimeType: req.file.mimetype,
+      fileSizeBytes: req.file.size,
+      storageKey,
+      documentType: 'GENERAL',
+      documentCategory: 'FINANCE',
+      vehicleId: vehicleId ?? null,
+      tripId: tripId ?? null,
+      driverId: driver.id,
+      uploadedById: userId,
+      documentStatus: 'ACTIVE',
+      verificationStatus: 'PENDING',
+    },
+  });
+
+  await createAuditLog(req, {
+    userId,
+    action: 'driver.expense.receipt_upload',
+    entityType: 'Document',
+    entityId: doc.id,
+    metadata: { driverId: driver.id, expenseId: expenseId ?? null },
+  });
+
+  return sendSuccess(res, doc, 'Receipt uploaded', 201);
+}
+
 export async function driverUploadDocumentController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
   const userId = req.authUser!.id;
 
-  const { title, documentType, documentCategory, vehicleId, tripId, description } = req.body;
+  const file = req.file;
+  const { title, documentType, documentCategory, vehicleId, tripId, description } = file ? req.body : req.body;
   if (!title || !documentType || !documentCategory) {
     throw new AppError('title, documentType, and documentCategory are required', 400);
   }
@@ -491,16 +662,17 @@ export async function driverUploadDocumentController(req: Request, res: Response
   }
 
   const docNumber = generateDocNumber();
+
   const doc = await prisma.document.create({
     data: {
       documentNumber: docNumber,
       title,
       description: description ?? null,
-      originalFileName: `${docNumber}.placeholder`,
-      storedFileName: `${docNumber}.placeholder`,
-      mimeType: 'application/octet-stream',
-      fileSizeBytes: 0,
-      storageKey: `driver-uploads/${docNumber}`,
+      originalFileName: file ? file.originalname : `${docNumber}.placeholder`,
+      storedFileName: file ? `${docNumber}-${file.originalname}` : `${docNumber}.placeholder`,
+      mimeType: file ? file.mimetype : 'application/octet-stream',
+      fileSizeBytes: file ? file.size : 0,
+      storageKey: file ? `driver-uploads/${driver.id}/${docNumber}` : `driver-uploads/${docNumber}`,
       documentType: documentType as any,
       documentCategory: documentCategory as any,
       vehicleId: vehicleId ?? null,
@@ -517,7 +689,7 @@ export async function driverUploadDocumentController(req: Request, res: Response
     action: 'driver.document.upload',
     entityType: 'Document',
     entityId: doc.id,
-    metadata: { driverId: driver.id, documentType, documentCategory },
+    metadata: { driverId: driver.id, documentType, documentCategory, fileSize: file?.size ?? 0 },
   });
 
   return sendSuccess(res, doc, 'Document uploaded', 201);

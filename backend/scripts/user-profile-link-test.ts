@@ -276,8 +276,120 @@ async function main() {
     fail(`Expected null after revoking all, got ${driverIdAfterAllRevoked}`);
   }
 
-  // 11. Diagnose script test (verify it runs)
-  console.log('\n11. Diagnose script (import check)');
+  // 11. Driver role user without UserProfileLink has no primaryDriverProfile
+  console.log('\n11. Driver role user without UserProfileLink has no primaryDriverProfile');
+
+  const driverRole = await prisma.role.findUnique({ where: { key: 'driver' } });
+  if (driverRole) {
+    const unlinkedUser = await prisma.user.create({
+      data: {
+        name: `${PREFIX}_UNLINKED_DRIVER`,
+        email: `${PREFIX.toLowerCase()}_unlinked_driver@test.local`,
+        username: `${PREFIX.toLowerCase()}_unlinked_driver`,
+        passwordHash: 'not-a-real-hash',
+        roleId: driverRole.id,
+        status: 'ACTIVE',
+      },
+    });
+
+    const driverIdNoLink = await getDriverIdForUser(unlinkedUser.id);
+    if (driverIdNoLink === null) {
+      pass('Driver role user without UserProfileLink has no primaryDriverProfile');
+    } else {
+      fail(`Expected null primaryDriverProfile for unlinked user, got ${driverIdNoLink}`);
+    }
+
+    const linksDirect = await getUserProfileLinks(unlinkedUser.id);
+    if (linksDirect.length === 0) {
+      pass('Driver role user without UserProfileLink has no profile types');
+    } else {
+      fail(`Expected empty profileLinks for unlinked user, got ${linksDirect.length}`);
+    }
+  } else {
+    fail('Driver role not found in DB');
+  }
+
+  // 12. Driver role user with active DRIVER UserProfileLink has primaryDriverProfile
+  console.log('\n12. Driver role user with active DRIVER UserProfileLink has primaryDriverProfile');
+
+  if (driverRole) {
+    const linkedUser = await prisma.user.create({
+      data: {
+        name: `${PREFIX}_LINKED_DRIVER`,
+        email: `${PREFIX.toLowerCase()}_linked_driver@test.local`,
+        username: `${PREFIX.toLowerCase()}_linked_driver`,
+        passwordHash: 'not-a-real-hash',
+        roleId: driverRole.id,
+        status: 'ACTIVE',
+      },
+    });
+
+    const linkedDriver = await prisma.driver.create({
+      data: {
+        name: `${PREFIX}_LINKED_DRIVER_PROFILE`,
+        mobile: `90000${Date.now().toString().slice(-5)}3`,
+        licenseNumber: `${PREFIX}_LIC_003`,
+        status: 'AVAILABLE',
+      },
+    });
+
+    await createProfileLink(
+      { userId: linkedUser.id, profileType: 'DRIVER', profileId: linkedDriver.id, isPrimary: true },
+      linkedUser.id,
+    );
+
+    const driverIdLinked = await getDriverIdForUser(linkedUser.id);
+    if (driverIdLinked === linkedDriver.id) {
+      pass('Driver role user with active DRIVER link has primaryDriverProfile');
+    } else {
+      fail(`Expected ${linkedDriver.id}, got ${driverIdLinked}`);
+    }
+
+    const profileTypesLinked = await getProfileTypesForUser(linkedUser.id);
+    if (profileTypesLinked.includes('DRIVER')) {
+      pass('Linked user has DRIVER profile type');
+    } else {
+      fail('Linked user should have DRIVER profile type');
+    }
+
+    // 13. Revoked link removes primaryDriverProfile
+    console.log('\n13. Revoked link removes primaryDriverProfile');
+
+    const linksForUser = await getUserProfileLinks(linkedUser.id);
+    for (const link of linksForUser) {
+      if (link.status === 'ACTIVE') {
+        await revokeProfileLink(link.id);
+      }
+    }
+
+    const driverIdAfterRevoke2 = await getDriverIdForUser(linkedUser.id);
+    if (driverIdAfterRevoke2 === null) {
+      pass('Revoked link removes primaryDriverProfile');
+    } else {
+      fail(`Expected null after revoking link, got ${driverIdAfterRevoke2}`);
+    }
+  }
+
+  // 14. Driver role does not include approval/review permissions
+  console.log('\n14. Driver role does not include approval/review permissions');
+
+  if (driverRole) {
+    const forbiddenPerms = ['driver_submission_review', 'driver_fuel_approve', 'driver_expense_approve', 'driver_document_verify', 'driver_issue_review', 'driver_inspection_review'];
+    const rolePerms = await prisma.rolePermission.findMany({
+      where: { roleId: driverRole.id },
+      include: { permission: true },
+    });
+    const rolePermKeys = rolePerms.map(rp => rp.permission.key);
+    const found = forbiddenPerms.filter(p => rolePermKeys.includes(p));
+    if (found.length === 0) {
+      pass('Driver role does not include approval/review permissions');
+    } else {
+      fail(`Driver role should not have: ${found.join(', ')}`);
+    }
+  }
+
+  // 15. Diagnose script test (verify it runs)
+  console.log('\n15. Diagnose script (import check)');
 
   try {
     const diag = await import('../scripts/driver-profile-link-diagnose');
@@ -286,8 +398,8 @@ async function main() {
     pass('Diagnose script module structure valid (runtime check skipped)');
   }
 
-  // 12. Repair script dry-run does not mutate data
-  console.log('\n12. Repair script dry-run');
+  // 16. Repair script dry-run does not mutate data
+  console.log('\n16. Repair script dry-run');
 
   const linksBeforeRepair = await prisma.userProfileLink.count({
     where: { profileType: 'DRIVER', status: 'ACTIVE' },
@@ -314,8 +426,8 @@ async function main() {
     pass('Repair script dry-run executed (runtime check)');
   }
 
-  // 13. Repair apply requires env flag
-  console.log('\n13. Repair apply requires env flag');
+  // 17. Repair apply requires env flag
+  console.log('\n17. Repair apply requires env flag');
 
   try {
     const { execSync } = await import('child_process');
@@ -334,8 +446,8 @@ async function main() {
     pass('Repair script env flag check (runtime check)');
   }
 
-  // 14. Self-create endpoint removed + controller uses scope validation
-  console.log('\n14. Self-create endpoint & scope validation verification');
+  // 18. Self-create endpoint removed + controller uses scope validation
+  console.log('\n18. Self-create endpoint & scope validation verification');
 
   // Read the controller source to verify the unsafe function is removed
   const controllerPath = __dirname + '/../src/modules/user-profile-links/user-profile-links.controller.ts';

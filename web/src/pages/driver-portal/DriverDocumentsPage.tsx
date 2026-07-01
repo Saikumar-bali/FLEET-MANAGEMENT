@@ -60,7 +60,7 @@ export function DriverDocumentsPage() {
       <PageHeader
         eyebrow="Driver Portal"
         title="My Documents"
-        description="Documents uploaded by you."
+        description="Documents linked to your profile, trips, vehicles, fuel, and expenses."
         actions={canUpload ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/documents/upload')}>Upload Document</button> : undefined}
       />
 
@@ -68,7 +68,7 @@ export function DriverDocumentsPage() {
         <div className="state-panel">
           <div>
             <h3>No documents found</h3>
-            <p>You have no documents uploaded yet.</p>
+            <p>You have no documents uploaded yet. Upload a document to get started.</p>
           </div>
         </div>
       ) : (

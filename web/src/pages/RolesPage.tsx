@@ -7,6 +7,7 @@ import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   createRole as createRoleRequest,
   getPermissions,
@@ -42,6 +43,7 @@ function getRoleEditForm(role: RoleRecord): RoleFormState {
 
 export function RolesPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissions, setPermissions] = useState<PermissionRecord[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
@@ -53,7 +55,6 @@ export function RolesPage() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [isSavingRole, setIsSavingRole] = useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -150,7 +151,6 @@ export function RolesPage() {
 
     setIsSavingRole(true);
     setRoleError(null);
-    setPageMessage(null);
 
     try {
       const response = await createRoleRequest(auth.accessToken, createRoleForm);
@@ -158,12 +158,14 @@ export function RolesPage() {
       setSelectedRoleId(response.data.id);
       setCreateRoleForm(initialRoleFormState);
       setIsCreateOpen(false);
-      setPageMessage('Role created successfully.');
+      showToast('Role created successfully.', 'success');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setRoleError(caughtError.message);
+        showToast(caughtError.message, 'error');
       } else {
         setRoleError('Failed to create role.');
+        showToast('Failed to create role.', 'error');
       }
     } finally {
       setIsSavingRole(false);
@@ -177,19 +179,20 @@ export function RolesPage() {
 
     setIsSavingRole(true);
     setRoleError(null);
-    setPageMessage(null);
 
     try {
       const response = await updateRoleRequest(auth.accessToken, selectedRoleId, roleForm);
       setRoles((currentRoles) =>
         currentRoles.map((role) => (role.id === selectedRoleId ? { ...role, ...response.data } : role)),
       );
-      setPageMessage('Role updated successfully.');
+      showToast('Role updated successfully.', 'success');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setRoleError(caughtError.message);
+        showToast(caughtError.message, 'error');
       } else {
         setRoleError('Failed to update role.');
+        showToast('Failed to update role.', 'error');
       }
     } finally {
       setIsSavingRole(false);
@@ -203,19 +206,20 @@ export function RolesPage() {
 
     setIsSavingPermissions(true);
     setPermissionError(null);
-    setPageMessage(null);
 
     try {
       const response = await updateRolePermissionsRequest(auth.accessToken, selectedRoleId, selectedPermissionKeys);
       setRoles((currentRoles) =>
         currentRoles.map((role) => (role.id === selectedRoleId ? response.data : role)),
       );
-      setPageMessage('Permissions updated successfully.');
+      showToast('Permissions updated successfully.', 'success');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setPermissionError(caughtError.message);
+        showToast(caughtError.message, 'error');
       } else {
         setPermissionError('Failed to update permissions.');
+        showToast('Failed to update permissions.', 'error');
       }
     } finally {
       setIsSavingPermissions(false);
@@ -278,10 +282,6 @@ export function RolesPage() {
           ) : null}
         </div>
       </div>
-
-      {pageMessage ? (
-        <div className="success-banner">{pageMessage}</div>
-      ) : null}
 
       <div className="card table-card">
         <div className="table-toolbar">

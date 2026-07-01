@@ -9,6 +9,7 @@ import {
   updateProfileLink,
   revokeProfileLink,
   deleteProfileLink,
+  listAvailableDrivers,
 } from './user-profile-links.service';
 import { validateProfileLinkCreate } from './user-profile-links.scope-validation';
 import type { ProfileType } from '@prisma/client';
@@ -105,7 +106,14 @@ export async function deleteProfileLinkController(req: Request, res: Response) {
   return sendSuccess(res, null, 'Profile link deleted');
 }
 
-// ─── Self endpoints (read-only) ───
+// ─── Available drivers for linking ───
+
+export async function listAvailableDriversController(req: Request, res: Response) {
+  const search = req.query.search as string | undefined;
+  const showAll = req.query.showAll === 'true';
+  const drivers = await listAvailableDrivers(search, showAll);
+  return sendSuccess(res, drivers);
+}
 
 export async function selfProfileLinksController(req: Request, res: Response) {
   const links = await getUserProfileLinks(

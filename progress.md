@@ -81,6 +81,22 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 
 ## Implementation Log
 
+### 2026-07-01
+
+- **Role-Aware Navigation UX Overhaul**: Completed.
+- Removed dual sidebar from Driver Portal (`DriverPortalLayout.tsx` no longer renders a second `<nav>`).
+- Removed My Access from primary sidebar navigation registry (was in SETTINGS section).
+- My Access is only reachable via the bottom account user menu (sidebar account chip).
+- `/my-access` route still works for direct navigation.
+- Removed all emoji characters from sidebar labels, page headers, buttons, quick action cards, empty states, and toast notifications. Replaced with professional SVG line icons.
+- Fixed Driver Portal loading state: clear handling for 404 (no driver profile linked), error (unable to load), loading skeleton, and retry button.
+- Fixed Driver Portal not getting stuck on "Loading" — added proper error boundaries and skeleton states.
+- Redesigned My Access tabs order: Summary, Linked Profiles, Visible Menus, Hidden Menus, Permissions, Activity.
+- Web build: PASS (tsc + vite both succeed).
+- Backend tsc --noEmit: PASS.
+- Updated Playwright sidebar-role-navigation.spec.ts with new test cases (single sidebar check, no emoji check, no loading stuck check).
+- Prisma generate blocked by Windows EPERM (pre-existing environment issue, not related to changes).
+
 ### 2026-06-30
 
 - Phase 16 Generic User/Profile Linking + Driver Portal Foundation: **Completed**.

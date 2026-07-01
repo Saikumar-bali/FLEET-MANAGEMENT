@@ -145,6 +145,11 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'driver_document_verify', module: 'driver_submissions', action: 'document_verify', description: 'Verify driver uploaded documents' },
   { key: 'driver_issue_review', module: 'driver_submissions', action: 'issue_review', description: 'Review driver vehicle issues' },
   { key: 'driver_inspection_review', module: 'driver_submissions', action: 'inspection_review', description: 'Review driver inspections' },
+  { key: 'driver_portal_view', module: 'driver_portal', action: 'portal_view', description: 'Driver portal: view portal home' },
+  { key: 'driver_my_dashboard_view', module: 'driver_portal', action: 'my_dashboard_view', description: 'Driver portal: view own dashboard' },
+  { key: 'driver_my_trips_view', module: 'driver_portal', action: 'my_trips_view', description: 'Driver portal: view own trips' },
+  { key: 'driver_my_documents_view', module: 'driver_portal', action: 'my_documents_view', description: 'Driver portal: view own documents' },
+  { key: 'driver_my_profile_view', module: 'driver_portal', action: 'my_profile_view', description: 'Driver portal: view own profile' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -317,11 +322,12 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'driver_inspection_review',
   ],
   driver: [
-    'trip_view',
-    'trip_start',
-    'trip_end',
-    'vehicle_compliance_view',
-    'compliance_alerts_view',
+    'driver_portal_view',
+    'driver_my_dashboard_view',
+    'driver_my_trips_view',
+    'driver_my_documents_view',
+    'driver_my_profile_view',
+    'driver_submission_view',
     'driver_trip_create',
     'driver_trip_start',
     'driver_trip_end',

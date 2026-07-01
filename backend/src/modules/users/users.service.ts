@@ -293,6 +293,26 @@ export async function updateUserStatus(params: {
   });
 }
 
+export async function deleteUser(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError('User not found', 404);
+
+  await prisma.userPermissionOverride.deleteMany({ where: { OR: [{ userId }, { grantedById: userId }] } });
+  await prisma.userDataScope.deleteMany({ where: { OR: [{ userId }, { grantedById: userId }] } });
+  await prisma.userProfileLink.deleteMany({ where: { OR: [{ userId }, { linkedById: userId }] } });
+  await prisma.refreshToken.deleteMany({ where: { userId } });
+  await prisma.document.deleteMany({ where: { uploadedById: userId } });
+  await prisma.document.updateMany({ where: { verifiedById: userId }, data: { verifiedById: null } });
+  await prisma.vehicleIssue.deleteMany({ where: { createdById: userId } });
+  await prisma.vehicleIssue.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } });
+  await prisma.vehicleInspection.deleteMany({ where: { createdById: userId } });
+  await prisma.vehicleInspection.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } });
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  return { deleted: true };
+}
+
 export async function updateUserPassword(userId: string, password: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

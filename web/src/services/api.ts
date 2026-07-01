@@ -17,6 +17,7 @@ import type {
   DriverPortalDocument,
   DriverPortalFuelEntry,
   DriverPortalExpense,
+  ReceiptExtractionResult,
   EffectivePermissionsResponse,
   ExpenseRecord,
   FinanceAccount,
@@ -30,6 +31,7 @@ import type {
   PaymentRecord,
   PermissionRecord,
   PnlSummary,
+  ProfileLinkRecord,
   RepairRecord,
   RoleRecord,
   TripBilling,
@@ -304,6 +306,13 @@ export function updateVehicleStatus(token: string, vehicleId: string, status: st
   return request<VehicleRecord>(`/vehicles/${vehicleId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+    token,
+  });
+}
+
+export function deleteVehicle(token: string, vehicleId: string) {
+  return request<{ deleted: boolean }>(`/vehicles/${vehicleId}`, {
+    method: 'DELETE',
     token,
   });
 }
@@ -995,8 +1004,47 @@ export function createDriverExpense(token: string, payload: { vehicleId: string;
   return request<DriverPortalExpense>('/me/driver-expenses', { method: 'POST', token, body: JSON.stringify(payload) });
 }
 
-export function uploadDriverDocument(token: string, payload: { title: string; documentType: string; documentCategory: string; vehicleId?: string; tripId?: string; description?: string }) {
+export function uploadDriverDocument(token: string, payload: { title: string; documentType: string; documentCategory: string; vehicleId?: string; tripId?: string; description?: string; file?: File }) {
+  if (payload.file) {
+    const formData = new FormData();
+    formData.append('file', payload.file);
+    formData.append('title', payload.title);
+    formData.append('documentType', payload.documentType);
+    formData.append('documentCategory', payload.documentCategory);
+    if (payload.vehicleId) formData.append('vehicleId', payload.vehicleId);
+    if (payload.tripId) formData.append('tripId', payload.tripId);
+    if (payload.description) formData.append('description', payload.description);
+    return request<DriverPortalDocument>('/me/driver-documents', { method: 'POST', token, body: formData });
+  }
   return request<DriverPortalDocument>('/me/driver-documents', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function uploadDriverFuelReceipt(token: string, file: File, extra: Record<string, string>) {
+  const formData = new FormData();
+  formData.append('file', file);
+  for (const [key, value] of Object.entries(extra)) {
+    if (value) formData.append(key, value);
+  }
+  return request<{ document: DriverPortalDocument; extraction: ReceiptExtractionResult }>('/me/driver-fuel/receipt-upload', {
+    method: 'POST', token, body: formData,
+  });
+}
+
+export function extractFuelReceipt(token: string, documentId: string) {
+  return request<ReceiptExtractionResult>('/me/driver-fuel/extract-receipt', {
+    method: 'POST', token, body: JSON.stringify({ documentId }),
+  });
+}
+
+export function uploadDriverExpenseReceipt(token: string, file: File, extra: Record<string, string>) {
+  const formData = new FormData();
+  formData.append('file', file);
+  for (const [key, value] of Object.entries(extra)) {
+    if (value) formData.append(key, value);
+  }
+  return request<DriverPortalDocument>('/me/driver-expenses/receipt-upload', {
+    method: 'POST', token, body: formData,
+  });
 }
 
 export function reportDriverVehicleIssue(token: string, payload: { vehicleId: string; title: string; description?: string; severity?: string; tripId?: string }) {
@@ -1157,4 +1205,53 @@ export function rejectInspectionSubmission(token: string, id: string, reason?: s
 
 export function requestChangesInspection(token: string, id: string, reason?: string) {
   return request<unknown>(`/driver-submissions/inspections/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Profile Links API ───
+
+export function getUserProfileLinks(token: string, userId: string) {
+  return request<ProfileLinkRecord[]>(`/users/${userId}/profile-links`, { token });
+}
+
+export function createUserProfileLink(
+  token: string,
+  userId: string,
+  payload: { profileType: string; profileId: string; isPrimary?: boolean },
+) {
+  return request<ProfileLinkRecord>(`/users/${userId}/profile-links`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function getDriverProfileLinks(token: string, driverId: string) {
+  return request<ProfileLinkRecord[]>(`/user-profile-links?profileType=DRIVER&profileId=${driverId}`, { token });
+}
+
+export function revokeUserProfileLink(token: string, linkId: string) {
+  return request<ProfileLinkRecord>(`/user-profile-links/${linkId}/revoke`, { token, method: 'PATCH' });
+}
+
+export type AvailableDriver = {
+  driverId: string;
+  name: string;
+  mobile: string;
+  licenseNumber: string;
+  status: string;
+  linkedUserId: string | null;
+  linkedUsername: string | null;
+  isLinked: boolean;
+};
+
+export function getAvailableDrivers(token: string, params?: { search?: string; showAll?: boolean }) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.showAll) query.set('showAll', 'true');
+  const qs = query.toString();
+  return request<AvailableDriver[]>(`/user-profile-links/available-drivers${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function deleteUser(token: string, userId: string) {
+  return request<{ deleted: boolean }>(`/users/${userId}`, { token, method: 'DELETE' });
 }
