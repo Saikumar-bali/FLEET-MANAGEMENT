@@ -3,7 +3,9 @@ import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource } from '../access/scoped-enforcement.service';
+import { isGlobalUser } from '../access/access-policy.service';
 import type { ResourceType } from '../access/resource-scope-map';
+import { AppError } from '../../utils/appError';
 import {
   listFuelSubmissions, getFuelSubmission,
   listExpenseSubmissions, getExpenseSubmission,
@@ -11,6 +13,21 @@ import {
   listIssueSubmissions, getIssueSubmission,
   listInspectionSubmissions, getInspectionSubmission,
 } from './driver-submissions.service';
+
+// Issue/Inspection records use VEHICLE scope type but their id is NOT the vehicle id.
+// This helper checks the vehicleId field on the record directly.
+async function assertCanUpdateByVehicleId(record: { vehicleId: string }, actor: any, _action: string) {
+  if (isGlobalUser(actor)) return;
+  if (actor.dataScopes.some((ds: any) => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE')) return;
+  const allowed = actor.dataScopes.some((ds: any) => {
+    if (ds.scopeType !== 'VEHICLE') return false;
+    if (ds.scopeId !== null && ds.scopeId !== record.vehicleId) return false;
+    return ds.accessLevel === 'UPDATE' || ds.accessLevel === 'MANAGE';
+  });
+  if (!allowed) {
+    throw new AppError(`Access denied: insufficient data scope (need UPDATE on VEHICLE ${record.vehicleId})`, 403);
+  }
+}
 
 // ─── List endpoints ────────────────────────────────────────────
 
@@ -302,7 +319,7 @@ export async function requestChangesDocumentController(req: Request, res: Respon
 export async function acknowledgeIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleIssue.update({
     where: { id: existing.id },
@@ -328,7 +345,7 @@ export async function acknowledgeIssueController(req: Request, res: Response) {
 export async function resolveIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleIssue.update({
     where: { id: existing.id },
@@ -355,7 +372,7 @@ export async function resolveIssueController(req: Request, res: Response) {
 export async function rejectIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleIssue.update({
     where: { id: existing.id },
@@ -383,7 +400,7 @@ export async function rejectIssueController(req: Request, res: Response) {
 export async function reviewInspectionController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleInspection.update({
     where: { id: existing.id },
@@ -409,7 +426,7 @@ export async function reviewInspectionController(req: Request, res: Response) {
 export async function rejectInspectionController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleInspection.update({
     where: { id: existing.id },
@@ -435,7 +452,7 @@ export async function rejectInspectionController(req: Request, res: Response) {
 export async function requestChangesInspectionController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
-  assertCanUpdateResource(actor, 'VEHICLE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
 
   const item = await prisma().vehicleInspection.update({
     where: { id: existing.id },
