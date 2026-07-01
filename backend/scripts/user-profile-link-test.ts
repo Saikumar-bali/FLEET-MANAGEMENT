@@ -411,11 +411,11 @@ async function main() {
     console.log('\nAll tests PASSED');
   }
 
-  await prisma.$disconnect();
+  await prisma.$disconnect().catch(() => {});
 }
 
 main().catch(async (e) => {
   console.error('Test failed:', e);
-  await prisma.$disconnect();
+  await prisma.$disconnect().catch(() => {});
   process.exit(1);
 });
