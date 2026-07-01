@@ -1,8 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { createDriver, getDriver, updateDriver, updateDriverStatus, getDriverProfileLinks, createUserProfileLink, getUsers, revokeUserProfileLink, getRoles, createUser as createUserRequest } from '../services/api';
+import { createDriver, getDriver, updateDriver, updateDriverStatus, getDriverProfileLinks, createUserProfileLink, getUsers, revokeUserProfileLink, getRoles, createUser as createUserRequest, getVehicles, updateVehicle } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import type { DriverRecord, ProfileLinkRecord, UserRecord } from '../types/auth';
+import type { DriverRecord, ProfileLinkRecord, UserRecord, VehicleRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -22,7 +22,7 @@ const initialForm: DriverForm = {
   address: '', emergencyContact: '', experienceYears: '',
 };
 
-type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'profile-link';
+type SectionTab = 'personal' | 'license' | 'documents' | 'status' | 'profile-link' | 'vehicle-assignment';
 
 const sectionTabs: { key: SectionTab; label: string }[] = [
   { key: 'personal', label: 'Personal Info' },
@@ -30,6 +30,7 @@ const sectionTabs: { key: SectionTab; label: string }[] = [
   { key: 'documents', label: 'Documents' },
   { key: 'status', label: 'Status' },
   { key: 'profile-link', label: 'Linked Account' },
+  { key: 'vehicle-assignment', label: 'Vehicle' },
 ];
 
 export function DriverDetailPage() {
@@ -67,6 +68,15 @@ export function DriverDetailPage() {
   const [createdAccountResult, setCreatedAccountResult] = useState<{ username: string; password: string } | null>(null);
   const [driverRoleId, setDriverRoleId] = useState('');
 
+  // Vehicle assignment state
+  const [assignedVehicle, setAssignedVehicle] = useState<VehicleRecord | null>(null);
+  const [availableVehicles, setAvailableVehicles] = useState<VehicleRecord[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedAssignVehicleId, setSelectedAssignVehicleId] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [confirmRemoveTarget, setConfirmRemoveTarget] = useState(false);
+
   useEffect(() => {
     if (isNew || !id) return;
     const load = async () => {
@@ -91,6 +101,13 @@ export function DriverDetailPage() {
           const rolesRes = await getRoles(auth.accessToken);
           const driverRole = rolesRes.data.find((r: any) => r.key === 'driver');
           if (driverRole) setDriverRoleId(driverRole.id);
+        } catch {}
+        try {
+          const allVehRes = await getVehicles(auth.accessToken, { limit: 200 });
+          const allVehicles = allVehRes.data.items || [];
+          const assigned = allVehicles.find((v: any) => v.currentDriverId === id);
+          if (assigned) setAssignedVehicle(assigned);
+          setAvailableVehicles(allVehicles.filter((v: any) => v.status === 'AVAILABLE' && v.currentDriverId !== id));
         } catch {}
       } catch (caughtError) {
         setError(caughtError instanceof ApiError ? caughtError.message : 'Failed to load driver.');
@@ -150,6 +167,33 @@ export function DriverDetailPage() {
     finally { setIsRevoking(false); }
   }
 
+  async function handleAssignVehicle() {
+    if (!auth.accessToken || !id || !selectedAssignVehicleId) return;
+    setIsAssigning(true); setAssignError(null);
+    try {
+      const res = await updateVehicle(auth.accessToken, selectedAssignVehicleId, { currentDriverId: id } as any);
+      setAssignedVehicle(res.data);
+      setAvailableVehicles(prev => prev.filter(v => v.id !== selectedAssignVehicleId));
+      setShowAssignModal(false);
+      setSelectedAssignVehicleId('');
+      setMessage(`Vehicle ${res.data.vehicleNumber} assigned.`);
+    } catch (e) { setAssignError(e instanceof ApiError ? e.message : 'Failed to assign vehicle.'); }
+    finally { setIsAssigning(false); }
+  }
+
+  async function handleRemoveAssignment() {
+    if (!auth.accessToken || !assignedVehicle) return;
+    setIsAssigning(true);
+    try {
+      await updateVehicle(auth.accessToken, assignedVehicle.id, { currentDriverId: null } as any);
+      setAssignedVehicle(null);
+      setAvailableVehicles(prev => [...prev, assignedVehicle]);
+      setConfirmRemoveTarget(false);
+      setMessage(`Vehicle ${assignedVehicle.vehicleNumber} unassigned.`);
+    } catch (e) { setAssignError(e instanceof ApiError ? e.message : 'Failed to remove assignment.'); }
+    finally { setIsAssigning(false); }
+  }
+
   async function handleCreateAccount() {
     if (!auth.accessToken || !id || !accountName || !accountUsername || !accountEmail || !accountPassword || !driverRoleId) return;
     setIsCreatingAccount(true); setCreateAccountError(null); setCreatedAccountResult(null);
@@ -176,6 +220,69 @@ export function DriverDetailPage() {
       setShowCreateAccount(false);
     } catch (e) { setCreateAccountError(e instanceof ApiError ? e.message : 'Failed to create user account.'); }
     finally { setIsCreatingAccount(false); }
+  }
+
+  function renderVehicleAssignmentCard() {
+    const canAssign = auth.hasPermission('vehicle_update');
+    return (
+      <div className="card form-section-grid" style={{ marginTop: '1rem' }}>
+        <h4 className="role-edit-h4">Vehicle Assignment</h4>
+
+        {assignedVehicle ? (
+          <div>
+            <div className="detail-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '1rem' }}>
+              <div><p className="detail-label">Assigned Vehicle</p><p className="detail-value" style={{ fontWeight: 600 }}>{assignedVehicle.vehicleNumber}</p></div>
+              <div><p className="detail-label">Type</p><p className="detail-value">{assignedVehicle.vehicleType}</p></div>
+              <div><p className="detail-label">Brand / Model</p><p className="detail-value">{assignedVehicle.brand ?? '-'} {assignedVehicle.model ?? ''}</p></div>
+              <div><p className="detail-label">Status</p><StatusBadge status={assignedVehicle.status} /></div>
+            </div>
+            {canAssign && (
+              <div className="action-panel">
+                <button type="button" className="secondary-button" onClick={() => { setSelectedAssignVehicleId(''); setAssignError(null); setShowAssignModal(true); }}>Change Vehicle</button>
+                <button type="button" className="danger-button" onClick={() => setConfirmRemoveTarget(true)}>Remove Assignment</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginBottom: '1rem' }}>No vehicle is currently assigned to this driver.</p>
+            {canAssign && (
+              <button type="button" className="primary-button" onClick={() => { setSelectedAssignVehicleId(''); setAssignError(null); setShowAssignModal(true); }}>Assign Vehicle</button>
+            )}
+          </div>
+        )}
+
+        <Modal isOpen={showAssignModal} title="Assign Vehicle" description="Select a vehicle to assign to this driver."
+          onClose={() => { setShowAssignModal(false); setAssignError(null); }}
+          footer={
+            <div className="button-row">
+              <button type="button" className="ghost-button" onClick={() => { setShowAssignModal(false); setAssignError(null); }}>Cancel</button>
+              <button type="button" className="primary-button" onClick={handleAssignVehicle} disabled={!selectedAssignVehicleId || isAssigning}>
+                {isAssigning ? 'Assigning...' : 'Assign Vehicle'}
+              </button>
+            </div>
+          }
+        >
+          {assignError && <div className="error-banner" style={{ marginBottom: '0.75rem' }}>{assignError}</div>}
+          <div className="form-group">
+            <label>Vehicle</label>
+            <select value={selectedAssignVehicleId} onChange={e => setSelectedAssignVehicleId(e.target.value)}>
+              <option value="">Select a vehicle...</option>
+              {[...availableVehicles, ...(assignedVehicle ? [assignedVehicle] : [])]
+                .filter((v, i, arr) => arr.findIndex(x => x.id === v.id) === i)
+                .map(v => (
+                  <option key={v.id} value={v.id}>{v.vehicleNumber} — {v.vehicleType} {v.id === assignedVehicle?.id ? '(currently assigned)' : ''}</option>
+                ))}
+            </select>
+          </div>
+        </Modal>
+
+        <ConfirmDialog isOpen={confirmRemoveTarget} title="Remove Vehicle Assignment"
+          description={`Remove vehicle "${assignedVehicle?.vehicleNumber}" from driver ${driver?.name}?`}
+          confirmLabel="Remove" tone="danger" isConfirming={isAssigning}
+          onCancel={() => setConfirmRemoveTarget(false)} onConfirm={handleRemoveAssignment} />
+      </div>
+    );
   }
 
   if (isLoading) return <LoadingState message="Loading driver..." />;
@@ -362,6 +469,7 @@ export function DriverDetailPage() {
         ) : null}
 
         {!isNew && activeSection === 'profile-link' && driver ? renderLinkedAccountCard() : null}
+        {!isNew && activeSection === 'vehicle-assignment' && driver ? renderVehicleAssignmentCard() : null}
 
         {isNew ? (
           <div className="action-panel">
