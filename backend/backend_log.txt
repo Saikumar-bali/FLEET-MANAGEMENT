@@ -1,0 +1,147 @@
+Database connected successfully
+Backend server running on port 4000
+Environment: development
+[0mGET /api/v1/health [32m200[0m 71.324 ms - 154[0m
+[0mPOST /api/v1/auth/login [32m200[0m 2688.148 ms - 8557[0m
+[0mGET /api/v1/users [32m200[0m 2972.027 ms - 5674[0m
+[0mGET /api/v1/dashboard/overview [32m200[0m 3638.142 ms - 3854[0m
+[0mPATCH /api/v1/users/cmqz7chm50005u8jcfm3xld8n/password [32m200[0m 2987.340 ms - 105[0m
+[0mGET /api/v1/dashboard/overview [36m304[0m 3777.090 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [32m200[0m 3021.173 ms - 648[0m
+[0mDELETE /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides/cmqqj0u8j0018u8yw8gdc05db [32m200[0m 3402.038 ms - 68[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [32m200[0m 2547.975 ms - 59[0m
+[0mGET /api/v1/auth/me [32m200[0m 1966.027 ms - 8187[0m
+[0mGET /api/v1/users/cmqz7chm50005u8jcfm3xld8n [32m200[0m 2081.893 ms - 449[0m
+[0mGET /api/v1/auth/me [36m304[0m 2163.152 ms - -[0m
+[0mGET /api/v1/permissions [32m200[0m 2525.626 ms - 29131[0m
+[0mGET /api/v1/roles [32m200[0m 2602.318 ms - 182086[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/effective-permissions [32m200[0m 3557.088 ms - 2236[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [32m200[0m 3612.381 ms - 59[0m
+[0mGET /api/v1/permissions [36m304[0m 1463.047 ms - -[0m
+[0mGET /api/v1/users/cmqz7chm50005u8jcfm3xld8n [36m304[0m 1959.975 ms - -[0m
+Unhandled error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "AuditLog" does not exist`
+    at ei.handleRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async findActivityIdsByMetadata (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:50:16)
+    at async getUserActivityController (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:15:17) {
+  code: 'P2010',
+  meta: { code: '42P01', message: 'relation "AuditLog" does not exist' },
+  clientVersion: '6.19.3'
+}
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/activity [31m500[0m 2574.144 ms - 158[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [32m200[0m 2768.000 ms - 59[0m
+[0mGET /api/v1/roles [36m304[0m 1654.354 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/effective-permissions [36m304[0m 2732.756 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [36m304[0m 2964.733 ms - -[0m
+Unhandled error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "AuditLog" does not exist`
+    at ei.handleRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async findActivityIdsByMetadata (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:50:16)
+    at async getUserActivityController (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:15:17) {
+  code: 'P2010',
+  meta: { code: '42P01', message: 'relation "AuditLog" does not exist' },
+  clientVersion: '6.19.3'
+}
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/activity [31m500[0m 2721.403 ms - 158[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [36m304[0m 2649.075 ms - -[0m
+[0mPOST /api/v1/auth/login [32m200[0m 1800.589 ms - 8557[0m
+[0mGET /api/v1/users [32m200[0m 2407.621 ms - 5674[0m
+[0mGET /api/v1/dashboard/overview [32m200[0m 3043.706 ms - 3854[0m
+[0mPATCH /api/v1/users/cmqz7chm50005u8jcfm3xld8n/password [32m200[0m 2849.807 ms - 105[0m
+[0mGET /api/v1/dashboard/overview [36m304[0m 3003.108 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [32m200[0m 3388.752 ms - 59[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [32m200[0m 2921.340 ms - 59[0m
+[0mGET /api/v1/auth/me [32m200[0m 2378.803 ms - 8187[0m
+[0mGET /api/v1/permissions [32m200[0m 1568.102 ms - 29131[0m
+[0mGET /api/v1/roles [32m200[0m 1829.568 ms - 182086[0m
+[0mGET /api/v1/users/cmqz7chm50005u8jcfm3xld8n [32m200[0m 1901.092 ms - 449[0m
+[0mGET /api/v1/auth/me [36m304[0m 2160.212 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/effective-permissions [32m200[0m 2832.126 ms - 2236[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [32m200[0m 3091.812 ms - 59[0m
+[0mGET /api/v1/permissions [36m304[0m 1545.828 ms - -[0m
+[0mGET /api/v1/roles [36m304[0m 1587.801 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [32m200[0m 2643.818 ms - 59[0m
+Unhandled error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "AuditLog" does not exist`
+    at ei.handleRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async findActivityIdsByMetadata (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:50:16)
+    at async getUserActivityController (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:15:17) {
+  code: 'P2010',
+  meta: { code: '42P01', message: 'relation "AuditLog" does not exist' },
+  clientVersion: '6.19.3'
+}
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/activity [31m500[0m 2488.847 ms - 158[0m
+[0mGET /api/v1/users/cmqz7chm50005u8jcfm3xld8n [36m304[0m 1678.455 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/effective-permissions [36m304[0m 3250.090 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [36m304[0m 2938.511 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [36m304[0m 2467.820 ms - -[0m
+Unhandled error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "AuditLog" does not exist`
+    at ei.handleRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async findActivityIdsByMetadata (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:50:16)
+    at async getUserActivityController (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:15:17) {
+  code: 'P2010',
+  meta: { code: '42P01', message: 'relation "AuditLog" does not exist' },
+  clientVersion: '6.19.3'
+}
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/activity [31m500[0m 2696.886 ms - 158[0m
+[0mGET /api/v1/permissions [36m304[0m 1880.085 ms - -[0m
+[0mGET /api/v1/roles [36m304[0m 2067.642 ms - -[0m
+[0mGET /api/v1/users/cmqz7chm50005u8jcfm3xld8n [36m304[0m 2071.503 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/data-scopes [36m304[0m 2721.731 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/permission-overrides [36m304[0m 2771.317 ms - -[0m
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/effective-permissions [36m304[0m 3035.700 ms - -[0m
+Unhandled error: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "AuditLog" does not exist`
+    at ei.handleRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at ei.handleAndLogRequestError (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at ei.request (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at async a (D:\FLEET-MANAGEMENT\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:833:24)
+    at async findActivityIdsByMetadata (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:50:16)
+    at async getUserActivityController (D:\FLEET-MANAGEMENT\backend\src\modules\users\users-activity.controller.ts:15:17) {
+  code: 'P2010',
+  meta: { code: '42P01', message: 'relation "AuditLog" does not exist' },
+  clientVersion: '6.19.3'
+}
+[0mGET /api/v1/access/users/cmqz7chm50005u8jcfm3xld8n/activity [31m500[0m 2840.998 ms - 158[0m
+[0mPOST /api/v1/auth/login [32m200[0m 3031.467 ms - 8557[0m
+[0mGET /api/v1/users [32m200[0m 2895.881 ms - 5674[0m
+[0mGET /api/v1/dashboard/overview [32m200[0m 3394.849 ms - 3854[0m
+[0mPATCH /api/v1/users/cmqz7chm50005u8jcfm3xld8n/password [32m200[0m 2197.292 ms - 105[0m
+[0mGET /api/v1/dashboard/overview [36m304[0m 3827.264 ms - -[0m
+[0mPOST /api/v1/auth/login [32m200[0m 2118.802 ms - 3976[0m
+[0mGET /api/v1/auth/me [32m200[0m 2255.368 ms - 8187[0m
+[0mGET /api/v1/auth/me [36m304[0m 1962.324 ms - -[0m
+[0mGET /api/v1/auth/me [32m200[0m 2397.041 ms - 3588[0m
+[0mGET /api/v1/dashboard/overview [32m200[0m 3357.429 ms - 3854[0m
+[0mGET /api/v1/dashboard/overview [32m200[0m 3728.264 ms - 3854[0m
+[0mGET /api/v1/auth/me [36m304[0m 2255.984 ms - -[0m
+[0mGET /api/v1/access/me/summary [32m200[0m 3241.837 ms - 7953[0m
+[0mGET /api/v1/access/me/summary [36m304[0m 2673.246 ms - -[0m

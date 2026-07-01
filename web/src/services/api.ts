@@ -951,7 +951,7 @@ export function getMyDriverTrips(token: string, params?: { page?: number; limit?
 }
 
 export function getMyDriverVehicles(token: string) {
-  return request<DriverPortalVehicle[]>('/me/driver-vehicles', { token });
+  return request<{ vehicles: DriverPortalVehicle[]; primaryVehicle: { id: string; vehicleNumber: string } | null; emptyReason: string | null }>('/me/driver-vehicles', { token });
 }
 
 export function getMyDriverDocuments(token: string, params?: { page?: number; limit?: number }) {

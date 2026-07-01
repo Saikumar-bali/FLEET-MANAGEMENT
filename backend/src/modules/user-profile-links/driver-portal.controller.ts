@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { AppError } from '../../utils/appError';
 import { prisma } from '../../lib/prisma';
-import { getDriverIdForUser } from '../user-profile-links/user-profile-links.service';
+import { getDriverIdForUser, getProfileLinkForDiagnostics } from '../user-profile-links/user-profile-links.service';
 import { createAuditLog } from '../audit/audit.service';
 import { extractFromReceipt } from '../fuel/fuel-receipt-extraction.service';
 
@@ -35,6 +35,111 @@ export async function driverProfileController(req: Request, res: Response) {
   return sendSuccess(res, driver);
 }
 
+export async function driverContextController(req: Request, res: Response) {
+  const userId = req.authUser!.id;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, username: true, email: true } });
+
+  const profileLinks = await getProfileLinkForDiagnostics(userId);
+  const activeDriverLink = profileLinks.find(l => l.profileType === 'DRIVER' && l.status === 'ACTIVE');
+
+  let driverInfo: Record<string, any> | null = null;
+  let assignedVehicles: any[] = [];
+  let tripVehicles: any[] = [];
+  let scopedVehicleIds: string[] = [];
+  let availableVehicles: any[] = [];
+
+  if (activeDriverLink) {
+    const driver = await prisma.driver.findUnique({ where: { id: activeDriverLink.profileId } });
+    if (driver) {
+      driverInfo = { id: driver.id, name: driver.name, mobile: driver.mobile, status: driver.status };
+
+      assignedVehicles = await prisma.vehicle.findMany({
+        where: { currentDriverId: driver.id },
+        select: { id: true, vehicleNumber: true, status: true },
+      });
+
+      const tripVehicleRecords = await prisma.trip.findMany({
+        where: { driverId: driver.id },
+        select: { vehicle: { select: { id: true, vehicleNumber: true, status: true } } },
+        distinct: ['vehicleId'],
+      });
+      tripVehicles = tripVehicleRecords.map(t => t.vehicle).filter(Boolean);
+    }
+  }
+
+  const userScopes = req.authDataScopes || [];
+  const vehicleScopes = userScopes.filter(s => s.scopeType === 'VEHICLE');
+  const globalScope = userScopes.find(s => s.scopeType === 'GLOBAL');
+  const globalAllowed = !!globalScope;
+
+  if (vehicleScopes.length > 0) {
+    const scopeVehicleIds = vehicleScopes
+      .filter(s => s.scopeId)
+      .map(s => s.scopeId!) as string[];
+    const scopedVehicles = await prisma.vehicle.findMany({
+      where: { id: { in: scopeVehicleIds }, status: { not: 'INACTIVE' } },
+      select: { id: true, vehicleNumber: true, status: true },
+    });
+    scopedVehicleIds = scopedVehicles.map(v => v.id);
+  }
+
+  const hasAvailableSelect = (req.authPermissions || []).includes('driver_available_vehicle_select');
+  if (hasAvailableSelect || globalAllowed) {
+    availableVehicles = await prisma.vehicle.findMany({
+      where: {
+        status: 'AVAILABLE',
+        ...(globalAllowed ? {} : { id: { in: scopedVehicleIds.length > 0 ? scopedVehicleIds : [] } }),
+      },
+      select: { id: true, vehicleNumber: true, status: true },
+      take: 50,
+    });
+  }
+
+  const data = {
+    user: { id: userId, name: user?.name, username: user?.username, email: user?.email },
+    linkedDriver: driverInfo,
+    profileLinks: profileLinks.map(l => ({
+      id: l.id,
+      profileType: l.profileType,
+      profileId: l.profileId,
+      status: l.status,
+      isPrimary: l.isPrimary,
+    })),
+    activeProfileLink: activeDriverLink ? {
+      id: activeDriverLink.id,
+      profileId: activeDriverLink.profileId,
+      profileType: activeDriverLink.profileType,
+      status: activeDriverLink.status,
+      isPrimary: activeDriverLink.isPrimary,
+    } : null,
+    vehicles: {
+      assignedCount: assignedVehicles.length,
+      assigned: assignedVehicles,
+      tripHistoryCount: tripVehicles.length,
+      tripHistory: tripVehicles,
+      scopedCount: scopedVehicleIds.length,
+      scopedIds: scopedVehicleIds,
+      availableCount: availableVehicles.length,
+      available: availableVehicles,
+      hasAvailableSelectPermission: hasAvailableSelect,
+    },
+    scopes: {
+      globalAllowed,
+      vehicleScopes: vehicleScopes.map(s => ({ scopeId: s.scopeId, accessLevel: s.accessLevel })),
+    },
+    permissions: (req.authPermissions || []).filter((p: string) => p.startsWith('driver_')),
+    emptyReason: !activeDriverLink
+      ? 'No active driver profile link found. Link a driver to your user account.'
+      : assignedVehicles.length === 0 && tripVehicles.length === 0 && !hasAvailableSelect
+        ? 'Driver is not assigned to any vehicle, has no trip history, and does not have available vehicle selection permission.'
+        : assignedVehicles.length === 0 && tripVehicles.length === 0
+          ? 'Driver has available vehicle selection but no vehicles are currently available in scope.'
+          : null,
+  };
+
+  return sendSuccess(res, data);
+}
+
 export async function driverTripsController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
   const page = Number(req.query.page) || 1;
@@ -60,14 +165,17 @@ export async function driverTripsController(req: Request, res: Response) {
 
 export async function driverVehiclesController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
+  const userId = req.authUser!.id;
+  const permissions = req.authPermissions || [];
+  const userScopes = req.authDataScopes || [];
 
-  const vehicles = await prisma.vehicle.findMany({
-    where: {
-      OR: [
-        { currentDriverId: driver.id },
-        { trips: { some: { driverId: driver.id } } },
-      ],
-    },
+  const globalScope = userScopes.find(s => s.scopeType === 'GLOBAL');
+  const globalAllowed = !!globalScope;
+  const hasAvailableSelect = permissions.includes('driver_available_vehicle_select');
+
+  // Source 1: Current vehicle assignment (currentDriverId)
+  const assignedVehicles = await prisma.vehicle.findMany({
+    where: { currentDriverId: driver.id },
     include: {
       trips: {
         where: { driverId: driver.id },
@@ -76,24 +184,117 @@ export async function driverVehiclesController(req: Request, res: Response) {
         select: { id: true, tripNumber: true },
       },
     },
-    distinct: ['id'],
   });
 
-  const result = vehicles.map(v => ({
+  const assignedIds = new Set(assignedVehicles.map(v => v.id));
+
+  // Source 2: Vehicles from active/current trips
+  const tripVehicleRecords = await prisma.trip.findMany({
+    where: { driverId: driver.id },
+    select: { vehicleId: true },
+    distinct: ['vehicleId'],
+  });
+  const tripVehicleIds = tripVehicleRecords
+    .map(t => t.vehicleId)
+    .filter(id => !assignedIds.has(id));
+
+  const tripVehicles = tripVehicleIds.length > 0 ? await prisma.vehicle.findMany({
+    where: { id: { in: tripVehicleIds } },
+    include: {
+      trips: {
+        where: { driverId: driver.id },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true, tripNumber: true },
+      },
+    },
+  }) : [];
+
+  // Source 3: Vehicle scopes
+  const vehicleScopes = userScopes.filter(s => s.scopeType === 'VEHICLE' && s.scopeId);
+  const scopedVehicleIds = vehicleScopes
+    .filter(s => !assignedIds.has(s.scopeId!) && !tripVehicleIds.includes(s.scopeId!))
+    .map(s => s.scopeId!) as string[];
+
+  const scopedVehicles = scopedVehicleIds.length > 0 ? await prisma.vehicle.findMany({
+    where: { id: { in: scopedVehicleIds }, status: { not: 'INACTIVE' } },
+    include: {
+      trips: {
+        where: { driverId: driver.id },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true, tripNumber: true },
+      },
+    },
+  }) : [];
+
+  // Source 4: Available vehicles (only with permission)
+  let availableVehicles: any[] = [];
+  if (hasAvailableSelect || globalAllowed) {
+    const alreadyIncluded = new Set([...assignedIds, ...tripVehicleIds, ...scopedVehicleIds]);
+    const availableWhere: any = { status: 'AVAILABLE' };
+    if (!globalAllowed) {
+      const allScopedIds = vehicleScopes.map(s => s.scopeId).filter(Boolean) as string[];
+      if (allScopedIds.length > 0) {
+        availableWhere.id = { in: allScopedIds.filter(id => !alreadyIncluded.has(id)) };
+      } else {
+        availableWhere.id = { in: [''] }; // no scoped vehicles -> no results
+      }
+    }
+    const rawAvailable = await prisma.vehicle.findMany({
+      where: availableWhere,
+      include: {
+        trips: {
+          where: { driverId: driver.id },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, tripNumber: true },
+        },
+      },
+      take: 50,
+    });
+    availableVehicles = rawAvailable.filter(v => !alreadyIncluded.has(v.id));
+  }
+
+  const allVehicles = [...assignedVehicles, ...tripVehicles, ...scopedVehicles, ...availableVehicles];
+
+  const result = allVehicles.map(v => ({
     id: v.id,
     vehicleNumber: v.vehicleNumber,
     vehicleType: v.vehicleType,
     brand: v.brand,
     model: v.model,
     status: v.status,
-    currentDriverId: driver.id,
+    currentOdometer: v.currentOdometer,
+    currentDriverId: v.currentDriverId,
     isCurrent: v.currentDriverId === driver.id,
     lastTripId: v.trips[0]?.id ?? null,
     lastTripNumber: v.trips[0]?.tripNumber ?? null,
-    source: v.currentDriverId === driver.id ? ('CURRENT_ASSIGNMENT' as const) : ('TRIP_HISTORY' as const),
+    source: v.currentDriverId === driver.id
+      ? ('CURRENT_ASSIGNMENT' as const)
+      : tripVehicleIds.includes(v.id)
+        ? ('TRIP_HISTORY' as const)
+        : scopedVehicleIds.includes(v.id)
+          ? ('VEHICLE_SCOPE' as const)
+          : ('AVAILABLE_SELECTION' as const),
   }));
 
-  return sendSuccess(res, result);
+  const primaryVehicle = assignedVehicles.length > 0
+    ? { id: assignedVehicles[0].id, vehicleNumber: assignedVehicles[0].vehicleNumber }
+    : tripVehicles.length > 0
+      ? { id: tripVehicles[0].id, vehicleNumber: tripVehicles[0].vehicleNumber }
+      : null;
+
+  let emptyReason: string | null = null;
+  if (result.length === 0) {
+    if (!hasAvailableSelect && !globalAllowed) {
+      emptyReason = 'No vehicle is currently assigned to your driver profile, and you do not have permission to select available vehicles.';
+    } else {
+      emptyReason = 'No available vehicles found within your scope.';
+    }
+  }
+
+  return sendSuccess(res, { vehicles: result, primaryVehicle, emptyReason });
 }
 
 export async function driverDocumentsController(req: Request, res: Response) {

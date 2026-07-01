@@ -29,7 +29,7 @@ export function DriverVehiclesPage() {
     if (!auth.accessToken) return;
     setPermissions(auth.permissions || []);
     getMyDriverVehicles(auth.accessToken)
-      .then((res) => setVehicles(Array.isArray(res.data) ? res.data : []))
+      .then((res) => setVehicles(res.data.vehicles || (Array.isArray(res.data) ? res.data : [])))
       .catch((e) => setError(e.message || 'Failed to load vehicles'))
       .finally(() => setLoading(false));
   }, [auth.accessToken]);

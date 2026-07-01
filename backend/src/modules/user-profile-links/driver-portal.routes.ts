@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermission } from '../../middlewares/permissions';
 import {
+  driverContextController,
   driverProfileController,
   driverTripsController,
   driverVehiclesController,
@@ -34,6 +35,7 @@ const router = Router();
 router.use(asyncHandler(authMiddleware));
 
 // ─── READ ───
+router.get('/me/driver-context', asyncHandler(driverContextController));
 router.get('/me/driver-profile', asyncHandler(driverProfileController));
 router.get('/me/driver-trips', asyncHandler(driverTripsController));
 router.get('/me/driver-vehicles', asyncHandler(driverVehiclesController));
