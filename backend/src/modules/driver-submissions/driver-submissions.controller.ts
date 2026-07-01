@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getActorContext } from '../access/actor-context.service';
+import { getActorContext, type ActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource } from '../access/scoped-enforcement.service';
 import { isGlobalUser } from '../access/access-policy.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import { AppError } from '../../utils/appError';
+import { prisma } from '../../lib/prisma';
 import {
   listFuelSubmissions, getFuelSubmission,
   listExpenseSubmissions, getExpenseSubmission,
@@ -29,6 +30,88 @@ async function assertCanUpdateByVehicleId(record: { vehicleId: string }, actor: 
   }
 }
 
+// ─── Scoped list helper for child records (vehicleIssue, vehicleInspection) ──────
+// getScopedWhereForResource(actor, 'VEHICLE') maps vehicleId→id (since Vehicle.id IS the vehicle).
+// When used in vehicleIssue/vehicleInspection queries, this incorrectly filters by issue/inspection id.
+// This helper correctly builds conditions for child records that have vehicleId/driverId columns.
+
+type DataScopeEntry = { scopeType: string; scopeId: string | null; accessLevel: string };
+
+function scopeCanRead(ds: DataScopeEntry): boolean {
+  return ds.accessLevel === 'VIEW' || ds.accessLevel === 'UPDATE' || ds.accessLevel === 'MANAGE';
+}
+
+function getVehicleScopedWhereForChildRecord(actor: ActorContext): Record<string, unknown> | undefined {
+  if (actor.isGlobalUser) return undefined;
+  if (actor.dataScopes.some((ds: DataScopeEntry) => ds.scopeType === 'GLOBAL' && ds.accessLevel === 'MANAGE')) return undefined;
+
+  const conditions: Record<string, unknown>[] = [];
+
+  // VEHICLE scopes: filter by vehicleId
+  const vehicleNullScope = actor.dataScopes.some(
+    (ds: DataScopeEntry) => ds.scopeType === 'VEHICLE' && ds.scopeId === null && scopeCanRead(ds),
+  );
+  if (!vehicleNullScope) {
+    const vehicleScopeIds = actor.dataScopes
+      .filter((ds: DataScopeEntry) => ds.scopeType === 'VEHICLE' && ds.scopeId !== null && scopeCanRead(ds))
+      .map((ds: DataScopeEntry) => ds.scopeId!);
+    if (vehicleScopeIds.length > 0) {
+      conditions.push({ vehicleId: { in: vehicleScopeIds } });
+    }
+  }
+  // If vehicleNullScope is true, all vehicles are visible — no vehicleId filter needed.
+
+  // DRIVER scopes: filter by driverId
+  const driverNullScope = actor.dataScopes.some(
+    (ds: DataScopeEntry) => ds.scopeType === 'DRIVER' && ds.scopeId === null && scopeCanRead(ds),
+  );
+  if (!driverNullScope) {
+    const driverScopeIds = actor.dataScopes
+      .filter((ds: DataScopeEntry) => ds.scopeType === 'DRIVER' && ds.scopeId !== null && scopeCanRead(ds))
+      .map((ds: DataScopeEntry) => ds.scopeId!);
+    if (driverScopeIds.length > 0) {
+      conditions.push({ driverId: { in: driverScopeIds } });
+    }
+  }
+  // If driverNullScope is true, all drivers are visible — no driverId filter needed.
+
+  // If both null-scope checks passed, actor sees everything
+  if (vehicleNullScope && driverNullScope) return undefined;
+
+  // If either null-scope check passed, that dimension is unfiltered
+  if (vehicleNullScope || driverNullScope) {
+    if (conditions.length === 0) return undefined;
+    return conditions.length === 1 ? conditions[0] : { OR: conditions };
+  }
+
+  // Neither null-scope: if we have conditions, OR them; otherwise deny all
+  if (conditions.length === 0) return { id: '__NO_ACCESS__' };
+  if (conditions.length === 1) return conditions[0];
+  return { OR: conditions };
+}
+
+// ─── Self-review guard ───────────────────────────────────────────────
+// Blocks a reviewer from approving/rejecting their own driver submissions,
+// even if permissions are misconfigured.
+
+async function assertNotOwnDriverSubmission(actorUserId: string, record: any): Promise<void> {
+  if (record.createdById === actorUserId) {
+    throw new AppError('Cannot review your own driver submission', 403);
+  }
+  if (record.uploadedById === actorUserId) {
+    throw new AppError('Cannot review your own driver submission', 403);
+  }
+  const driverId = record.driverId;
+  if (driverId) {
+    const link = await prisma.userProfileLink.findFirst({
+      where: { userId: actorUserId, profileType: 'DRIVER', profileId: driverId, status: 'ACTIVE' },
+    });
+    if (link) {
+      throw new AppError('Cannot review your own driver submission', 403);
+    }
+  }
+}
+
 // ─── List endpoints ────────────────────────────────────────────
 
 function listOpts(req: Request) {
@@ -47,12 +130,13 @@ export async function listAllSubmissionsController(req: Request, res: Response) 
   const actor = await getActorContext(req.authUser!.id);
   const opts = listOpts(req);
 
+  const childScopedWhere = getVehicleScopedWhereForChildRecord(actor);
   const [fuel, expenses, documents, issues, inspections] = await Promise.all([
     listFuelSubmissions({ ...opts, limit: 5, extraWhere: getScopedWhereForResource(actor, 'FUEL_ENTRY' as ResourceType) as Record<string, unknown> }),
     listExpenseSubmissions({ ...opts, limit: 5, extraWhere: getScopedWhereForResource(actor, 'EXPENSE' as ResourceType) as Record<string, unknown> }),
     listDocumentSubmissions({ ...opts, limit: 5, extraWhere: getScopedWhereForResource(actor, 'DOCUMENT' as ResourceType) as Record<string, unknown> }),
-    listIssueSubmissions({ ...opts, limit: 5, extraWhere: getScopedWhereForResource(actor, 'VEHICLE' as ResourceType) as Record<string, unknown> }),
-    listInspectionSubmissions({ ...opts, limit: 5, extraWhere: getScopedWhereForResource(actor, 'VEHICLE' as ResourceType) as Record<string, unknown> }),
+    listIssueSubmissions({ ...opts, limit: 5, extraWhere: childScopedWhere as Record<string, unknown> }),
+    listInspectionSubmissions({ ...opts, limit: 5, extraWhere: childScopedWhere as Record<string, unknown> }),
   ]);
 
   return sendSuccess(res, { fuel, expenses, documents, issues, inspections });
@@ -81,14 +165,14 @@ export async function listDocumentSubmissionsController(req: Request, res: Respo
 
 export async function listIssueSubmissionsController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
-  const scopedWhere = getScopedWhereForResource(actor, 'VEHICLE' as ResourceType);
+  const scopedWhere = getVehicleScopedWhereForChildRecord(actor);
   const result = await listIssueSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
 
 export async function listInspectionSubmissionsController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
-  const scopedWhere = getScopedWhereForResource(actor, 'VEHICLE' as ResourceType);
+  const scopedWhere = getVehicleScopedWhereForChildRecord(actor);
   const result = await listInspectionSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
@@ -110,8 +194,9 @@ export async function approveFuelController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().fuelEntry.update({
+  const item = await prisma.fuelEntry.update({
     where: { id: existing.id },
     data: {
       status: 'APPROVED',
@@ -136,8 +221,9 @@ export async function rejectFuelController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().fuelEntry.update({
+  const item = await prisma.fuelEntry.update({
     where: { id: existing.id },
     data: { status: 'REJECTED', reviewComments: req.body.reason || null },
   });
@@ -157,8 +243,9 @@ export async function requestChangesFuelController(req: Request, res: Response) 
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().fuelEntry.update({
+  const item = await prisma.fuelEntry.update({
     where: { id: existing.id },
     data: { status: 'NEEDS_CHANGES', reviewComments: req.body.reason || null },
   });
@@ -180,8 +267,9 @@ export async function approveExpenseController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().expense.update({
+  const item = await prisma.expense.update({
     where: { id: existing.id },
     data: {
       status: 'APPROVED',
@@ -206,8 +294,9 @@ export async function rejectExpenseController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().expense.update({
+  const item = await prisma.expense.update({
     where: { id: existing.id },
     data: { status: 'REJECTED', reviewComments: req.body.reason || null },
   });
@@ -227,8 +316,9 @@ export async function requestChangesExpenseController(req: Request, res: Respons
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().expense.update({
+  const item = await prisma.expense.update({
     where: { id: existing.id },
     data: { status: 'NEEDS_CHANGES', reviewComments: req.body.reason || null },
   });
@@ -250,8 +340,9 @@ export async function verifyDocumentController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().document.update({
+  const item = await prisma.document.update({
     where: { id: existing.id },
     data: {
       verificationStatus: 'VERIFIED',
@@ -276,8 +367,9 @@ export async function rejectDocumentController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().document.update({
+  const item = await prisma.document.update({
     where: { id: existing.id },
     data: { verificationStatus: 'REJECTED', reviewComments: req.body.reason || null },
   });
@@ -297,8 +389,9 @@ export async function requestChangesDocumentController(req: Request, res: Respon
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().document.update({
+  const item = await prisma.document.update({
     where: { id: existing.id },
     data: { verificationStatus: 'NEEDS_CHANGES', reviewComments: req.body.reason || null },
   });
@@ -320,8 +413,9 @@ export async function acknowledgeIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleIssue.update({
+  const item = await prisma.vehicleIssue.update({
     where: { id: existing.id },
     data: {
       status: 'ACKNOWLEDGED',
@@ -346,8 +440,9 @@ export async function resolveIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleIssue.update({
+  const item = await prisma.vehicleIssue.update({
     where: { id: existing.id },
     data: {
       status: 'RESOLVED',
@@ -373,8 +468,9 @@ export async function rejectIssueController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleIssue.update({
+  const item = await prisma.vehicleIssue.update({
     where: { id: existing.id },
     data: {
       status: 'REJECTED',
@@ -401,8 +497,9 @@ export async function reviewInspectionController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleInspection.update({
+  const item = await prisma.vehicleInspection.update({
     where: { id: existing.id },
     data: {
       reviewStatus: 'REVIEWED',
@@ -427,8 +524,9 @@ export async function rejectInspectionController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleInspection.update({
+  const item = await prisma.vehicleInspection.update({
     where: { id: existing.id },
     data: {
       reviewStatus: 'REJECTED',
@@ -453,8 +551,9 @@ export async function requestChangesInspectionController(req: Request, res: Resp
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
+  await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
-  const item = await prisma().vehicleInspection.update({
+  const item = await prisma.vehicleInspection.update({
     where: { id: existing.id },
     data: {
       reviewStatus: 'NEEDS_CHANGES',
@@ -473,8 +572,4 @@ export async function requestChangesInspectionController(req: Request, res: Resp
   });
 
   return sendSuccess(res, item, 'Changes requested for inspection');
-}
-
-function prisma() {
-  return require('../../lib/prisma').prisma;
 }

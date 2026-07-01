@@ -56,6 +56,7 @@ async function cleanup() {
 
   if (userIds.length > 0) {
     try { await prisma.userProfileLink.deleteMany({ where: { userId: { in: userIds } } }); } catch {}
+    try { await prisma.userPermissionOverride.deleteMany({ where: { userId: { in: userIds } } }); } catch {}
   }
   if (driverIds.length > 0) {
     try { await prisma.fuelEntry.deleteMany({ where: { driverId: { in: driverIds } } }); } catch {}
@@ -321,6 +322,186 @@ async function main() {
   // 19. Check inspection review status
   const reviewedInsp = await prisma.vehicleInspection.findUnique({ where: { id: inspId } });
   if (reviewedInsp?.reviewStatus !== 'REVIEWED') { fail(`Inspection review: ${reviewedInsp?.reviewStatus}`); } else { pass('Inspection review status is REVIEWED'); }
+
+  // ─── Scoped Issue/Inspection List Filters ────────────────────
+  console.log('\n--- Scoped Issue/Inspection List Filters ---');
+
+  // Create a second driver first (needed for vehicle assignment)
+  const d2Res = await request('POST', '/api/v1/drivers', adminToken, {
+    name: `${PREFIX}_Driver2_${ts}`,
+    mobile: `+919901${ts}`,
+    licenseNumber: `${PREFIX}_LIC2_${ts}`,
+    status: 'AVAILABLE',
+  });
+  const driver2Id = d2Res.data?.data?.id;
+  if (!driver2Id) { fail(`Create driver2: ${JSON.stringify(d2Res.data)}`); process.exit(1); }
+  pass('Created second driver');
+
+  // Create a second vehicle for cross-scope testing, assigned to driver2
+  const v2Res = await request('POST', '/api/v1/vehicles', adminToken, {
+    vehicleNumber: `${PREFIX}_VEH2_${ts}`,
+    vehicleType: 'TRUCK',
+    fuelType: 'DIESEL',
+    currentDriverId: driver2Id,
+  });
+  const vehicle2Id = v2Res.data?.data?.id;
+  if (!vehicle2Id) { fail(`Create vehicle2: ${JSON.stringify(v2Res.data)}`); process.exit(1); }
+  pass('Created second vehicle for scope test');
+
+  // Driver2 user
+  const du2Res = await request('POST', '/api/v1/users', adminToken, {
+    name: `${PREFIX}_DriverUser2_${ts}`,
+    username: `${PREFIX}_du2_${ts}`,
+    email: `${PREFIX}_du2_${ts}@t.local`,
+    password: 'TestPass123!',
+    roleId: driverRole.id,
+    status: 'ACTIVE',
+  });
+  const driver2UserId = du2Res.data?.data?.id;
+  if (!driver2UserId) { fail(`Create driver user 2: ${JSON.stringify(du2Res.data)}`); process.exit(1); }
+  await prisma.userProfileLink.create({
+    data: { userId: driver2UserId, profileType: 'DRIVER', profileId: driver2Id, status: 'ACTIVE', isPrimary: true },
+  });
+  const driver2Token = await getAuthToken(`${PREFIX}_du2_${ts}`, 'TestPass123!');
+  if (!driver2Token) { fail('Driver 2 login failed'); process.exit(1); }
+  pass('Driver 2 user linked and logged in');
+
+  // Unscoped manager (no vehicle scope)
+  const umgrRes = await request('POST', '/api/v1/users', adminToken, {
+    name: `${PREFIX}_UnscopedMgr_${ts}`,
+    username: `${PREFIX}_umgr_${ts}`,
+    email: `${PREFIX}_umgr_${ts}@t.local`,
+    password: 'TestPass123!',
+    roleId: managerRole.id,
+    status: 'ACTIVE',
+  });
+  const unscopedMgrId = umgrRes.data?.data?.id;
+  let unscopedMgrToken: string | null = null;
+  if (unscopedMgrId) {
+    unscopedMgrToken = await getAuthToken(`${PREFIX}_umgr_${ts}`, 'TestPass123!');
+  }
+
+  // Create issue and inspection on vehicle2 (out of manager's scope)
+  const issue2Res = await request('POST', '/api/v1/me/driver-vehicle-issues', driver2Token, {
+    vehicleId: vehicle2Id,
+    title: `${PREFIX}_Issue2_${ts}`,
+    description: 'Oil leak',
+    severity: 'MEDIUM',
+  });
+  const issue2Id = issue2Res.data?.data?.id;
+  if (!issue2Id) { fail(`Driver2 report issue: ${JSON.stringify(issue2Res.data)}`); process.exit(1); }
+
+  const insp2Res = await request('POST', '/api/v1/me/driver-vehicle-inspections', driver2Token, {
+    vehicleId: vehicle2Id,
+    inspectionType: 'POST_TRIP',
+    overallStatus: 'NOT_OK',
+  });
+  const insp2Id = insp2Res.data?.data?.id;
+  if (!insp2Id) { fail(`Driver2 create inspection: ${JSON.stringify(insp2Res.data)}`); process.exit(1); }
+  pass('Created out-of-scope issue and inspection on vehicle2');
+
+  // Manager with VEHICLE/MANAGE on vehicle1 should see vehicle1 issue but not vehicle2 issue
+  const scopedIssueList = await request('GET', '/api/v1/driver-submissions/issues', managerToken);
+  const scopedIssueItems = scopedIssueList.data?.data?.items || [];
+  const canSeeVehicle1Issue = scopedIssueItems.some((i: any) => i.id === issueId);
+  const canSeeVehicle2Issue = scopedIssueItems.some((i: any) => i.id === issue2Id);
+  if (canSeeVehicle1Issue) { pass('Scoped manager sees vehicle1 issue'); } else { fail('Scoped manager cannot see vehicle1 issue'); }
+  if (!canSeeVehicle2Issue) { pass('Scoped manager correctly hidden from vehicle2 issue'); } else { fail('Scoped manager should NOT see vehicle2 issue'); }
+
+  // Same for inspections
+  const scopedInspList = await request('GET', '/api/v1/driver-submissions/inspections', managerToken);
+  const scopedInspItems = scopedInspList.data?.data?.items || [];
+  const canSeeVehicle1Insp = scopedInspItems.some((i: any) => i.id === inspId);
+  const canSeeVehicle2Insp = scopedInspItems.some((i: any) => i.id === insp2Id);
+  if (canSeeVehicle1Insp) { pass('Scoped manager sees vehicle1 inspection'); } else { fail('Scoped manager cannot see vehicle1 inspection'); }
+  if (!canSeeVehicle2Insp) { pass('Scoped manager correctly hidden from vehicle2 inspection'); } else { fail('Scoped manager should NOT see vehicle2 inspection'); }
+
+  // Unscoped manager cannot see either issue or inspection
+  if (unscopedMgrToken) {
+    const unscopedIssueList = await request('GET', '/api/v1/driver-submissions/issues', unscopedMgrToken);
+    const unscopedIssueItems = unscopedIssueList.data?.data?.items || [];
+    if (!unscopedIssueItems.some((i: any) => i.id === issueId)) { pass('Unscoped manager cannot see vehicle1 issue'); } else { fail('Unscoped manager should NOT see vehicle1 issue'); }
+    if (!unscopedIssueItems.some((i: any) => i.id === issue2Id)) { pass('Unscoped manager cannot see vehicle2 issue'); } else { fail('Unscoped manager should NOT see vehicle2 issue'); }
+
+    const unscopedInspList = await request('GET', '/api/v1/driver-submissions/inspections', unscopedMgrToken);
+    const unscopedInspItems = unscopedInspList.data?.data?.items || [];
+    if (!unscopedInspItems.some((i: any) => i.id === inspId)) { pass('Unscoped manager cannot see vehicle1 inspection'); } else { fail('Unscoped manager should NOT see vehicle1 inspection'); }
+    if (!unscopedInspItems.some((i: any) => i.id === insp2Id)) { pass('Unscoped manager cannot see vehicle2 inspection'); } else { fail('Unscoped manager should NOT see vehicle2 inspection'); }
+  }
+
+  console.log('\n--- Out-of-Scope Action Blocking ---');
+
+  // Unscoped manager cannot acknowledge/resolve/reject out-of-scope issue
+  if (unscopedMgrToken) {
+    const ackOOS = await request('PATCH', `/api/v1/driver-submissions/issues/${issue2Id}/acknowledge`, unscopedMgrToken, { reason: 'Test' });
+    if (ackOOS.status === 403) { pass('Unscoped manager blocked from acknowledging out-of-scope issue (403)'); } else { fail(`Unscoped manager ack issue: expected 403, got ${ackOOS.status}`); }
+
+    const revOOS = await request('PATCH', `/api/v1/driver-submissions/inspections/${insp2Id}/review`, unscopedMgrToken, { reason: 'Test' });
+    if (revOOS.status === 403) { pass('Unscoped manager blocked from reviewing out-of-scope inspection (403)'); } else { fail(`Unscoped manager review inspection: expected 403, got ${revOOS.status}`); }
+  }
+
+  console.log('\n--- Self-Review Guard (Permission-Granted Driver) ---');
+
+  // Grant driver1 review permissions via override — they still should NOT approve own records
+  const reviewPerms = ['driver_fuel_approve', 'driver_expense_approve', 'driver_document_verify', 'driver_issue_review', 'driver_inspection_review', 'driver_submission_review'];
+  for (const perm of reviewPerms) {
+    await request('PUT', `/api/v1/users/${driverUserId}/permission-overrides`, adminToken, {
+      permissionKey: perm,
+      effect: 'ALLOW',
+      reason: 'Test: grant review perms for self-review guard test',
+    });
+  }
+
+  // Driver1 should NOT approve their own fuel (blocked by permission check OR self-review guard)
+  const selfApproveFuel = await request('PATCH', `/api/v1/driver-submissions/fuel/${fuelId}/approve`, driverToken, {});
+  if (selfApproveFuel.status === 403) { pass('Driver with review perms still blocked from self-approving fuel (403)'); } else { fail(`Driver self-approve fuel: expected 403, got ${selfApproveFuel.status}`); }
+
+  // Create new expense, doc, issue, inspection for self-review testing
+  const selfExpRes = await request('POST', '/api/v1/me/driver-expenses', driverToken, {
+    vehicleId: vehicleId,
+    category: 'PARKING',
+    amount: 200,
+  });
+  const selfExpenseId = selfExpRes.data?.data?.id;
+  if (selfExpenseId) {
+    const selfRejectExp = await request('PATCH', `/api/v1/driver-submissions/expenses/${selfExpenseId}/reject`, driverToken, {});
+    if (selfRejectExp.status === 403) { pass('Driver with review perms blocked from self-rejecting expense (403)'); } else { fail(`Driver self-reject expense: expected 403, got ${selfRejectExp.status}`); }
+  }
+
+  const selfDocRes = await request('POST', '/api/v1/me/driver-documents', driverToken, {
+    title: `${PREFIX}_SelfDoc_${ts}`,
+    documentType: 'GENERAL',
+    documentCategory: 'GENERAL',
+    vehicleId: vehicleId,
+  });
+  const selfDocId = selfDocRes.data?.data?.id;
+  if (selfDocId) {
+    const selfVerifyDoc = await request('PATCH', `/api/v1/driver-submissions/documents/${selfDocId}/verify`, driverToken, {});
+    if (selfVerifyDoc.status === 403) { pass('Driver with review perms blocked from self-verifying document (403)'); } else { fail(`Driver self-verify doc: expected 403, got ${selfVerifyDoc.status}`); }
+  }
+
+  const selfIssueRes = await request('POST', '/api/v1/me/driver-vehicle-issues', driverToken, {
+    vehicleId: vehicleId,
+    title: `${PREFIX}_SelfIssue_${ts}`,
+    description: 'Self test',
+    severity: 'LOW',
+  });
+  const selfIssueId = selfIssueRes.data?.data?.id;
+  if (selfIssueId) {
+    const selfAckIssue = await request('PATCH', `/api/v1/driver-submissions/issues/${selfIssueId}/acknowledge`, driverToken, {});
+    if (selfAckIssue.status === 403) { pass('Driver with review perms blocked from self-acknowledging issue (403)'); } else { fail(`Driver self-ack issue: expected 403, got ${selfAckIssue.status}`); }
+  }
+
+  const selfInspRes = await request('POST', '/api/v1/me/driver-vehicle-inspections', driverToken, {
+    vehicleId: vehicleId,
+    inspectionType: 'PRE_TRIP',
+    overallStatus: 'OK',
+  });
+  const selfInspId = selfInspRes.data?.data?.id;
+  if (selfInspId) {
+    const selfRevInsp = await request('PATCH', `/api/v1/driver-submissions/inspections/${selfInspId}/review`, driverToken, {});
+    if (selfRevInsp.status === 403) { pass('Driver with review perms blocked from self-reviewing inspection (403)'); } else { fail(`Driver self-review inspection: expected 403, got ${selfRevInsp.status}`); }
+  }
 
   console.log('\n--- Cleanup ---');
   await cleanup();
