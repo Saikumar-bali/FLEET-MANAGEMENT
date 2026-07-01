@@ -77,6 +77,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 16 | Generic User/Profile Linking + Driver Portal Foundation | Security-Hardened — self-create removed, scope validation, cross-driver leak tested, 21+11 tests PASS, all focused checks PASS |
 | Phase 17 | Driver Portal UI Foundation | Completed — Read-only driver portal UI, /me/driver-* APIs only, 23 security tests PASS, all focused checks PASS |
 | Phase 18 | Driver Portal Write Actions Foundation | Completed — Driver write actions (trip lifecycle, fuel, expense, docs, vehicle issues/inspections), permission-gated, audit-logged, 14 tests, all focused checks PASS |
+| Phase 19 | Driver Submission Review & Approval Workflow | Completed — Review APIs (21 endpoints), admin/manager UI (5 pages), driver status display, 7 new permissions, scoped enforcement, audit trail, 19 backend tests, Playwright manual only |
 
 ## Implementation Log
 

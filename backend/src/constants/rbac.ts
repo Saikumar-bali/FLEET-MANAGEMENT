@@ -138,6 +138,13 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'driver_challan_upload', module: 'driver_portal', action: 'challan_upload', description: 'Driver portal: upload challan' },
   { key: 'driver_vehicle_issue_report', module: 'driver_portal', action: 'vehicle_issue_report', description: 'Driver portal: report vehicle issue' },
   { key: 'driver_vehicle_inspection_create', module: 'driver_portal', action: 'vehicle_inspection_create', description: 'Driver portal: create vehicle inspection' },
+  { key: 'driver_submission_view', module: 'driver_submissions', action: 'view', description: 'View driver submissions for review' },
+  { key: 'driver_submission_review', module: 'driver_submissions', action: 'review', description: 'Review driver submissions' },
+  { key: 'driver_fuel_approve', module: 'driver_submissions', action: 'fuel_approve', description: 'Approve driver fuel entries' },
+  { key: 'driver_expense_approve', module: 'driver_submissions', action: 'expense_approve', description: 'Approve driver expense claims' },
+  { key: 'driver_document_verify', module: 'driver_submissions', action: 'document_verify', description: 'Verify driver uploaded documents' },
+  { key: 'driver_issue_review', module: 'driver_submissions', action: 'issue_review', description: 'Review driver vehicle issues' },
+  { key: 'driver_inspection_review', module: 'driver_submissions', action: 'inspection_review', description: 'Review driver inspections' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [
@@ -248,6 +255,13 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'documents_archive',
     'compliance_alerts_view',
     'compliance_history_view',
+    'driver_submission_view',
+    'driver_submission_review',
+    'driver_fuel_approve',
+    'driver_expense_approve',
+    'driver_document_verify',
+    'driver_issue_review',
+    'driver_inspection_review',
   ],
   supervisor: [
     'vehicle_view',
@@ -294,6 +308,13 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'documents_upload',
     'documents_download',
     'compliance_history_view',
+    'driver_submission_view',
+    'driver_submission_review',
+    'driver_fuel_approve',
+    'driver_expense_approve',
+    'driver_document_verify',
+    'driver_issue_review',
+    'driver_inspection_review',
   ],
   driver: [
     'trip_view',

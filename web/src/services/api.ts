@@ -1006,3 +1006,155 @@ export function reportDriverVehicleIssue(token: string, payload: { vehicleId: st
 export function createDriverVehicleInspection(token: string, payload: { vehicleId: string; inspectionType: string; odometerReading?: number; overallStatus?: string; notes?: string; checklistItems?: unknown[]; tripId?: string }) {
   return request<unknown>('/me/driver-vehicle-inspections', { method: 'POST', token, body: JSON.stringify(payload) });
 }
+
+// ─── Phase 19: Driver Submission Review APIs ───
+
+export type SubmissionListParams = { page?: number; limit?: number; status?: string; driverId?: string; vehicleId?: string; dateFrom?: string; dateTo?: string };
+
+export function listDriverSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<unknown>(`/driver-submissions${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listFuelSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/fuel${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listExpenseSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/expenses${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listDocumentSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listIssueSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/issues${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listInspectionSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/inspections${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Fuel review actions ───
+
+export function approveFuelSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/approve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectFuelSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesFuel(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Expense review actions ───
+
+export function approveExpenseSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/approve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectExpenseSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesExpense(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Document review actions ───
+
+export function verifyDocumentSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/verify`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectDocumentSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesDocument(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Issue review actions ───
+
+export function acknowledgeIssue(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/acknowledge`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function resolveIssue(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/resolve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectIssueSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Inspection review actions ───
+
+export function reviewInspection(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/review`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectInspectionSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesInspection(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
