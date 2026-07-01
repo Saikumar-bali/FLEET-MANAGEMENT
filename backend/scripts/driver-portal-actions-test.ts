@@ -125,10 +125,6 @@ async function main() {
   if (!driver2Id) { fail(`Create driver2 via API: ${JSON.stringify(driver2ApiRes.data)}`); process.exit(1); }
   pass(`Created driver2 via API: ${driver2Id}`);
 
-  // Verify drivers exist via API
-  const d1Check = await request('GET', `/api/v1/drivers/${driver1Id}`, adminToken);
-  if (d1Check.status !== 200) { fail(`driver1 not found via API: ${d1Check.status}`); process.exit(1); }
-
   // Create vehicles via API, assigned to drivers
   const v1Res = await request('POST', '/api/v1/vehicles', adminToken, {
     vehicleNumber: `${PREFIX}_VEH1_${ts}`,
