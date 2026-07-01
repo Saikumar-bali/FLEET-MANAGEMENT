@@ -150,6 +150,7 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'driver_my_trips_view', module: 'driver_portal', action: 'my_trips_view', description: 'Driver portal: view own trips' },
   { key: 'driver_my_documents_view', module: 'driver_portal', action: 'my_documents_view', description: 'Driver portal: view own documents' },
   { key: 'driver_my_profile_view', module: 'driver_portal', action: 'my_profile_view', description: 'Driver portal: view own profile' },
+  { key: 'driver_available_vehicle_select', module: 'driver_portal', action: 'available_vehicle_select', description: 'Driver portal: select from available vehicles' },
 ];
 
 export const roleDefinitions: RoleDefinition[] = [

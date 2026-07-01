@@ -35,7 +35,7 @@ export function DriverVehicleInspectionPage() {
   useEffect(() => {
     if (!auth.accessToken) return;
     getMyDriverVehicles(auth.accessToken).then((res) => {
-      const list = Array.isArray(res.data) ? res.data : [];
+      const list = res.data.vehicles || (Array.isArray(res.data) ? res.data : []);
       setVehicles(list);
       if (list.length === 1) setForm((f) => ({ ...f, vehicleId: list[0].id }));
     });

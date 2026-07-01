@@ -211,6 +211,13 @@ export async function deleteProfileLink(id: string) {
   await prisma.userProfileLink.delete({ where: { id } });
 }
 
+export async function getProfileLinkForDiagnostics(userId: string) {
+  return prisma.userProfileLink.findMany({
+    where: { userId },
+    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+  });
+}
+
 export async function getDriverIdForUser(userId: string): Promise<string | null> {
   const link = await prisma.userProfileLink.findFirst({
     where: {

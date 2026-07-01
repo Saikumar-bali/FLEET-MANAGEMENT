@@ -283,7 +283,10 @@ export function DriverPortalHome() {
       .then(([profileRes, tripsRes, vehiclesRes, fuelRes, expensesRes]) => {
         if (profileRes.status === 'fulfilled') setProfile(profileRes.value.data);
         if (tripsRes.status === 'fulfilled') setTrips(tripsRes.value.data?.items || []);
-        if (vehiclesRes.status === 'fulfilled') setVehicles(vehiclesRes.value.data || []);
+        if (vehiclesRes.status === 'fulfilled') {
+          const vdata = vehiclesRes.value.data;
+          setVehicles(vdata?.vehicles || (Array.isArray(vdata) ? vdata : []));
+        }
         if (fuelRes.status === 'fulfilled') setFuel(fuelRes.value.data?.items || []);
         if (expensesRes.status === 'fulfilled') setExpenses(expensesRes.value.data?.items || []);
 
