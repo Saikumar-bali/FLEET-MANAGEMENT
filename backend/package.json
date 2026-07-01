@@ -34,6 +34,7 @@
     "test:user-profile-link-api": "ts-node scripts/user-profile-link-api-test.ts",
     "test:driver-portal-security": "ts-node scripts/driver-portal-security-test.ts",
     "test:driver-portal-actions": "ts-node scripts/driver-portal-actions-test.ts",
+    "test:driver-submission-review": "ts-node scripts/driver-submission-review-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

@@ -52,6 +52,11 @@ const FinanceVendorsPage = lazy(() => import('../pages/FinanceVendorsPage'));
 const FinanceCustomersPage = lazy(() => import('../pages/FinanceCustomersPage'));
 const FinanceTripBillingsPage = lazy(() => import('../pages/FinanceTripBillingsPage'));
 const FinancePaymentsPage = lazy(() => import('../pages/FinancePaymentsPage'));
+const FuelSubmissionsPage = lazy(() => import('../pages/driver-submissions/FuelSubmissionsPage').then(m => ({ default: m.FuelSubmissionsPage })));
+const ExpenseSubmissionsPage = lazy(() => import('../pages/driver-submissions/ExpenseSubmissionsPage').then(m => ({ default: m.ExpenseSubmissionsPage })));
+const DocumentSubmissionsPage = lazy(() => import('../pages/driver-submissions/DocumentSubmissionsPage').then(m => ({ default: m.DocumentSubmissionsPage })));
+const IssueSubmissionsPage = lazy(() => import('../pages/driver-submissions/IssueSubmissionsPage').then(m => ({ default: m.IssueSubmissionsPage })));
+const InspectionSubmissionsPage = lazy(() => import('../pages/driver-submissions/InspectionSubmissionsPage').then(m => ({ default: m.InspectionSubmissionsPage })));
 
 function App() {
   return (
@@ -151,6 +156,13 @@ function App() {
                   <Route path="/driver-portal/documents/upload" element={<DriverDocumentUploadPage />} />
                   <Route path="/driver-portal/vehicles/issue" element={<DriverVehicleIssuePage />} />
                   <Route path="/driver-portal/vehicles/inspect" element={<DriverVehicleInspectionPage />} />
+                </Route>
+                <Route element={<ProtectedRoute requiredPermissions={['driver_submission_view']} />}>
+                  <Route path="/driver-submissions/fuel" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FuelSubmissionsPage /></Suspense>} />
+                  <Route path="/driver-submissions/expenses" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><ExpenseSubmissionsPage /></Suspense>} />
+                  <Route path="/driver-submissions/documents" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><DocumentSubmissionsPage /></Suspense>} />
+                  <Route path="/driver-submissions/issues" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><IssueSubmissionsPage /></Suspense>} />
+                  <Route path="/driver-submissions/inspections" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><InspectionSubmissionsPage /></Suspense>} />
                 </Route>
               </Route>
             </Route>

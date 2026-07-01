@@ -59,6 +59,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Access Control' },
     { name: 'Profile Links' },
     { name: 'Driver Portal' },
+    { name: 'Driver Submissions' },
   ],
   components: {
     securitySchemes: {
@@ -1828,6 +1829,71 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/me/driver-expenses': {
       get: { tags: ['Driver Portal'], summary: 'Get expenses for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated expenses for linked driver' } } },
+    },
+
+    // ─── Driver Submission Review (admin/manager review workflow) ───
+    '/driver-submissions': {
+      get: { tags: ['Driver Submissions'], summary: 'List all driver submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Aggregated submissions by type' } } },
+    },
+    '/driver-submissions/fuel': {
+      get: { tags: ['Driver Submissions'], summary: 'List fuel submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'NEEDS_CHANGES'] } }], responses: { '200': { description: 'Paginated fuel submissions' } } },
+    },
+    '/driver-submissions/fuel/{id}/approve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Approve fuel submission (requires driver_fuel_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Fuel submission approved' }, '403': { description: 'Insufficient permission or out of scope' } } },
+    },
+    '/driver-submissions/fuel/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject fuel submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Fuel submission rejected' } } },
+    },
+    '/driver-submissions/fuel/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on fuel submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/expenses': {
+      get: { tags: ['Driver Submissions'], summary: 'List expense submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated expense submissions' } } },
+    },
+    '/driver-submissions/expenses/{id}/approve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Approve expense submission (requires driver_expense_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Expense submission approved' } } },
+    },
+    '/driver-submissions/expenses/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject expense submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Expense submission rejected' } } },
+    },
+    '/driver-submissions/expenses/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on expense (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/documents': {
+      get: { tags: ['Driver Submissions'], summary: 'List document submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated document submissions' } } },
+    },
+    '/driver-submissions/documents/{id}/verify': {
+      patch: { tags: ['Driver Submissions'], summary: 'Verify document (requires driver_document_verify)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Document verified' } } },
+    },
+    '/driver-submissions/documents/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject document (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Document rejected' } } },
+    },
+    '/driver-submissions/documents/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on document (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/issues': {
+      get: { tags: ['Driver Submissions'], summary: 'List vehicle issue submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated issue submissions' } } },
+    },
+    '/driver-submissions/issues/{id}/acknowledge': {
+      patch: { tags: ['Driver Submissions'], summary: 'Acknowledge vehicle issue (requires driver_issue_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue acknowledged' } } },
+    },
+    '/driver-submissions/issues/{id}/resolve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Resolve vehicle issue (requires driver_issue_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue resolved' } } },
+    },
+    '/driver-submissions/issues/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject vehicle issue (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue rejected' } } },
+    },
+    '/driver-submissions/inspections': {
+      get: { tags: ['Driver Submissions'], summary: 'List inspection submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated inspection submissions' } } },
+    },
+    '/driver-submissions/inspections/{id}/review': {
+      patch: { tags: ['Driver Submissions'], summary: 'Review inspection (requires driver_inspection_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Inspection reviewed' } } },
+    },
+    '/driver-submissions/inspections/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject inspection (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Inspection rejected' } } },
+    },
+    '/driver-submissions/inspections/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on inspection (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
     },
   },
 };

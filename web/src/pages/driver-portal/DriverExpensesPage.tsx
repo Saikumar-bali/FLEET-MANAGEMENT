@@ -11,6 +11,20 @@ function formatCurrency(amount: number) {
   return amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
+function statusClass(status: string) {
+  switch (status) {
+    case 'APPROVED': return 'status-pill status-pill-success';
+    case 'REJECTED': return 'status-pill status-pill-danger';
+    case 'NEEDS_CHANGES': return 'status-pill status-pill-warning';
+    case 'SUBMITTED': return 'status-pill status-pill-info';
+    default: return 'status-pill status-pill-default';
+  }
+}
+
+function statusLabel(status: string) {
+  return status.replace(/_/g, ' ');
+}
+
 export function DriverExpensesPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -73,6 +87,7 @@ export function DriverExpensesPage() {
                   <th>Amount</th>
                   <th>Notes</th>
                   <th>Status</th>
+                  <th>Reviewer Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,7 +98,8 @@ export function DriverExpensesPage() {
                     <td>{entry.vehicle.vehicleNumber}</td>
                     <td>{formatCurrency(entry.amount)}</td>
                     <td>{entry.notes || '—'}</td>
-                    <td><span className="status-badge">{entry.status}</span></td>
+                    <td><span className={statusClass(entry.status)}>{statusLabel(entry.status)}</span></td>
+                    <td>{(entry as Record<string, unknown>).reviewComments ? String((entry as Record<string, unknown>).reviewComments) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -7,6 +7,20 @@ import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 
+function docStatusClass(status: string) {
+  switch (status) {
+    case 'VERIFIED': return 'status-pill status-pill-success';
+    case 'REJECTED': return 'status-pill status-pill-danger';
+    case 'NEEDS_CHANGES': return 'status-pill status-pill-warning';
+    case 'PENDING': return 'status-pill status-pill-info';
+    default: return 'status-pill status-pill-default';
+  }
+}
+
+function docStatusLabel(status: string) {
+  return status.replace(/_/g, ' ');
+}
+
 export function DriverDocumentsPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -67,6 +81,7 @@ export function DriverDocumentsPage() {
                   <th>Type</th>
                   <th>Category</th>
                   <th>Status</th>
+                  <th>Reviewer Notes</th>
                   <th>Created</th>
                 </tr>
               </thead>
@@ -76,7 +91,8 @@ export function DriverDocumentsPage() {
                     <td>{doc.title}</td>
                     <td>{doc.documentType.replace(/_/g, ' ')}</td>
                     <td>{doc.documentCategory}</td>
-                    <td><span className="status-badge">{doc.verificationStatus}</span></td>
+                    <td><span className={docStatusClass(doc.verificationStatus)}>{docStatusLabel(doc.verificationStatus)}</span></td>
+                    <td>{(doc as Record<string, unknown>).reviewComments ? String((doc as Record<string, unknown>).reviewComments) : '—'}</td>
                     <td>{new Date(doc.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}

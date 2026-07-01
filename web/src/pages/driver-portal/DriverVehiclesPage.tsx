@@ -7,6 +7,16 @@ import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 
+function vehicleStatusClass(status: string) {
+  switch (status) {
+    case 'AVAILABLE': return 'status-pill status-pill-success';
+    case 'ON_TRIP': return 'status-pill status-pill-info';
+    case 'IN_MAINTENANCE': return 'status-pill status-pill-warning';
+    case 'OUT_OF_SERVICE': return 'status-pill status-pill-danger';
+    default: return 'status-pill status-pill-default';
+  }
+}
+
 export function DriverVehiclesPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -79,7 +89,7 @@ export function DriverVehiclesPage() {
                   <td>{v.vehicleType}</td>
                   <td>{v.brand || '—'}</td>
                   <td>{v.model || '—'}</td>
-                  <td><span className="status-badge">{v.status}</span></td>
+                  <td><span className={vehicleStatusClass(v.status)}>{v.status}</span></td>
                 </tr>
               ))}
             </tbody>

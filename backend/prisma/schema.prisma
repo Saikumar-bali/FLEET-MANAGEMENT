@@ -64,7 +64,9 @@ model User {
   profileLinks             UserProfileLink[]            @relation("UserProfileLinkUser")
   profileLinksLinkedBy     UserProfileLink[]            @relation("UserProfileLinkLinkedBy")
   vehicleIssuesCreated     VehicleIssue[]               @relation("VehicleIssueCreatedBy")
+  vehicleIssuesReviewed    VehicleIssue[]               @relation("VehicleIssueReviewedBy")
   vehicleInspectionsCreated VehicleInspection[]         @relation("VehicleInspectionCreatedBy")
+  vehicleInspectionsReviewed VehicleInspection[]        @relation("VehicleInspectionReviewedBy")
 
   @@map("users")
 }
@@ -358,6 +360,7 @@ enum DocumentVerificationStatus {
   PENDING
   VERIFIED
   REJECTED
+  NEEDS_CHANGES
 }
 
 model Vehicle {
@@ -571,6 +574,7 @@ enum WorkflowRecordStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  NEEDS_CHANGES
   CANCELLED
 }
 
@@ -608,6 +612,7 @@ model FuelEntry {
   extractionRawText    String?              @map("extraction_raw_text") @db.Text
   notes                String?
   status               WorkflowRecordStatus @default(DRAFT)
+  reviewComments       String?              @map("review_comments")
   createdById          String?              @map("created_by")
   approvedById         String?              @map("approved_by")
   approvedAt           DateTime?            @map("approved_at")
@@ -639,6 +644,7 @@ model Expense {
   receiptNumber String?              @map("receipt_number")
   notes         String?
   status        WorkflowRecordStatus @default(DRAFT)
+  reviewComments String?             @map("review_comments")
   createdById   String?              @map("created_by")
   approvedById  String?              @map("approved_by")
   approvedAt    DateTime?            @map("approved_at")
@@ -692,7 +698,8 @@ model Document {
   expiryDate              DateTime?                @map("expiry_date")
   documentStatus          DocumentStatus           @default(ACTIVE) @map("document_status")
   verificationStatus      DocumentVerificationStatus @default(PENDING) @map("verification_status")
-  tags                    String[]                 @default([])
+  reviewComments          String?                    @map("review_comments")
+  tags                    String[]                   @default([])
   metadata                Json?
 
   uploadedById            String                   @map("uploaded_by_id")
@@ -813,6 +820,7 @@ enum VehicleIssueStatus {
   ACKNOWLEDGED
   IN_PROGRESS
   RESOLVED
+  REJECTED
   DISMISSED
 }
 
@@ -825,16 +833,20 @@ model VehicleIssue {
   description   String?
   severity      VehicleIssueSeverity @default(MEDIUM)
   status        VehicleIssueStatus  @default(OPEN)
+  reviewComments String?            @map("review_comments")
   reportedAt    DateTime            @default(now()) @map("reported_at")
   resolvedAt    DateTime?           @map("resolved_at")
   resolutionNotes String?           @map("resolution_notes")
   createdById   String              @map("created_by_id")
+  reviewedById  String?             @map("reviewed_by_id")
+  reviewedAt    DateTime?           @map("reviewed_at")
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
   vehicle       Vehicle             @relation(fields: [vehicleId], references: [id])
   trip          Trip?               @relation(fields: [tripId], references: [id])
   driver        Driver              @relation(fields: [driverId], references: [id])
   createdBy     User                @relation("VehicleIssueCreatedBy", fields: [createdById], references: [id])
+  reviewedBy    User?               @relation("VehicleIssueReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([driverId])
@@ -842,27 +854,40 @@ model VehicleIssue {
   @@map("vehicle_issues")
 }
 
+enum VehicleInspectionReviewStatus {
+  SUBMITTED
+  REVIEWED
+  REJECTED
+  NEEDS_CHANGES
+}
+
 model VehicleInspection {
-  id              String    @id @default(cuid())
-  vehicleId       String    @map("vehicle_id")
-  driverId        String    @map("driver_id")
-  tripId          String?   @map("trip_id")
-  inspectionDate  DateTime  @default(now()) @map("inspection_date")
-  inspectionType  String    @map("inspection_type")
-  odometerReading Int?      @map("odometer_reading")
-  overallStatus   String    @default("OK") @map("overall_status")
+  id              String                       @id @default(cuid())
+  vehicleId       String                       @map("vehicle_id")
+  driverId        String                       @map("driver_id")
+  tripId          String?                      @map("trip_id")
+  inspectionDate  DateTime                     @default(now()) @map("inspection_date")
+  inspectionType  String                       @map("inspection_type")
+  odometerReading Int?                         @map("odometer_reading")
+  overallStatus   String                       @default("OK") @map("overall_status")
+  reviewStatus    VehicleInspectionReviewStatus @default(SUBMITTED) @map("review_status")
+  reviewComments  String?                      @map("review_comments")
   notes           String?
-  checklistItems  Json      @default("[]") @map("checklist_items")
-  createdById     String    @map("created_by_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
-  driver          Driver    @relation(fields: [driverId], references: [id])
-  trip            Trip?     @relation(fields: [tripId], references: [id])
-  createdBy       User      @relation("VehicleInspectionCreatedBy", fields: [createdById], references: [id])
+  checklistItems  Json                         @default("[]") @map("checklist_items")
+  createdById     String                       @map("created_by_id")
+  reviewedById    String?                      @map("reviewed_by_id")
+  reviewedAt      DateTime?                    @map("reviewed_at")
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  updatedAt       DateTime                     @updatedAt @map("updated_at")
+  vehicle         Vehicle                      @relation(fields: [vehicleId], references: [id])
+  driver          Driver                       @relation(fields: [driverId], references: [id])
+  trip            Trip?                        @relation(fields: [tripId], references: [id])
+  createdBy       User                         @relation("VehicleInspectionCreatedBy", fields: [createdById], references: [id])
+  reviewedBy      User?                        @relation("VehicleInspectionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([driverId])
+  @@index([reviewStatus])
   @@map("vehicle_inspections")
 }
 

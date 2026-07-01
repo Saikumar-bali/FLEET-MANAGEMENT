@@ -7,6 +7,16 @@ import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 
+function tripStatusClass(status: string) {
+  switch (status) {
+    case 'COMPLETED': return 'status-pill status-pill-success';
+    case 'STARTED': return 'status-pill status-pill-info';
+    case 'CANCELLED': return 'status-pill status-pill-danger';
+    case 'SCHEDULED': return 'status-pill status-pill-warning';
+    default: return 'status-pill status-pill-default';
+  }
+}
+
 export function DriverTripsPage() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -101,7 +111,7 @@ export function DriverTripsPage() {
                     <td>{trip.tripType}</td>
                     <td>{trip.originName} → {trip.destinationName}</td>
                     <td>{trip.vehicle.vehicleNumber}</td>
-                    <td><span className="status-badge">{trip.status}</span></td>
+                    <td><span className={tripStatusClass(trip.status)}>{trip.status}</span></td>
                     <td>{trip.distanceKm ? `${trip.distanceKm} km` : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>
