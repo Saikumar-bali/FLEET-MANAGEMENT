@@ -968,3 +968,41 @@ export function getMyDriverExpenses(token: string, params?: { page?: number; lim
   const qs = query.toString();
   return request<{ items: DriverPortalExpense[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-expenses${qs ? `?${qs}` : ''}`, { token });
 }
+
+// ─── Phase 18: Driver Portal Write APIs ───
+
+export function createDriverTrip(token: string, payload: { vehicleId: string; originName: string; destinationName: string; tripType?: string; plannedStartAt?: string; plannedEndAt?: string; notes?: string; purpose?: string }) {
+  return request<DriverPortalTrip>('/me/driver-trips', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function startDriverTrip(token: string, tripId: string, payload?: { startOdometer?: number; notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/start`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function endDriverTrip(token: string, tripId: string, payload?: { endOdometer?: number; notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/end`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function cancelDriverTrip(token: string, tripId: string, payload?: { notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/cancel`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function createDriverFuel(token: string, payload: { vehicleId: string; totalAmount: number; quantityLiters?: number; fuelDate?: string; odometerReading?: number; stationName?: string; receiptNumber?: string; paymentMode?: string; notes?: string }) {
+  return request<DriverPortalFuelEntry>('/me/driver-fuel', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function createDriverExpense(token: string, payload: { vehicleId: string; category: string; amount: number; tripId?: string; expenseDate?: string; notes?: string }) {
+  return request<DriverPortalExpense>('/me/driver-expenses', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function uploadDriverDocument(token: string, payload: { title: string; documentType: string; documentCategory: string; vehicleId?: string; tripId?: string; description?: string }) {
+  return request<DriverPortalDocument>('/me/driver-documents', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function reportDriverVehicleIssue(token: string, payload: { vehicleId: string; title: string; description?: string; severity?: string; tripId?: string }) {
+  return request<unknown>('/me/driver-vehicle-issues', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function createDriverVehicleInspection(token: string, payload: { vehicleId: string; inspectionType: string; odometerReading?: number; overallStatus?: string; notes?: string; checklistItems?: unknown[]; tripId?: string }) {
+  return request<unknown>('/me/driver-vehicle-inspections', { method: 'POST', token, body: JSON.stringify(payload) });
+}

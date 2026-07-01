@@ -76,6 +76,7 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
 | Phase 15 | Module-Level Scoped Enforcement | Completed — linkedEntityType-only validation, API smoke test (16 checks), helper test (15 sections), all focused checks PASS |
 | Phase 16 | Generic User/Profile Linking + Driver Portal Foundation | Security-Hardened — self-create removed, scope validation, cross-driver leak tested, 21+11 tests PASS, all focused checks PASS |
 | Phase 17 | Driver Portal UI Foundation | Completed — Read-only driver portal UI, /me/driver-* APIs only, 23 security tests PASS, all focused checks PASS |
+| Phase 18 | Driver Portal Write Actions Foundation | Completed — Driver write actions (trip lifecycle, fuel, expense, docs, vehicle issues/inspections), permission-gated, audit-logged, 14 tests, all focused checks PASS |
 
 ## Implementation Log
 
