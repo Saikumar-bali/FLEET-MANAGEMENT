@@ -28,6 +28,7 @@ import {
   createUserProfileLink,
   revokeUserProfileLink,
   getAvailableDrivers,
+  getVehicles,
 } from '../services/api';
 import type {
   UserRecord, RoleRecord, PermissionRecord, ProfileLinkRecord,
@@ -102,6 +103,11 @@ export function UserDetailPage() {
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
 
+  // Vehicle list for scope dropdown
+  const [allVehicles, setAllVehicles] = useState<{ id: string; vehicleNumber: string; vehicleType: string; status: string }[]>([]);
+  const [vehicleSearch, setVehicleSearch] = useState('');
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+
   const [permSearch, setPermSearch] = useState('');
   const [permModuleFilter, setPermModuleFilter] = useState('');
 
@@ -130,6 +136,10 @@ export function UserDetailPage() {
         setAllDrivers([]);
         setDriverLoadError(e instanceof ApiError ? e.message : 'Unable to load drivers.');
       }
+      try {
+        const vRes = await getVehicles(auth.accessToken, { limit: 100 });
+        setAllVehicles(vRes.data?.items ?? []);
+      } catch { setAllVehicles([]); }
     } catch (caughtError) {
       setError(caughtError instanceof ApiError ? caughtError.message : 'Failed to load user details.');
     } finally { setIsLoading(false); }
@@ -181,8 +191,18 @@ export function UserDetailPage() {
     if (!auth.accessToken || !id) return;
     setIsSavingScope(true); setScopeError(null);
     try {
-      const res = await grantUserDataScope(auth.accessToken, id, { scopeType, scopeId: scopeType !== 'GLOBAL' && scopeType !== 'OWN' ? scopeId : undefined, accessLevel: scopeAccessLevel, reason: scopeReason || undefined, expiresAt: scopeExpiresAt || undefined });
-      setDataScopes(prev => [...prev, res.data]); setScopeId(''); setScopeReason(''); setScopeExpiresAt('');
+      if (scopeType === 'VEHICLE' && selectedVehicleIds.length > 0) {
+        const results: UserDataScopeRecord[] = [];
+        for (const vid of selectedVehicleIds) {
+          const res = await grantUserDataScope(auth.accessToken, id, { scopeType, scopeId: vid, accessLevel: scopeAccessLevel, reason: scopeReason || undefined, expiresAt: scopeExpiresAt || undefined });
+          results.push(res.data);
+        }
+        setDataScopes(prev => [...prev, ...results]);
+      } else {
+        const res = await grantUserDataScope(auth.accessToken, id, { scopeType, scopeId: scopeType !== 'GLOBAL' && scopeType !== 'OWN' ? scopeId : undefined, accessLevel: scopeAccessLevel, reason: scopeReason || undefined, expiresAt: scopeExpiresAt || undefined });
+        setDataScopes(prev => [...prev, res.data]);
+      }
+      setScopeId(''); setScopeReason(''); setScopeExpiresAt(''); setSelectedVehicleIds([]); setVehicleSearch('');
     } catch (e) { setScopeError(e instanceof ApiError ? e.message : 'Failed to grant scope.'); } finally { setIsSavingScope(false); }
   }
 
@@ -432,8 +452,31 @@ export function UserDetailPage() {
                 {!isSuperAdmin && <div className="info-banner">GLOBAL and MANAGE scopes are super_admin-only.</div>}
                 <FormSection title="Grant Scope" description="Add a data scope to this user.">
                   <div className="form-grid">
-                    <label><span>Scope type</span><select value={scopeType} onChange={e => setScopeType(e.target.value)}>{SCOPE_TYPES.map(st => <option key={st} value={st}>{st}</option>)}</select></label>
-                    <label><span>Scope ID</span><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'GLOBAL' || scopeType === 'OWN' ? 'Not needed' : 'e.g. vehicle-123'} disabled={scopeType === 'GLOBAL' || scopeType === 'OWN'} /></label>
+                    <label><span>Scope type</span><select value={scopeType} onChange={e => { setScopeType(e.target.value); setScopeId(''); setVehicleSearch(''); }}>{SCOPE_TYPES.map(st => <option key={st} value={st}>{st}</option>)}</select></label>
+                    {scopeType === 'VEHICLE' ? (
+                      <div>
+                        <label><span>Select vehicles</span></label>
+                        <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} placeholder="Search by number or type..." style={{ width: '100%', marginBottom: '0.5rem', padding: '0.4rem', fontSize: '0.85rem', border: '1px solid var(--color-border)', borderRadius: '4px' }} />
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                          {allVehicles
+                            .filter(v => {
+                              if (!vehicleSearch) return true;
+                              const q = vehicleSearch.toLowerCase();
+                              return v.vehicleNumber.toLowerCase().includes(q) || v.vehicleType.toLowerCase().includes(q);
+                            })
+                            .map(v => (
+                              <label key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0.5rem', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input type="checkbox" checked={selectedVehicleIds.includes(v.id)} onChange={() => setSelectedVehicleIds(prev => prev.includes(v.id) ? prev.filter(x => x !== v.id) : [...prev, v.id])} />
+                                {v.vehicleNumber} ({v.vehicleType}) - {v.status}
+                              </label>
+                            ))}
+                        </div>
+                        {selectedVehicleIds.length > 0 && <p style={{ fontSize: '0.75rem', color: 'var(--color-accent)', marginTop: '0.25rem' }}>{selectedVehicleIds.length} vehicle(s) selected</p>}
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>Select vehicles to grant access to. Leave all unchecked for all vehicles.</p>
+                      </div>
+                    ) : (
+                      <label><span>Scope ID</span><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'GLOBAL' || scopeType === 'OWN' ? 'Not needed' : 'e.g. driver-123'} disabled={scopeType === 'GLOBAL' || scopeType === 'OWN'} /></label>
+                    )}
                     <label><span>Access level</span><select value={scopeAccessLevel} onChange={e => setScopeAccessLevel(e.target.value)}>{ACCESS_LEVELS.map(al => <option key={al} value={al}>{al}</option>)}</select></label>
                     <label><span>Reason</span><input value={scopeReason} onChange={e => setScopeReason(e.target.value)} placeholder="Optional reason" /></label>
                     <label><span>Expires at</span><input type="datetime-local" value={scopeExpiresAt} onChange={e => setScopeExpiresAt(e.target.value)} /></label>

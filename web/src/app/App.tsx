@@ -2,10 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
+import { WorkspaceProvider } from '../context/WorkspaceContext';
 import { ToastContainer } from '../components/ui/Toast';
 import { AppLayout } from '../layouts/AppLayout';
 import { FinanceLayout } from '../layouts/FinanceLayout';
 import { DashboardPage } from '../pages/DashboardPage';
+import { WorkspaceHome } from '../pages/workspace/WorkspaceHome';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
 import { UsersPage } from '../pages/UsersPage';
@@ -64,11 +66,13 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <BrowserRouter>
+            <WorkspaceProvider>
             <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<DashboardPage />} />
+                <Route path="/" element={<WorkspaceHome />} />
+<Route path="/dashboard" element={<DashboardPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />
                   <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
@@ -168,6 +172,7 @@ function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </WorkspaceProvider>
         </BrowserRouter>
         <ToastContainer />
         </ToastProvider>

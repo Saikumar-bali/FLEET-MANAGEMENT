@@ -37,6 +37,7 @@
     "test:driver-portal-actions": "ts-node scripts/driver-portal-actions-test.ts",
     "test:driver-submission-review": "ts-node scripts/driver-submission-review-test.ts",
     "test:driver-portal-integration": "ts-node scripts/driver-portal-integration-test.ts",
+    "test:workspace-engine": "ts-node scripts/workspace-engine-test.ts",
     "test:staging-api": "ts-node scripts/staging-api-smoke-test.ts",
     "test:fuel-expenses:staging": "ts-node scripts/fuel-expense-staging-test.ts",
     "prisma:generate": "prisma generate",

@@ -1,9 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useRef, useCallback, useEffect, useState } from 'react';
-import { getMyAccessSummary } from '../services/api';
-import type { NavItem } from '../config/navigation';
-import { getVisibleNavItems, groupNavItemsBySection } from '../config/navigation';
+import { useRef, useCallback } from 'react';
+import { useWorkspace } from '../hooks/useWorkspace';
 
 type SidebarProps = {
   isOpen: boolean;
@@ -12,14 +10,6 @@ type SidebarProps = {
   onToggleCollapse: () => void;
   onOpenSettings: (anchor: HTMLElement) => void;
   onOpenAccount: (anchor: HTMLElement) => void;
-};
-
-type AccessSummary = {
-  profileTypes: string[];
-  primaryDriverProfile: { id: string; name: string; mobile: string; status: string } | null;
-  effectivePermissions: string[];
-  role: { key: string };
-  dataScopes: Array<{ scopeType: string; accessLevel: string }>;
 };
 
 function renderIcon(icon: string): JSX.Element {
@@ -71,38 +61,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
   const auth = useAuth();
   const location = useLocation();
   const accountChipRef = useRef<HTMLButtonElement>(null);
-  const [accessSummary, setAccessSummary] = useState<AccessSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-
-  useEffect(() => {
-    if (!auth.accessToken) {
-      setSummaryLoading(false);
-      return;
-    }
-    setSummaryLoading(true);
-    getMyAccessSummary(auth.accessToken)
-      .then((res) => {
-        setAccessSummary(res.data);
-      })
-      .catch(() => {})
-      .finally(() => setSummaryLoading(false));
-  }, [auth.accessToken]);
-
-  const roleKey = auth.user?.role.key;
-  const effectivePermissions = accessSummary?.effectivePermissions ?? [];
-  const profileTypes = accessSummary?.profileTypes ?? [];
-  const hasPrimaryDriverProfile = !!(accessSummary?.primaryDriverProfile);
-  const hasGlobalAccess = accessSummary?.dataScopes?.some(
-    (s) => s.scopeType === 'GLOBAL' && (s.accessLevel === 'MANAGE' || s.accessLevel === 'VIEW'),
-  ) ?? false;
-
-  const hasLoaded = !summaryLoading && accessSummary !== null;
-
-  const visibleItems: NavItem[] = hasLoaded
-    ? getVisibleNavItems(roleKey, effectivePermissions, profileTypes, hasPrimaryDriverProfile, hasGlobalAccess)
-    : [];
-
-  const groupedSections = hasLoaded ? groupNavItemsBySection(visibleItems) : [];
+  const { navigation, isLoading } = useWorkspace();
 
   const handleAccountClick = useCallback(() => {
     if (accountChipRef.current) {
@@ -155,8 +114,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
-          {/* Loading state: show skeleton — no items rendered */}
-          {summaryLoading && (
+          {isLoading && (
             <div className="sidebar-loading">
               <div className="skeleton-line" />
               <div className="skeleton-line" style={{ width: '60%' }} />
@@ -164,15 +122,13 @@ export function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onOpen
             </div>
           )}
 
-          {/* Error / no-auth fallback */}
-          {!summaryLoading && !accessSummary && (
+          {!isLoading && navigation.length === 0 && (
             <div style={{ padding: '1rem' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>Menu unavailable</p>
             </div>
           )}
 
-          {/* Normal navigation — only rendered after summary loaded */}
-          {groupedSections.map((group) => (
+          {navigation.map((group) => (
             <div key={group.section}>
               <p className="sidebar-section-label">{group.label}</p>
               <div className="sidebar-nav">
