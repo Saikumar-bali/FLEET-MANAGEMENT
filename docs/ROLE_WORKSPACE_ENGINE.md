@@ -117,7 +117,7 @@ Driver vehicle access is resolved from four sources:
 
 | Gate | Status |
 |------|--------|
-| Backend workspace engine test (13 role assertions + template safety) | PASSED — 239 assertions at commit `dd8777a` |
+| Backend workspace engine test (13 role assertions + template safety) | PASSED — 239 assertions at commit `1d7417e` |
 | Role template safety verification (no admin/finance/approve in driver/viewer) | PASSED — all 6 templates verified in test |
 | CI workspace engine step runs after seeds, before deploy | CONFIGURED — `.github/workflows/ci.yml` runs seeds before tests |
 | Playwright E2E (role-workspace-ux.spec.ts) | **MANUAL ONLY, NOT CI-GATED** — requires env credentials not present in CI |
@@ -133,11 +133,12 @@ Driver vehicle access is resolved from four sources:
 | `test:module-scope` | PASSED |
 | `test:module-scope-api` | PASSED |
 | `test:user-profile-link` | 30/30 PASSED |
+| `test:driver-portal-security` | 23/23 PASSED (fixed Test 5 vehicle response path) |
 | `test:driver-portal-integration` | 26/26 PASSED |
 | `test:workspace-engine` | 239/239 PASSED |
-| GitHub Actions | No evidence attached to `dd8777a` — requires push + manual trigger |
+| GitHub Actions | **PASSED** — run [28581133973](https://github.com/Saikumar-bali/FLEET-MANAGEMENT/actions/runs/28581133973) at commit `1d7417e` |
 
-> **Verdict**: Role Workspace Engine is **backend-tested locally**, but Playwright E2E is NOT CI-gated. Do not merge and do not deploy without reviewing Playwright E2E results manually. No GitHub Actions evidence for commit `dd8777a`.
+> **Verdict**: Role Workspace Engine is **CI-gated**. All backend tests pass. Playwright E2E is **MANUAL ONLY, NOT CI-GATED** — requires manual review. Do not merge and do not deploy without reviewing Playwright E2E results manually.
 
 ## File Locations
 
