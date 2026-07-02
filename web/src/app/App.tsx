@@ -71,8 +71,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<WorkspaceHome />} />
-<Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/workspace" element={<WorkspaceHome />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />
                   <Route path="/vehicles/:id" element={<VehicleDetailPage />} />

@@ -119,7 +119,7 @@ export const NAV_SECTION_LABELS: Record<string, string> = {
 export const ALL_SECTIONS = ['WORKSPACE', 'DRIVER', 'OPERATIONS', 'FINANCE', 'COMPLIANCE', 'DOCUMENTS', 'ADMIN', 'SETTINGS'];
 
 export const NAV_ITEMS: NavItemDef[] = [
-  { id: 'overview', label: 'Overview', path: '/', icon: 'Dashboard', section: 'WORKSPACE', priority: 0 },
+  { id: 'dashboard', label: 'Dashboard', path: '/', icon: 'Dashboard', section: 'WORKSPACE', priority: 0 },
   { id: 'activity-history', label: 'Activity History', path: '/trips', icon: 'Activity', section: 'WORKSPACE', priority: 10 },
   { id: 'new-trip', label: 'New Trip', path: '/trips/new', icon: 'NewTrip', section: 'WORKSPACE', priority: 20 },
   { id: 'driver-portal', label: 'Driver Portal', path: '/driver-portal', icon: 'DriverPortal', section: 'DRIVER', priority: 100 },
@@ -153,5 +153,4 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'driver-submissions', label: 'Driver Submissions', path: '/driver-submissions', icon: 'Submissions', section: 'DOCUMENTS', priority: 510 },
   { id: 'users', label: 'Users', path: '/users', icon: 'Users', section: 'ADMIN', priority: 600 },
   { id: 'roles', label: 'Roles & Permissions', path: '/roles', icon: 'Roles', section: 'ADMIN', priority: 610 },
-  { id: 'my-access', label: 'My Access', path: '/my-access', icon: 'MyAccess', section: 'SETTINGS', priority: 700 },
 ];

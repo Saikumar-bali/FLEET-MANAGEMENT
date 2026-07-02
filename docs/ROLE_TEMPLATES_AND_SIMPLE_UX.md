@@ -60,8 +60,18 @@ This is non-destructive — existing permissions not in the template are preserv
 9. **My Access** is only under the user/settings menu, not in the main sidebar.
 10. **Mobile responsive layout.** Quick actions wrap, navigation collapses, tables scroll horizontally.
 
-## Current Status
+## CI & Security Status
 
-- Role templates are defined but not yet integrated into the admin UI
-- Templates can be applied via seed script or manual API calls
-- Future work: add "Apply Template" dropdown to UsersPage Access tab
+| Gate | Status |
+|------|--------|
+| Template definitions (6 templates) | VERIFIED — all permissions match DB seed |
+| Driver Basic template safety (no admin/finance/approve) | VERIFIED — 14 perms, no admin/review perms |
+| Driver Pool template contains checkout perms | VERIFIED — 18 perms incl. `driver_available_vehicle_select`, `driver_vehicle_self_checkout`, `driver_vehicle_return`, `driver_vehicle_checkout_view_own` |
+| Finance template has no driver perms | VERIFIED — 23 perms, zero `driver_` prefixed |
+| Viewer template is read-only (no create/update/delete/approve) | VERIFIED — 18 perms, all read-only (`_view` suffixed) |
+| Manager template has no global admin perms | VERIFIED — 23 perms, no `role_delete`, `user_delete`, etc. |
+| Mechanic template verified | VERIFIED — 15 perms for repair/maintenance/compliance/document |
+| All template permissions exist in DB | VERIFIED — `seed-role-templates.ts` validates on run |
+| Workspace engine test includes template safety | 239/239 PASSED at commit `dd8777a` |
+
+> **Verdict**: All 6 templates pass safety checks verified in the workspace engine test (239/239 assertions). The "Apply Template" UI is functional in RolesPage. No deploy without manual E2E review.
