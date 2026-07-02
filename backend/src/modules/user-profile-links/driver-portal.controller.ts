@@ -84,7 +84,8 @@ export async function driverContextController(req: Request, res: Response) {
   }
 
   const hasAvailableSelect = (req.authPermissions || []).includes('driver_available_vehicle_select');
-  if (hasAvailableSelect || globalAllowed) {
+  const hasAnyVehicleScope = vehicleScopes.length > 0;
+  if (hasAvailableSelect || globalAllowed || hasAnyVehicleScope) {
     availableVehicles = await prisma.vehicle.findMany({
       where: {
         status: 'AVAILABLE',
@@ -228,9 +229,10 @@ export async function driverVehiclesController(req: Request, res: Response) {
     },
   }) : [];
 
-  // Source 4: Available vehicles (only with permission)
+  // Source 4: Available vehicles (with permission, global scope, or vehicle scopes)
   let availableVehicles: any[] = [];
-  if (hasAvailableSelect || globalAllowed) {
+  const hasAnyVehicleScope = vehicleScopes.length > 0;
+  if (hasAvailableSelect || globalAllowed || hasAnyVehicleScope) {
     const alreadyIncluded = new Set([...assignedIds, ...tripVehicleIds, ...scopedVehicleIds]);
     const availableWhere: any = { status: 'AVAILABLE' };
     if (!globalAllowed) {
@@ -287,7 +289,7 @@ export async function driverVehiclesController(req: Request, res: Response) {
 
   let emptyReason: string | null = null;
   if (result.length === 0) {
-    if (!hasAvailableSelect && !globalAllowed) {
+    if (!hasAvailableSelect && !globalAllowed && !hasAnyVehicleScope) {
       emptyReason = 'No vehicle is currently assigned to your driver profile, and you do not have permission to select available vehicles.';
     } else {
       emptyReason = 'No available vehicles found within your scope.';
