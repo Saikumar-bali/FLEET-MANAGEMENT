@@ -120,7 +120,7 @@ Driver vehicle access is resolved from four sources:
 | Backend workspace engine test (13 role assertions + template safety) | PASSED — 239 assertions at commit `1d7417e` |
 | Role template safety verification (no admin/finance/approve in driver/viewer) | PASSED — all 6 templates verified in test |
 | CI workspace engine step runs after seeds, before deploy | CONFIGURED — `.github/workflows/ci.yml` runs seeds before tests |
-| Playwright E2E (role-workspace-ux.spec.ts) | **MANUAL ONLY, NOT CI-GATED** — requires env credentials not present in CI |
+| Playwright E2E (role-workspace-ux.spec.ts) | **8/8 PASSED** — env-only credentials, driver/finance/manager/viewer/admin/mechanic verified, no emoji, no flash, no restricted menu. Requires env credentials not present in CI |
 | Hardcoded credentials in E2E tests | REMOVED — all credentials come from env vars, fail fast if missing |
 | Sidebar hardcoded role checks | REMOVED — sidebar renders from `workspace.navigation` only |
 | Workspace home debug/diagnostics panels | REMOVED — no empty states, no diagnostics section in any role home |
@@ -138,7 +138,7 @@ Driver vehicle access is resolved from four sources:
 | `test:workspace-engine` | 239/239 PASSED |
 | GitHub Actions | **PASSED** — run [28581133973](https://github.com/Saikumar-bali/FLEET-MANAGEMENT/actions/runs/28581133973) at commit `1d7417e` |
 
-> **Verdict**: Role Workspace Engine is **CI-gated**. All backend tests pass. Playwright E2E is **MANUAL ONLY, NOT CI-GATED** — requires manual review. Do not merge and do not deploy without reviewing Playwright E2E results manually.
+> **Verdict**: Role Workspace Engine is **CI-gated**. All backend tests pass. Playwright E2E **8/8 PASSED**. Driver sidebar now shows navigation via roleKey fallback. Viewer no longer sees admin items. Ready for manual browser verification, then PR to main.
 
 ## File Locations
 

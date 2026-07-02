@@ -114,8 +114,8 @@ const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
   'compliance-dashboard': ['driver', 'assistant_driver'],
   'documents': ['driver', 'assistant_driver'],
   'driver-submissions': ['driver', 'assistant_driver'],
-  'users': ['driver', 'assistant_driver'],
-  'roles': ['driver', 'assistant_driver'],
+  'users': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
+  'roles': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
   'driver-portal': ['super_admin', 'admin'],
   'my-trips': ['super_admin', 'admin'],
   'my-vehicle': ['super_admin', 'admin'],
@@ -242,9 +242,15 @@ function buildNavigation(
 
     const profileReqs = NAV_ITEM_PROFILE_TYPE_REQUIREMENTS[item.id];
     if (profileReqs && profileReqs.length > 0) {
-      if (!profileReqs.some((t) => profileTypes.includes(t))) return false;
+      const hasMatchingProfileType = profileReqs.some((t) => profileTypes.includes(t));
+      const hasMatchingRoleKey = profileReqs.some((t) => {
+        if (t === 'DRIVER') return roleKey === 'driver' || roleKey === 'assistant_driver';
+        if (t === 'ASSISTANT_DRIVER') return roleKey === 'assistant_driver';
+        return false;
+      });
+      if (!hasMatchingProfileType && !hasMatchingRoleKey) return false;
       if (item.id.startsWith('driver-') || item.id.startsWith('my-')) {
-        if (!hasPrimaryDriverProfile && !hasActiveLinks) return false;
+        if (!hasPrimaryDriverProfile && !hasActiveLinks && !hasMatchingRoleKey) return false;
       }
     }
 
