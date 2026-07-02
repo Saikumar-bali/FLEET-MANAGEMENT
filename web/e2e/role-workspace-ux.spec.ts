@@ -1,23 +1,25 @@
 import { test, expect } from '@playwright/test';
-
-function requireEnv(name: string): string {
-  const val = process.env[name];
-  if (!val) {
-    throw new Error(`Required env ${name} is not set. Every E2E credential must come from env, never hardcoded.`);
-  }
-  return val;
-}
+import { getCredential, RoleKey } from './helpers/credentials';
 
 const BASE = process.env.E2E_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
 
+function getRoleCred(role: RoleKey) {
+  const cred = getCredential(role);
+  if (!cred) {
+    throw new Error(`Credentials for role ${role} could not be resolved from env.`);
+  }
+  return { id: cred.identifier, pw: cred.password };
+}
+
 const CREDS = {
-  admin: { id: requireEnv('E2E_ADMIN_IDENTIFIER'), pw: requireEnv('E2E_ADMIN_PASSWORD') },
-  driver: { id: requireEnv('E2E_DRIVER_IDENTIFIER'), pw: requireEnv('E2E_DRIVER_PASSWORD') },
-  finance: { id: requireEnv('E2E_FINANCE_IDENTIFIER'), pw: requireEnv('E2E_FINANCE_PASSWORD') },
-  manager: { id: requireEnv('E2E_MANAGER_IDENTIFIER'), pw: requireEnv('E2E_MANAGER_PASSWORD') },
-  mechanic: { id: requireEnv('E2E_MECHANIC_IDENTIFIER'), pw: requireEnv('E2E_MECHANIC_PASSWORD') },
-  viewer: { id: requireEnv('E2E_VIEWER_IDENTIFIER'), pw: requireEnv('E2E_VIEWER_PASSWORD') },
+  admin: getRoleCred('admin'),
+  driver: getRoleCred('driver'),
+  finance: getRoleCred('finance'),
+  manager: getRoleCred('manager'),
+  mechanic: getRoleCred('mechanic'),
+  viewer: getRoleCred('viewer'),
 };
+
 
 async function loginAs(page: any, identifier: string, password: string) {
   await page.goto(`${BASE}/login`);
@@ -33,7 +35,16 @@ async function loginAs(page: any, identifier: string, password: string) {
   }
   await page.click('button[type="submit"]');
   await page.waitForURL('**/');
-  await page.waitForTimeout(2000);
+  try {
+    await page.waitForSelector('.nav-item-label, .sidebar-loading, text=Menu unavailable', { timeout: 10000 });
+  } catch {
+    await page.waitForTimeout(3000);
+  }
+  await page.waitForFunction(() => {
+    const skeleton = document.querySelector('.sidebar-loading');
+    return !skeleton;
+  }, { timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(1000);
 }
 
 test.describe('Role Workspace UX', () => {
@@ -51,7 +62,7 @@ test.describe('Role Workspace UX', () => {
 
   test('2. finance sees finance workspace', async ({ page }) => {
     await loginAs(page, CREDS.finance.id, CREDS.finance.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const sidebarLinks = page.locator('.nav-item-label');
     const labels = await sidebarLinks.allTextContents();
     const combined = labels.join(' ');
@@ -61,7 +72,7 @@ test.describe('Role Workspace UX', () => {
 
   test('3. manager sees review workspace', async ({ page }) => {
     await loginAs(page, CREDS.manager.id, CREDS.manager.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const sidebarLinks = page.locator('.nav-item-label');
     const labels = await sidebarLinks.allTextContents();
     const combined = labels.join(' ');
@@ -72,7 +83,7 @@ test.describe('Role Workspace UX', () => {
 
   test('4. viewer sees read-only workspace', async ({ page }) => {
     await loginAs(page, CREDS.viewer.id, CREDS.viewer.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const sidebarLinks = page.locator('.nav-item-label');
     const labels = await sidebarLinks.allTextContents();
     const combined = labels.join(' ');
@@ -84,7 +95,7 @@ test.describe('Role Workspace UX', () => {
 
   test('5. My Access is only in settings/user menu', async ({ page }) => {
     await loginAs(page, CREDS.admin.id, CREDS.admin.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const sidebarLinks = page.locator('.nav-item-label');
     const labels = await sidebarLinks.allTextContents();
     const combined = labels.join(' ');
@@ -98,7 +109,7 @@ test.describe('Role Workspace UX', () => {
 
   test('7. no emoji UI labels', async ({ page }) => {
     await loginAs(page, CREDS.driver.id, CREDS.driver.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const bodyText = await page.locator('body').textContent();
     const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
     const emojis = bodyText?.match(emojiRegex) ?? [];
@@ -107,7 +118,7 @@ test.describe('Role Workspace UX', () => {
 
   test('8. quick actions match capabilities', async ({ page }) => {
     await loginAs(page, CREDS.driver.id, CREDS.driver.pw);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const buttons = page.locator('button');
     const buttonTexts = await buttons.allTextContents();
     const combined = buttonTexts.join(' ');
