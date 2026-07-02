@@ -28,6 +28,7 @@ import userProfileLinkRoutes from './modules/user-profile-links/user-profile-lin
 import userProfileLinkUserAliasRoutes from './modules/user-profile-links/user-profile-links-user-aliases.routes';
 import driverPortalRoutes from './modules/user-profile-links/driver-portal.routes';
 import driverSubmissionRoutes from './modules/driver-submissions/driver-submissions.routes';
+import workspaceRoutes from './modules/workspace/workspace.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -76,6 +77,7 @@ app.use('/api/v1/users', userProfileLinkUserAliasRoutes);
 app.use('/api/v1/user-profile-links', userProfileLinkRoutes);
 app.use('/api/v1', driverPortalRoutes);
 app.use('/api/v1', driverSubmissionRoutes);
+app.use('/api/v1', workspaceRoutes);
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 

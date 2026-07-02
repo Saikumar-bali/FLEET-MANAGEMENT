@@ -404,16 +404,31 @@ export async function driverExpensesController(req: Request, res: Response) {
 
 // ─── WRITE CONTROLLERS ───
 
-async function assertDriverOwnsVehicle(driverId: string, vehicleId: string) {
+async function assertDriverOwnsVehicle(driverId: string, vehicleId: string, userScopes?: any[]) {
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (!vehicle) throw new AppError('Vehicle not found', 404);
+
+  // Direct assignment check
+  if (vehicle.currentDriverId === driverId) return vehicle;
+
+  // Trip history check
   const isRelated = await prisma.trip.findFirst({
     where: { driverId, vehicleId },
   });
-  if (!isRelated && vehicle.currentDriverId !== driverId) {
-    throw new AppError('Vehicle is not assigned to your driver profile', 403);
+  if (isRelated) return vehicle;
+
+  // Scope-based access: GLOBAL/MANAGE or specific VEHICLE scope
+  if (userScopes) {
+    const hasGlobal = userScopes.some((s: any) => s.scopeType === 'GLOBAL');
+    if (hasGlobal) return vehicle;
+
+    const hasVehicleScope = userScopes.some((s: any) =>
+      s.scopeType === 'VEHICLE' && (s.scopeId === null || s.scopeId === vehicleId),
+    );
+    if (hasVehicleScope) return vehicle;
   }
-  return vehicle;
+
+  throw new AppError('Vehicle is not assigned to your driver profile', 403);
 }
 
 async function assertDriverOwnsTrip(driverId: string, tripId: string) {
@@ -434,7 +449,7 @@ export async function driverCreateTripController(req: Request, res: Response) {
     throw new AppError('vehicleId, originName, and destinationName are required', 400);
   }
 
-  await assertDriverOwnsVehicle(driver.id, vehicleId);
+  await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
 
   const tripNumber = generateTripNumber();
   const trip = await prisma.$transaction(async (tx) => {
@@ -646,7 +661,7 @@ export async function driverCreateFuelController(req: Request, res: Response) {
     throw new AppError('vehicleId and totalAmount are required', 400);
   }
 
-  await assertDriverOwnsVehicle(driver.id, vehicleId);
+  await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
 
   let pricePerLiter: number | null = null;
   if (quantityLiters && totalAmount) {
@@ -765,7 +780,7 @@ export async function driverCreateExpenseController(req: Request, res: Response)
     throw new AppError('vehicleId, category, and amount are required', 400);
   }
 
-  await assertDriverOwnsVehicle(driver.id, vehicleId);
+  await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
   }
@@ -858,7 +873,7 @@ export async function driverUploadDocumentController(req: Request, res: Response
   }
 
   if (vehicleId) {
-    await assertDriverOwnsVehicle(driver.id, vehicleId);
+    await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
   }
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
@@ -907,7 +922,7 @@ export async function driverReportVehicleIssueController(req: Request, res: Resp
     throw new AppError('vehicleId and title are required', 400);
   }
 
-  await assertDriverOwnsVehicle(driver.id, vehicleId);
+  await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
   }
@@ -945,7 +960,7 @@ export async function driverCreateVehicleInspectionController(req: Request, res:
     throw new AppError('vehicleId and inspectionType are required', 400);
   }
 
-  await assertDriverOwnsVehicle(driver.id, vehicleId);
+  await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
   }

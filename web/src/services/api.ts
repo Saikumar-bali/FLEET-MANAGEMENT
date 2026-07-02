@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
+import type { WorkspaceResponse } from '../types/workspace';
 import { ApiError } from '../types/api';
 import type {
   AssetAssignmentRecord,
@@ -874,6 +875,10 @@ export function getMyActivity(token: string) {
 
 export function getMyAccessSummary(token: string) {
   return request<MyAccessSummary>('/access/me/summary', { token });
+}
+
+export function getMyWorkspace(token: string) {
+  return request<WorkspaceResponse>('/me/workspace', { token });
 }
 
 // Users access summary (requires user_view)
