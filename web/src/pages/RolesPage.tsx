@@ -18,6 +18,45 @@ import {
 import type { PermissionRecord, RoleRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
+const ROLE_TEMPLATES: { name: string; key: string; description: string; permissions: string[] }[] = [
+  {
+    name: 'Driver Basic',
+    key: 'driver_basic',
+    description: 'Basic driver portal access with trip, fuel, expense, document, issue, and inspection capabilities',
+    permissions: ['driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view', 'driver_my_documents_view', 'driver_my_profile_view', 'driver_trip_create', 'driver_trip_start', 'driver_trip_end', 'driver_trip_cancel', 'driver_quick_fuel_create', 'driver_expense_create', 'driver_document_upload', 'driver_vehicle_issue_report', 'driver_vehicle_inspection_create'],
+  },
+  {
+    name: 'Driver With Pool Vehicle',
+    key: 'driver_pool_vehicle',
+    description: 'Driver Basic plus pool vehicle selection, self-checkout, and return',
+    permissions: ['driver_portal_view', 'driver_my_dashboard_view', 'driver_my_trips_view', 'driver_my_documents_view', 'driver_my_profile_view', 'driver_trip_create', 'driver_trip_start', 'driver_trip_end', 'driver_trip_cancel', 'driver_quick_fuel_create', 'driver_expense_create', 'driver_document_upload', 'driver_vehicle_issue_report', 'driver_vehicle_inspection_create', 'driver_available_vehicle_select', 'driver_vehicle_self_checkout', 'driver_vehicle_return', 'driver_vehicle_checkout_view_own'],
+  },
+  {
+    name: 'Manager Operations',
+    key: 'manager_operations',
+    description: 'Operations management with vehicle, driver, trip, and submission review',
+    permissions: ['trip_view', 'trip_create', 'trip_update', 'trip_start', 'trip_end', 'trip_cancel', 'vehicle_view', 'vehicle_create', 'vehicle_update', 'driver_view', 'driver_create', 'driver_update', 'fuel_view', 'expense_view', 'driver_submission_view', 'driver_submission_review', 'driver_fuel_approve', 'driver_expense_approve', 'driver_document_verify', 'driver_issue_review', 'driver_inspection_review', 'maintenance_view', 'repair_view'],
+  },
+  {
+    name: 'Finance Billing',
+    key: 'finance_billing',
+    description: 'Finance management with billing, payments, and expense approval',
+    permissions: ['finance_view', 'finance_create', 'finance_update', 'finance_approve', 'fuel_view', 'fuel_approve', 'expense_view', 'expense_approve', 'trip_billing_view', 'trip_billing_create', 'trip_billing_update', 'trip_billing_mark_paid', 'payments_view', 'payments_create', 'payments_update', 'customers_view', 'customers_create', 'customers_update', 'vendors_view', 'vendors_create', 'vendors_update', 'report_view', 'report_export'],
+  },
+  {
+    name: 'Mechanic Maintenance',
+    key: 'mechanic_maintenance',
+    description: 'Maintenance and repair access with vehicle inspection capabilities',
+    permissions: ['repair_view', 'repair_create', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_create', 'maintenance_update', 'maintenance_submit', 'vehicle_view', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'documents_view', 'documents_upload', 'documents_download'],
+  },
+  {
+    name: 'Viewer Read Only',
+    key: 'viewer_read_only',
+    description: 'Read-only access to all operational modules',
+    permissions: ['vehicle_view', 'driver_view', 'asset_view', 'trip_view', 'fuel_view', 'expense_view', 'repair_view', 'maintenance_view', 'report_view', 'vehicle_compliance_view', 'compliance_alerts_view', 'compliance_history_view', 'document_metadata_view', 'documents_view', 'role_view', 'user_view', 'permission_view', 'profile_link_view'],
+  },
+];
+
 type RoleFormState = {
   name: string;
   key: string;
@@ -58,6 +97,7 @@ export function RolesPage() {
   const [isSavingRole, setIsSavingRole] = useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [templateKey, setTemplateKey] = useState('');
 
   const selectedRole = useMemo(
     () => roles.find((role) => role.id === selectedRoleId) ?? null,
@@ -387,6 +427,50 @@ export function RolesPage() {
               ) : null}
             </FormSection>
           ) : null}
+        </div>
+      ) : null}
+
+      {selectedRole && auth.hasPermission('permission_assign') ? (
+        <div className="card">
+          <FormSection title="Apply template" description="Quick-set permissions from a predefined template.">
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+              <label style={{ flex: 1 }}>
+                <span className="field-label">Template</span>
+                <select
+                  value={templateKey}
+                  onChange={(e) => setTemplateKey(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">-- Select a template --</option>
+                  {ROLE_TEMPLATES.map((tmpl) => (
+                    <option key={tmpl.key} value={tmpl.key}>{tmpl.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!templateKey || isSavingPermissions}
+                onClick={() => {
+                  const tmpl = ROLE_TEMPLATES.find(t => t.key === templateKey);
+                  if (!tmpl) return;
+                  if (!window.confirm(`Apply "${tmpl.name}" template? This will add ${tmpl.permissions.length} permissions to ${selectedRole.name}. Existing permissions are preserved.`)) return;
+                  setSelectedPermissionKeys(prev => {
+                    const s = new Set(prev);
+                    for (const p of tmpl.permissions) s.add(p);
+                    return Array.from(s);
+                  });
+                  void handleSavePermissions();
+                }}
+              >
+                Apply template
+              </button>
+            </div>
+            {templateKey && (() => {
+              const t = ROLE_TEMPLATES.find(x => x.key === templateKey);
+              return t ? <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>{t.description} ({t.permissions.length} permissions)</p> : null;
+            })()}
+          </FormSection>
         </div>
       ) : null}
 
