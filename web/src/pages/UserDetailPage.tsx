@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ApiError } from '../types/api';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
@@ -55,6 +56,7 @@ function isExpired(expiresAt: string | null | undefined) { if (!expiresAt) retur
 export function UserDetailPage() {
   const { id } = useParams();
   const auth = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserRecord | null>(null);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -159,15 +161,15 @@ export function UserDetailPage() {
   async function handleUpdateProfile() {
     if (!auth.accessToken || !id) return;
     setIsSaving(true); setMessage(null); setError(null);
-    try { const res = await updateUser(auth.accessToken, id, { name: editName, username: editUsername, mobile: editMobile }); setUser(res.data); setMessage('Profile updated.'); }
-    catch (e) { setError(e instanceof ApiError ? e.message : 'Failed to update.'); } finally { setIsSaving(false); }
+    try { const res = await updateUser(auth.accessToken, id, { name: editName, username: editUsername, mobile: editMobile }); setUser(res.data); showToast('Profile updated.', 'success'); }
+    catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update.'; showToast(msg, 'error'); setError(msg); } finally { setIsSaving(false); }
   }
 
   async function handleStatusUpdate() {
     if (!auth.accessToken || !id || !statusTarget) return;
     setIsSaving(true);
-    try { const res = await updateUserStatus(auth.accessToken, id, statusTarget); setUser(res.data); setMessage(`Status changed to ${statusTarget.toLowerCase()}.`); setStatusTarget(null); }
-    catch (e) { setError(e instanceof ApiError ? e.message : 'Failed to update status.'); } finally { setIsSaving(false); }
+    try { const res = await updateUserStatus(auth.accessToken, id, statusTarget); setUser(res.data); showToast(`Status changed to ${statusTarget.toLowerCase()}.`, 'success'); setStatusTarget(null); }
+    catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update status.'; showToast(msg, 'error'); setError(msg); } finally { setIsSaving(false); }
   }
 
   async function handleAddOverride() {
@@ -217,7 +219,7 @@ export function UserDetailPage() {
     setIsLinking(true); setLinkError(null);
     try {
       await createUserProfileLink(auth.accessToken, id, { profileType: 'DRIVER', profileId: linkDriverId, isPrimary: true });
-      setMessage('Profile linked successfully.');
+      showToast('Profile linked successfully.', 'success');
       const plRes = await getUserProfileLinks(auth.accessToken, id); setProfileLinks(plRes.data); setLinkDriverId(''); setDriverSearch('');
       const dRes = await getAvailableDrivers(auth.accessToken, { showAll: showAllDrivers });
       setAllDrivers(Array.isArray(dRes.data) ? dRes.data : []);
@@ -228,7 +230,7 @@ export function UserDetailPage() {
     if (!auth.accessToken) return;
     setIsRevoking(true);
     try {
-      await revokeUserProfileLink(auth.accessToken, linkId); setProfileLinks(prev => prev.filter(pl => pl.id !== linkId)); setRevokeTarget(null); setMessage('Profile link revoked.');
+      await revokeUserProfileLink(auth.accessToken, linkId); setProfileLinks(prev => prev.filter(pl => pl.id !== linkId)); setRevokeTarget(null); showToast('Profile link revoked.', 'success');
       const dRes = await getAvailableDrivers(auth.accessToken, { showAll: showAllDrivers });
       setAllDrivers(Array.isArray(dRes.data) ? dRes.data : []);
     }
@@ -383,8 +385,8 @@ export function UserDetailPage() {
                   <button type="button" className="primary-button" onClick={async () => {
                     if (!auth.accessToken || !id) return;
                     setIsSaving(true); setError(null); setMessage(null);
-                    try { const res = await updateUser(auth.accessToken, id, { roleId: editRoleId }); setUser(res.data); setMessage('Role updated.'); }
-                    catch (e) { setError(e instanceof ApiError ? e.message : 'Failed to update role.'); } finally { setIsSaving(false); }
+                    try { const res = await updateUser(auth.accessToken, id, { roleId: editRoleId }); setUser(res.data); showToast('Role updated.', 'success'); }
+                    catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update role.'; showToast(msg, 'error'); setError(msg); } finally { setIsSaving(false); }
                   }} disabled={isSaving}>{isSaving ? 'Saving...' : 'Change role'}</button>
                 </div>
               </div>

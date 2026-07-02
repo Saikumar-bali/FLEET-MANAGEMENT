@@ -113,6 +113,32 @@ Driver vehicle access is resolved from four sources:
 9. Advanced access diagnostics only under Settings / My Access
 10. Mobile responsive layout
 
+## CI & Security Status
+
+| Gate | Status |
+|------|--------|
+| Backend workspace engine test (13 role assertions + template safety) | PASSED — 239 assertions at commit `dd8777a` |
+| Role template safety verification (no admin/finance/approve in driver/viewer) | PASSED — all 6 templates verified in test |
+| CI workspace engine step runs after seeds, before deploy | CONFIGURED — `.github/workflows/ci.yml` runs seeds before tests |
+| Playwright E2E (role-workspace-ux.spec.ts) | **MANUAL ONLY, NOT CI-GATED** — requires env credentials not present in CI |
+| Hardcoded credentials in E2E tests | REMOVED — all credentials come from env vars, fail fast if missing |
+| Sidebar hardcoded role checks | REMOVED — sidebar renders from `workspace.navigation` only |
+| Workspace home debug/diagnostics panels | REMOVED — no empty states, no diagnostics section in any role home |
+| My Access in primary navigation | REMOVED — `my-access` removed from `NAV_ITEMS` in workspace-types.ts |
+| Backend `tsc --noEmit` | PASSED |
+| Frontend `tsc --noEmit` | PASSED |
+| `test:api-docs` | 126/126 PASSED |
+| `test:account-scope` | 18/18 PASSED |
+| `access:smoke` | 28/28 PASSED |
+| `test:module-scope` | PASSED |
+| `test:module-scope-api` | PASSED |
+| `test:user-profile-link` | 30/30 PASSED |
+| `test:driver-portal-integration` | 26/26 PASSED |
+| `test:workspace-engine` | 239/239 PASSED |
+| GitHub Actions | No evidence attached to `dd8777a` — requires push + manual trigger |
+
+> **Verdict**: Role Workspace Engine is **backend-tested locally**, but Playwright E2E is NOT CI-gated. Do not merge and do not deploy without reviewing Playwright E2E results manually. No GitHub Actions evidence for commit `dd8777a`.
+
 ## File Locations
 
 - Backend workspace types: `backend/src/constants/workspace-types.ts`

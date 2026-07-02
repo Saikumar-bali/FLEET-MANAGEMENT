@@ -10,6 +10,7 @@ import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   createUser as createUserRequest,
   deleteUser as deleteUserRequest,
@@ -38,6 +39,7 @@ const initialForm: UserFormState = { name: '', username: '', email: '', mobile: 
 export function UsersPage() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [summaries, setSummaries] = useState<UserAccessSummaryRecord[]>([]);
@@ -145,6 +147,7 @@ export function UsersPage() {
       await loadUsers();
       setSelectedUserId(r.data.id);
       setPageMessage(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.');
+      showToast(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.', 'success');
       setLinkDriverIdOnCreate('');
       setIsCreateOpen(false);
     } catch (e) { setCreateError(e instanceof ApiError ? e.message : 'Failed to create.'); }
@@ -161,7 +164,8 @@ export function UsersPage() {
       setUsers(cur => cur.map(u => u.id === selectedUser.id ? r.data : u));
       if (viewUser?.id === selectedUser.id) setViewUser(r.data);
       setPageMessage('User updated.');
-    } catch (e) { setEditError(e instanceof ApiError ? e.message : 'Failed to update.'); }
+      showToast('User updated.', 'success');
+    } catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update.'; setEditError(msg); showToast(msg, 'error'); }
     finally { setIsSavingEdit(false); }
   }
 
@@ -173,6 +177,7 @@ export function UsersPage() {
       setUsers(cur => cur.map(u => u.id === selectedUser.id ? r.data : u));
       if (viewUser?.id === selectedUser.id) setViewUser(r.data);
       setPageMessage(`Status changed to ${statusTarget.toLowerCase()}.`);
+      showToast(`Status changed to ${statusTarget.toLowerCase()}.`, 'success');
       setStatusTarget(null);
     } catch (e) { setEditError(e instanceof ApiError ? e.message : 'Failed.'); }
     finally { setIsSavingEdit(false); }
@@ -184,7 +189,8 @@ export function UsersPage() {
     try {
       await updateUserPasswordRequest(auth.accessToken, selectedUser.id, passwordReset);
       setPasswordReset(''); setPageMessage('Password updated.');
-    } catch (e) { setEditError(e instanceof ApiError ? e.message : 'Failed.'); }
+      showToast('Password updated.', 'success');
+    } catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed.'; setEditError(msg); showToast(msg, 'error'); }
     finally { setIsSavingPassword(false); }
   }
 
@@ -194,6 +200,7 @@ export function UsersPage() {
     try {
       await deleteUserRequest(auth.accessToken, deleteTarget.id);
       setPageMessage(`User "${deleteTarget.name}" deleted.`);
+      showToast(`User "${deleteTarget.name}" deleted.`, 'success');
       setUsers(cur => cur.filter(u => u.id !== deleteTarget.id));
       setDeleteTarget(null);
       if (viewUser?.id === deleteTarget.id) setViewUser(null);
@@ -209,6 +216,7 @@ export function UsersPage() {
         profileType: 'DRIVER', profileId: linkDriverId, isPrimary: true,
       });
       setPageMessage('Profile linked successfully.');
+      showToast('Profile linked successfully.', 'success');
       const r = await getUserProfileLinks(auth.accessToken, viewUser.id);
       setProfileLinks(r.data); setLinkDriverId('');
     } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to link.'); }
@@ -222,6 +230,7 @@ export function UsersPage() {
       await revokeUserProfileLink(auth.accessToken, linkId);
       setProfileLinks(prev => prev.filter(pl => pl.id !== linkId));
       setRevokeTarget(null); setPageMessage('Profile link revoked.');
+      showToast('Profile link revoked.', 'success');
     } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to revoke.'); }
     finally { setIsRevoking(false); }
   }

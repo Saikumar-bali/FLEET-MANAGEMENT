@@ -70,46 +70,8 @@ function QuickActionCard({ action, onClick }: { action: QuickActionDef; onClick:
   );
 }
 
-type EmptyStateProps = {
-  title: string;
-  description: string;
-  action?: { label: string; onClick: () => void };
-};
-
-function EmptyStateCard({ title, description, action }: EmptyStateProps) {
-  return (
-    <div style={{
-      padding: '1.5rem',
-      background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
-      borderRadius: '8px',
-      textAlign: 'center',
-    }}>
-      <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--color-text-secondary)' }}>{title}</p>
-      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginBottom: action ? '1rem' : 0 }}>{description}</p>
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          style={{
-            padding: '0.5rem 1rem',
-            background: 'var(--color-accent)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-          }}
-        >
-          {action.label}
-        </button>
-      )}
-    </div>
-  );
-}
-
 function DriverHome() {
-  const { emptyStates, diagnostics, capabilities, primaryProfiles } = useWorkspace();
+  const { capabilities, primaryProfiles } = useWorkspace();
   const navigate = useNavigate();
   const hasDriverProfile = !!(primaryProfiles?.driver);
 
@@ -128,10 +90,6 @@ function DriverHome() {
       <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginBottom: '1.5rem' }}>
         {primaryProfiles?.driver ? `Driver: ${primaryProfiles.driver.name}` : 'Driver Portal'}
       </p>
-
-      {emptyStates.length > 0 && emptyStates.map((state, i) => (
-        <EmptyStateCard key={i} title="Notice" description={state} />
-      ))}
 
       {Object.entries(actionsBySection).map(([section, actions]) => (
         <div key={section} style={{ marginBottom: '2rem' }}>
@@ -164,15 +122,6 @@ function DriverHome() {
             />
           </div>
         </div>
-      )}
-
-      {diagnostics.length > 0 && diagnostics.length < 3 && (
-        <details style={{ marginTop: '2rem', fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
-          <summary style={{ cursor: 'pointer' }}>Access Diagnostics</summary>
-          <ul style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
-            {diagnostics.map((d, i) => <li key={i}>{d}</li>)}
-          </ul>
-        </details>
       )}
     </div>
   );
