@@ -31,6 +31,8 @@
     "profile-link:diagnose": "ts-node scripts/driver-profile-link-diagnose.ts",
     "profile-link:repair": "ts-node scripts/driver-profile-link-repair.ts",
     "repair:rbac-driver": "ts-node scripts/repair-rbac-driver-permissions.ts",
+    "seed:role-templates": "ts-node scripts/seed-role-templates.ts",
+    "seed:vehicle-checkout-permissions": "ts-node scripts/seed-vehicle-checkout-permissions.ts",
     "test:user-profile-link": "ts-node scripts/user-profile-link-test.ts",
     "test:user-profile-link-api": "ts-node scripts/user-profile-link-api-test.ts",
     "test:driver-portal-security": "ts-node scripts/driver-portal-security-test.ts",

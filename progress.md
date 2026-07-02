@@ -341,3 +341,59 @@ Detailed backend/web roadmap: `docs/BACKEND_WEB_COMPLETION_ROADMAP.md`.
   - Local browser verification confirmed `admin` + `admin@123` login, `driver` + `driver@123` login, and `driver` denied access to `/users`
   - Local browser verification measured the root UI font size at `13px`
 - Secret scan result: no committed Neon credentials or admin/JWT secrets were found in tracked files
+
+## Role Workspace Engine (2026-07-02)
+
+Phase: **Completed locally** — Role Workspace Engine built and tested. No deploy.
+
+### Deliverables
+
+- `GET /api/v1/me/workspace` endpoint returning normalized workspace (user, workspaceType, capabilities, navigation, quickActions, emptyStates, diagnostics)
+- Backend workspace engine service that determines workspace type from role key, profile links, effective permissions, and data scopes
+- Frontend `WorkspaceContext` + `useWorkspace` hook fetching workspace on auth change
+- Sidebar rewritten to render exclusively from `workspace.navigation` — zero hardcoded role checks
+- Role-specific home pages at `/`: Driver, Finance, Manager, Mechanic, Viewer, and Admin workspaces
+- Dynamic action registry (`web/src/config/actions.ts`) with capability-based filtering
+- 6 role templates (Driver Basic, Driver Pool Vehicle, Manager Operations, Finance Billing, Mechanic Maintenance, Viewer Read Only) with "Apply Template" UI on RolesPage
+- `VehicleCheckout` Prisma model created and migrated (`20260701000001_add_vehicle_checkout`)
+- Vehicle self-checkout/return flow (driver portal checkout, return, audit logging)
+- VEHICLE scope multi-select UI on UserDetailPage
+
+### Test Results
+
+| Test Suite | Result |
+|---|---|
+| `tsc --noEmit` (backend) | PASSED |
+| `npm run lint` (frontend) | PASSED |
+| `npm run build` (frontend) | PASSED |
+| `test:api-docs` | 126/126 PASSED |
+| `test:user-profile-link` | 30/30 PASSED |
+| `test:driver-portal-integration` | 26/26 PASSED |
+| `test:workspace-engine` | 143/143 PASSED |
+
+### Files Created/Modified
+
+| File | Type |
+|---|---|
+| `backend/src/constants/workspace-types.ts` | New — workspace type definitions, navigation registry, capabilities |
+| `backend/src/services/workspace.service.ts` | New — workspace engine (type determination, capability building, navigation/action filtering) |
+| `backend/src/modules/workspace/workspace.controller.ts` | New — controller for /me/workspace |
+| `backend/src/modules/workspace/workspace.routes.ts` | New — route registration |
+| `backend/src/constants/role-templates.ts` | New — 6 role templates |
+| `backend/scripts/workspace-engine-test.ts` | New — 10 integration tests |
+| `backend/scripts/seed-role-templates.ts` | New — seed script to validate templates against DB |
+| `web/src/types/workspace.ts` | New — workspace types mirroring backend |
+| `web/src/context/WorkspaceContext.tsx` | New — workspace provider |
+| `web/src/hooks/useWorkspace.ts` | New — convenience hook |
+| `web/src/config/actions.ts` | New — action registry with capability filtering |
+| `web/src/pages/workspace/WorkspaceHome.tsx` | New — role-specific home pages |
+| `web/e2e/role-workspace-ux.spec.ts` | New — Playwright e2e test |
+| `backend/src/app.ts` | Modified — registered workspace routes |
+| `web/src/app/App.tsx` | Modified — added WorkspaceProvider, workspace home route |
+| `web/src/components/Sidebar.tsx` | Modified — uses workspace.navigation |
+| `web/src/services/api.ts` | Modified — added getMyWorkspace() |
+| `web/src/pages/RolesPage.tsx` | Modified — added Apply Template section |
+| `.github/workflows/ci.yml` | Modified — added workspace engine + integration tests to CI |
+| `docs/ROLE_WORKSPACE_ENGINE.md` | New |
+| `docs/ROLE_TEMPLATES_AND_SIMPLE_UX.md` | New |
+| `docs/ai-runs/2026-07-02_role-workspace-engine.md` | New |
