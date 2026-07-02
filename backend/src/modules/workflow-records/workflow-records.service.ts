@@ -40,7 +40,8 @@ export function assertEditable(status: WorkflowRecordStatus, hasApprovePermissio
 export function assertTransition(current: WorkflowRecordStatus, next: WorkflowRecordStatus) {
   const allowed: Record<WorkflowRecordStatus, WorkflowRecordStatus[]> = {
     DRAFT: ['SUBMITTED', 'CANCELLED'],
-    SUBMITTED: ['APPROVED', 'REJECTED', 'CANCELLED'],
+    SUBMITTED: ['APPROVED', 'REJECTED', 'NEEDS_CHANGES', 'CANCELLED'],
+    NEEDS_CHANGES: ['SUBMITTED', 'CANCELLED'],
     APPROVED: ['CANCELLED'],
     REJECTED: ['CANCELLED'],
     CANCELLED: [],

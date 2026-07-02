@@ -85,7 +85,7 @@ function buildFuelData(input: FuelInput) {
   };
 }
 
-export async function listFuel(query: any) {
+export async function listFuel(query: any, extraWhere?: Record<string, unknown>) {
   const where: Prisma.FuelEntryWhereInput = {};
   if (query.search) where.OR = [
     { stationName: { contains: query.search, mode: 'insensitive' } },
@@ -98,6 +98,7 @@ export async function listFuel(query: any) {
   if (query.status) where.status = query.status;
   if (query.entryMode) where.entryMode = query.entryMode;
   where.fuelDate = dateRange(query.dateFrom, query.dateTo);
+  if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }
   const [items, total] = await Promise.all([
     prisma.fuelEntry.findMany({ where, include: workflowInclude, orderBy: { fuelDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.fuelEntry.count({ where }),

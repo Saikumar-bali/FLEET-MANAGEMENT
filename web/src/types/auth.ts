@@ -25,6 +25,17 @@ export type AuthPayload = {
   refreshToken: string;
   user: AuthUser;
   permissions: string[];
+  effectivePermissions: string[];
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  dataScopes: Array<{
+    id: string;
+    scopeType: string;
+    scopeId: string | null;
+    accessLevel: string;
+    expiresAt: string | null;
+  }>;
 };
 
 export type RoleRecord = {
@@ -789,3 +800,203 @@ export interface PnlSummary {
     total: number;
   }>;
 }
+
+// ─── Phase 2: User Access Management Types ───
+
+export type EffectivePermissionsResponse = {
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  effectivePermissions: string[];
+  dataScopes: Array<{
+    id: string;
+    scopeType: string;
+    scopeId: string | null;
+    accessLevel: string;
+    expiresAt: string | null;
+  }>;
+};
+
+export type UserPermissionOverrideRecord = {
+  id: string;
+  userId: string;
+  permissionId: string;
+  effect: 'ALLOW' | 'DENY';
+  reason: string | null;
+  expiresAt: string | null;
+  grantedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  permission: PermissionRecord;
+  grantedBy: { id: string; name: string } | null;
+};
+
+export type UserDataScopeRecord = {
+  id: string;
+  userId: string;
+  scopeType: string;
+  scopeId: string | null;
+  accessLevel: string;
+  reason: string | null;
+  expiresAt: string | null;
+  grantedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  grantedBy: { id: string; name: string } | null;
+};
+
+export type UserActivityRecord = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+};
+
+export type UserAccessSummaryRecord = {
+  userId: string;
+  effectivePermissionsCount: number;
+  dataScopesCount: number;
+  overridesCount: number;
+  recentActivityAction: string | null;
+  recentActivityAt: string | null;
+};
+
+export type ProfileLinkRecord = {
+  id: string;
+  userId: string;
+  profileType: string;
+  profileId: string;
+  isPrimary: boolean;
+  status: string;
+  linkedAt: string;
+  linkedBy: { id: string; name: string; email: string } | null;
+};
+
+export type MyAccessSummary = {
+  user: { id: string; name: string; email: string; username: string | null; status: string };
+  role: { id: string; name: string; key: string };
+  effectivePermissions: string[];
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  dataScopes: UserDataScopeRecord[];
+  recentActivity: UserActivityRecord[];
+  profileLinks: ProfileLinkRecord[];
+  primaryDriverProfile: { id: string; name: string; mobile: string; status: string } | null;
+  profileTypes: string[];
+};
+
+// ─── Phase 17: Driver Portal Types ───
+
+export type DriverPortalProfile = {
+  id: string;
+  name: string;
+  mobile: string;
+  alternateMobile: string | null;
+  licenseNumber: string;
+  licenseExpiry: string | null;
+  address: string | null;
+  emergencyContact: string | null;
+  experienceYears: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DriverPortalTrip = {
+  id: string;
+  tripNumber: string;
+  tripType: string;
+  status: string;
+  vehicleId: string;
+  driverId: string;
+  originName: string;
+  destinationName: string;
+  plannedStartAt: string | null;
+  actualStartAt: string | null;
+  plannedEndAt: string | null;
+  actualEndAt: string | null;
+  distanceKm: number | null;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string; vehicleType: string };
+  driver: { id: string; name: string; mobile: string } | null;
+};
+
+export type DriverPortalVehicle = {
+  id: string;
+  vehicleNumber: string;
+  vehicleType: string;
+  brand: string | null;
+  model: string | null;
+  status: string;
+  currentDriverId: string | null;
+  isCurrent: boolean;
+  lastTripId: string | null;
+  lastTripNumber: string | null;
+  source: 'CURRENT_ASSIGNMENT' | 'TRIP_HISTORY';
+};
+
+export type DriverPortalDocument = {
+  id: string;
+  title: string;
+  documentType: string;
+  documentCategory: string;
+  expiryDate: string | null;
+  verificationStatus: string;
+  createdAt: string;
+};
+
+export type DriverPortalFuelEntry = {
+  id: string;
+  vehicleId: string;
+  driverId: string;
+  fuelDate: string;
+  fuelType: string;
+  quantityLiters: number | null;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string };
+};
+
+export type ReceiptExtractedField = {
+  value: string | number | null;
+  confidence: number;
+  source: string;
+};
+
+export type ReceiptExtractionResult = {
+  extractedFields: {
+    fuelStationName: ReceiptExtractedField;
+    billNumber: ReceiptExtractedField;
+    fuelDate: ReceiptExtractedField;
+    totalAmount: ReceiptExtractedField;
+    quantityLiters: ReceiptExtractedField;
+    pricePerLiter: ReceiptExtractedField;
+    vehicleNumber: ReceiptExtractedField;
+    gstin: ReceiptExtractedField;
+    paymentMode: ReceiptExtractedField;
+  };
+  overallConfidence: number;
+  rawText: string | null;
+  needsReview: boolean;
+  warnings: string[];
+};
+
+export type DriverPortalExpense = {
+  id: string;
+  vehicleId: string;
+  driverId: string;
+  category: string;
+  expenseDate: string;
+  amount: number;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  vehicle: { id: string; vehicleNumber: string };
+};

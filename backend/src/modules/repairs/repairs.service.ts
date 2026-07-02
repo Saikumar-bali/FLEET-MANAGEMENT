@@ -71,7 +71,7 @@ async function releaseVehicleIfNoActiveRepair(vehicleId: string) {
   }
 }
 
-export async function listRepairs(query: any) {
+export async function listRepairs(query: any, extraWhere?: Record<string, unknown>) {
   const where: Prisma.RepairWhereInput = {};
   if (query.search) where.OR = [
     { category: { contains: query.search, mode: 'insensitive' } },
@@ -85,6 +85,7 @@ export async function listRepairs(query: any) {
   if (query.driverId) where.driverId = query.driverId;
   if (query.status) where.status = query.status;
   where.repairDate = dateRange(query.dateFrom, query.dateTo);
+  if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }
   const [items, total] = await Promise.all([
     prisma.repair.findMany({ where, include: repairInclude, orderBy: { repairDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.repair.count({ where }),

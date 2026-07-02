@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
+import { getActorContext } from '../access/actor-context.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanDeleteResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
+import type { ResourceType } from '../access/resource-scope-map';
 import {
   createVehicle,
   getVehicleById,
@@ -10,22 +13,33 @@ import {
   deleteVehicle,
 } from './vehicles.service';
 
+const RESOURCE: ResourceType = 'VEHICLE';
+
 export async function listVehiclesController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
+
   const result = await listVehicles({
     search: req.query.search as string | undefined,
     status: req.query.status as string | undefined,
     page: Number(req.query.page) || 1,
     limit: Number(req.query.limit) || 20,
+    extraWhere: scopedWhere as Record<string, unknown> | undefined,
   });
   return sendSuccess(res, result);
 }
 
 export async function getVehicleController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
   const vehicle = await getVehicleById(String(req.params.id));
+  assertCanReadResource(actor, RESOURCE, vehicle as unknown as Record<string, unknown>);
   return sendSuccess(res, vehicle);
 }
 
 export async function createVehicleController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  assertCanCreateResource(actor, RESOURCE, req.body);
+
   const vehicle = await createVehicle(req.body);
 
   await createAuditLog(req, {
@@ -40,6 +54,11 @@ export async function createVehicleController(req: Request, res: Response) {
 }
 
 export async function updateVehicleController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getVehicleById(String(req.params.id));
+  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+
   const vehicle = await updateVehicle(String(req.params.id), req.body);
 
   await createAuditLog(req, {
@@ -54,6 +73,11 @@ export async function updateVehicleController(req: Request, res: Response) {
 }
 
 export async function updateVehicleStatusController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getVehicleById(String(req.params.id));
+  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+
   const vehicle = await updateVehicleStatus(String(req.params.id), req.body.status);
 
   await createAuditLog(req, {
@@ -68,6 +92,10 @@ export async function updateVehicleStatusController(req: Request, res: Response)
 }
 
 export async function deleteVehicleController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getVehicleById(String(req.params.id));
+  assertCanDeleteResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   await deleteVehicle(String(req.params.id));
 
   await createAuditLog(req, {

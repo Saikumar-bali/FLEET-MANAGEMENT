@@ -1,11 +1,15 @@
 import { useToast, type Toast } from '../../context/ToastContext';
 
-const toastIcons: Record<string, string> = {
-  success: '✓',
-  error: '✕',
-  warning: '⚠',
-  info: 'ℹ',
-};
+function ToastIcon({ type }: { type: string }) {
+  const s = (d: string) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: d }} />;
+  switch (type) {
+    case 'success': return s('<polyline points="20 6 9 17 4 12"/>');
+    case 'error': return s('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>');
+    case 'warning': return s('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>');
+    case 'info': return s('<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>');
+    default: return null;
+  }
+}
 
 export function ToastContainer() {
   const { toasts, dismissToast } = useToast();
@@ -21,7 +25,7 @@ export function ToastContainer() {
           role="alert"
           onClick={() => dismissToast(t.id)}
         >
-          <span className="toast-icon">{toastIcons[t.type]}</span>
+           <span className="toast-icon"><ToastIcon type={t.type} /></span>
           <span className="toast-message">{t.message}</span>
           <button className="toast-close" onClick={() => dismissToast(t.id)} type="button">
             ×

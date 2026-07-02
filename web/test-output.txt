@@ -1,0 +1,11 @@
+﻿Ôùç injected env (36) from ..\backend\.env // tip: Ôîÿ override existing { override: true }
+
+Running 2 tests using 1 worker
+
+Ôùç injected env (0) from ..\backend\.env // tip: Ôùê encrypted .env [www.dotenvx.com]
+  Ô£ÿ  1 e2e\user-access-management.spec.ts:5:3 ÔÇ║ User Access Management ÔÇ║ super_admin can manage user access end-to-end (30.1s)
+Ôùç injected env (0) from ..\backend\.env // tip: Ôîÿ suppress logs { quiet: true }
+  Ô£ÿ  2 e2e\user-access-management.spec.ts:5:3 ÔÇ║ User Access Management ÔÇ║ super_admin can manage user access end-to-end (retry #1) (30.2s)
+Ôùç injected env (0) from ..\backend\.env // tip: Ôîÿ enable debugging { debug: true }
+  Ô£ÿ  3 e2e\user-access-management.spec.ts:159:3 ÔÇ║ User Access Management ÔÇ║ user can view My Access page (30.1s)
+Ôùç injected env (0) from ..\backend\.env // tip: Ôîÿ multiple files { path: ['.env.local', '.env'] }

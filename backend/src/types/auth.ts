@@ -1,3 +1,18 @@
+export type DataScopeEntry = {
+  id: string;
+  scopeType: string;
+  scopeId: string | null;
+  accessLevel: string;
+  expiresAt: Date | null;
+};
+
+export type EffectivePermissions = {
+  rolePermissions: string[];
+  userAllowedPermissions: string[];
+  userDeniedPermissions: string[];
+  effectivePermissions: string[];
+};
+
 export type RequestUser = {
   id: string;
   name: string;

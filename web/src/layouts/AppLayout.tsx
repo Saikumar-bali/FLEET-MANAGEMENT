@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
-import { navigationItems } from '../config/navigation';
+import { navigationRegistry } from '../config/navigation';
 import { SettingsPopover, ThemeSubmenu } from '../components/SettingsPopover';
 import { AccountMenu } from '../components/AccountMenu';
 
@@ -25,7 +25,7 @@ export function AppLayout() {
   const [themeSubmenuAnchor, setThemeSubmenuAnchor] = useState<DOMRect | null>(null);
   const [accountAnchor, setAccountAnchor] = useState<DOMRect | null>(null);
 
-  const currentItem = navigationItems.find((item) =>
+  const currentItem = navigationRegistry.find((item) =>
     item.path === '/'
       ? location.pathname === '/'
       : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),

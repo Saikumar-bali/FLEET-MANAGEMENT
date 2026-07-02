@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
+import { getActorContext } from '../access/actor-context.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanDeleteResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
+import type { ResourceType } from '../access/resource-scope-map';
 import {
   listDocuments,
   getDocumentById,
@@ -13,7 +16,12 @@ import {
 } from './documents.service';
 import type { DocumentListQuery, DocumentUploadInput, DocumentUpdateInput } from './documents.types';
 
+const RESOURCE: ResourceType = 'DOCUMENT';
+
 export async function listDocumentsController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
+
   const query: DocumentListQuery = {
     search: req.query.search as string,
     documentType: req.query.documentType as string,
@@ -33,13 +41,16 @@ export async function listDocumentsController(req: Request, res: Response) {
     limit: Number(req.query.limit) || 20,
     sort: req.query.sort as string,
     order: req.query.order as string,
+    extraWhere: scopedWhere as Record<string, unknown> | undefined,
   };
   const result = await listDocuments(query);
   return sendSuccess(res, result);
 }
 
 export async function getDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
   const doc = await getDocumentById(String(req.params.id));
+  assertCanReadResource(actor, RESOURCE, doc as unknown as Record<string, unknown>);
   return sendSuccess(res, doc);
 }
 
@@ -47,6 +58,9 @@ export async function uploadDocumentController(req: Request, res: Response) {
   if (!req.file) {
     return sendSuccess(res, null, 'No file provided', 400);
   }
+
+  const actor = await getActorContext(req.authUser!.id);
+  assertCanCreateResource(actor, RESOURCE, req.body);
 
   const input: DocumentUploadInput = {
     title: req.body.title,
@@ -90,6 +104,11 @@ export async function uploadDocumentController(req: Request, res: Response) {
 }
 
 export async function updateDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
+
   const input: DocumentUpdateInput = {
     title: req.body.title,
     description: req.body.description,
@@ -122,6 +141,10 @@ export async function updateDocumentController(req: Request, res: Response) {
 }
 
 export async function verifyDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   const doc = await verifyDocument(
     String(req.params.id),
     req.body.verificationStatus,
@@ -141,6 +164,10 @@ export async function verifyDocumentController(req: Request, res: Response) {
 }
 
 export async function archiveDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   const doc = await archiveDocument(String(req.params.id));
 
   await createAuditLog(req, {
@@ -154,6 +181,10 @@ export async function archiveDocumentController(req: Request, res: Response) {
 }
 
 export async function deleteDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanDeleteResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   const doc = await deleteDocument(String(req.params.id));
 
   await createAuditLog(req, {
@@ -167,6 +198,10 @@ export async function deleteDocumentController(req: Request, res: Response) {
 }
 
 export async function viewDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanReadResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   const result = await getDocumentFileStream(String(req.params.id));
 
   if ('url' in result) {
@@ -180,6 +215,10 @@ export async function viewDocumentController(req: Request, res: Response) {
 }
 
 export async function downloadDocumentController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  const existing = await getDocumentById(String(req.params.id));
+  assertCanReadResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+
   const result = await getDocumentFileStream(String(req.params.id));
 
   if ('url' in result) {

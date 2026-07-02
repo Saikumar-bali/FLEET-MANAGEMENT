@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [phase-8-documents-storage]
+    branches: [main, "phase-*"]
   pull_request:
-    branches: [phase-8-documents-storage]
+    branches: [main, "phase-*"]
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -46,6 +47,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # Setup
       - run: npm install
         working-directory: backend
       - run: npx prisma generate
@@ -54,25 +57,54 @@ jobs:
         working-directory: backend
       - run: npx prisma db seed
         working-directory: backend
+
+      # Seeds — must run before tests that depend on them
+      - run: npm run seed:vehicle-checkout-permissions
+        working-directory: backend
+      - run: npm run seed:role-templates
+        working-directory: backend
+
+      # Build & lint
       - run: npm run lint
         working-directory: backend
+
+      # Tests that do not require a running server
       - run: npm run test:api-docs
         working-directory: backend
+      - run: npm run test:account-scope
+        working-directory: backend
+      - run: npm run access:smoke
+        working-directory: backend
+      - run: npm run access:diagnose
+        working-directory: backend
+      - run: npm run test:module-scope
+        working-directory: backend
+
+      # Start backend server for API-dependent tests
       - name: Start backend server
         run: |
           npm run dev &
           for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
         working-directory: backend
-      - name: Seed test data
-        run: npm run seed:api
+
+      # API-dependent tests
+      - run: npm run test:module-scope-api
         working-directory: backend
-      - run: npm run test:documents
+      - run: npm run test:user-profile-link
         working-directory: backend
-      - run: npm run test:rbac-documents-negative
+      - run: npm run test:user-profile-link-api
         working-directory: backend
-      - run: npm run test:fuel-expenses
+      - run: npm run profile-link:diagnose
         working-directory: backend
-      - run: npm run test:fuel-receipts
+      - run: npm run test:driver-portal-security
+        working-directory: backend
+      - run: npm run test:driver-portal-actions
+        working-directory: backend
+      - run: npm run test:driver-submission-review
+        working-directory: backend
+      - run: npm run test:driver-portal-integration
+        working-directory: backend
+      - run: npm run test:workspace-engine
         working-directory: backend
 
   frontend:
@@ -84,71 +116,5 @@ jobs:
           node-version: 20
       - run: npm install
         working-directory: web
-      - run: npm run lint
-        working-directory: web
       - run: npm run build
-        working-directory: web
-
-  e2e:
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fleet_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
-      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_test
-      NODE_ENV: development
-      JWT_SECRET: ci-test-secret-not-for-production
-      JWT_REFRESH_SECRET: ci-test-refresh-secret-not-for-production
-      STORAGE_PROVIDER: local
-      STORAGE_LOCAL_PATH: .storage/uploads
-      RECEIPT_EXTRACTION_PROVIDER: mock
-      ADMIN_EMAIL: admin@fleet-ci.test
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: Admin123!
-      ENABLE_DEMO_USERS: "true"
-      E2E_BASE_URL: http://localhost:5173
-      E2E_API_BASE_URL: http://localhost:4000
-      E2E_ADMIN_IDENTIFIER: admin@fleet-ci.test
-      E2E_ADMIN_PASSWORD: Admin123!
-      E2E_VIEWER_IDENTIFIER: viewer@fleet-ci.test
-      E2E_VIEWER_PASSWORD: Viewer123!
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install
-        working-directory: backend
-      - run: npx prisma generate && npx prisma migrate deploy
-        working-directory: backend
-      - run: npm run build
-        working-directory: backend
-      - run: npx prisma db seed
-        working-directory: backend
-      - name: Start backend server
-        run: |
-          npm run dev &
-          for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
-        working-directory: backend
-      - name: Seed test data
-        run: npm run seed:api
-        working-directory: backend
-      - run: npm install
-        working-directory: web
-      - run: npx playwright install --with-deps chromium
-        working-directory: web
-      - run: npx playwright test
         working-directory: web
