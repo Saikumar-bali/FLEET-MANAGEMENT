@@ -276,6 +276,27 @@ async function main() {
   if (!token2) { fail('Failed to get token for user2'); process.exit(1); }
   pass('Both user tokens obtained');
 
+  // ─── Setup: Create vehicles linked to driver1 and driver2 ───
+  const ts = Date.now();
+  const vehicle1 = await prisma.vehicle.create({
+    data: {
+      vehicleNumber: `${PREFIX}_VEH1_${ts}`,
+      vehicleType: 'TRUCK',
+      fuelType: 'DIESEL',
+      status: 'AVAILABLE',
+      currentDriverId: driver1.id,
+    },
+  });
+  const vehicle2 = await prisma.vehicle.create({
+    data: {
+      vehicleNumber: `${PREFIX}_VEH2_${ts}`,
+      vehicleType: 'TRUCK',
+      fuelType: 'DIESEL',
+      status: 'AVAILABLE',
+      currentDriverId: driver2.id,
+    },
+  });
+
   // ─── Test 1: Linked driver sees own profile ───
   console.log('\n--- Test 1: Linked driver sees own profile ---');
   const profile1 = await request('GET', '/api/v1/me/driver-profile', token1);
@@ -288,24 +309,6 @@ async function main() {
   // ─── Test 2: Linked driver trips only include own driverId ───
   console.log('\n--- Test 2: Trips scoped to own driver ---');
   // Create trips for both drivers
-  const ts = Date.now();
-  const vehicle1 = await prisma.vehicle.create({
-    data: {
-      vehicleNumber: `${PREFIX}_VEH1_${ts}`,
-      vehicleType: 'TRUCK',
-      fuelType: 'DIESEL',
-      status: 'AVAILABLE',
-    },
-  });
-  const vehicle2 = await prisma.vehicle.create({
-    data: {
-      vehicleNumber: `${PREFIX}_VEH2_${ts}`,
-      vehicleType: 'TRUCK',
-      fuelType: 'DIESEL',
-      status: 'AVAILABLE',
-    },
-  });
-
   const trip1 = await prisma.trip.create({
     data: {
       tripNumber: `${PREFIX}_TRIP1_${ts}`,
@@ -420,7 +423,7 @@ async function main() {
   console.log('\n--- Test 5: Vehicles scoped to linked driver ---');
   const vehicles1 = await request('GET', '/api/v1/me/driver-vehicles', token1);
   if (vehicles1.status === 200) {
-    const items = vehicles1.data?.data || [];
+    const items = vehicles1.data?.data?.vehicles || vehicles1.data?.data || [];
     const hasRelevant = items.length >= 1;
     if (hasRelevant) {
       pass(`user1 sees ${items.length} vehicles`);
