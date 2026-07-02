@@ -553,6 +553,8 @@ async function main() {
   console.log('\n14. /me/driver-profile returns 404 for unlinked user');
 
   if (targetBToken) {
+    // Ensure targetB has no active links
+    await prisma.userProfileLink.deleteMany({ where: { userId: targetUserB.id, status: 'ACTIVE' } });
     const res = await request('GET', '/api/v1/me/driver-profile', targetBToken);
     if (res.status === 404) {
       pass('/me/driver-profile returns 404 for unlinked user');
@@ -565,29 +567,26 @@ async function main() {
   console.log('\n15. /me/driver-profile returns own data for linked user');
 
   if (targetAToken) {
+    // Ensure targetA has an active link (re-create if revoked/deleted)
+    const existingLink = await prisma.userProfileLink.findFirst({
+      where: { userId: targetUserA.id, profileType: 'DRIVER', status: 'ACTIVE' },
+    });
+    if (!existingLink) {
+      const { createProfileLink } = await import('../src/modules/user-profile-links/user-profile-links.service');
+      try {
+        await createProfileLink(
+          { userId: targetUserA.id, profileType: 'DRIVER', profileId: driver1.id, isPrimary: true },
+          adminUser.id,
+        );
+      } catch { /* link may already exist */ }
+    }
     const res = await request('GET', '/api/v1/me/driver-profile', targetAToken);
     if (res.status === 200) {
       const profile = res.data?.data ?? res.data;
-      // Re-create a link for targetUserA if needed (was revoked earlier)
-      if (!profile?.id) {
-        // Link was revoked, re-create it
-        const { createProfileLink } = await import('../src/modules/user-profile-links/user-profile-links.service');
-        try {
-          await createProfileLink(
-            { userId: targetUserA.id, profileType: 'DRIVER', profileId: driver1.id, isPrimary: true },
-            adminUser.id,
-          );
-          const retry = await request('GET', '/api/v1/me/driver-profile', targetAToken);
-          if (retry.status === 200) {
-            pass('/me/driver-profile returns own data after re-linking');
-          } else {
-            fail(`/me/driver-profile returned ${retry.status} after re-link`);
-          }
-        } catch {
-          pass('/me/driver-profile: re-link skipped');
-        }
-      } else {
+      if (profile?.id) {
         pass('/me/driver-profile returns own data for linked user');
+      } else {
+        fail('/me/driver-profile returned 200 but no profile data');
       }
     } else {
       fail(`/me/driver-profile returned ${res.status} for linked user`);
