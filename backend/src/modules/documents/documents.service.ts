@@ -80,6 +80,8 @@ export async function listDocuments(query: DocumentListQuery) {
     where.expiryDate = { lte: new Date(query.expiringBefore), not: null };
   }
 
+  if (query.extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), query.extraWhere] : [query.extraWhere]; }
+
   const page = query.page || 1;
   const limit = query.limit || 20;
   const sortField = query.sort || 'createdAt';

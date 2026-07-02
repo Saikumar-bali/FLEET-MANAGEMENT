@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
@@ -9,658 +10,610 @@ import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   createUser as createUserRequest,
+  deleteUser as deleteUserRequest,
+  getAvailableDrivers,
   getRoles,
   getUsers,
   updateUser as updateUserRequest,
   updateUserPassword as updateUserPasswordRequest,
   updateUserStatus as updateUserStatusRequest,
+  getUsersAccessSummary,
+  getUserProfileLinks,
+  createUserProfileLink,
+  revokeUserProfileLink,
 } from '../services/api';
-import type { RoleRecord, UserRecord } from '../types/auth';
+import type { AvailableDriver } from '../services/api';
+import type { RoleRecord, UserAccessSummaryRecord, UserRecord, ProfileLinkRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
 type UserFormState = {
-  name: string;
-  username: string;
-  email: string;
-  mobile: string;
-  password: string;
-  roleId: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  name: string; username: string; email: string; mobile: string;
+  password: string; roleId: string; status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 };
 
-const initialUserFormState: UserFormState = {
-  name: '',
-  username: '',
-  email: '',
-  mobile: '',
-  password: '',
-  roleId: '',
-  status: 'ACTIVE',
-};
-
-function getCreateFormState(roles: RoleRecord[]): UserFormState {
-  return {
-    ...initialUserFormState,
-    roleId: roles[0]?.id ?? '',
-  };
-}
-
-function getEditFormState(user: UserRecord): UserFormState {
-  return {
-    name: user.name,
-    username: user.username ?? '',
-    email: user.email,
-    mobile: user.mobile ?? '',
-    password: '',
-    roleId: user.role.id,
-    status: user.status,
-  };
-}
+const initialForm: UserFormState = { name: '', username: '', email: '', mobile: '', password: '', roleId: '', status: 'ACTIVE' };
 
 export function UsersPage() {
   const auth = useAuth();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [summaries, setSummaries] = useState<UserAccessSummaryRecord[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState<UserFormState>(initialUserFormState);
-  const [editForm, setEditForm] = useState<UserFormState>(initialUserFormState);
+  const [createForm, setCreateForm] = useState<UserFormState>(initialForm);
+  const [editForm, setEditForm] = useState<UserFormState>(initialForm);
   const [passwordReset, setPasswordReset] = useState('');
   const [pageError, setPageError] = useState<string | null>(null);
-  const [rolesError, setRolesError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSavingCreate, setIsSavingCreate] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [statusTarget, setStatusTarget] = useState<'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | null>(null);
+  const [viewUser, setViewUser] = useState<UserRecord | null>(null);
+  const [viewTab, setViewTab] = useState('overview');
+  const [profileLinks, setProfileLinks] = useState<ProfileLinkRecord[]>([]);
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkDriverId, setLinkDriverId] = useState('');
+  const [showAllDrivers, setShowAllDrivers] = useState(false);
+  const [allDrivers, setAllDrivers] = useState<AvailableDriver[]>([]);
+  const [linkDriverIdOnCreate, setLinkDriverIdOnCreate] = useState('');
+  const [linkErrorOnCreate, setLinkErrorOnCreate] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.id === selectedUserId) ?? null,
-    [selectedUserId, users],
-  );
+  const canCreate = auth.hasPermission('user_create');
+  const canUpdate = auth.hasPermission('user_update');
+  const canDelete = auth.hasPermission('user_delete');
 
-  const canCreateUser = auth.hasPermission('user_create');
-  const canUpdateUser = auth.hasPermission('user_update');
-  const canManageStatus = auth.hasAnyPermission(['user_delete', 'user_deactivate']);
+  const selectedUser = useMemo(() => users.find(u => u.id === selectedUserId) ?? null, [selectedUserId, users]);
 
-  const loadUsers = async () => {
-    if (!auth.accessToken) {
-      return;
-    }
+  async function loadUsers() {
+    if (!auth.accessToken) return;
+    const r = await getUsers(auth.accessToken);
+    setUsers(r.data);
+  }
 
-    const response = await getUsers(auth.accessToken);
-    setUsers(response.data);
-    setSelectedUserId((current) => current ?? response.data[0]?.id ?? null);
-  };
+  async function loadRoles() {
+    if (!auth.accessToken) return;
+    const r = await getRoles(auth.accessToken);
+    setRoles(r.data);
+    setCreateForm(f => ({ ...f, roleId: f.roleId || r.data[0]?.id || '' }));
+  }
 
-  const loadRoles = async () => {
-    if (!auth.accessToken) {
-      return;
-    }
+  async function loadSummaries() {
+    if (!auth.accessToken || !auth.hasPermission('user_view')) return;
+    try { const r = await getUsersAccessSummary(auth.accessToken); setSummaries(r.data); } catch {}
+  }
 
-    const response = await getRoles(auth.accessToken);
-    setRoles(response.data);
-    setCreateForm((current) => ({
-      ...current,
-      roleId: current.roleId || response.data[0]?.id || '',
-    }));
-  };
+  async function loadDrivers() {
+    if (!auth.accessToken) return;
+    try { const r = await getAvailableDrivers(auth.accessToken, { showAll: true }); setAllDrivers(Array.isArray(r.data) ? r.data : []); } catch {}
+  }
 
   useEffect(() => {
-    const load = async () => {
-      if (!auth.accessToken) {
-        return;
-      }
-
-      setIsLoading(true);
-      setPageError(null);
-      setRolesError(null);
-
-      try {
-        await Promise.all([loadUsers(), loadRoles()]);
-      } catch (caughtError) {
-        if (caughtError instanceof ApiError) {
-          setPageError(caughtError.message);
-        } else {
-          setPageError('Failed to load users.');
-        }
-      } finally {
-        setIsLoading(false);
-      }
+    const go = async () => {
+      if (!auth.accessToken) return;
+      setIsLoading(true); setPageError(null);
+      try { await Promise.all([loadUsers(), loadRoles(), loadSummaries(), loadDrivers()]); }
+      catch (e) { setPageError(e instanceof ApiError ? e.message : 'Failed to load users.'); }
+      finally { setIsLoading(false); }
     };
-
-    void load();
+    void go();
   }, [auth.accessToken]);
 
   useEffect(() => {
-    if (!selectedUser) {
-      setEditForm(getCreateFormState(roles));
-      return;
-    }
+    if (!selectedUser) { setEditForm(initialForm); return; }
+    setEditForm({
+      name: selectedUser.name, username: selectedUser.username ?? '', email: selectedUser.email,
+      mobile: selectedUser.mobile ?? '', password: '', roleId: selectedUser.role.id, status: selectedUser.status,
+    });
+    setEditError(null); setPasswordReset('');
+  }, [selectedUser]);
 
-    setEditForm(getEditFormState(selectedUser));
-    setEditError(null);
-    setPasswordReset('');
-  }, [selectedUser, roles]);
+  function getSummary(userId: string) { return summaries.find(s => s.userId === userId); }
 
-  async function refreshUsersAndSelect(userId?: string) {
-    await loadUsers();
-    if (userId) {
-      setSelectedUserId(userId);
+  function openView(user: UserRecord) {
+    setViewUser(user); setViewTab('overview'); setLinkError(null); setLinkDriverId('');
+    setProfileLinks([]);
+    if (auth.accessToken) {
+      getUserProfileLinks(auth.accessToken, user.id).then(r => setProfileLinks(r.data)).catch(() => {});
     }
   }
 
-  function openCreateMode() {
-    setCreateForm(getCreateFormState(roles));
-    setCreateError(null);
-    setPageMessage(null);
-    setIsCreateOpen(true);
-  }
-
-  function closeCreateMode() {
-    setIsCreateOpen(false);
-    setCreateError(null);
-    setCreateForm(getCreateFormState(roles));
-  }
-
-  async function handleCreateUser() {
-    if (!auth.accessToken) {
-      return;
-    }
-
-    setIsSavingCreate(true);
-    setCreateError(null);
-    setPageMessage(null);
-
+  async function handleCreate() {
+    if (!auth.accessToken) return;
+    setIsSavingCreate(true); setCreateError(null); setPageMessage(null); setLinkErrorOnCreate(null);
     try {
-      const response = await createUserRequest(auth.accessToken, createForm);
-      await refreshUsersAndSelect(response.data.id);
-      setPageMessage('User created successfully.');
-      closeCreateMode();
-    } catch (caughtError) {
-      if (caughtError instanceof ApiError) {
-        setCreateError(caughtError.message);
-      } else {
-        setCreateError('Failed to create user.');
+      const r = await createUserRequest(auth.accessToken, createForm);
+      const selectedRole = roles.find(rl => rl.id === createForm.roleId);
+      if (selectedRole?.key === 'driver' && linkDriverIdOnCreate) {
+        try {
+          await createUserProfileLink(auth.accessToken, r.data.id, { profileType: 'DRIVER', profileId: linkDriverIdOnCreate, isPrimary: true });
+        } catch (linkErr) {
+          setLinkErrorOnCreate(linkErr instanceof ApiError ? linkErr.message : 'User created but driver profile link failed. Link manually from user details.');
+        }
       }
-    } finally {
-      setIsSavingCreate(false);
-    }
+      await loadUsers();
+      setSelectedUserId(r.data.id);
+      setPageMessage(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.');
+      showToast(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.', 'success');
+      setLinkDriverIdOnCreate('');
+      setIsCreateOpen(false);
+    } catch (e) { setCreateError(e instanceof ApiError ? e.message : 'Failed to create.'); }
+    finally { setIsSavingCreate(false); }
   }
 
-  async function handleUpdateUser() {
-    if (!auth.accessToken || !selectedUser) {
-      return;
-    }
-
-    setIsSavingEdit(true);
-    setEditError(null);
-    setPageMessage(null);
-
+  async function handleUpdate() {
+    if (!auth.accessToken || !selectedUser) return;
+    setIsSavingEdit(true); setEditError(null); setPageMessage(null);
     try {
-      const response = await updateUserRequest(auth.accessToken, selectedUser.id, {
-        name: editForm.name,
-        username: editForm.username,
-        mobile: editForm.mobile,
-        roleId: editForm.roleId,
-        status: editForm.status,
+      const r = await updateUserRequest(auth.accessToken, selectedUser.id, {
+        name: editForm.name, username: editForm.username, mobile: editForm.mobile, roleId: editForm.roleId, status: editForm.status,
       });
-      setUsers((currentUsers) =>
-        currentUsers.map((user) => (user.id === selectedUser.id ? response.data : user)),
-      );
-      setSelectedUserId(response.data.id);
-      setPageMessage('User updated successfully.');
-    } catch (caughtError) {
-      if (caughtError instanceof ApiError) {
-        setEditError(caughtError.message);
-      } else {
-        setEditError('Failed to update user.');
-      }
-    } finally {
-      setIsSavingEdit(false);
-    }
+      setUsers(cur => cur.map(u => u.id === selectedUser.id ? r.data : u));
+      if (viewUser?.id === selectedUser.id) setViewUser(r.data);
+      setPageMessage('User updated.');
+      showToast('User updated.', 'success');
+    } catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update.'; setEditError(msg); showToast(msg, 'error'); }
+    finally { setIsSavingEdit(false); }
   }
 
-  async function handleConfirmStatusUpdate() {
-    if (!auth.accessToken || !selectedUser || !statusTarget) {
-      return;
-    }
-
+  async function handleStatus() {
+    if (!auth.accessToken || !selectedUser || !statusTarget) return;
     setIsSavingEdit(true);
-    setEditError(null);
-    setPageMessage(null);
-
     try {
-      const response = await updateUserStatusRequest(auth.accessToken, selectedUser.id, statusTarget);
-      setUsers((currentUsers) =>
-        currentUsers.map((user) => (user.id === selectedUser.id ? response.data : user)),
-      );
-      setSelectedUserId(response.data.id);
-      setPageMessage(`User marked ${statusTarget.toLowerCase()}.`);
+      const r = await updateUserStatusRequest(auth.accessToken, selectedUser.id, statusTarget);
+      setUsers(cur => cur.map(u => u.id === selectedUser.id ? r.data : u));
+      if (viewUser?.id === selectedUser.id) setViewUser(r.data);
+      setPageMessage(`Status changed to ${statusTarget.toLowerCase()}.`);
+      showToast(`Status changed to ${statusTarget.toLowerCase()}.`, 'success');
       setStatusTarget(null);
-    } catch (caughtError) {
-      if (caughtError instanceof ApiError) {
-        setEditError(caughtError.message);
-      } else {
-        setEditError('Failed to update user status.');
-      }
-    } finally {
-      setIsSavingEdit(false);
-    }
+    } catch (e) { setEditError(e instanceof ApiError ? e.message : 'Failed.'); }
+    finally { setIsSavingEdit(false); }
   }
 
-  async function handlePasswordReset() {
-    if (!auth.accessToken || !selectedUser || passwordReset.length < 8) {
-      return;
-    }
-
+  async function handlePassword() {
+    if (!auth.accessToken || !selectedUser || passwordReset.length < 8) return;
     setIsSavingPassword(true);
-    setEditError(null);
-    setPageMessage(null);
-
     try {
       await updateUserPasswordRequest(auth.accessToken, selectedUser.id, passwordReset);
-      setPasswordReset('');
-      setPageMessage('User password updated successfully.');
-    } catch (caughtError) {
-      if (caughtError instanceof ApiError) {
-        setEditError(caughtError.message);
-      } else {
-        setEditError('Failed to update password.');
-      }
-    } finally {
-      setIsSavingPassword(false);
-    }
+      setPasswordReset(''); setPageMessage('Password updated.');
+      showToast('Password updated.', 'success');
+    } catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed.'; setEditError(msg); showToast(msg, 'error'); }
+    finally { setIsSavingPassword(false); }
   }
 
-  if (isLoading) {
-    return <LoadingState message="Loading users, roles, and access controls..." />;
+  async function handleDelete() {
+    if (!auth.accessToken || !deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteUserRequest(auth.accessToken, deleteTarget.id);
+      setPageMessage(`User "${deleteTarget.name}" deleted.`);
+      showToast(`User "${deleteTarget.name}" deleted.`, 'success');
+      setUsers(cur => cur.filter(u => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      if (viewUser?.id === deleteTarget.id) setViewUser(null);
+    } catch (e) { setPageError(e instanceof ApiError ? e.message : 'Failed to delete.'); }
+    finally { setIsDeleting(false); }
   }
 
-  if (pageError) {
-    return <ErrorState message={pageError} onRetry={() => window.location.reload()} />;
+  async function handleLinkDriver() {
+    if (!auth.accessToken || !viewUser || !linkDriverId) return;
+    setIsLinking(true); setLinkError(null);
+    try {
+      await createUserProfileLink(auth.accessToken, viewUser.id, {
+        profileType: 'DRIVER', profileId: linkDriverId, isPrimary: true,
+      });
+      setPageMessage('Profile linked successfully.');
+      showToast('Profile linked successfully.', 'success');
+      const r = await getUserProfileLinks(auth.accessToken, viewUser.id);
+      setProfileLinks(r.data); setLinkDriverId('');
+    } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to link.'); }
+    finally { setIsLinking(false); }
   }
 
-  const onlySeededAdminExists =
-    users.length === 1 &&
-    users[0]?.role.key === 'super_admin';
+  async function handleRevoke(linkId: string) {
+    if (!auth.accessToken) return;
+    setIsRevoking(true);
+    try {
+      await revokeUserProfileLink(auth.accessToken, linkId);
+      setProfileLinks(prev => prev.filter(pl => pl.id !== linkId));
+      setRevokeTarget(null); setPageMessage('Profile link revoked.');
+      showToast('Profile link revoked.', 'success');
+    } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to revoke.'); }
+    finally { setIsRevoking(false); }
+  }
+
+  if (isLoading) return <LoadingState message="Loading users..." />;
+  if (pageError) return <ErrorState message={pageError} onRetry={() => window.location.reload()} />;
 
   return (
     <section className="page-content">
       <div className="section-header">
         <div>
-          <PageHeader
-            eyebrow="Security"
-            title="Users"
-            description="Create team accounts, assign roles, and handle password or status changes."
-          />
+          <PageHeader eyebrow="Admin" title="Users" description="User directory — manage accounts, roles, and profile links." />
         </div>
         <div className="action-panel">
-          {canCreateUser ? (
-            <button type="button" className="primary-button" onClick={openCreateMode}>
-              Create user
-            </button>
-          ) : null}
+          {canCreate ? <button type="button" className="primary-button" onClick={() => { setCreateForm({ ...initialForm, roleId: roles[0]?.id || '' }); setCreateError(null); setPageMessage(null); setIsCreateOpen(true); }}>Create user</button> : null}
         </div>
       </div>
 
       {pageMessage ? <div className="success-banner">{pageMessage}</div> : null}
-      {rolesError ? <div className="error-banner">{rolesError}</div> : null}
 
-      <div className="list-detail-layout">
-        <article className="card table-card selection-panel">
-          <div className="table-toolbar">
-            <div>
-              <h3 className="table-toolbar-title">User directory</h3>
-              <p className="table-toolbar-copy">
-                {onlySeededAdminExists
-                  ? 'Only the seeded admin exists. Create your first team user.'
-                  : 'Select a user to edit details, reset password, or change status.'}
-              </p>
-            </div>
-            <div className="table-toolbar-actions">
-              <span className="table-secondary">{users.length} total users</span>
-            </div>
-          </div>
-
-          {users.length === 0 ? (
-            <EmptyState
-              title="No managed users yet"
-              message="Create the first team user to move beyond the seeded admin account."
-              action={canCreateUser ? (
-                <button type="button" className="primary-button" onClick={openCreateMode}>
-                  Create user
-                </button>
-              ) : null}
-            />
-          ) : (
-            <DataTable
-              columns={[
-                {
-                  key: 'name',
-                  header: 'User',
-                  render: (user) => (
-                    <div className="user-name-cell">
-                      <strong>{user.name}</strong>
-                      <span className="table-secondary">@{user.username ?? 'unassigned'} • {user.email}</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'username',
-                  header: 'Username',
-                  render: (user) => user.username ? `@${user.username}` : 'Not set',
-                },
-                {
-                  key: 'role',
-                  header: 'Role',
-                  render: (user) => user.role.name,
-                },
-                {
-                  key: 'status',
-                  header: 'Status',
-                  render: (user) => <StatusBadge status={user.status} />,
-                  width: '120px',
-                },
-                {
-                  key: 'mobile',
-                  header: 'Mobile',
-                  render: (user) => user.mobile || 'Not set',
-                },
-                {
-                  key: 'lastLoginAt',
-                  header: 'Last login',
-                  render: (user) => user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never',
-                },
-              ]}
-              data={users}
-              keyExtractor={(user) => user.id}
-              onRowClick={(user) => setSelectedUserId(user.id)}
-            />
-          )}
-        </article>
-
-        <aside className="detail-panel">
-          <article className="card detail-card">
-            <div className="table-toolbar">
-              <div>
-                <h3 className="table-toolbar-title">User details</h3>
-                <p className="table-toolbar-copy">
-                  Edit mode is separate from create mode so the seeded admin never blocks adding another user.
-                </p>
-              </div>
-            </div>
-
-            {selectedUser ? (
-              <>
-                <div className="detail-grid">
-                  <div>
-                    <p className="detail-label">Email</p>
-                    <p className="detail-value">{selectedUser.email}</p>
+      <article className="card">
+        <div className="table-toolbar">
+          <h3 className="table-toolbar-title">User Directory</h3>
+          <p className="table-toolbar-copy">{users.length} total users</p>
+        </div>
+        {users.length === 0 ? (
+          <EmptyState title="No users yet" message="Create the first team user." action={canCreate ? <button type="button" className="primary-button" onClick={() => setIsCreateOpen(true)}>Create user</button> : null} />
+        ) : (
+          <DataTable
+            columns={[
+              { key: 'name', header: 'Name', render: (u: UserRecord) => <span style={{ fontWeight: 500 }}>{u.name}</span> },
+              { key: 'username', header: 'Username', render: (u: UserRecord) => u.username ? `@${u.username}` : <span className="table-secondary">Not set</span> },
+              { key: 'email', header: 'Email', render: (u: UserRecord) => u.email },
+              { key: 'role', header: 'Role', render: (u: UserRecord) => u.role.name },
+              { key: 'status', header: 'Status', render: (u: UserRecord) => <StatusBadge status={u.status} />, width: '100px' },
+              { key: 'lastLoginAt', header: 'Last Login', render: (u: UserRecord) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : <span className="table-secondary">Never</span> },
+              {
+                key: 'actions', header: '', width: '200px',
+                render: (u: UserRecord) => (
+                  <div className="action-panel" style={{ gap: '0.25rem' }}>
+                    <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); openView(u); }}>View</button>
+                    <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); navigate(`/users/${u.id}`); }}>Manage Access</button>
                   </div>
-                  <div>
-                    <p className="detail-label">Username</p>
-                    <p className="detail-value">{selectedUser.username ? `@${selectedUser.username}` : 'Not set'}</p>
-                  </div>
-                  <div>
-                    <p className="detail-label">Status</p>
-                    <StatusBadge status={selectedUser.status} />
-                  </div>
-                  <div>
-                    <p className="detail-label">Role</p>
-                    <p className="detail-value">{selectedUser.role.name}</p>
-                  </div>
-                  <div>
-                    <p className="detail-label">Last login</p>
-                    <p className="detail-value">{selectedUser.lastLoginAt ? new Date(selectedUser.lastLoginAt).toLocaleString() : 'Never'}</p>
-                  </div>
-                </div>
+                ),
+              },
+            ]}
+            data={users}
+            keyExtractor={(u: UserRecord) => u.id}
+            onRowClick={(user) => openView(user)}
+          />
+        )}
+      </article>
 
-                <FormSection title="Edit user" description="Update the selected user without affecting create mode.">
-                  <div className="form-grid">
-                    <label>
-                      <span>Name</span>
-                      <input
-                        value={editForm.name}
-                        onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
-                        disabled={!canUpdateUser}
-                      />
-                    </label>
-                    <label>
-                      <span>Username</span>
-                      <input
-                        value={editForm.username}
-                        onChange={(event) => setEditForm((current) => ({ ...current, username: event.target.value }))}
-                        disabled={!canUpdateUser}
-                      />
-                    </label>
-                    <label>
-                      <span>Mobile</span>
-                      <input
-                        value={editForm.mobile}
-                        onChange={(event) => setEditForm((current) => ({ ...current, mobile: event.target.value }))}
-                        disabled={!canUpdateUser}
-                      />
-                    </label>
-                    <label>
-                      <span>Role</span>
-                      <select
-                        value={editForm.roleId}
-                        onChange={(event) => setEditForm((current) => ({ ...current, roleId: event.target.value }))}
-                        disabled={!canUpdateUser || roles.length === 0}
-                      >
-                        {roles.map((role) => (
-                          <option key={role.id} value={role.id}>
-                            {role.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>Status</span>
-                      <select
-                        value={editForm.status}
-                        onChange={(event) =>
-                          setEditForm((current) => ({
-                            ...current,
-                            status: event.target.value as UserFormState['status'],
-                          }))
-                        }
-                        disabled={!canUpdateUser}
-                      >
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                        <option value="SUSPENDED">Suspended</option>
-                      </select>
-                    </label>
-                  </div>
-                  {canUpdateUser ? (
-                    <div className="button-row">
-                      <button type="button" className="primary-button" onClick={() => void handleUpdateUser()} disabled={isSavingEdit || roles.length === 0}>
-                        {isSavingEdit ? 'Saving...' : 'Update user'}
-                      </button>
-                    </div>
-                  ) : null}
-                </FormSection>
-
-                <FormSection title="Access actions" description="Password reset and status changes stay separate from record editing.">
-                  {editError ? <div className="error-banner">{editError}</div> : null}
-
-                  {canManageStatus ? (
-                    <div className="button-row wrap-row">
-                      <button type="button" className="secondary-button" onClick={() => setStatusTarget('ACTIVE')}>
-                        Mark active
-                      </button>
-                      <button type="button" className="secondary-button" onClick={() => setStatusTarget('INACTIVE')}>
-                        Mark inactive
-                      </button>
-                      <button type="button" className="danger-button" onClick={() => setStatusTarget('SUSPENDED')}>
-                        Suspend user
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {canUpdateUser ? (
-                    <div className="stack-form">
-                      <label>
-                        <span>Reset password</span>
-                        <input
-                          type="password"
-                          value={passwordReset}
-                          onChange={(event) => setPasswordReset(event.target.value)}
-                          placeholder="Enter a new password"
-                        />
-                      </label>
-                      <div className="button-row">
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() => void handlePasswordReset()}
-                          disabled={isSavingPassword || passwordReset.length < 8}
-                        >
-                          {isSavingPassword ? 'Updating password...' : 'Reset password'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </FormSection>
-              </>
-            ) : (
-              <EmptyState
-                title="Select a user"
-                message="Pick a user from the directory to review details, update role/status, or reset password."
-              />
-            )}
-          </article>
-        </aside>
-      </div>
-
-      <Modal
-        isOpen={isCreateOpen}
-        title="Create user"
-        description="Add a new team member with an email, password, role, and starting status."
-        onClose={closeCreateMode}
-        footer={(
+      {/* Create User Modal */}
+      <Modal isOpen={isCreateOpen} title="Create user" description="Add a new team member." onClose={() => { setIsCreateOpen(false); setCreateError(null); }}
+        footer={
           <div className="button-row">
-            <button type="button" className="ghost-button" onClick={closeCreateMode}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => void handleCreateUser()}
-              disabled={isSavingCreate || roles.length === 0}
-            >
+            <button type="button" className="ghost-button" onClick={() => { setIsCreateOpen(false); setCreateError(null); }}>Cancel</button>
+            <button type="button" className="primary-button" onClick={handleCreate} disabled={isSavingCreate || roles.length === 0}>
               {isSavingCreate ? 'Creating...' : 'Create user'}
             </button>
           </div>
-        )}
+        }
       >
         <div className="stack-form">
-          <FormSection title="Identity" description="Email stays editable in create mode and password is required here only.">
+          <FormSection title="Identity">
             <div className="form-grid">
-              <label>
-                <span>Name</span>
-                <input
-                  value={createForm.name}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                <span>Username</span>
-                <input
-                  value={createForm.username}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, username: event.target.value }))}
-                  placeholder="admin"
-                  required
-                />
-              </label>
-              <label>
-                <span>Email</span>
-                <input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                <span>Mobile</span>
-                <input
-                  value={createForm.mobile}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, mobile: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>Password</span>
-                <input
-                  type="password"
-                  value={createForm.password}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, password: event.target.value }))}
-                  required
-                />
-              </label>
+              <label><span>Name</span><input value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} required /></label>
+              <label><span>Username</span><input value={createForm.username} onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))} placeholder="username" required /></label>
+              <label><span>Email</span><input type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} required /></label>
+              <label><span>Mobile</span><input value={createForm.mobile} onChange={e => setCreateForm(f => ({ ...f, mobile: e.target.value }))} /></label>
+              <label><span>Password</span><input type="password" value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} required /></label>
             </div>
           </FormSection>
-
-          <FormSection title="Access" description="Choose the starting role and status for the new user.">
+          <FormSection title="Access">
             <div className="form-grid">
-              <label>
-                <span>Role</span>
-                <select
-                  value={createForm.roleId}
-                  onChange={(event) => setCreateForm((current) => ({ ...current, roleId: event.target.value }))}
-                  disabled={roles.length === 0}
-                >
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
+              <label><span>Role</span>
+                <select value={createForm.roleId} onChange={e => { setCreateForm(f => ({ ...f, roleId: e.target.value })); setLinkDriverIdOnCreate(''); }} disabled={roles.length === 0}>
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </label>
-              <label>
-                <span>Status</span>
-                <select
-                  value={createForm.status}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      status: event.target.value as UserFormState['status'],
-                    }))
-                  }
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="SUSPENDED">Suspended</option>
+              <label><span>Status</span>
+                <select value={createForm.status} onChange={e => setCreateForm(f => ({ ...f, status: e.target.value as UserFormState['status'] }))}>
+                  <option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="SUSPENDED">Suspended</option>
                 </select>
               </label>
             </div>
+            {roles.find(rl => rl.id === createForm.roleId)?.key === 'driver' && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <label><span>Link Driver Profile (required for Driver role)</span>
+                  <select value={linkDriverIdOnCreate} onChange={e => setLinkDriverIdOnCreate(e.target.value)}>
+                    <option value="">Choose a driver...</option>
+                    {allDrivers.filter(d => d.status !== 'INACTIVE').map(d => (
+                      <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
+                    ))}
+                  </select>
+                </label>
+                {allDrivers.filter(d => d.status !== 'INACTIVE' && !d.isLinked).length === 0 && (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>No unlinked drivers available. Create the driver first.</p>
+                )}
+                {linkErrorOnCreate && <div className="error-banner" style={{ marginTop: '0.5rem' }}>{linkErrorOnCreate}</div>}
+              </div>
+            )}
           </FormSection>
-
           {createError ? <div className="error-banner">{createError}</div> : null}
-          {!createError && roles.length === 0 ? (
-            <div className="info-banner">Role dropdown is unavailable, so create mode is temporarily blocked.</div>
-          ) : null}
         </div>
       </Modal>
 
-      <ConfirmDialog
-        isOpen={!!statusTarget}
-        title="Confirm status change"
-        description={`Update ${selectedUser?.name ?? 'this user'} to ${statusTarget?.toLowerCase() ?? 'the selected'} status?`}
-        confirmLabel="Update status"
-        tone={statusTarget === 'SUSPENDED' ? 'danger' : 'default'}
-        isConfirming={isSavingEdit}
-        onCancel={() => setStatusTarget(null)}
-        onConfirm={() => void handleConfirmStatusUpdate()}
-      />
+      {/* Confirm Status Dialog */}
+      <ConfirmDialog isOpen={!!statusTarget} title="Confirm status change"
+        description={`Update ${selectedUser?.name ?? 'this user'} to ${statusTarget?.toLowerCase() ?? 'selected'} status?`}
+        confirmLabel="Update status" tone={statusTarget === 'SUSPENDED' ? 'danger' : 'default'}
+        isConfirming={isSavingEdit} onCancel={() => setStatusTarget(null)} onConfirm={handleStatus} />
+
+      {/* Revoke Link Confirmation */}
+      <ConfirmDialog isOpen={!!revokeTarget} title="Revoke profile link"
+        description="Remove the driver profile link from this user? Driver portal access will be removed."
+        confirmLabel="Revoke" tone="danger" isConfirming={isRevoking}
+        onCancel={() => setRevokeTarget(null)} onConfirm={() => revokeTarget ? handleRevoke(revokeTarget) : Promise.resolve()} />
+
+      {/* View User Modal */}
+      <Modal isOpen={!!viewUser} title={viewUser?.name ?? ''}
+        description={viewUser ? `${viewUser.email} — ${viewUser.role.name}` : ''}
+        onClose={() => { setViewUser(null); setViewTab('overview'); }}
+        footer={
+          <div className="button-row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              {canDelete && viewUser ? <button type="button" className="danger-button" onClick={() => setDeleteTarget(viewUser)}>Delete user</button> : null}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="ghost-button" onClick={() => { setViewUser(null); setViewTab('overview'); }}>Close</button>
+            </div>
+          </div>
+        }
+        size="large"
+      >
+        {viewUser && (
+          <div>
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '2px solid var(--color-border)', marginBottom: '1rem', overflowX: 'auto' }}>
+              {['Overview', 'Account', 'Access', 'Profile Links', 'Activity'].map(tab => (
+                <button key={tab} type="button" className={`tab-button ${viewTab === tab.toLowerCase() ? 'active-tab' : ''}`} onClick={() => setViewTab(tab.toLowerCase())} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{tab}</button>
+              ))}
+            </div>
+
+            {viewTab === 'overview' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <div className="detail-grid">
+                    <div><p className="detail-label">Name</p><p className="detail-value">{viewUser.name}</p></div>
+                    <div><p className="detail-label">Username</p><p className="detail-value">@{viewUser.username ?? 'unset'}</p></div>
+                    <div><p className="detail-label">Email</p><p className="detail-value">{viewUser.email}</p></div>
+                    <div><p className="detail-label">Mobile</p><p className="detail-value">{viewUser.mobile || 'Not set'}</p></div>
+                    <div><p className="detail-label">Role</p><p className="detail-value">{viewUser.role.name} ({viewUser.role.key})</p></div>
+                    <div><p className="detail-label">Status</p><StatusBadge status={viewUser.status} /></div>
+                    <div><p className="detail-label">Last login</p><p className="detail-value">{viewUser.lastLoginAt ? new Date(viewUser.lastLoginAt).toLocaleString() : 'Never'}</p></div>
+                    <div><p className="detail-label">Created</p><p className="detail-value">{new Date(viewUser.createdAt).toLocaleString()}</p></div>
+                  </div>
+                </article>
+
+                {/* Linked Profile Card */}
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profile</h4>
+                  {profileLinks.length > 0 ? (
+                    profileLinks.map(pl => {
+                      const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                      return (
+                        <div key={pl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                              Driver — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
+                            </p>
+                          </div>
+                          <button type="button" className="secondary-button" style={{ fontSize: '0.8rem' }} onClick={() => setViewTab('profile links')}>Manage</button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No profile linked.</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
+                        User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+                      </p>
+                      <button type="button" className="primary-button" style={{ marginTop: '0.75rem', fontSize: '0.85rem' }} onClick={() => setViewTab('profile links')}>Link Driver</button>
+                    </div>
+                  )}
+                </article>
+
+                {/* Stats */}
+                {(() => { const s = getSummary(viewUser.id); return s ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                    <article className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--color-accent)' }}>{s.effectivePermissionsCount}</p>
+                      <p style={{ fontSize: '0.75rem', margin: '0.25rem 0 0', color: 'var(--color-text-secondary)' }}>Permissions</p>
+                    </article>
+                    <article className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--color-success)' }}>{s.dataScopesCount}</p>
+                      <p style={{ fontSize: '0.75rem', margin: '0.25rem 0 0', color: 'var(--color-text-secondary)' }}>Scopes</p>
+                    </article>
+                    <article className="card" style={{ padding: '1rem', textAlign: 'center' }}>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--color-warning)' }}>{s.overridesCount}</p>
+                      <p style={{ fontSize: '0.75rem', margin: '0.25rem 0 0', color: 'var(--color-text-secondary)' }}>Overrides</p>
+                    </article>
+                  </div>
+                ) : null; })()}
+              </div>
+            )}
+
+            {viewTab === 'account' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <FormSection title="Edit Account">
+                    <div className="form-grid">
+                      <label><span>Name</span><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} disabled={!canUpdate} /></label>
+                      <label><span>Username</span><input value={editForm.username} onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} disabled={!canUpdate} /></label>
+                      <label><span>Mobile</span><input value={editForm.mobile} onChange={e => setEditForm(f => ({ ...f, mobile: e.target.value }))} disabled={!canUpdate} /></label>
+                    </div>
+                    {canUpdate && <div className="button-row"><button type="button" className="primary-button" onClick={handleUpdate} disabled={isSavingEdit}>{isSavingEdit ? 'Saving...' : 'Update profile'}</button></div>}
+                  </FormSection>
+                </article>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <FormSection title="Account Status">
+                    <div className="button-row wrap-row">
+                      <button type="button" className="secondary-button" onClick={() => setStatusTarget('ACTIVE')}>Mark active</button>
+                      <button type="button" className="secondary-button" onClick={() => setStatusTarget('INACTIVE')}>Deactivate</button>
+                      <button type="button" className="danger-button" onClick={() => setStatusTarget('SUSPENDED')}>Suspend</button>
+                    </div>
+                  </FormSection>
+                </article>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <FormSection title="Password Reset">
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
+                      <label style={{ flex: 1 }}><span>New password</span><input type="password" value={passwordReset} onChange={e => setPasswordReset(e.target.value)} placeholder="Enter new password" /></label>
+                      <button type="button" className="secondary-button" onClick={handlePassword} disabled={isSavingPassword || passwordReset.length < 8}>{isSavingPassword ? 'Updating...' : 'Reset'}</button>
+                    </div>
+                  </FormSection>
+                </article>
+              </div>
+            )}
+
+            {viewTab === 'access' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {(() => { const s = getSummary(viewUser.id); return (
+                  <>
+                    <article className="card" style={{ padding: '1.25rem' }}>
+                      <details>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Role</summary>
+                        <div style={{ marginTop: '0.75rem' }}>
+                          <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>Current: {viewUser.role.name} ({viewUser.role.key})</p>
+                          <label><span>Change role</span>
+                            <select value={editForm.roleId} onChange={e => setEditForm(f => ({ ...f, roleId: e.target.value }))} disabled={!canUpdate}>
+                              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            </select>
+                          </label>
+                          {canUpdate && <div className="button-row" style={{ marginTop: '0.5rem' }}><button type="button" className="primary-button" onClick={async () => {
+                            if (!auth.accessToken) return;
+                            setIsSavingEdit(true); setEditError(null); setPageMessage(null);
+                            try {
+                              const r = await updateUserRequest(auth.accessToken, viewUser.id, { roleId: editForm.roleId });
+                              setUsers(cur => cur.map(u => u.id === viewUser.id ? { ...u, role: r.data.role } : u));
+                              setViewUser({ ...viewUser, role: r.data.role });
+                              setPageMessage('Role updated.');
+                            } catch (e) { setEditError(e instanceof ApiError ? e.message : 'Failed.'); }
+                            finally { setIsSavingEdit(false); }
+                          }} disabled={isSavingEdit}>{isSavingEdit ? 'Saving...' : 'Change role'}</button></div>}
+                        </div>
+                      </details>
+                    </article>
+                    <article className="card" style={{ padding: '1.25rem' }}>
+                      <details>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Effective Permissions ({s?.effectivePermissionsCount ?? '-'})</summary>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0.5rem 0' }}>
+                          {viewUser.role.key === 'super_admin' ? 'Super admin has access to all permissions.' : 'Permissions based on role and overrides. View full list on the user detail page.'}
+                        </p>
+                        <button type="button" className="secondary-button" style={{ fontSize: '0.85rem' }} onClick={() => navigate(`/users/${viewUser.id}`)}>View all permissions</button>
+                      </details>
+                    </article>
+                    <article className="card" style={{ padding: '1.25rem' }}>
+                      <details>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Permission Overrides ({s?.overridesCount ?? 0})</summary>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0.5rem 0' }}>Individual grants or denials. Manage on the full user detail page.</p>
+                        <button type="button" className="secondary-button" style={{ fontSize: '0.85rem' }} onClick={() => navigate(`/users/${viewUser.id}`)}>Manage overrides</button>
+                      </details>
+                    </article>
+                    <article className="card" style={{ padding: '1.25rem' }}>
+                      <details>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Data Scopes ({s?.dataScopesCount ?? 0})</summary>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0.5rem 0' }}>Data access scopes. Manage on the full user detail page.</p>
+                        <button type="button" className="secondary-button" style={{ fontSize: '0.85rem' }} onClick={() => navigate(`/users/${viewUser.id}`)}>Manage scopes</button>
+                      </details>
+                    </article>
+                    <article className="card" style={{ padding: '1.25rem' }}>
+                      <details>
+                        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Menu Preview</summary>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: '0.5rem 0' }}>Which menus are visible based on permissions. View on user detail page.</p>
+                        <button type="button" className="secondary-button" style={{ fontSize: '0.85rem' }} onClick={() => navigate(`/users/${viewUser.id}`)}>View menu preview</button>
+                      </details>
+                    </article>
+                    {editError && <div className="error-banner">{editError}</div>}
+                  </>
+                ); })()}
+              </div>
+            )}
+
+            {viewTab === 'profile links' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Current Linked Profiles</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
+                    User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+                  </p>
+                  {linkError && <div className="error-banner">{linkError}</div>}
+                  {profileLinks.length === 0 ? (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No profile linked.</p>
+                  ) : (
+                    profileLinks.map(pl => {
+                      const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                      return (
+                        <div key={pl.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                              {pl.profileType} — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
+                            </p>
+                          </div>
+                          <button type="button" className="danger-button" style={{ fontSize: '0.8rem' }} onClick={() => setRevokeTarget(pl.id)}>Revoke</button>
+                        </div>
+                      );
+                    })
+                  )}
+                </article>
+
+                {auth.hasPermission('profile_link_create') && (
+                  <article className="card" style={{ padding: '1.25rem' }}>
+                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Driver</h4>
+                    <div className="form-grid">
+                      <label>
+                        <span>Select driver</span>
+                        <select value={linkDriverId} onChange={e => setLinkDriverId(e.target.value)}>
+                          <option value="">Choose a driver...</option>
+                          {allDrivers.filter(d => showAllDrivers || d.status !== 'INACTIVE').map(d => (
+                            <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.5rem' }}>
+                        <input type="checkbox" checked={showAllDrivers} onChange={e => setShowAllDrivers(e.target.checked)} />
+                        <span style={{ fontSize: '0.85rem' }}>Show all drivers</span>
+                      </label>
+                    </div>
+                    {allDrivers.filter(d => d.status !== 'INACTIVE').length === 0 && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>No drivers available.</p>
+                    )}
+                    <div className="button-row">
+                      <button type="button" className="primary-button" disabled={!linkDriverId || isLinking} onClick={handleLinkDriver}>
+                        {isLinking ? 'Linking...' : 'Link Driver'}
+                      </button>
+                    </div>
+                  </article>
+                )}
+              </div>
+            )}
+
+            {viewTab === 'activity' && (
+              <article className="card" style={{ padding: '1.25rem' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>
+                  View full activity timeline on the user detail page.
+                </p>
+                <button type="button" className="secondary-button" onClick={() => { setViewUser(null); navigate(`/users/${viewUser.id}`); }}>
+                  Open user detail page
+                </button>
+              </article>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation (after view modal so it renders on top) */}
+      <ConfirmDialog isOpen={!!deleteTarget} title="Delete user"
+        description={`Permanently delete "${deleteTarget?.name}" (${deleteTarget?.email})? This action cannot be undone.`}
+        confirmLabel="Delete" tone="danger" isConfirming={isDeleting}
+        onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} />
     </section>
   );
 }

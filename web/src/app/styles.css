@@ -1267,6 +1267,37 @@ nav.sidebar-nav::-webkit-scrollbar-track {
   color: var(--color-info);
 }
 
+/* ─── Section Tabs ─── */
+
+.section-tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab-button {
+  padding: 0.6rem 1.2rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-button:hover {
+  color: var(--color-text);
+}
+
+.tab-button.active-tab {
+  color: var(--color-text);
+  border-bottom-color: var(--color-primary);
+}
+
 /* ═══════════════════════════════════════════════
    FORMS
    ═══════════════════════════════════════════════ */

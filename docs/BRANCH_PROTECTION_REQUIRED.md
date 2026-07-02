@@ -1,59 +1,42 @@
 # Branch Protection Required
 
-## Why
+## Main Branch Rules
 
-The `main` branch currently has no branch protection rules. Without protection,
-any user with push access can bypass the CI Gate (PR review, required checks,
-force pushes, direct pushes). This creates risk of unverified code reaching
-the main deployment branch.
+1. **Require PR before merge** — no direct pushes to main
+2. **Require status checks to pass** — all CI checks must be green
+3. **Require branch up to date** — branch must be current before merge
+4. **Block force pushes** — no force push to main
+5. **CLI-AI must not push directly to main** — all changes via PR
 
-## Required Configuration
+## Required Status Checks
 
-Configure the following branch protection rule for `main` in the GitHub
-repository settings under **Settings → Branches → Add branch protection rule**.
+| Check | Job | Source |
+|---|---|---|
+| backend-build | backend | tsc compile |
+| backend-api-docs | backend | test:api-docs (126 endpoints) |
+| backend-account-scope | backend | test:account-scope (18 tests) |
+| backend-access-smoke | backend | access:smoke (28 assertions) |
+| backend-access-diagnose | backend | access:diagnose |
+| backend-module-scope | backend | test:module-scope (15 sections) |
+| backend-module-scope-api | backend | test:module-scope-api (16 API checks) |
+| frontend-build | frontend | tsc + vite build |
 
-### Match pattern
+## Phase Branch Policy
 
-```
-main
-```
+- Phase branches (`phase-*`) also require CI to pass
+- PRs to main from phase branches must pass all checks
+- Direct pushes to phase branches are allowed for development
+- Phase branch PRs to main are the merge gate
 
-### Rules to enable
+## CI Workflow
 
-| Setting | Value |
-|---------|-------|
-| Require a pull request before merging | ✅ |
-| Require approvals | 1 |
-| Dismiss stale pull request approvals when new commits are pushed | ✅ |
-| Require review from Code Owners | Optional |
-| Require status checks before merging | ✅ |
-| Require branches to be up to date | ✅ |
-| Status check(s) that must pass | `Hygiene, build, API, and Playwright` |
-| Require conversation resolution before merging | ✅ (recommended) |
-| Include administrators | ✅ (recommended for long-term safety) |
-| Restrict who can push to matching branches | Optional |
-| Allow force pushes | ❌ |
-| Allow deletions | ❌ |
-| Block force pushes | ✅ |
-| Do not allow bypassing the above settings | ✅ |
+File: `.github/workflows/ci.yml`
 
-### How to apply
+Triggers:
+- `push` to main or `phase-*`
+- `pull_request` to main or `phase-*`
+- `workflow_dispatch` (manual)
 
-1. Go to: `https://github.com/Saikumar-bali/FLEET-MANAGEMENT/settings/branches`
-2. Click **Add branch protection rule**.
-3. Enter `main` as the branch name pattern.
-4. Check all boxes listed above.
-5. In **Status checks that are required**, search for and select
-   `Hygiene, build, API, and Playwright` (the job name from `.github/workflows/ci.yml`).
-6. Click **Create**.
-
-## Verification
-
-After applying, run:
-
-```bash
-gh api repos/Saikumar-bali/FLEET-MANAGEMENT/branches/main/protection
-```
-
-Expected: a JSON response with `required_status_checks`, `required_pull_request_reviews`,
-`restrictions`, etc. (not `Branch not protected`).
+Jobs:
+- `backend`: PostgreSQL service, full backend checks
+- `frontend`: Web build verification

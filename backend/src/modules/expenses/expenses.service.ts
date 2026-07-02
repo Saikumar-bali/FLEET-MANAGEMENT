@@ -29,7 +29,7 @@ function expenseData(input: Partial<ExpenseInput>) {
   };
 }
 
-export async function listExpenses(query: any) {
+export async function listExpenses(query: any, extraWhere?: Record<string, unknown>) {
   const where: Prisma.ExpenseWhereInput = {};
   if (query.search) where.OR = [
     { category: { contains: query.search, mode: 'insensitive' } },
@@ -41,6 +41,7 @@ export async function listExpenses(query: any) {
   if (query.driverId) where.driverId = query.driverId;
   if (query.status) where.status = query.status;
   where.expenseDate = dateRange(query.dateFrom, query.dateTo);
+  if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }
   const [items, total] = await Promise.all([
     prisma.expense.findMany({ where, include: workflowInclude, orderBy: { expenseDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.expense.count({ where }),

@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
+import type { WorkspaceResponse } from '../types/workspace';
 import { ApiError } from '../types/api';
 import type {
   AssetAssignmentRecord,
@@ -11,37 +12,51 @@ import type {
   DashboardOverview,
   DocumentRecord,
   DriverRecord,
+  DriverPortalProfile,
+  DriverPortalTrip,
+  DriverPortalVehicle,
+  DriverPortalDocument,
+  DriverPortalFuelEntry,
+  DriverPortalExpense,
+  ReceiptExtractionResult,
+  EffectivePermissionsResponse,
+  ExpenseRecord,
+  FinanceAccount,
+  FinanceCategory,
+  FinanceDashboardSummary,
+  FinanceTransaction,
+  FuelRecord,
+  MaintenanceRecord,
+  MyAccessSummary,
   PaginatedResponse,
+  PaymentRecord,
   PermissionRecord,
+  PnlSummary,
+  ProfileLinkRecord,
+  RepairRecord,
   RoleRecord,
+  TripBilling,
   TripHistoryRecord,
   TripRecord,
+  UserAccessSummaryRecord,
+  UserActivityRecord,
+  UserDataScopeRecord,
+  UserPermissionOverrideRecord,
   UserRecord,
-  VehicleRecord,
-  FuelRecord,
-  ExpenseRecord,
-  MaintenanceRecord,
-  RepairRecord,
+  VehicleComplianceDocument,
+  VehicleComplianceHistory,
+  VehicleFitnessDetail,
   VehicleRegistrationDetail,
+  Vendor,
+  VehicleRecord,
   VehicleInsuranceDetail,
   VehiclePermitDetail,
-  VehicleFitnessDetail,
   VehiclePucDetail,
   VehicleRoadTaxDetail,
   VehicleFastagDetail,
   VehicleGpsDeviceDetail,
-  VehicleComplianceDocument,
-  VehicleComplianceHistory,
   ComplianceDashboard,
-  FinanceAccount,
-  FinanceCategory,
-  Vendor,
   Customer,
-  TripBilling,
-  FinanceTransaction,
-  PaymentRecord,
-  FinanceDashboardSummary,
-  PnlSummary,
 } from '../types/auth';
 
 type RequestOptions = RequestInit & {
@@ -125,9 +140,26 @@ export function refresh(refreshToken: string) {
 }
 
 export function getCurrentUser(token: string) {
-  return request<{ user: AuthPayload['user']; permissions: string[] }>('/auth/me', {
+  return request<{
+    user: AuthPayload['user'];
+    permissions: string[];
+    effectivePermissions: string[];
+    rolePermissions: string[];
+    userAllowedPermissions: string[];
+    userDeniedPermissions: string[];
+    dataScopes: AuthPayload['dataScopes'];
+  }>('/auth/me', {
     token,
   });
+}
+
+export function getEffectivePermissions(token: string) {
+  return request<{
+    rolePermissions: string[];
+    userAllowedPermissions: string[];
+    userDeniedPermissions: string[];
+    effectivePermissions: string[];
+  }>('/auth/effective-permissions', { token });
 }
 
 export function getRoles(token: string) {
@@ -275,6 +307,13 @@ export function updateVehicleStatus(token: string, vehicleId: string, status: st
   return request<VehicleRecord>(`/vehicles/${vehicleId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+    token,
+  });
+}
+
+export function deleteVehicle(token: string, vehicleId: string) {
+  return request<{ deleted: boolean }>(`/vehicles/${vehicleId}`, {
+    method: 'DELETE',
     token,
   });
 }
@@ -818,3 +857,406 @@ export function deletePayment(token: string, id: string) { return request<null>(
 
 export function getFinanceDashboardSummary(token: string) { return request<FinanceDashboardSummary>('/finance/dashboard-summary', { token }); }
 export function getFinancePnl(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PnlSummary>(`/finance/pnl${q ? `?${q}` : ''}`, { token }); }
+
+// ─── Phase 2: User Access Management API ───
+
+// Self-access endpoints (no user_view required)
+export function getMyEffectivePermissions(token: string) {
+  return request<EffectivePermissionsResponse>('/access/me/effective-permissions', { token });
+}
+
+export function getMyDataScopes(token: string) {
+  return request<UserDataScopeRecord[]>('/access/me/data-scopes', { token });
+}
+
+export function getMyActivity(token: string) {
+  return request<UserActivityRecord[]>('/access/me/activity', { token });
+}
+
+export function getMyAccessSummary(token: string) {
+  return request<MyAccessSummary>('/access/me/summary', { token });
+}
+
+export function getMyWorkspace(token: string) {
+  return request<WorkspaceResponse>('/me/workspace', { token });
+}
+
+// Users access summary (requires user_view)
+export function getUsersAccessSummary(token: string) {
+  return request<UserAccessSummaryRecord[]>('/access/users/summary', { token });
+}
+
+// Per-user endpoints (requires user_view)
+export function getUserEffectivePermissions(token: string, userId: string) {
+  return request<EffectivePermissionsResponse>(`/access/users/${userId}/effective-permissions`, { token });
+}
+
+export function getUserPermissionOverrides(token: string, userId: string) {
+  return request<UserPermissionOverrideRecord[]>(`/access/users/${userId}/permission-overrides`, { token });
+}
+
+export function setUserPermissionOverride(
+  token: string,
+  userId: string,
+  payload: { permissionKey: string; effect: 'ALLOW' | 'DENY'; reason?: string; expiresAt?: string },
+) {
+  return request<UserPermissionOverrideRecord>(`/access/users/${userId}/permission-overrides`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function removeUserPermissionOverride(token: string, userId: string, permissionId: string) {
+  return request<null>(`/access/users/${userId}/permission-overrides/${permissionId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function getUserDataScopes(token: string, userId: string) {
+  return request<UserDataScopeRecord[]>(`/access/users/${userId}/data-scopes`, { token });
+}
+
+export function grantUserDataScope(
+  token: string,
+  userId: string,
+  payload: { scopeType: string; scopeId?: string; accessLevel: string; reason?: string; expiresAt?: string },
+) {
+  return request<UserDataScopeRecord>(`/access/users/${userId}/data-scopes`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function removeUserDataScope(token: string, userId: string, scopeId: string) {
+  return request<null>(`/access/users/${userId}/data-scopes/${scopeId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function getUserActivity(token: string, userId: string) {
+  return request<UserActivityRecord[]>(`/access/users/${userId}/activity`, { token });
+}
+
+// ─── Phase 17: Driver Portal API (read-only, uses /me/driver-* only) ───
+
+export function getMyDriverProfile(token: string) {
+  return request<DriverPortalProfile>('/me/driver-profile', { token });
+}
+
+export function getMyDriverTrips(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalTrip[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-trips${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverVehicles(token: string) {
+  return request<{ vehicles: DriverPortalVehicle[]; primaryVehicle: { id: string; vehicleNumber: string } | null; emptyReason: string | null }>('/me/driver-vehicles', { token });
+}
+
+export function getMyDriverDocuments(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalDocument[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverFuel(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalFuelEntry[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-fuel${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function getMyDriverExpenses(token: string, params?: { page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<{ items: DriverPortalExpense[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-expenses${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Phase 18: Driver Portal Write APIs ───
+
+export function createDriverTrip(token: string, payload: { vehicleId: string; originName: string; destinationName: string; tripType?: string; plannedStartAt?: string; plannedEndAt?: string; notes?: string; purpose?: string }) {
+  return request<DriverPortalTrip>('/me/driver-trips', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function startDriverTrip(token: string, tripId: string, payload?: { startOdometer?: number; notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/start`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function endDriverTrip(token: string, tripId: string, payload?: { endOdometer?: number; notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/end`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function cancelDriverTrip(token: string, tripId: string, payload?: { notes?: string }) {
+  return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/cancel`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
+}
+
+export function createDriverFuel(token: string, payload: { vehicleId: string; totalAmount: number; quantityLiters?: number; fuelDate?: string; odometerReading?: number; stationName?: string; receiptNumber?: string; paymentMode?: string; notes?: string }) {
+  return request<DriverPortalFuelEntry>('/me/driver-fuel', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function createDriverExpense(token: string, payload: { vehicleId: string; category: string; amount: number; tripId?: string; expenseDate?: string; notes?: string }) {
+  return request<DriverPortalExpense>('/me/driver-expenses', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function uploadDriverDocument(token: string, payload: { title: string; documentType: string; documentCategory: string; vehicleId?: string; tripId?: string; description?: string; file?: File }) {
+  if (payload.file) {
+    const formData = new FormData();
+    formData.append('file', payload.file);
+    formData.append('title', payload.title);
+    formData.append('documentType', payload.documentType);
+    formData.append('documentCategory', payload.documentCategory);
+    if (payload.vehicleId) formData.append('vehicleId', payload.vehicleId);
+    if (payload.tripId) formData.append('tripId', payload.tripId);
+    if (payload.description) formData.append('description', payload.description);
+    return request<DriverPortalDocument>('/me/driver-documents', { method: 'POST', token, body: formData });
+  }
+  return request<DriverPortalDocument>('/me/driver-documents', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function uploadDriverFuelReceipt(token: string, file: File, extra: Record<string, string>) {
+  const formData = new FormData();
+  formData.append('file', file);
+  for (const [key, value] of Object.entries(extra)) {
+    if (value) formData.append(key, value);
+  }
+  return request<{ document: DriverPortalDocument; extraction: ReceiptExtractionResult }>('/me/driver-fuel/receipt-upload', {
+    method: 'POST', token, body: formData,
+  });
+}
+
+export function extractFuelReceipt(token: string, documentId: string) {
+  return request<ReceiptExtractionResult>('/me/driver-fuel/extract-receipt', {
+    method: 'POST', token, body: JSON.stringify({ documentId }),
+  });
+}
+
+export function uploadDriverExpenseReceipt(token: string, file: File, extra: Record<string, string>) {
+  const formData = new FormData();
+  formData.append('file', file);
+  for (const [key, value] of Object.entries(extra)) {
+    if (value) formData.append(key, value);
+  }
+  return request<DriverPortalDocument>('/me/driver-expenses/receipt-upload', {
+    method: 'POST', token, body: formData,
+  });
+}
+
+export function reportDriverVehicleIssue(token: string, payload: { vehicleId: string; title: string; description?: string; severity?: string; tripId?: string }) {
+  return request<unknown>('/me/driver-vehicle-issues', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+export function createDriverVehicleInspection(token: string, payload: { vehicleId: string; inspectionType: string; odometerReading?: number; overallStatus?: string; notes?: string; checklistItems?: unknown[]; tripId?: string }) {
+  return request<unknown>('/me/driver-vehicle-inspections', { method: 'POST', token, body: JSON.stringify(payload) });
+}
+
+// ─── Phase 19: Driver Submission Review APIs ───
+
+export type SubmissionListParams = { page?: number; limit?: number; status?: string; driverId?: string; vehicleId?: string; dateFrom?: string; dateTo?: string };
+
+export function listDriverSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<unknown>(`/driver-submissions${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listFuelSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/fuel${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listExpenseSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/expenses${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listDocumentSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/documents${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listIssueSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/issues${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function listInspectionSubmissions(token: string, params?: SubmissionListParams) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.status) query.set('status', params.status);
+  if (params?.driverId) query.set('driverId', params.driverId);
+  if (params?.vehicleId) query.set('vehicleId', params.vehicleId);
+  if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+  if (params?.dateTo) query.set('dateTo', params.dateTo);
+  const qs = query.toString();
+  return request<{ items: unknown[]; total: number; page: number; limit: number; totalPages: number }>(`/driver-submissions/inspections${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Fuel review actions ───
+
+export function approveFuelSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/approve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectFuelSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesFuel(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/fuel/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Expense review actions ───
+
+export function approveExpenseSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/approve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectExpenseSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesExpense(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/expenses/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Document review actions ───
+
+export function verifyDocumentSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/verify`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectDocumentSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesDocument(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/documents/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Issue review actions ───
+
+export function acknowledgeIssue(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/acknowledge`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function resolveIssue(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/resolve`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectIssueSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/issues/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Inspection review actions ───
+
+export function reviewInspection(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/review`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function rejectInspectionSubmission(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/reject`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+export function requestChangesInspection(token: string, id: string, reason?: string) {
+  return request<unknown>(`/driver-submissions/inspections/${id}/request-changes`, { method: 'PATCH', token, body: JSON.stringify({ reason }) });
+}
+
+// ─── Profile Links API ───
+
+export function getUserProfileLinks(token: string, userId: string) {
+  return request<ProfileLinkRecord[]>(`/users/${userId}/profile-links`, { token });
+}
+
+export function createUserProfileLink(
+  token: string,
+  userId: string,
+  payload: { profileType: string; profileId: string; isPrimary?: boolean },
+) {
+  return request<ProfileLinkRecord>(`/users/${userId}/profile-links`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    token,
+  });
+}
+
+export function getDriverProfileLinks(token: string, driverId: string) {
+  return request<ProfileLinkRecord[]>(`/user-profile-links?profileType=DRIVER&profileId=${driverId}`, { token });
+}
+
+export function revokeUserProfileLink(token: string, linkId: string) {
+  return request<ProfileLinkRecord>(`/user-profile-links/${linkId}/revoke`, { token, method: 'PATCH' });
+}
+
+export type AvailableDriver = {
+  driverId: string;
+  name: string;
+  mobile: string;
+  licenseNumber: string;
+  status: string;
+  linkedUserId: string | null;
+  linkedUsername: string | null;
+  isLinked: boolean;
+};
+
+export function getAvailableDrivers(token: string, params?: { search?: string; showAll?: boolean }) {
+  const query = new URLSearchParams();
+  if (params?.search) query.set('search', params.search);
+  if (params?.showAll) query.set('showAll', 'true');
+  const qs = query.toString();
+  return request<AvailableDriver[]>(`/user-profile-links/available-drivers${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function deleteUser(token: string, userId: string) {
+  return request<{ deleted: boolean }>(`/users/${userId}`, { token, method: 'DELETE' });
+}

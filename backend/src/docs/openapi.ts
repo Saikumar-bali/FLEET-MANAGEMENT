@@ -56,6 +56,10 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Finance Trip Billing' },
     { name: 'Finance Transactions' },
     { name: 'Finance Payments' },
+    { name: 'Access Control' },
+    { name: 'Profile Links' },
+    { name: 'Driver Portal' },
+    { name: 'Driver Submissions' },
   ],
   components: {
     securitySchemes: {
@@ -1721,6 +1725,175 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     '/finance/payments/{id}': {
       get: { tags: ['Finance Payments'], summary: 'Get payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment' } } },
       delete: { tags: ['Finance Payments'], summary: 'Delete payment', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Payment deleted' } } },
+    },
+    // ─── Access Control ───
+    '/auth/effective-permissions': {
+      get: { tags: ['Auth'], summary: 'Get effective permissions for current user', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Effective permissions breakdown (role, allowed, denied, effective)' } } },
+    },
+    '/access/me/effective-permissions': {
+      get: { tags: ['Access Control'], summary: 'Get my effective permissions (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Effective permissions for current user' } } },
+    },
+    '/access/me/data-scopes': {
+      get: { tags: ['Access Control'], summary: 'Get my data scopes (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Data scopes for current user' } } },
+    },
+    '/access/me/activity': {
+      get: { tags: ['Access Control'], summary: 'Get my activity (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Activity logs for current user' } } },
+    },
+    '/access/me/summary': {
+      get: { tags: ['Access Control'], summary: 'Get my full access summary (self)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Full access summary including user, role, permissions, scopes, activity' } } },
+    },
+    '/access/users/summary': {
+      get: { tags: ['Access Control'], summary: 'Get access summary for all users', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Array of user access summaries with counts' } } },
+    },
+    '/access/users/{id}/effective-permissions': {
+      get: { tags: ['Access Control'], summary: 'Get effective permissions for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Effective permissions breakdown' } } },
+    },
+    '/access/users/{id}/permission-overrides': {
+      get: { tags: ['Access Control'], summary: 'List permission overrides for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of permission overrides' } } },
+      put: { tags: ['Access Control'], summary: 'Set permission override (ALLOW/DENY)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['effect'], properties: { permissionKey: { type: 'string', description: 'Permission key (preferred)' }, permissionId: { type: 'string', description: 'Permission ID (backward compat)' }, effect: { type: 'string', enum: ['ALLOW', 'DENY'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Permission override set' } } },
+    },
+    '/access/users/{id}/permission-overrides/{permissionId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove permission override', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'permissionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permission override removed' } } },
+    },
+    '/access/users/{id}/data-scopes': {
+      get: { tags: ['Access Control'], summary: 'List data scopes for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of data scopes' } } },
+      put: { tags: ['Access Control'], summary: 'Grant data scope to user', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['scopeType', 'accessLevel'], properties: { scopeType: { type: 'string', enum: ['OWN', 'USER', 'DRIVER', 'VEHICLE', 'TRIP', 'ASSET', 'CUSTOMER', 'VENDOR', 'BRANCH', 'DEPARTMENT', 'FINANCE', 'GLOBAL'] }, scopeId: { type: 'string', description: 'Required for non-GLOBAL/OWN scopes' }, accessLevel: { type: 'string', enum: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Data scope granted' } } },
+    },
+    '/access/users/{id}/data-scopes/{scopeId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove data scope', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
+    },
+    '/access/users/{id}/activity': {
+      get: { tags: ['Access Control'], summary: 'Get user activity timeline', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Activity logs for the specified user' } } },
+    },
+    // ─── Access Control Aliases (under /users) ───
+    '/users/{id}/effective-permissions': {
+      get: { tags: ['Access Control'], summary: 'Get effective permissions for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Effective permissions breakdown' } } },
+    },
+    '/users/{id}/permission-overrides': {
+      get: { tags: ['Access Control'], summary: 'List permission overrides for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of permission overrides' } } },
+      put: { tags: ['Access Control'], summary: 'Set permission override (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['effect'], properties: { permissionKey: { type: 'string' }, permissionId: { type: 'string' }, effect: { type: 'string', enum: ['ALLOW', 'DENY'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Permission override set' } } },
+    },
+    '/users/{id}/permission-overrides/{permissionId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove permission override (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'permissionId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Permission override removed' } } },
+    },
+    '/users/{id}/data-scopes': {
+      get: { tags: ['Access Control'], summary: 'List data scopes for a user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'List of data scopes' } } },
+      put: { tags: ['Access Control'], summary: 'Grant data scope to user (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['scopeType', 'accessLevel'], properties: { scopeType: { type: 'string', enum: ['OWN', 'USER', 'DRIVER', 'VEHICLE', 'TRIP', 'ASSET', 'CUSTOMER', 'VENDOR', 'BRANCH', 'DEPARTMENT', 'FINANCE', 'GLOBAL'] }, scopeId: { type: 'string' }, accessLevel: { type: 'string', enum: ['VIEW', 'CREATE', 'UPDATE', 'DELETE', 'MANAGE'] }, reason: { type: 'string' }, expiresAt: { type: 'string', format: 'date-time' } } } } } }, responses: { '200': { description: 'Data scope granted' } } },
+    },
+    '/users/{id}/data-scopes/{scopeId}': {
+      delete: { tags: ['Access Control'], summary: 'Remove data scope (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'scopeId', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Data scope removed' } } },
+    },
+    '/users/{id}/activity': {
+      get: { tags: ['Access Control'], summary: 'Get user activity timeline (alias)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Activity logs for the specified user' } } },
+    },
+
+    // ─── Profile Links ───
+    '/user-profile-links': {
+      get: { tags: ['Profile Links'], summary: 'List all profile links (admin)', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'query', schema: { type: 'string' } }, { name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'REVOKED'] } }, { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'List of profile links' } } },
+      post: { tags: ['Profile Links'], summary: 'Create a profile link (admin, requires profile_link_create + scope validation)', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['userId', 'profileType', 'profileId'], properties: { userId: { type: 'string' }, profileType: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] }, profileId: { type: 'string' }, isPrimary: { type: 'boolean' }, metadata: { type: 'object' } } } } } }, responses: { '201': { description: 'Profile link created' }, '403': { description: 'Insufficient scope or permission. For DRIVER links: requires DRIVER UPDATE/MANAGE scope on target driver, super_admin, or GLOBAL/MANAGE scope. Non-DRIVER types restricted to super_admin.' } } },
+    },
+    '/user-profile-links/{id}': {
+      get: { tags: ['Profile Links'], summary: 'Get profile link by ID', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Profile link details' } } },
+      patch: { tags: ['Profile Links'], summary: 'Update profile link', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { isPrimary: { type: 'boolean' }, status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'REVOKED'] }, metadata: { type: 'object' } } } } } }, responses: { '200': { description: 'Profile link updated' } } },
+      delete: { tags: ['Profile Links'], summary: 'Delete profile link', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Profile link deleted' } } },
+    },
+    '/user-profile-links/{id}/revoke': {
+      patch: { tags: ['Profile Links'], summary: 'Revoke profile link', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Profile link revoked' } } },
+    },
+    '/user-profile-links/user/{userId}': {
+      get: { tags: ['Profile Links'], summary: 'Get profile links for a user', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'List of profile links for user' } } },
+    },
+    '/me/profile-links': {
+      get: { tags: ['Profile Links'], summary: 'Get current user profile links (read-only)', security: [{ bearerAuth: [] }], parameters: [{ name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'Current user profile links' } } },
+    },
+    '/users/{userId}/profile-links': {
+      get: { tags: ['Profile Links'], summary: 'Get profile links for a user (admin, requires profile_link_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }, { name: 'profileType', in: 'query', schema: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] } }], responses: { '200': { description: 'List of profile links for user' } } },
+      post: { tags: ['Profile Links'], summary: 'Create profile link for user (admin, requires profile_link_create + DRIVER scope)', security: [{ bearerAuth: [] }], parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['profileType', 'profileId'], properties: { profileType: { type: 'string', enum: ['DRIVER', 'MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR', 'VENDOR_CONTACT', 'CUSTOMER_CONTACT'] }, profileId: { type: 'string' }, isPrimary: { type: 'boolean' }, metadata: { type: 'object' } } } } } }, responses: { '201': { description: 'Profile link created' }, '403': { description: 'Insufficient scope or permission' } } },
+    },
+
+    // ─── Driver Portal (data scoped by active UserProfileLink, read-only) ───
+    '/me/driver-profile': {
+      get: { tags: ['Driver Portal'], summary: 'Get linked driver profile (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Driver profile for active linked driver' }, '404': { description: 'No linked driver profile or link revoked' } } },
+    },
+    '/me/driver-trips': {
+      get: { tags: ['Driver Portal'], summary: 'Get trips for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated trips for linked driver' } } },
+    },
+    '/me/driver-vehicles': {
+      get: { tags: ['Driver Portal'], summary: 'Get vehicles for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Vehicles associated with linked driver' } } },
+    },
+    '/me/driver-documents': {
+      get: { tags: ['Driver Portal'], summary: 'Get documents for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated documents for linked driver' } } },
+    },
+    '/me/driver-fuel': {
+      get: { tags: ['Driver Portal'], summary: 'Get fuel entries for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated fuel entries for linked driver' } } },
+    },
+    '/me/driver-expenses': {
+      get: { tags: ['Driver Portal'], summary: 'Get expenses for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated expenses for linked driver' } } },
+    },
+
+    // ─── Driver Submission Review (admin/manager review workflow) ───
+    '/driver-submissions': {
+      get: { tags: ['Driver Submissions'], summary: 'List all driver submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Aggregated submissions by type' } } },
+    },
+    '/driver-submissions/fuel': {
+      get: { tags: ['Driver Submissions'], summary: 'List fuel submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'NEEDS_CHANGES'] } }], responses: { '200': { description: 'Paginated fuel submissions' } } },
+    },
+    '/driver-submissions/fuel/{id}/approve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Approve fuel submission (requires driver_fuel_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Fuel submission approved' }, '403': { description: 'Insufficient permission or out of scope' } } },
+    },
+    '/driver-submissions/fuel/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject fuel submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Fuel submission rejected' } } },
+    },
+    '/driver-submissions/fuel/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on fuel submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/expenses': {
+      get: { tags: ['Driver Submissions'], summary: 'List expense submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated expense submissions' } } },
+    },
+    '/driver-submissions/expenses/{id}/approve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Approve expense submission (requires driver_expense_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Expense submission approved' } } },
+    },
+    '/driver-submissions/expenses/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject expense submission (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Expense submission rejected' } } },
+    },
+    '/driver-submissions/expenses/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on expense (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/documents': {
+      get: { tags: ['Driver Submissions'], summary: 'List document submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated document submissions' } } },
+    },
+    '/driver-submissions/documents/{id}/verify': {
+      patch: { tags: ['Driver Submissions'], summary: 'Verify document (requires driver_document_verify)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Document verified' } } },
+    },
+    '/driver-submissions/documents/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject document (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Document rejected' } } },
+    },
+    '/driver-submissions/documents/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on document (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-submissions/issues': {
+      get: { tags: ['Driver Submissions'], summary: 'List vehicle issue submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated issue submissions' } } },
+    },
+    '/driver-submissions/issues/{id}/acknowledge': {
+      patch: { tags: ['Driver Submissions'], summary: 'Acknowledge vehicle issue (requires driver_issue_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue acknowledged' } } },
+    },
+    '/driver-submissions/issues/{id}/resolve': {
+      patch: { tags: ['Driver Submissions'], summary: 'Resolve vehicle issue (requires driver_issue_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue resolved' } } },
+    },
+    '/driver-submissions/issues/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject vehicle issue (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Issue rejected' } } },
+    },
+    '/driver-submissions/inspections': {
+      get: { tags: ['Driver Submissions'], summary: 'List inspection submissions (requires driver_submission_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated inspection submissions' } } },
+    },
+    '/driver-submissions/inspections/{id}/review': {
+      patch: { tags: ['Driver Submissions'], summary: 'Review inspection (requires driver_inspection_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Inspection reviewed' } } },
+    },
+    '/driver-submissions/inspections/{id}/reject': {
+      patch: { tags: ['Driver Submissions'], summary: 'Reject inspection (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Inspection rejected' } } },
+    },
+    '/driver-submissions/inspections/{id}/request-changes': {
+      patch: { tags: ['Driver Submissions'], summary: 'Request changes on inspection (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
     },
   },
 };

@@ -100,6 +100,7 @@ export async function listTrips(query: {
   driverId?: string;
   page: number;
   limit: number;
+  extraWhere?: Record<string, unknown>;
 }) {
   const where: Prisma.TripWhereInput = {};
 
@@ -127,6 +128,8 @@ export async function listTrips(query: {
   if (query.driverId) {
     where.driverId = query.driverId;
   }
+
+  if (query.extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), query.extraWhere] : [query.extraWhere]; }
 
   const [items, total] = await Promise.all([
     prisma.trip.findMany({
