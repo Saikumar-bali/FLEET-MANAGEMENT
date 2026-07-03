@@ -19,7 +19,6 @@ import {
   cancelTripSchema,
   completeTripSchema,
   createTripSchema,
-  reassignTripSchema,
   scheduleTripSchema,
   startTripSchema,
   tripIdParamsSchema,
@@ -69,7 +68,7 @@ router.post(
 router.post(
   '/:id/reassign-driver',
   requirePermission('trip_update'),
-  validateRequest({ params: tripIdParamsSchema, body: reassignTripSchema }),
+  validateRequest({ params: tripIdParamsSchema }),
   asyncHandler(reassignTripDriverController),
 );
 
