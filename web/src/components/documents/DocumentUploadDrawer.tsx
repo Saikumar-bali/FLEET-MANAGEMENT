@@ -30,8 +30,16 @@ const DOC_CATEGORIES = [
   'MAINTENANCE', 'REPAIR', 'VENDOR', 'CUSTOMER', 'GENERAL',
 ];
 
-const ALLOWED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const BLOCKED_EXTENSIONS = new Set([
+  'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'vbs', 'js', 'mjs', 'cjs', 'ws', 'wsh',
+  'ps1', 'psm1', 'psd1', 'sh', 'bash', 'csh', 'ksh', 'zsh', 'fish', 'php', 'py', 'rb', 'pl',
+  'jar', 'apk', 'app', 'deb', 'rpm', 'dmg', 'iso', 'dll', 'sys', 'reg', 'lnk', 'hta',
+]);
 const MAX_SIZE = 10 * 1024 * 1024;
+
+function fileExtension(fileName: string) {
+  return fileName.split('.').pop()?.toLowerCase() || '';
+}
 
 export function DocumentUploadDrawer({
   open, onClose, onSuccess,
@@ -77,8 +85,13 @@ export function DocumentUploadDrawer({
   }, [open, onClose]);
 
   const handleFileSelect = (selected: File) => {
-    if (!ALLOWED_MIME.includes(selected.type)) {
-      showToast('Only PDF, JPEG, PNG, and WebP files are allowed', 'error');
+    const ext = fileExtension(selected.name);
+    if (!ext) {
+      showToast('File must have an extension', 'error');
+      return;
+    }
+    if (BLOCKED_EXTENSIONS.has(ext)) {
+      showToast(`.${ext} files are blocked for security`, 'error');
       return;
     }
     if (selected.size > MAX_SIZE) {
@@ -147,7 +160,6 @@ export function DocumentUploadDrawer({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
               className="doc-dropzone-input"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
             />
@@ -166,7 +178,7 @@ export function DocumentUploadDrawer({
                   <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <p className="doc-dropzone-label">Drag and drop a file here, or click to browse</p>
-                <p className="doc-dropzone-hint">PDF, JPEG, PNG, WebP up to 10MB</p>
+                <p className="doc-dropzone-hint">PDF, images including AVIF, Office files, sheets, CSV, text, and receipts up to 10MB. Executable/script files are blocked.</p>
               </div>
             )}
           </div>
