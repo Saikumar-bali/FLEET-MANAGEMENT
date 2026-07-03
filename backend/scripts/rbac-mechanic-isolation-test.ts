@@ -143,7 +143,7 @@ async function main() {
       requestDate: new Date(),
       category: 'Oil Change',
       description: 'Test maintenance assigned to mechanic A',
-      status: 'APPROVED',
+      status: 'SUBMITTED',
       assignedToId: mechAUser.id,
     },
   });
@@ -155,7 +155,7 @@ async function main() {
       requestDate: new Date(),
       category: 'Filter',
       description: 'Test maintenance assigned to mechanic B',
-      status: 'APPROVED',
+      status: 'SUBMITTED',
       assignedToId: mechBUser.id,
     },
   });
