@@ -4,6 +4,7 @@ import { Sidebar } from '../components/Sidebar';
 import { navigationRegistry } from '../config/navigation';
 import { SettingsPopover, ThemeSubmenu } from '../components/SettingsPopover';
 import { AccountMenu } from '../components/AccountMenu';
+import { NotificationBell } from '../components/notifications/NotificationBell';
 
 const COLLAPSE_KEY = 'fleet-studio-sidebar-collapsed';
 
@@ -95,9 +96,7 @@ export function AppLayout() {
             <h2 className="page-title">{pageTitle}</h2>
             <p className="topbar-copy">{pageDescription}</p>
           </div>
-          <button type="button" className="btn-secondary" data-testid="alerts-bell" title="Alerts">
-            Alerts
-          </button>
+          <NotificationBell />
         </header>
         <Outlet />
       </main>
