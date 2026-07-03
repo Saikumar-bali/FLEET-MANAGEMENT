@@ -15,5 +15,5 @@ router.patch('/:id', requirePermission('repair_update'), validateRequest({ param
 router.post('/:id/start', requirePermission('repair_update'), validateRequest({ params: v.repairIdParamsSchema, body: v.repairActionSchema }), asyncHandler(c.startRepairController));
 router.post('/:id/complete', requirePermission('repair_close'), validateRequest({ params: v.repairIdParamsSchema, body: v.repairActionSchema }), asyncHandler(c.completeRepairController));
 router.post('/:id/cancel', requirePermission('repair_close'), validateRequest({ params: v.repairIdParamsSchema, body: v.repairActionSchema }), asyncHandler(c.cancelRepairController));
-router.delete('/:id', requirePermission('repair_close'), validateRequest({ params: v.repairIdParamsSchema, body: v.repairActionSchema }), asyncHandler(c.cancelRepairController));
+router.delete('/:id', requirePermission('repair_delete'), validateRequest({ params: v.repairIdParamsSchema, body: v.repairActionSchema }), asyncHandler(c.cancelRepairController));
 export default router;
