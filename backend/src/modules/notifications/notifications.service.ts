@@ -34,7 +34,7 @@ export async function resolveRecipients(policy: RecipientPolicy) {
   if (policy.type === 'USER') {
     if (policy.userIds.length === 0) return [];
     return uniqueRecipients(await prisma.$queryRawUnsafe<RecipientRow[]>(
-      'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status=$1 AND u.id = ANY($2)',
+      'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status::text=$1 AND u.id = ANY($2)',
       'ACTIVE',
       policy.userIds,
     ));
@@ -43,7 +43,7 @@ export async function resolveRecipients(policy: RecipientPolicy) {
   if (policy.type === 'ROLE') {
     if (policy.roleKeys.length === 0) return [];
     return uniqueRecipients(await prisma.$queryRawUnsafe<RecipientRow[]>(
-      'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status=$1 AND r.status=$1 AND r.key = ANY($2)',
+      'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status::text=$1 AND r.status::text=$1 AND r.key = ANY($2)',
       'ACTIVE',
       policy.roleKeys,
     ));
@@ -52,7 +52,7 @@ export async function resolveRecipients(policy: RecipientPolicy) {
   const include = policy.includeRoles?.length ? policy.includeRoles : null;
   const exclude = policy.excludeRoles?.length ? policy.excludeRoles : null;
   return uniqueRecipients(await prisma.$queryRawUnsafe<RecipientRow[]>(
-    'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status=$1 AND r.status=$1 AND ($2::text[] IS NULL OR r.key = ANY($2)) AND ($3::text[] IS NULL OR NOT (r.key = ANY($3)))',
+    'SELECT u.id AS "userId", r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status::text=$1 AND r.status::text=$1 AND ($2::text[] IS NULL OR r.key = ANY($2)) AND ($3::text[] IS NULL OR NOT (r.key = ANY($3)))',
     'ACTIVE',
     include,
     exclude,
