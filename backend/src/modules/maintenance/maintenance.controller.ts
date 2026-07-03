@@ -12,12 +12,14 @@ export async function listMaintenanceController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
   const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
 
-  const result = await listMaintenance({
-    ...req.query,
-    page: Number(req.query.page) || 1,
-    limit: Number(req.query.limit) || 20,
-    extraWhere: scopedWhere as Record<string, unknown> | undefined,
-  });
+  const result = await listMaintenance(
+    {
+      ...req.query,
+      page: Number(req.query.page) || 1,
+      limit: Number(req.query.limit) || 20,
+    },
+    scopedWhere as Record<string, unknown> | undefined,
+  );
   return sendSuccess(res, result);
 }
 
