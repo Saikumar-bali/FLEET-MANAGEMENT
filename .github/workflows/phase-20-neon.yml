@@ -7,7 +7,7 @@ on:
 
 jobs:
   phase-20-neon:
-    name: Dashboard gate and mechanic isolation on Neon DB
+    name: Phase 20 gates on Neon DB
     runs-on: ubuntu-latest
 
     env:
@@ -60,13 +60,8 @@ jobs:
         run: npm run lint
         working-directory: backend
 
-      - name: Start backend server
-        run: |
-          npm run dev &
-          echo "Waiting for server..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:4000/api/v1/health && echo "Server ready" && break || sleep 2
-          done
+      - name: Alerts foundation backend test
+        run: npx ts-node scripts/notifications-foundation-test.ts
         working-directory: backend
 
       - name: Dashboard permission gate
