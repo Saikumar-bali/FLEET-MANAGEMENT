@@ -6,16 +6,10 @@ import { getStorageProvider } from '../../lib/storage/storage.service';
 import type { Prisma } from '@prisma/client';
 import type { DocumentUploadInput, DocumentUpdateInput, DocumentListQuery } from './documents.types';
 
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-];
-
 const BLOCKED_EXTENSIONS = [
-  'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'vbs', 'js', 'ws', 'wsh',
-  'ps1', 'sh', 'bash', 'csh', 'ksh', 'php', 'py', 'rb', 'pl',
+  'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'vbs', 'js', 'mjs', 'cjs', 'ws', 'wsh',
+  'ps1', 'psm1', 'psd1', 'sh', 'bash', 'csh', 'ksh', 'zsh', 'fish', 'php', 'py', 'rb', 'pl',
+  'jar', 'apk', 'app', 'deb', 'rpm', 'dmg', 'iso', 'dll', 'sys', 'reg', 'lnk', 'hta',
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -33,12 +27,15 @@ export function sanitizeFileName(fileName: string): string {
 }
 
 export function validateFileType(mimeType: string, originalName: string): void {
-  if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
-    throw new AppError(`File type ${mimeType} is not allowed. Allowed: PDF, JPEG, PNG, WebP`, 400);
-  }
   const ext = path.extname(originalName).toLowerCase().replace('.', '');
+  if (!ext) {
+    throw new AppError('File must include an extension so it can be safely stored and reviewed.', 400);
+  }
   if (BLOCKED_EXTENSIONS.includes(ext)) {
     throw new AppError(`File extension .${ext} is blocked for security`, 400);
+  }
+  if (!mimeType || mimeType === 'application/x-msdownload') {
+    throw new AppError('This file type is blocked for security', 400);
   }
 }
 
