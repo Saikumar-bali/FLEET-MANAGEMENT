@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -37,15 +38,20 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        defaultSrc: ["*"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.jsdelivr.net'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
-        imgSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://validator.swagger.io'],
-        fontSrc: ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'],
-        connectSrc: ["'self'", 'https://cdn.jsdelivr.net', 'https://validator.swagger.io'],
+        imgSrc: ["*", 'data:', 'blob:'],
+        fontSrc: ["'self'", 'data:', 'https://cdn.jsdelivr.net', 'https://fonts.gstatic.com'],
+        connectSrc: ["*"],
         workerSrc: ["'self'", 'blob:'],
+        frameAncestors: ["*"],
       },
     },
+    frameguard: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
   }),
 );
 app.use(cors({ origin: config.corsOrigins }));
@@ -78,6 +84,42 @@ app.use('/api/v1/user-profile-links', userProfileLinkRoutes);
 app.use('/api/v1', driverPortalRoutes);
 app.use('/api/v1', driverSubmissionRoutes);
 app.use('/api/v1', workspaceRoutes);
+
+let viteInstance: any = null;
+
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api/v1')) {
+    return next();
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      if (!viteInstance) {
+        const { createServer: createViteServer } = await import('vite');
+        viteInstance = await createViteServer({
+          server: { middlewareMode: true },
+          appType: 'spa',
+          root: path.join(__dirname, '../../web'),
+        });
+      }
+      return viteInstance.middlewares(req, res, next);
+    } catch (err) {
+      return next(err);
+    }
+  } else {
+    try {
+      const distPath = path.join(__dirname, '../../web/dist');
+      const filePath = path.join(distPath, req.path);
+      const fs = await import('fs');
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        return res.sendFile(filePath);
+      }
+      return res.sendFile(path.join(distPath, 'index.html'));
+    } catch (err) {
+      return next(err);
+    }
+  }
+});
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 

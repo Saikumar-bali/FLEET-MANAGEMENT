@@ -6,8 +6,8 @@ async function start() {
   try {
     await initDatabase();
 
-    app.listen(config.port, () => {
-      console.log(`Backend server running on port ${config.port}`);
+    app.listen(config.port, '0.0.0.0', () => {
+      console.log(`Backend server running on http://0.0.0.0:${config.port}`);
       console.log(`Environment: ${config.nodeEnv}`);
     });
   } catch (error) {

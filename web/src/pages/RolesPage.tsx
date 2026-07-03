@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Fragment, useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { FormSection } from '../components/FormSection';
@@ -504,8 +504,8 @@ export function RolesPage() {
               </thead>
               <tbody>
                 {Object.entries(filteredPermissionGroups).map(([module, modulePermissions]) => (
-                  <>
-                    <tr key={module} className="permission-module-row">
+                  <Fragment key={module}>
+                    <tr className="permission-module-row">
                       <td colSpan={4} className="permission-module-cell">
                         <span className="permission-module-name">{module}</span>
                         <span className="table-secondary permission-module-count">
@@ -513,16 +513,16 @@ export function RolesPage() {
                         </span>
                         <span className="permission-module-actions">
                           <button
-                            type="button"
-                            className="ghost-button compact-module-btn"
-                            onClick={() => handleSelectAllInModule(module)}
+                             type="button"
+                             className="ghost-button compact-module-btn"
+                             onClick={() => handleSelectAllInModule(module)}
                           >
                             Select all
                           </button>
                           <button
-                            type="button"
-                            className="ghost-button compact-module-btn"
-                            onClick={() => handleClearModule(module)}
+                             type="button"
+                             className="ghost-button compact-module-btn"
+                             onClick={() => handleClearModule(module)}
                           >
                             Clear
                           </button>
@@ -558,7 +558,7 @@ export function RolesPage() {
                         </tr>
                       );
                     })}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
