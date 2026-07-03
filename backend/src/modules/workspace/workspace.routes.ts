@@ -11,5 +11,6 @@ router.use(asyncHandler(authMiddleware));
 router.get('/me/workspace', asyncHandler(getMyWorkspaceController));
 router.get('/me/notifications', asyncHandler(listNotificationsController));
 router.get('/me/notifications/unread-count', asyncHandler(unreadCountController));
+router.get('/me/notifications/health', (_req, res) => res.json({ ok: true }));
 
 export default router;
