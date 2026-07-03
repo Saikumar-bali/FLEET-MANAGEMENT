@@ -4,7 +4,7 @@ import { createNotification, createScheduledReminder, listDeliveryLogs, listNoti
 
 async function main() {
   const users = await prisma.$queryRawUnsafe<Array<{ id: string; roleKey: string }>>(
-    'SELECT u.id,r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status=$1 ORDER BY u.created_at ASC LIMIT 5',
+    'SELECT u.id,r.key AS "roleKey" FROM users u JOIN roles r ON r.id=u.role_id WHERE u.status::text=$1 ORDER BY u.created_at ASC LIMIT 5',
     'ACTIVE',
   );
 
