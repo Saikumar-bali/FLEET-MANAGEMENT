@@ -38,10 +38,26 @@ jobs:
       ADMIN_PASSWORD: Admin123!
       ENABLE_DEMO_USERS: "true"
       API_BASE_URL: http://localhost:4000
+      # Admin / super-admin
       CI_ADMIN_IDENTIFIER: admin@fleet-ci.test
       CI_ADMIN_PASSWORD: Admin123!
+      # Per-role CI credentials (used by rbac tests)
       CI_VIEWER_IDENTIFIER: viewer@fleet-ci.test
       CI_VIEWER_PASSWORD: Viewer123!
+      CI_MANAGER_IDENTIFIER: manager@fleet-ci.test
+      CI_MANAGER_PASSWORD: Manager123!
+      CI_SUPERVISOR_IDENTIFIER: supervisor@fleet-ci.test
+      CI_SUPERVISOR_PASSWORD: Supervisor123!
+      CI_DRIVER_IDENTIFIER: driver@fleet-ci.test
+      CI_DRIVER_PASSWORD: Driver123!
+      CI_ASSISTANT_DRIVER_IDENTIFIER: assistantdriver@fleet-ci.test
+      CI_ASSISTANT_DRIVER_PASSWORD: Asst123!
+      CI_MECHANIC_IDENTIFIER: mechanic@fleet-ci.test
+      CI_MECHANIC_PASSWORD: Mechanic123!
+      CI_COLLECTOR_IDENTIFIER: collector@fleet-ci.test
+      CI_COLLECTOR_PASSWORD: Collector123!
+      CI_FINANCE_IDENTIFIER: finance@fleet-ci.test
+      CI_FINANCE_PASSWORD: Finance123!
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -105,6 +121,14 @@ jobs:
       - run: npm run test:driver-portal-integration
         working-directory: backend
       - run: npm run test:workspace-engine
+        working-directory: backend
+
+      # Phase 20 — dashboard gate + mechanic isolation (NEW)
+      - name: "Phase 20: Dashboard permission gate"
+        run: npm run test:rbac-dashboard
+        working-directory: backend
+      - name: "Phase 20: Mechanic assignment isolation"
+        run: npm run test:rbac-mechanic
         working-directory: backend
 
   frontend:

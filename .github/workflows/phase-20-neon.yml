@@ -1,0 +1,81 @@
+name: Phase 20 — Neon DB Integration Tests
+
+on:
+  # Runs automatically whenever phase-20 branch is pushed
+  push:
+    branches: ["phase-20-*"]
+  # Also runnable manually from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  phase-20-neon:
+    name: Dashboard gate + Mechanic isolation (Neon DB)
+    runs-on: ubuntu-latest
+
+    env:
+      # Real Neon DB — secrets set via API, not hardcoded
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+      JWT_REFRESH_EXPIRES_IN: ${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ENABLE_DEMO_USERS: ${{ secrets.ENABLE_DEMO_USERS }}
+      STORAGE_PROVIDER: ${{ secrets.STORAGE_PROVIDER }}
+      STORAGE_BUCKET: ${{ secrets.STORAGE_BUCKET }}
+      STORAGE_REGION: ${{ secrets.STORAGE_REGION }}
+      STORAGE_ENDPOINT: ${{ secrets.STORAGE_ENDPOINT }}
+      STORAGE_ACCESS_KEY_ID: ${{ secrets.STORAGE_ACCESS_KEY_ID }}
+      STORAGE_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_SECRET_ACCESS_KEY }}
+      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+      NODE_ENV: development
+      API_BASE_URL: http://localhost:4000
+      PORT: 4000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-20-dashboard-mechanic-isolation
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: backend
+
+      - name: Deploy migrations to Neon
+        run: npx prisma migrate deploy
+        working-directory: backend
+
+      - name: Sync permissions (seed roles + permissions only, no data wipe)
+        run: npx prisma db seed
+        working-directory: backend
+
+      - name: Lint check
+        run: npm run lint
+        working-directory: backend
+
+      - name: Start backend server
+        run: |
+          npm run dev &
+          echo "Waiting for server..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4000/api/v1/health && echo "Server ready" && break || sleep 2
+          done
+        working-directory: backend
+
+      - name: "Phase 20 Test 1 — Dashboard permission gate"
+        run: npm run test:rbac-dashboard
+        working-directory: backend
+
+      - name: "Phase 20 Test 2 — Mechanic assignment isolation"
+        run: npm run test:rbac-mechanic
+        working-directory: backend

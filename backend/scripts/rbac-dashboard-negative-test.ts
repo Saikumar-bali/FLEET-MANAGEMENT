@@ -7,13 +7,13 @@
  *   • Roles that SHOULD have it: admin, manager, supervisor, viewer.
  *   • Unauthenticated request must return 401.
  *
- * HOW TO RUN (after `npx prisma migrate deploy` and server running):
- *   API_BASE_URL=http://localhost:4000 npx ts-node -e "require('./scripts/rbac-dashboard-negative-test.ts')"
- *   — or via the package.json script: npm run test:rbac-dashboard
+ * HOW TO RUN (server must be running on API_BASE_URL):
+ *   npm run test:rbac-dashboard
  *
- * EXIT CODES:
- *   0 = all assertions passed
- *   1 = one or more failures (details printed to stdout)
+ * The script auto-syncs the dashboard_view permission to the allowed roles
+ * before testing, so it works even if the local DB hasn't been re-seeded yet.
+ *
+ * EXIT CODES: 0 = all pass, 1 = any failure
  */
 
 import { prisma } from '../src/lib/prisma';
@@ -48,13 +48,64 @@ async function apiGet(url: string, token: string | null): Promise<number> {
   }
 }
 
+/**
+ * Ensures dashboard_view permission exists in the DB and is assigned to
+ * the roles that should have it. This makes the test self-healing on a
+ * local DB that was set up before Phase 20 was merged — no manual re-seed
+ * needed.
+ */
+async function syncDashboardViewPermission() {
+  const permission = await prisma.permission.upsert({
+    where: { key: 'dashboard_view' },
+    update: {
+      module: 'dashboard',
+      action: 'view',
+      description: 'View fleet-wide operational dashboard (all-vehicle/all-driver aggregates)',
+    },
+    create: {
+      key: 'dashboard_view',
+      module: 'dashboard',
+      action: 'view',
+      description: 'View fleet-wide operational dashboard (all-vehicle/all-driver aggregates)',
+    },
+  });
+
+  // Roles that SHOULD have dashboard_view
+  const allowedRoleKeys = ['super_admin', 'admin', 'manager', 'supervisor', 'viewer'];
+
+  for (const roleKey of allowedRoleKeys) {
+    const role = await prisma.role.findUnique({ where: { key: roleKey } });
+    if (!role) continue;
+
+    // Only add it if the role doesn't already have it
+    const existing = await prisma.rolePermission.findFirst({
+      where: { roleId: role.id, permissionId: permission.id },
+    });
+    if (!existing) {
+      await prisma.rolePermission.create({
+        data: { roleId: role.id, permissionId: permission.id },
+      });
+    }
+  }
+
+  // Roles that must NOT have dashboard_view — remove if accidentally assigned
+  const deniedRoleKeys = ['driver', 'assistant_driver', 'mechanic', 'collector', 'finance'];
+  for (const roleKey of deniedRoleKeys) {
+    const role = await prisma.role.findUnique({ where: { key: roleKey } });
+    if (!role) continue;
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id, permissionId: permission.id },
+    });
+  }
+}
+
 async function ensureUser(roleKey: string, username: string, password: string) {
   const role = await prisma.role.findUnique({ where: { key: roleKey } });
-  if (!role) throw new Error(`Role '${roleKey}' not found in DB. Run seed first.`);
+  if (!role) throw new Error(`Role '${roleKey}' not found in DB. Run: npx prisma db seed`);
   const hash = await bcrypt.hash(password, 10);
   return prisma.user.upsert({
     where: { username },
-    update: {},
+    update: { roleId: role.id, status: 'ACTIVE' },
     create: {
       name: `Test ${roleKey}`,
       username,
@@ -69,20 +120,25 @@ async function ensureUser(roleKey: string, username: string, password: string) {
 async function main() {
   console.log('=== Phase 20: Dashboard permission gate test ===\n');
 
-  // Users that must be DENIED (403)
+  // Always sync the permission first — safe on both fresh and legacy DBs
+  process.stdout.write('  Syncing dashboard_view permission to DB... ');
+  await syncDashboardViewPermission();
+  console.log('done\n');
+
+  // Roles that must be DENIED (403)
   const shouldBeDenied = [
-    { roleKey: 'driver',           username: 'ci-dash-driver',    password: 'CiDash@driver1' },
-    { roleKey: 'assistant_driver', username: 'ci-dash-asst',      password: 'CiDash@asst1' },
-    { roleKey: 'mechanic',         username: 'ci-dash-mechanic',   password: 'CiDash@mech1' },
-    { roleKey: 'collector',        username: 'ci-dash-collector',  password: 'CiDash@coll1' },
+    { roleKey: 'driver',           username: 'ci-dash-driver',   password: 'CiDash@driver1' },
+    { roleKey: 'assistant_driver', username: 'ci-dash-asst',     password: 'CiDash@asst1' },
+    { roleKey: 'mechanic',         username: 'ci-dash-mechanic',  password: 'CiDash@mech1' },
+    { roleKey: 'collector',        username: 'ci-dash-collector', password: 'CiDash@coll1' },
   ];
 
-  // Users that must be ALLOWED (200)
+  // Roles that must be ALLOWED (200)
   const shouldBeAllowed = [
     { roleKey: 'admin',      username: 'ci-dash-admin',   password: 'CiDash@admin1' },
     { roleKey: 'manager',    username: 'ci-dash-manager',  password: 'CiDash@mgr1' },
-    { roleKey: 'supervisor', username: 'ci-dash-super',    password: 'CiDash@sup1' },
-    { roleKey: 'viewer',     username: 'ci-dash-viewer',   password: 'CiDash@view1' },
+    { roleKey: 'supervisor', username: 'ci-dash-super',   password: 'CiDash@sup1' },
+    { roleKey: 'viewer',     username: 'ci-dash-viewer',  password: 'CiDash@view1' },
   ];
 
   let passed = 0;
