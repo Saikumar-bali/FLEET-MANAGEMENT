@@ -1,13 +1,9 @@
-import { useAuth } from '../context/AuthContext';
-import { DashboardPage } from './DashboardPage';
 import { RoleDashboardPage } from './RoleDashboardPage';
 
 /**
- * Landing route at "/". Users with fleet-wide dashboard permission keep the
- * command-center overview. Other roles now get a professional permission-aware
- * dashboard instead of only quick-action tiles.
+ * Landing route at "/". Every authenticated user now receives a professional
+ * dashboard shaped by their role and effective permissions.
  */
 export function HomeRoute() {
-  const auth = useAuth();
-  return auth.hasPermission('dashboard_view') ? <DashboardPage /> : <RoleDashboardPage />;
+  return <RoleDashboardPage />;
 }
