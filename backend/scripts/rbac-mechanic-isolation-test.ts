@@ -173,7 +173,7 @@ async function main() {
   const rA_view = await apiRequest('GET', `${API_BASE}/api/v1/repairs/${repairA.id}`, tokenA);
   check('Mechanic A can VIEW repairA (assigned to them)', rA_view.status === 200, `got ${rA_view.status}`);
 
-  const rA_update = await apiRequest('PUT', `${API_BASE}/api/v1/repairs/${repairA.id}`, tokenA, { notes: 'Updated by assigned mechanic' });
+  const rA_update = await apiRequest('PATCH', `${API_BASE}/api/v1/repairs/${repairA.id}`, tokenA, { notes: 'Updated by assigned mechanic' });
   check('Mechanic A can UPDATE repairA (assigned to them)', rA_update.status === 200, `got ${rA_update.status}`);
 
   const rA_delete = await apiRequest('DELETE', `${API_BASE}/api/v1/repairs/${repairA.id}`, tokenA);
@@ -183,7 +183,7 @@ async function main() {
   const rB_view = await apiRequest('GET', `${API_BASE}/api/v1/repairs/${repairB.id}`, tokenA);
   check('Mechanic A CANNOT view repairB (assigned to mechanic B)', rB_view.status === 403, `got ${rB_view.status} — DATA LEAK`);
 
-  const rB_update = await apiRequest('PUT', `${API_BASE}/api/v1/repairs/${repairB.id}`, tokenA, { notes: 'Attempted cross-update' });
+  const rB_update = await apiRequest('PATCH', `${API_BASE}/api/v1/repairs/${repairB.id}`, tokenA, { notes: 'Attempted cross-update' });
   check('Mechanic A CANNOT update repairB', rB_update.status === 403, `got ${rB_update.status} — DATA LEAK`);
 
   console.log('\n--- Repair: Unassigned record (fail-closed) ---');
@@ -206,7 +206,7 @@ async function main() {
   const mA_view = await apiRequest('GET', `${API_BASE}/api/v1/maintenance/${maintA.id}`, tokenA);
   check('Mechanic A can VIEW maintA (assigned)', mA_view.status === 200, `got ${mA_view.status}`);
 
-  const mA_update = await apiRequest('PUT', `${API_BASE}/api/v1/maintenance/${maintA.id}`, tokenA, { notes: 'Updated by assigned mechanic' });
+  const mA_update = await apiRequest('PATCH', `${API_BASE}/api/v1/maintenance/${maintA.id}`, tokenA, { notes: 'Updated by assigned mechanic' });
   check('Mechanic A can UPDATE maintA (assigned)', mA_update.status === 200, `got ${mA_update.status}`);
 
   console.log('\n--- Maintenance: Cross-access (should fail) ---');
