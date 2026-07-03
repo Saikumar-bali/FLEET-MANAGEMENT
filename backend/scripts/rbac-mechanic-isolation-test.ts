@@ -74,6 +74,7 @@ async function ensureVehicle() {
     data: {
       vehicleNumber: `TEST-MECH-${Date.now()}`,
       vehicleType: 'TRUCK',
+      fuelType: 'DIESEL',
       status: 'AVAILABLE',
     },
   });
