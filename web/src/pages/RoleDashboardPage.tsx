@@ -20,11 +20,11 @@ const num = (x: unknown) => Number(x ?? 0);
 async function safe<T>(fn: () => Promise<{ data: T }>) { try { return (await fn()).data; } catch { return null; } }
 
 function titleFor(role: string) {
-  if (role === 'driver') return 'Driver Dashboard';
-  if (role === 'mechanic') return 'Maintenance Dashboard';
-  if (role === 'finance') return 'Finance Dashboard';
-  if (role === 'manager' || role === 'supervisor') return 'Operations Dashboard';
-  return 'Role Dashboard';
+  if (role === 'driver') return 'My Driver Dashboard';
+  if (role === 'mechanic') return 'My Maintenance Dashboard';
+  if (role === 'finance') return 'My Finance Dashboard';
+  if (role === 'manager' || role === 'supervisor') return 'My Operations Dashboard';
+  return 'My Dashboard';
 }
 
 export function RoleDashboardPage() {
@@ -38,7 +38,7 @@ export function RoleDashboardPage() {
   useEffect(() => {
     let alive = true;
     async function load() {
-      if (!auth.accessToken) return;
+      if (!auth.accessToken) { setLoading(false); return; }
       const token = auth.accessToken;
       const next = { ...empty };
       setLoading(true);
@@ -76,20 +76,20 @@ export function RoleDashboardPage() {
 
   return (
     <PageShell>
-      <PageHeader eyebrow={auth.user?.role.name ?? 'Role'} title={title} description="A professional role-aware dashboard with KPIs, workload charts, and permission-safe metrics." actions={<ActionToolbar><ActionButton label="Workspace" variant="primary" onClick={() => navigate('/workspace')} /></ActionToolbar>} />
+      <PageHeader eyebrow={auth.user?.name ?? 'My account'} title={title} description="Individual dashboard: only records visible to this logged-in user through their own role, assignment, and data-scope permissions." actions={<ActionToolbar><ActionButton label="Workspace" variant="primary" onClick={() => navigate('/workspace')} /></ActionToolbar>} />
       <KpiGrid columns={4}>
-        <StatCard label={role === 'finance' ? 'Income MTD' : 'Vehicles'} value={role === 'finance' ? money(metrics.fuel) : compact(metrics.vehicles)} subtext={role === 'finance' ? 'Current month income' : 'Visible fleet'} icon={<TruckIcon />} onClick={() => navigate(role === 'finance' ? '/finance' : '/vehicles')} />
-        <StatCard label={role === 'driver' ? 'My Trips' : 'Drivers'} value={compact(role === 'driver' ? metrics.trips : metrics.drivers)} subtext={role === 'driver' ? 'Driver trips' : 'Visible drivers'} variant="info" icon={<UsersIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/trips' : '/drivers')} />
-        <StatCard label={role === 'driver' ? 'Fuel' : 'Trips'} value={role === 'driver' ? money(metrics.fuel) : compact(metrics.trips)} subtext={role === 'driver' ? 'Submitted fuel' : 'Active and monthly trips'} variant="success" icon={<MapPinIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/fuel' : '/trips')} />
-        <StatCard label="Risk" value={compact(metrics.risk)} subtext="Attention needed" variant={metrics.risk ? 'danger' : 'muted'} icon={<AlertIcon />} onClick={() => navigate('/compliance')} />
+        <StatCard label={role === 'finance' ? 'My Income MTD' : 'My Visible Vehicles'} value={role === 'finance' ? money(metrics.fuel) : compact(metrics.vehicles)} subtext={role === 'finance' ? 'Finance data visible to me' : 'Fleet records visible to me'} icon={<TruckIcon />} onClick={() => navigate(role === 'finance' ? '/finance' : '/vehicles')} />
+        <StatCard label={role === 'driver' ? 'My Trips' : 'My Visible Drivers'} value={compact(role === 'driver' ? metrics.trips : metrics.drivers)} subtext={role === 'driver' ? 'Trips assigned to me' : 'Driver records visible to me'} variant="info" icon={<UsersIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/trips' : '/drivers')} />
+        <StatCard label={role === 'driver' ? 'My Fuel' : 'My Visible Trips'} value={role === 'driver' ? money(metrics.fuel) : compact(metrics.trips)} subtext={role === 'driver' ? 'Fuel submitted by me' : 'Trip records visible to me'} variant="success" icon={<MapPinIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/fuel' : '/trips')} />
+        <StatCard label="My Attention" value={compact(metrics.risk)} subtext="Items visible to me that need action" variant={metrics.risk ? 'danger' : 'muted'} icon={<AlertIcon />} onClick={() => navigate('/compliance')} />
       </KpiGrid>
       <KpiGrid columns={4}>
-        <StatCard label="Fuel / Income" value={money(metrics.fuel)} subtext="Money signal" icon={<ReceiptIcon />} />
-        <StatCard label="Expenses" value={money(metrics.expenses)} subtext="Operational expense" variant="warning" icon={<ReceiptIcon />} />
-        <StatCard label="Maintenance" value={compact(metrics.maintenance)} subtext="Open jobs" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/maintenance')} />
-        <StatCard label="Repairs" value={compact(metrics.repairs)} subtext="Open repairs" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/repairs')} />
+        <StatCard label="My Money Signal" value={money(metrics.fuel)} subtext="Fuel or income visible to me" icon={<ReceiptIcon />} />
+        <StatCard label="My Expenses" value={money(metrics.expenses)} subtext="Expense records visible to me" variant="warning" icon={<ReceiptIcon />} />
+        <StatCard label="My Maintenance" value={compact(metrics.maintenance)} subtext="Maintenance jobs visible to me" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/maintenance')} />
+        <StatCard label="My Repairs" value={compact(metrics.repairs)} subtext="Repair jobs visible to me" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/repairs')} />
       </KpiGrid>
-      <section className="chart-card"><div className="chart-card-header"><div><h3 className="chart-card-title">Role workload chart</h3><p className="chart-card-subtitle">Records that need attention.</p></div></div><div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>{bars.map(([label, value]) => <div key={label}><div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{label}</span><strong>{value}</strong></div><div style={{ height: 10, borderRadius: 999, background: 'var(--color-bg-surface-subtle)' }}><div style={{ width: `${Math.max(6, (value / max) * 100)}%`, height: '100%', borderRadius: 999, background: 'var(--color-accent)' }} /></div></div>)}</div></section>
+      <section className="chart-card"><div className="chart-card-header"><div><h3 className="chart-card-title">My workload chart</h3><p className="chart-card-subtitle">Only my visible / assigned records are counted.</p></div></div><div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>{bars.map(([label, value]) => <div key={label}><div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{label}</span><strong>{value}</strong></div><div style={{ height: 10, borderRadius: 999, background: 'var(--color-bg-surface-subtle)' }}><div style={{ width: `${Math.max(6, (value / max) * 100)}%`, height: '100%', borderRadius: 999, background: 'var(--color-accent)' }} /></div></div>)}</div></section>
     </PageShell>
   );
 }
