@@ -95,6 +95,9 @@ export function AppLayout() {
             <h2 className="page-title">{pageTitle}</h2>
             <p className="topbar-copy">{pageDescription}</p>
           </div>
+          <button type="button" className="btn-secondary" data-testid="alerts-bell" title="Alerts">
+            Alerts
+          </button>
         </header>
         <Outlet />
       </main>
