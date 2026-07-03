@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DocumentTypeIcon } from './DocumentTypeIcon';
 import { DocumentVerificationBadge } from './DocumentVerificationBadge';
 import { DocumentExpiryBadge } from './DocumentExpiryBadge';
@@ -39,18 +39,38 @@ function getLinkedLabel(doc: DocumentRecord) {
   return '--';
 }
 
+function canInlinePreview(doc: DocumentRecord) {
+  const type = doc.mimeType || '';
+  const ext = (doc.fileExtension || doc.originalFileName.split('.').pop() || '').toLowerCase();
+  if (!doc.fileUrl) return false;
+  if (type === 'application/pdf' || ext === 'pdf') return true;
+  if (type.startsWith('image/') && ext !== 'svg') return true;
+  if (type.startsWith('text/') || ['txt', 'csv', 'log', 'json'].includes(ext)) return true;
+  return false;
+}
+
 export function DocumentPreviewDrawer({
   document: doc, open, onClose,
   onDownload, onVerify, onArchive, onDelete,
   canDownload, canVerify, canArchive, canDelete,
 }: Props) {
+  const [previewFailed, setPreviewFailed] = useState(false);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (open) document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  useEffect(() => {
+    setPreviewFailed(false);
+  }, [doc?.id, open]);
+
   if (!open || !doc) return null;
+
+  const inlinePreview = canInlinePreview(doc) && !previewFailed;
+  const isPdf = doc.mimeType === 'application/pdf' || doc.fileExtension === 'pdf';
+  const isImage = doc.mimeType?.startsWith('image/') && doc.fileExtension !== 'svg';
 
   return (
     <div className="doc-drawer-overlay" onClick={onClose}>
@@ -70,18 +90,29 @@ export function DocumentPreviewDrawer({
 
         <div className="doc-drawer-body doc-preview-body">
           <div className="doc-preview-main">
-            {doc.mimeType === 'application/pdf' && (doc.fileUrl || doc.storageKey) ? (
+            {inlinePreview && isPdf ? (
               <iframe
                 src={doc.fileUrl || ''}
                 className="doc-preview-frame"
                 title="PDF Preview"
+                onError={() => setPreviewFailed(true)}
               />
-            ) : doc.mimeType?.startsWith('image/') && doc.fileUrl ? (
-              <img src={doc.fileUrl} alt={doc.title} className="doc-preview-image" />
+            ) : inlinePreview && isImage ? (
+              <img src={doc.fileUrl || ''} alt={doc.title} className="doc-preview-image" onError={() => setPreviewFailed(true)} />
+            ) : inlinePreview ? (
+              <iframe
+                src={doc.fileUrl || ''}
+                className="doc-preview-frame"
+                title="Document Preview"
+                onError={() => setPreviewFailed(true)}
+              />
             ) : (
               <div className="doc-preview-unsupported">
                 <DocumentTypeIcon mimeType={doc.mimeType} className="doc-preview-unsupported-icon" />
-                <p>Preview not available for this file type</p>
+                <p>{previewFailed ? 'Preview failed to load. The file may not exist in storage yet.' : 'Preview is not available for this file type.'}</p>
+                <span className="helper-text" style={{ textAlign: 'center', maxWidth: 420 }}>
+                  {doc.originalFileName} · {doc.mimeType || 'unknown type'} · {formatFileSize(doc.fileSizeBytes)}
+                </span>
                 {canDownload && (
                   <button className="doc-btn doc-btn-primary" onClick={() => onDownload?.(doc)}>Download to view</button>
                 )}
