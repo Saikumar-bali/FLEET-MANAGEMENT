@@ -29,6 +29,7 @@ import { RepairListPage } from '../pages/RepairListPage';
 import { RepairDetailPage } from '../pages/RepairDetailPage';
 import { ComplianceDashboardPage } from '../pages/ComplianceDashboardPage';
 import { DocumentsPage } from '../pages/DocumentsPage';
+import { AlertsPage } from '../pages/AlertsPage';
 import { ProtectedRoute } from '../routes/ProtectedRoute';
 import { DriverPortalLayout } from '../pages/driver-portal/DriverPortalLayout';
 import { DriverPortalHome } from '../pages/driver-portal/DriverPortalHome';
@@ -73,6 +74,7 @@ function App() {
               <Route element={<AppLayout />}>
                 <Route path="/" element={<HomeRoute />} />
                 <Route path="/workspace" element={<WorkspaceHome />} />
+                <Route path="/alerts" element={<AlertsPage />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />
                   <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
