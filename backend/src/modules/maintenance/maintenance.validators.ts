@@ -17,6 +17,7 @@ const maintenanceFields = {
   scheduledDate: z.string().datetime().optional().nullable(),
   completedDate: z.string().datetime().optional().nullable(),
   notes: z.string().optional().nullable(),
+  assignedToId: z.string().optional().nullable(),
 };
 
 export const createMaintenanceSchema = z.object(maintenanceFields);
@@ -29,6 +30,7 @@ export const maintenanceQuerySchema = z.object({
   vehicleId: z.string().optional(),
   tripId: z.string().optional(),
   driverId: z.string().optional(),
+  assignedToId: z.string().optional(),
   status: statusEnum.optional(),
   priority: priorityEnum.optional(),
   dateFrom: z.string().datetime().optional(),

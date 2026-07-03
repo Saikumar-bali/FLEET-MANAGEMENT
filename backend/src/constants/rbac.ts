@@ -72,6 +72,7 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'finance_view', module: 'finance', action: 'view', description: 'View finance' },
   { key: 'finance_approve', module: 'finance', action: 'approve', description: 'Approve finance records' },
   { key: 'report_view', module: 'reports', action: 'view', description: 'View reports' },
+  { key: 'dashboard_view', module: 'dashboard', action: 'view', description: 'View fleet-wide operational dashboard (all-vehicle/all-driver aggregates)' },
   { key: 'report_export', module: 'reports', action: 'export', description: 'Export reports' },
   { key: 'settings_view', module: 'settings', action: 'view', description: 'View settings' },
   { key: 'settings_update', module: 'settings', action: 'update', description: 'Update settings' },
@@ -198,6 +199,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'user_view',
     'role_view',
     'permission_view',
+    'dashboard_view',
     'vehicle_view',
     'vehicle_create',
     'vehicle_update',
@@ -273,6 +275,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'driver_inspection_review',
   ],
   supervisor: [
+    'dashboard_view',
     'vehicle_view',
     'vehicle_create',
     'vehicle_update',
@@ -397,6 +400,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'report_export',
   ],
   viewer: [
+    'dashboard_view',
     'vehicle_view',
     'driver_view',
     'asset_view',

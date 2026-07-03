@@ -9,6 +9,7 @@ const repairInclude = {
   driver: { select: { id: true, name: true, status: true } },
   createdBy: { select: { id: true, name: true, username: true } },
   closedBy: { select: { id: true, name: true, username: true } },
+  assignedTo: { select: { id: true, name: true, username: true } },
 };
 
 type RepairInput = {
@@ -23,6 +24,7 @@ type RepairInput = {
   provider?: string | null;
   invoiceNumber?: string | null;
   notes?: string | null;
+  assignedToId?: string | null;
 };
 
 function repairData(input: Partial<RepairInput>) {
@@ -38,6 +40,7 @@ function repairData(input: Partial<RepairInput>) {
     provider: input.provider,
     invoiceNumber: input.invoiceNumber,
     notes: input.notes,
+    assignedToId: input.assignedToId === undefined ? undefined : input.assignedToId,
   };
 }
 
@@ -83,6 +86,7 @@ export async function listRepairs(query: any, extraWhere?: Record<string, unknow
   if (query.vehicleId) where.vehicleId = query.vehicleId;
   if (query.tripId) where.tripId = query.tripId;
   if (query.driverId) where.driverId = query.driverId;
+  if (query.assignedToId) where.assignedToId = query.assignedToId;
   if (query.status) where.status = query.status;
   where.repairDate = dateRange(query.dateFrom, query.dateTo);
   if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }

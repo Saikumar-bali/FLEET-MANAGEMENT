@@ -6,7 +6,7 @@ import { WorkspaceProvider } from '../context/WorkspaceContext';
 import { ToastContainer } from '../components/ui/Toast';
 import { AppLayout } from '../layouts/AppLayout';
 import { FinanceLayout } from '../layouts/FinanceLayout';
-import { DashboardPage } from '../pages/DashboardPage';
+import { HomeRoute } from '../pages/HomeRoute';
 import { WorkspaceHome } from '../pages/workspace/WorkspaceHome';
 import { LoginPage } from '../pages/LoginPage';
 import { RolesPage } from '../pages/RolesPage';
@@ -71,7 +71,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<DashboardPage />} />
+                <Route path="/" element={<HomeRoute />} />
                 <Route path="/workspace" element={<WorkspaceHome />} />
                 <Route element={<ProtectedRoute requiredPermissions={['vehicle_view']} />}>
                   <Route path="/vehicles" element={<VehiclesPage />} />

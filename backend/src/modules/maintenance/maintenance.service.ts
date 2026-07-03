@@ -3,6 +3,13 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { assertEditable, assertTransition, dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
 
+// workflowInclude is shared with fuel/expenses, which have no assignedToId —
+// extend it locally rather than adding assignedTo to the shared include.
+const maintenanceInclude = {
+  ...workflowInclude,
+  assignedTo: { select: { id: true, name: true, username: true } },
+};
+
 type MaintenanceInput = {
   vehicleId: string;
   tripId?: string | null;
@@ -16,6 +23,7 @@ type MaintenanceInput = {
   scheduledDate?: string | null;
   completedDate?: string | null;
   notes?: string | null;
+  assignedToId?: string | null;
 };
 
 function maintenanceData(input: Partial<MaintenanceInput>) {
@@ -32,6 +40,7 @@ function maintenanceData(input: Partial<MaintenanceInput>) {
     scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : undefined,
     completedDate: input.completedDate ? new Date(input.completedDate) : undefined,
     notes: input.notes,
+    assignedToId: input.assignedToId === undefined ? undefined : input.assignedToId,
   };
 }
 
@@ -45,19 +54,20 @@ export async function listMaintenance(query: any, extraWhere?: Record<string, un
   if (query.vehicleId) where.vehicleId = query.vehicleId;
   if (query.tripId) where.tripId = query.tripId;
   if (query.driverId) where.driverId = query.driverId;
+  if (query.assignedToId) where.assignedToId = query.assignedToId;
   if (query.status) where.status = query.status;
   if (query.priority) where.priority = query.priority;
   where.requestDate = dateRange(query.dateFrom, query.dateTo);
   if (extraWhere) { where.AND = where.AND ? [...(Array.isArray(where.AND) ? where.AND : [where.AND]), extraWhere] : [extraWhere]; }
   const [items, total] = await Promise.all([
-    prisma.maintenanceRequest.findMany({ where, include: workflowInclude, orderBy: { requestDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.maintenanceRequest.findMany({ where, include: maintenanceInclude, orderBy: { requestDate: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
     prisma.maintenanceRequest.count({ where }),
   ]);
   return { items, pagination: { page: query.page, limit: query.limit, total, totalPages: Math.ceil(total / query.limit) } };
 }
 
 export async function getMaintenance(id: string) {
-  const item = await prisma.maintenanceRequest.findUnique({ where: { id }, include: workflowInclude });
+  const item = await prisma.maintenanceRequest.findUnique({ where: { id }, include: maintenanceInclude });
   if (!item) throw new AppError('Maintenance request not found', 404);
   return item;
 }
@@ -74,7 +84,7 @@ export async function createMaintenance(input: MaintenanceInput & { createdById?
       priority: (input.priority as any) ?? 'MEDIUM',
       createdById: input.createdById ?? null,
     },
-    include: workflowInclude,
+    include: maintenanceInclude,
   });
 }
 
@@ -85,7 +95,7 @@ export async function updateMaintenance(id: string, input: Partial<MaintenanceIn
   const tripId = input.tripId === undefined ? existing.tripId : input.tripId;
   const driverId = input.driverId === undefined ? existing.driverId : input.driverId;
   await validateReferences(vehicleId, tripId, driverId);
-  return prisma.maintenanceRequest.update({ where: { id }, data: maintenanceData(input), include: workflowInclude });
+  return prisma.maintenanceRequest.update({ where: { id }, data: maintenanceData(input), include: maintenanceInclude });
 }
 
 export async function transitionMaintenance(id: string, status: WorkflowRecordStatus, userId?: string | null, notes?: string | null) {
@@ -100,6 +110,6 @@ export async function transitionMaintenance(id: string, status: WorkflowRecordSt
       approvedAt: status === 'APPROVED' ? new Date() : undefined,
       completedDate: status === 'APPROVED' ? new Date() : undefined,
     },
-    include: workflowInclude,
+    include: maintenanceInclude,
   });
 }

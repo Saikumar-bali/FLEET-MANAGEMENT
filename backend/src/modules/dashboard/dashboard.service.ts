@@ -1,10 +1,54 @@
 import { prisma } from '../../lib/prisma';
+import type { ActorContext } from '../access/actor-context.service';
+import { getScopedWhereForResource } from '../access/scoped-enforcement.service';
 
 export class DashboardService {
-  async getOverview() {
+  /**
+   * `actor` is required — this endpoint previously ran fully global,
+   * unscoped aggregates for any authenticated user. Every count/aggregate
+   * below is now merged with the same getScopedWhereForResource(...) that
+   * the list endpoints for that resource already use, so a non-global
+   * actor (e.g. a supervisor scoped to specific vehicles) sees dashboard
+   * numbers consistent with what they can actually open and view elsewhere
+   * in the app — never a fleet-wide total they don't have access to.
+   */
+  async getOverview(actor: ActorContext) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const vehicleWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'VEHICLE') ?? {}),
+    });
+    const driverWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'DRIVER') ?? {}),
+    });
+    const tripWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'TRIP') ?? {}),
+    });
+    const fuelWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'FUEL_ENTRY') ?? {}),
+    });
+    const expenseWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'EXPENSE') ?? {}),
+    });
+    const maintenanceWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'MAINTENANCE') ?? {}),
+    });
+    const repairWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'REPAIR') ?? {}),
+    });
+    const documentWhere = (extra: Record<string, unknown> = {}) => ({
+      ...extra,
+      ...(getScopedWhereForResource(actor, 'DOCUMENT') ?? {}),
+    });
 
     const [
       totalVehicles,
@@ -34,26 +78,26 @@ export class DashboardService {
       docsByCategory,
       recentDocuments,
     ] = await Promise.all([
-      prisma.vehicle.count(),
-      prisma.vehicle.count({ where: { status: 'AVAILABLE' } }),
-      prisma.driver.count(),
-      prisma.trip.count({ where: { status: 'STARTED' } }),
+      prisma.vehicle.count({ where: vehicleWhere() }),
+      prisma.vehicle.count({ where: vehicleWhere({ status: 'AVAILABLE' }) }),
+      prisma.driver.count({ where: driverWhere() }),
+      prisma.trip.count({ where: tripWhere({ status: 'STARTED' }) }),
       prisma.trip.count({
-        where: { status: 'COMPLETED', updatedAt: { gte: startOfMonth } },
+        where: tripWhere({ status: 'COMPLETED', updatedAt: { gte: startOfMonth } }),
       }),
-      prisma.trip.count({ where: { status: 'SCHEDULED' } }),
+      prisma.trip.count({ where: tripWhere({ status: 'SCHEDULED' }) }),
       prisma.fuelEntry.aggregate({
         _sum: { totalAmount: true },
-        where: { fuelDate: { gte: startOfMonth, lte: endOfMonth } },
+        where: fuelWhere({ fuelDate: { gte: startOfMonth, lte: endOfMonth } }),
       }),
       prisma.expense.aggregate({
         _sum: { amount: true },
-        where: { expenseDate: { gte: startOfMonth, lte: endOfMonth } },
+        where: expenseWhere({ expenseDate: { gte: startOfMonth, lte: endOfMonth } }),
       }),
       prisma.maintenanceRequest.count({
-        where: { status: { in: ['SUBMITTED', 'APPROVED'] } },
+        where: maintenanceWhere({ status: { in: ['SUBMITTED', 'APPROVED'] } }),
       }),
-      prisma.repair.count({ where: { status: 'IN_PROGRESS' } }),
+      prisma.repair.count({ where: repairWhere({ status: 'IN_PROGRESS' }) }),
       prisma.vehicleComplianceDocument.count({
         where: { status: 'EXPIRED' },
       }),
@@ -72,48 +116,51 @@ export class DashboardService {
       prisma.trip.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
+        where: tripWhere(),
         select: { id: true, tripType: true, status: true, originName: true, destinationName: true, createdAt: true },
       }),
       prisma.fuelEntry.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
+        where: fuelWhere(),
         select: { id: true, vehicleId: true, quantityLiters: true, totalAmount: true, fuelDate: true },
       }),
       prisma.expense.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
+        where: expenseWhere(),
         select: { id: true, vehicleId: true, category: true, amount: true, notes: true, expenseDate: true },
       }),
-      prisma.document.count({ where: { documentStatus: { not: 'DELETED' } } }),
-      prisma.document.count({ where: { documentStatus: 'ACTIVE' } }),
-      prisma.document.count({ where: { documentStatus: 'ARCHIVED' } }),
-      prisma.document.count({ where: { verificationStatus: 'PENDING', documentStatus: 'ACTIVE' } }),
-      prisma.document.count({ where: { verificationStatus: 'REJECTED', documentStatus: 'ACTIVE' } }),
+      prisma.document.count({ where: documentWhere({ documentStatus: { not: 'DELETED' } }) }),
+      prisma.document.count({ where: documentWhere({ documentStatus: 'ACTIVE' }) }),
+      prisma.document.count({ where: documentWhere({ documentStatus: 'ARCHIVED' }) }),
+      prisma.document.count({ where: documentWhere({ verificationStatus: 'PENDING', documentStatus: 'ACTIVE' }) }),
+      prisma.document.count({ where: documentWhere({ verificationStatus: 'REJECTED', documentStatus: 'ACTIVE' }) }),
       prisma.document.count({
-        where: {
+        where: documentWhere({
           documentStatus: 'ACTIVE',
           expiryDate: { gte: now, lte: new Date(now.getTime() + 30 * 86400000) },
-        },
+        }),
       }),
       prisma.document.count({
-        where: {
+        where: documentWhere({
           documentStatus: 'ACTIVE',
           expiryDate: { lt: now },
-        },
+        }),
       }),
       prisma.document.aggregate({
         _sum: { fileSizeBytes: true },
-        where: { documentStatus: { not: 'DELETED' } },
+        where: documentWhere({ documentStatus: { not: 'DELETED' } }),
       }),
       prisma.document.groupBy({
         by: ['documentCategory'],
         _count: true,
-        where: { documentStatus: { not: 'DELETED' } },
+        where: documentWhere({ documentStatus: { not: 'DELETED' } }),
       }),
       prisma.document.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        where: { documentStatus: { not: 'DELETED' } },
+        where: documentWhere({ documentStatus: { not: 'DELETED' } }),
         select: {
           id: true, title: true, documentType: true, documentCategory: true,
           fileSizeBytes: true, documentStatus: true, verificationStatus: true,

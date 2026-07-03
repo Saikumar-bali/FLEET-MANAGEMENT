@@ -57,6 +57,15 @@ function checkScopeForRecord(
   const createdById = record[mapping.ownerField || 'createdById'] as string | null | undefined;
   if (requiredLevel === 'VIEW' && createdById === actor.user.id) return;
 
+  // Assignment-based access: e.g. a mechanic assigned to a repair can
+  // view/update it without needing an explicit UserDataScope grant.
+  // Deliberately excludes DELETE — being assigned the work doesn't mean
+  // you can delete the record, same asymmetry as the owner shortcut above.
+  if (mapping.assignedField) {
+    const assignedToId = record[mapping.assignedField] as string | null | undefined;
+    if (assignedToId && assignedToId === actor.user.id && requiredLevel !== 'DELETE') return;
+  }
+
   if (resourceType === 'VEHICLE') {
     const recordId = record.id as string;
     if (recordId && hasScopeAtLevel(actor, 'VEHICLE', recordId, requiredLevel)) return;
@@ -275,6 +284,10 @@ export function getScopedWhereForResource(
   const ownerField = mapping.ownerField;
   if (ownerField) {
     conditions.push({ [ownerField]: actor.user.id });
+  }
+
+  if (mapping.assignedField) {
+    conditions.push({ [mapping.assignedField]: actor.user.id });
   }
 
   if (mapping.relationFields.vehicleId) {

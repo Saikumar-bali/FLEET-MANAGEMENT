@@ -27,6 +27,16 @@ export type ResourceMapping = {
     createdById?: string;
   };
   ownerField?: string;
+  /**
+   * Field holding the id of the user this record is assigned to for
+   * hands-on work (e.g. the mechanic assigned to a repair). Distinct from
+   * ownerField (who created the record) — a mechanic rarely creates the
+   * repair they're asked to fix, so the owner shortcut alone doesn't give
+   * them access. When set, scoped-enforcement grants VIEW/UPDATE (not
+   * DELETE) to whoever's id matches this field, with no UserDataScope
+   * grant required.
+   */
+  assignedField?: string;
 };
 
 export const RESOURCE_MAP: Record<ResourceType, ResourceMapping> = {
@@ -149,6 +159,7 @@ export const RESOURCE_MAP: Record<ResourceType, ResourceMapping> = {
       createdById: 'createdById',
     },
     ownerField: 'createdById',
+    assignedField: 'assignedToId',
   },
   REPAIR: {
     resourceType: 'REPAIR',
@@ -167,6 +178,7 @@ export const RESOURCE_MAP: Record<ResourceType, ResourceMapping> = {
       createdById: 'createdById',
     },
     ownerField: 'createdById',
+    assignedField: 'assignedToId',
   },
 };
 
