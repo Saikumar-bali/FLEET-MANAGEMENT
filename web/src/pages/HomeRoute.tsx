@@ -1,15 +1,13 @@
 import { useAuth } from '../context/AuthContext';
 import { DashboardPage } from './DashboardPage';
-import { WorkspaceHome } from './workspace/WorkspaceHome';
+import { RoleDashboardPage } from './RoleDashboardPage';
 
 /**
- * Landing route at "/". Renders the fleet-wide operational dashboard only
- * for roles that actually have dashboard_view (super_admin, admin, manager,
- * supervisor, viewer). Everyone else (driver, mechanic, finance, collector,
- * assistant_driver) lands on the existing role-aware WorkspaceHome instead —
- * their own nav/quick-actions, not someone else's fleet-wide numbers.
+ * Landing route at "/". Users with fleet-wide dashboard permission keep the
+ * command-center overview. Other roles now get a professional permission-aware
+ * dashboard instead of only quick-action tiles.
  */
 export function HomeRoute() {
   const auth = useAuth();
-  return auth.hasPermission('dashboard_view') ? <DashboardPage /> : <WorkspaceHome />;
+  return auth.hasPermission('dashboard_view') ? <DashboardPage /> : <RoleDashboardPage />;
 }
