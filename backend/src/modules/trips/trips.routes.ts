@@ -3,6 +3,7 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermission } from '../../middlewares/permissions';
 import { validateRequest } from '../../middlewares/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { reassignTripDriverController } from './trip-assignment.controller';
 import {
   cancelTripController,
   completeTripController,
@@ -18,6 +19,7 @@ import {
   cancelTripSchema,
   completeTripSchema,
   createTripSchema,
+  reassignTripSchema,
   scheduleTripSchema,
   startTripSchema,
   tripIdParamsSchema,
@@ -62,6 +64,13 @@ router.post(
   requirePermission('trip_update'),
   validateRequest({ params: tripIdParamsSchema, body: scheduleTripSchema }),
   asyncHandler(scheduleTripController),
+);
+
+router.post(
+  '/:id/reassign-driver',
+  requirePermission('trip_update'),
+  validateRequest({ params: tripIdParamsSchema, body: reassignTripSchema }),
+  asyncHandler(reassignTripDriverController),
 );
 
 router.post(
