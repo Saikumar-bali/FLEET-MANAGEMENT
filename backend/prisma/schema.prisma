@@ -45,8 +45,10 @@ model User {
   expensesApproved         Expense[]         @relation("ExpenseApprovedBy")
   maintenanceCreated       MaintenanceRequest[] @relation("MaintenanceCreatedBy")
   maintenanceApproved      MaintenanceRequest[] @relation("MaintenanceApprovedBy")
+  maintenanceAssigned      MaintenanceRequest[] @relation("MaintenanceAssignedTo")
   repairsCreated           Repair[]          @relation("RepairCreatedBy")
   repairsClosed            Repair[]          @relation("RepairClosedBy")
+  repairsAssigned          Repair[]          @relation("RepairAssignedTo")
   complianceDocsVerified   VehicleComplianceDocument[] @relation("ComplianceDocVerifiedBy")
   complianceHistoryCreated VehicleComplianceHistory[]  @relation("ComplianceHistoryCreatedBy")
   tripBillingsCreated      TripBilling[]               @relation("TripBillingCreatedBy")
@@ -796,6 +798,7 @@ model MaintenanceRequest {
   createdById     String?              @map("created_by")
   approvedById    String?              @map("approved_by")
   approvedAt      DateTime?            @map("approved_at")
+  assignedToId    String?              @map("assigned_to_id")
   createdAt       DateTime             @default(now()) @map("created_at")
   updatedAt       DateTime             @updatedAt @map("updated_at")
   vehicle         Vehicle              @relation(fields: [vehicleId], references: [id])
@@ -803,12 +806,14 @@ model MaintenanceRequest {
   driver          Driver?              @relation(fields: [driverId], references: [id])
   createdBy       User?                @relation("MaintenanceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   approvedBy      User?                @relation("MaintenanceApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  assignedTo      User?                @relation("MaintenanceAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   documents       Document[]
 
   @@index([vehicleId, requestDate])
   @@index([tripId])
   @@index([driverId])
   @@index([status])
+  @@index([assignedToId])
   @@map("maintenance_requests")
 }
 
@@ -829,6 +834,7 @@ model Repair {
   createdById     String?       @map("created_by")
   closedById      String?       @map("closed_by")
   closedAt        DateTime?     @map("closed_at")
+  assignedToId    String?       @map("assigned_to_id")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
@@ -836,12 +842,14 @@ model Repair {
   driver          Driver?       @relation(fields: [driverId], references: [id])
   createdBy       User?         @relation("RepairCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   closedBy        User?         @relation("RepairClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  assignedTo      User?         @relation("RepairAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   documents       Document[]
 
   @@index([vehicleId, repairDate])
   @@index([tripId])
   @@index([driverId])
   @@index([status])
+  @@index([assignedToId])
   @@map("repairs")
 }
 

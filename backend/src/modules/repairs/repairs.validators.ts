@@ -15,6 +15,7 @@ const repairFields = {
   provider: z.string().optional().nullable(),
   invoiceNumber: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  assignedToId: z.string().optional().nullable(),
 };
 
 export const createRepairSchema = z.object(repairFields);
@@ -27,6 +28,7 @@ export const repairQuerySchema = z.object({
   vehicleId: z.string().optional(),
   tripId: z.string().optional(),
   driverId: z.string().optional(),
+  assignedToId: z.string().optional(),
   status: repairStatusEnum.optional(),
   dateFrom: z.string().datetime().optional(),
   dateTo: z.string().datetime().optional(),

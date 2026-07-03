@@ -13,7 +13,8 @@ This document explains the account-isolated access control system that determine
 
 - **Phase 1 (Backend Foundation)**: Complete
 - **Phase 2 (User Access Management UI)**: Complete (hardened)
-- **Phase 3 (Module-level scope enforcement)**: Pending
+- **Phase 3 (Module-level scope enforcement)**: Complete — shipped Phase 15. `getScopedWhereForResource` enforced on: TRIP, VEHICLE, DRIVER, FUEL_ENTRY, EXPENSE, DOCUMENT, MAINTENANCE, REPAIR.
+- **Phase 20 (Dashboard gate + Mechanic assignment isolation)**: Complete — `dashboard_view` permission gates `/dashboard/overview`; `assignedToId` field on Repair/MaintenanceRequest enables mechanics to see only their assigned work via the shared scope engine.
 
 ## API Endpoints
 
