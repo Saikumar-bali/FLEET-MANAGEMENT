@@ -1,20 +1,62 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getBoardData, checkConflicts, assignTrip, getRouteEstimate } from './dispatch.service';
+import { AppError } from '../../utils/appError';
+import { getActorContext } from '../access/actor-context.service';
+import { can } from '../access/access-policy.service';
+import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
+import { getBoardData, checkConflicts, assignTrip, getRouteEstimate, getDispatchTargets } from './dispatch.service';
+
+function assertPermission(actor: Awaited<ReturnType<typeof getActorContext>>, permission: string) {
+  if (!can(actor, permission)) {
+    throw new AppError(`Access denied: missing permission ${permission}`, 403);
+  }
+}
 
 export async function getBoardController(req: Request, res: Response) {
-  const data = await getBoardData();
+  const actor = await getActorContext(req.authUser!.id);
+  assertPermission(actor, 'trip_view');
+  assertPermission(actor, 'vehicle_view');
+  assertPermission(actor, 'driver_view');
+
+  const data = await getBoardData({
+    tripWhere: getScopedWhereForResource(actor, 'TRIP') as any,
+    vehicleWhere: getScopedWhereForResource(actor, 'VEHICLE') as any,
+    driverWhere: getScopedWhereForResource(actor, 'DRIVER') as any,
+  });
   return sendSuccess(res, data);
 }
 
 export async function checkConflictsController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  assertPermission(actor, 'trip_view');
+
+  const { tripId, driverId, vehicleId } = req.body;
+  if (tripId || driverId || vehicleId) {
+    const targets = await getDispatchTargets(tripId ?? '', driverId ?? '', vehicleId ?? '');
+    if (tripId) assertCanReadResource(actor, 'TRIP', targets.trip as unknown as Record<string, unknown>);
+    if (driverId) assertCanReadResource(actor, 'DRIVER', targets.driver as unknown as Record<string, unknown>);
+    if (vehicleId) assertCanReadResource(actor, 'VEHICLE', targets.vehicle as unknown as Record<string, unknown>);
+  }
+
   const result = await checkConflicts(req.body);
   return sendSuccess(res, result);
 }
 
 export async function assignTripController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
   const { tripId, driverId, vehicleId } = req.body;
+
+  if (!tripId || !driverId || !vehicleId) {
+    throw new AppError('tripId, driverId, and vehicleId are required', 400);
+  }
+
+  const targets = await getDispatchTargets(tripId, driverId, vehicleId);
+  assertCanUpdateResource(actor, 'TRIP', targets.trip as unknown as Record<string, unknown>);
+  assertCanUpdateResource(actor, 'DRIVER', targets.driver as unknown as Record<string, unknown>);
+  assertCanUpdateResource(actor, 'VEHICLE', targets.vehicle as unknown as Record<string, unknown>);
+  await assertCanChangeResourceScope(actor, 'TRIP', targets.trip as unknown as Record<string, unknown>, { driverId, vehicleId });
+
   const trip = await assignTrip(tripId, driverId, vehicleId, req.authUser!.id);
 
   await createAuditLog(req, {
@@ -29,6 +71,9 @@ export async function assignTripController(req: Request, res: Response) {
 }
 
 export async function getRouteEstimateController(req: Request, res: Response) {
+  const actor = await getActorContext(req.authUser!.id);
+  assertPermission(actor, 'trip_view');
+
   const { origin, destination } = req.query as Record<string, string>;
   if (!origin || !destination) {
     return sendSuccess(res, { status: 'UNAVAILABLE', message: 'Origin and destination are required' });
