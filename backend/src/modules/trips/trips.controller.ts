@@ -92,7 +92,11 @@ export async function scheduleTripController(req: Request, res: Response) {
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await scheduleTrip(String(req.params.id), req.body, req.authUser?.id);
-  const assignment = await syncAssignmentAfterSchedule(trip.id, req.authUser?.id);
+  const driverChangedDuringSchedule = Boolean(trip.driverId && trip.driverId !== existing.driverId);
+  const driverAddedDuringSchedule = Boolean(trip.driverId && !existing.driverId);
+  const assignment = driverChangedDuringSchedule || driverAddedDuringSchedule
+    ? await syncAssignmentAfterSchedule(trip.id, req.authUser?.id)
+    : null;
 
   await createAuditLog(req, {
     userId: req.authUser?.id,
