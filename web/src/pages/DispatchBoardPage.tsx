@@ -8,6 +8,8 @@ type DragItem = { type: 'driver' | 'vehicle'; id: string };
 type BlockedVehicle = { item: VehicleRecord; reason: string };
 type BlockedDriver = { item: DriverRecord; reason: string };
 
+type VehicleWithFallback = VehicleRecord & { type?: string | null };
+
 function normalizeBlockedVehicles(board: BoardData | null): BlockedVehicle[] {
   return (board?.unavailableVehicles ?? [])
     .map((entry) => ({ item: entry.vehicle ?? entry.item, reason: entry.reason }))
@@ -23,6 +25,16 @@ function normalizeBlockedDrivers(board: BoardData | null): BlockedDriver[] {
 function formatDate(value?: string | null) {
   if (!value) return 'No planned start';
   return new Date(value).toLocaleString();
+}
+
+function vehicleTypeLabel(vehicle: VehicleRecord | null | undefined) {
+  if (!vehicle) return 'Vehicle';
+  const withFallback = vehicle as VehicleWithFallback;
+  return (withFallback.vehicleType ?? withFallback.type ?? 'Vehicle').toUpperCase();
+}
+
+function vehicleMakeLabel(vehicle: VehicleRecord) {
+  return [vehicle.brand, vehicle.model].filter(Boolean).join(' · ') || 'No brand/model';
 }
 
 export default function DispatchBoardPage() {
@@ -154,50 +166,31 @@ export default function DispatchBoardPage() {
         <div>
           <div className="dispatch-kicker">OPERATIONS</div>
           <h1>Dispatch Board</h1>
-          <p>Assign a trip only after driver, vehicle, route and conflict checks are clear.</p>
+          <p>Select a trip, choose one available driver and one available vehicle, then confirm.</p>
         </div>
         <button type="button" className="dispatch-refresh-button" onClick={refresh} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh board'}
+          {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
       {error && <div className="error-message dispatch-alert">{error}</div>}
 
-      <div className="dispatch-summary-cards">
-        <div className="summary-card summary-card--success">
-          <span>{board.summary.availableVehicles}</span>
-          <p>Available vehicles</p>
-        </div>
-        <div className="summary-card summary-card--success">
-          <span>{board.summary.availableDrivers}</span>
-          <p>Available drivers</p>
-        </div>
-        <div className="summary-card summary-card--warning">
-          <span>{board.summary.unassignedTrips}</span>
-          <p>Unassigned trips</p>
-        </div>
-        <div className="summary-card summary-card--danger">
-          <span>{blockedVehicles.length + blockedDrivers.length}</span>
-          <p>Blocked resources</p>
-        </div>
-      </div>
-
-      <div className="dispatch-workflow-strip">
-        <span className={selectedTrip ? 'done' : 'active'}>1. Choose trip</span>
-        <span className={selectedDriver ? 'done' : selectedTrip ? 'active' : ''}>2. Choose driver</span>
-        <span className={selectedVehicle ? 'done' : selectedDriver ? 'active' : ''}>3. Choose vehicle</span>
-        <span className={canAssign ? 'active' : ''}>4. Confirm</span>
+      <div className="dispatch-metrics-bar">
+        <span><strong>{board.summary.unassignedTrips}</strong> trips waiting</span>
+        <span><strong>{board.summary.availableDrivers}</strong> drivers ready</span>
+        <span><strong>{board.summary.availableVehicles}</strong> vehicles ready</span>
+        <span><strong>{blockedVehicles.length + blockedDrivers.length}</strong> blocked</span>
       </div>
 
       <div className="dispatch-layout">
         <section className="dispatch-panel dispatch-panel--trips">
           <header>
             <div>
-              <h2>Trips waiting for dispatch</h2>
-              <p>{board.unassignedTrips.length} draft trips</p>
+              <h2>Trips</h2>
+              <p>Choose the trip to dispatch</p>
             </div>
           </header>
-          <div className="dispatch-list">
+          <div className="dispatch-list dispatch-list--trips">
             {board.unassignedTrips.map((t) => (
               <article key={t.id}
                 className={`dispatch-item dispatch-trip ${selectedTrip?.id === t.id ? 'selected' : ''} ${dragOver === t.id ? 'drop-ready' : ''}`}
@@ -210,78 +203,88 @@ export default function DispatchBoardPage() {
                   <span>{t.originName} → {t.destinationName}</span>
                 </div>
                 <div className="dispatch-item-meta">{formatDate(t.plannedStartAt)}</div>
-                <div className="dispatch-drop-hint">Drop driver or vehicle here</div>
               </article>
             ))}
             {board.unassignedTrips.length === 0 && (
-              <div className="dispatch-empty">No unassigned trips. New draft trips will appear here.</div>
+              <div className="dispatch-empty">No draft trips waiting for dispatch.</div>
             )}
           </div>
         </section>
 
-        <section className="dispatch-panel">
+        <section className="dispatch-panel dispatch-panel--resources">
           <header>
             <div>
-              <h2>Drivers</h2>
-              <p>{board.availableDrivers.length} ready · {blockedDrivers.length} blocked</p>
+              <h2>Resources</h2>
+              <p>Click or drag a ready driver and vehicle</p>
             </div>
           </header>
-          <div className="dispatch-list">
-            {board.availableDrivers.map((d) => (
-              <article key={d.id}
-                className={`dispatch-item compact ${selectedDriver?.id === d.id ? 'selected' : ''}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, 'driver', d.id)}
-                onClick={() => setSelectedDriver(d)}>
-                <div className="dispatch-item-main">
-                  <strong>{d.name}</strong>
-                  <span>{d.mobile}</span>
-                </div>
-                <span className="status-pill success">Available</span>
-              </article>
-            ))}
-            {blockedDrivers.map(({ item: d, reason }) => (
-              <article key={d.id} className="dispatch-item compact blocked" title={reason}>
-                <div className="dispatch-item-main">
-                  <strong>{d.name}</strong>
-                  <span>{d.mobile}</span>
-                </div>
-                <span className="status-pill blocked">{reason}</span>
-              </article>
-            ))}
-          </div>
-        </section>
 
-        <section className="dispatch-panel">
-          <header>
-            <div>
-              <h2>Vehicles</h2>
-              <p>{board.availableVehicles.length} ready · {blockedVehicles.length} blocked</p>
+          <div className="resource-section">
+            <div className="resource-section-title">
+              <span>Drivers</span>
+              <small>{board.availableDrivers.length} ready</small>
             </div>
-          </header>
-          <div className="dispatch-list">
-            {board.availableVehicles.map((v) => (
-              <article key={v.id}
-                className={`dispatch-item compact ${selectedVehicle?.id === v.id ? 'selected' : ''}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, 'vehicle', v.id)}
-                onClick={() => setSelectedVehicle(v)}>
-                <div className="dispatch-item-main">
-                  <strong>{v.vehicleNumber}</strong>
-                  <span>{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</span>
-                </div>
-                <span className="status-pill success">Available</span>
-              </article>
-            ))}
-            {blockedVehicles.map(({ item: v, reason }) => (
-              <article key={v.id} className="dispatch-item compact blocked" title={reason}>
-                <div className="dispatch-item-main">
-                  <strong>{v.vehicleNumber}</strong>
-                  <span>{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</span>
-                </div>
-                <span className="status-pill blocked">{reason}</span>
-              </article>
-            ))}
+            <div className="dispatch-list dispatch-list--short">
+              {board.availableDrivers.map((d) => (
+                <article key={d.id}
+                  className={`dispatch-item compact ${selectedDriver?.id === d.id ? 'selected' : ''}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'driver', d.id)}
+                  onClick={() => setSelectedDriver(d)}>
+                  <div className="dispatch-item-main">
+                    <strong>{d.name}</strong>
+                    <span>{d.mobile}</span>
+                  </div>
+                  <span className="status-pill success">Ready</span>
+                </article>
+              ))}
+              {blockedDrivers.slice(0, 4).map(({ item: d, reason }) => (
+                <article key={d.id} className="dispatch-item compact blocked" title={reason}>
+                  <div className="dispatch-item-main">
+                    <strong>{d.name}</strong>
+                    <span>{d.mobile}</span>
+                  </div>
+                  <span className="status-pill blocked">{reason}</span>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="resource-section">
+            <div className="resource-section-title">
+              <span>Vehicles</span>
+              <small>{board.availableVehicles.length} ready</small>
+            </div>
+            <div className="dispatch-list dispatch-list--short">
+              {board.availableVehicles.map((v) => (
+                <article key={v.id}
+                  className={`dispatch-item compact vehicle-item ${selectedVehicle?.id === v.id ? 'selected' : ''}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 'vehicle', v.id)}
+                  onClick={() => setSelectedVehicle(v)}>
+                  <div className="dispatch-item-row">
+                    <div className="dispatch-item-main">
+                      <strong>{v.vehicleNumber}</strong>
+                      <span>{vehicleMakeLabel(v)}</span>
+                    </div>
+                    <span className="vehicle-type-pill">{vehicleTypeLabel(v)}</span>
+                  </div>
+                  <span className="status-pill success">Ready</span>
+                </article>
+              ))}
+              {blockedVehicles.slice(0, 4).map(({ item: v, reason }) => (
+                <article key={v.id} className="dispatch-item compact vehicle-item blocked" title={reason}>
+                  <div className="dispatch-item-row">
+                    <div className="dispatch-item-main">
+                      <strong>{v.vehicleNumber}</strong>
+                      <span>{vehicleMakeLabel(v)}</span>
+                    </div>
+                    <span className="vehicle-type-pill muted-type">{vehicleTypeLabel(v)}</span>
+                  </div>
+                  <span className="status-pill blocked">{reason}</span>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -302,17 +305,25 @@ export default function DispatchBoardPage() {
                 <small>{formatDate(selectedTrip.plannedStartAt)}</small>
               </div>
 
-              <div className="preview-grid">
-                <div className="preview-card">
-                  <label>Driver</label>
-                  {selectedDriver ? <strong>{selectedDriver.name}</strong> : <span className="muted">Not selected</span>}
-                  {selectedDriver && <small>{selectedDriver.mobile}</small>}
-                </div>
-                <div className="preview-card">
-                  <label>Vehicle</label>
-                  {selectedVehicle ? <strong>{selectedVehicle.vehicleNumber}</strong> : <span className="muted">Not selected</span>}
-                  {selectedVehicle && <small>{selectedVehicle.vehicleType}</small>}
-                </div>
+              <div className="preview-card">
+                <label>Driver</label>
+                {selectedDriver ? <strong>{selectedDriver.name}</strong> : <span className="muted">Not selected</span>}
+                {selectedDriver && <small>{selectedDriver.mobile}</small>}
+              </div>
+
+              <div className="preview-card">
+                <label>Vehicle</label>
+                {selectedVehicle ? (
+                  <>
+                    <div className="preview-vehicle-title">
+                      <strong>{selectedVehicle.vehicleNumber}</strong>
+                      <span className="vehicle-type-pill">{vehicleTypeLabel(selectedVehicle)}</span>
+                    </div>
+                    <small>{vehicleMakeLabel(selectedVehicle)}</small>
+                  </>
+                ) : (
+                  <span className="muted">Not selected</span>
+                )}
               </div>
 
               {routeEstimate && (
@@ -346,20 +357,19 @@ export default function DispatchBoardPage() {
               </button>
             </div>
           ) : (
-            <div className="dispatch-empty preview-empty">Select a trip to begin dispatching.</div>
+            <div className="dispatch-empty preview-empty">Select a trip to begin.</div>
           )}
         </aside>
       </div>
 
       <style>{`
         .dispatch-board {
-          max-width: 1500px;
+          max-width: 1320px;
           color: #e5e7eb;
-          --dispatch-bg: #0b0f16;
-          --dispatch-card: #121821;
-          --dispatch-card-soft: #0f172a;
-          --dispatch-border: rgba(148, 163, 184, 0.18);
-          --dispatch-muted: #94a3b8;
+          --dispatch-card: #10151d;
+          --dispatch-card-soft: #0c1119;
+          --dispatch-border: rgba(148, 163, 184, 0.16);
+          --dispatch-muted: #93a4b8;
           --dispatch-text: #f8fafc;
           --dispatch-blue: #60a5fa;
           --dispatch-green: #22c55e;
@@ -371,51 +381,49 @@ export default function DispatchBoardPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          padding: 18px 20px;
-          margin-bottom: 16px;
+          gap: 14px;
+          padding: 14px 16px;
+          margin-bottom: 10px;
           border: 1px solid var(--dispatch-border);
-          border-radius: 18px;
-          background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.92));
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.9));
         }
 
         .dispatch-kicker {
           color: var(--dispatch-blue);
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
-          letter-spacing: .16em;
+          letter-spacing: .14em;
           text-transform: uppercase;
-          margin-bottom: 5px;
+          margin-bottom: 4px;
         }
 
         .dispatch-topbar h1 {
           margin: 0;
           color: var(--dispatch-text);
-          font-size: 26px;
+          font-size: 22px;
           line-height: 1.15;
         }
 
         .dispatch-topbar p {
-          margin: 6px 0 0;
+          margin: 5px 0 0;
           color: var(--dispatch-muted);
-          font-size: 14px;
+          font-size: 13px;
         }
 
         .dispatch-refresh-button {
-          border: 1px solid rgba(96, 165, 250, .35);
-          background: rgba(37, 99, 235, .16);
+          border: 1px solid rgba(96, 165, 250, .32);
+          background: rgba(37, 99, 235, .14);
           color: #bfdbfe;
-          padding: 10px 14px;
-          border-radius: 12px;
+          padding: 8px 12px;
+          border-radius: 10px;
           font-weight: 800;
           cursor: pointer;
           white-space: nowrap;
         }
 
         .dispatch-refresh-button:hover:not(:disabled) {
-          background: rgba(37, 99, 235, .26);
-          border-color: rgba(96, 165, 250, .55);
+          background: rgba(37, 99, 235, .24);
         }
 
         .dispatch-refresh-button:disabled {
@@ -423,201 +431,188 @@ export default function DispatchBoardPage() {
           cursor: wait;
         }
 
-        .dispatch-alert { margin-bottom: 14px; }
+        .dispatch-alert { margin-bottom: 10px; }
 
-        .dispatch-summary-cards {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-
-        .summary-card {
-          padding: 14px 16px;
-          border-radius: 16px;
-          background: var(--dispatch-card);
-          border: 1px solid var(--dispatch-border);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
-        }
-
-        .summary-card span {
-          display: block;
-          color: var(--dispatch-text);
-          font-size: 28px;
-          font-weight: 900;
-          line-height: 1;
-        }
-
-        .summary-card p {
-          margin: 7px 0 0;
-          color: var(--dispatch-muted);
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: .04em;
-        }
-
-        .summary-card--success { border-left: 3px solid var(--dispatch-green); }
-        .summary-card--warning { border-left: 3px solid var(--dispatch-yellow); }
-        .summary-card--danger { border-left: 3px solid var(--dispatch-red); }
-
-        .dispatch-workflow-strip {
+        .dispatch-metrics-bar {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-          margin-bottom: 14px;
+          margin-bottom: 12px;
         }
 
-        .dispatch-workflow-strip span {
-          padding: 7px 10px;
-          border-radius: 999px;
+        .dispatch-metrics-bar span {
+          padding: 8px 10px;
           border: 1px solid var(--dispatch-border);
-          background: rgba(15, 23, 42, .72);
+          border-radius: 999px;
+          background: rgba(15, 23, 42, .62);
           color: var(--dispatch-muted);
           font-size: 12px;
-          font-weight: 800;
         }
 
-        .dispatch-workflow-strip span.active {
-          border-color: rgba(96, 165, 250, .45);
-          background: rgba(37, 99, 235, .16);
-          color: #bfdbfe;
-        }
-
-        .dispatch-workflow-strip span.done {
-          border-color: rgba(34, 197, 94, .45);
-          background: rgba(34, 197, 94, .12);
-          color: #86efac;
+        .dispatch-metrics-bar strong {
+          color: var(--dispatch-text);
+          margin-right: 4px;
         }
 
         .dispatch-layout {
           display: grid;
-          grid-template-columns: minmax(300px, 1.15fr) minmax(230px, .85fr) minmax(230px, .85fr) minmax(310px, 1fr);
-          gap: 14px;
+          grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.1fr) minmax(320px, .95fr);
+          gap: 12px;
           align-items: start;
         }
 
         .dispatch-panel {
-          min-height: 520px;
-          padding: 14px;
-          border-radius: 18px;
+          min-height: 460px;
+          padding: 12px;
+          border-radius: 16px;
           border: 1px solid var(--dispatch-border);
-          background: rgba(17, 24, 39, .82);
-          box-shadow: 0 14px 34px rgba(0, 0, 0, .18);
+          background: rgba(17, 24, 39, .78);
+          box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
         }
 
         .dispatch-panel header {
           display: flex;
           justify-content: space-between;
           gap: 10px;
-          margin-bottom: 12px;
-          padding-bottom: 10px;
+          margin-bottom: 10px;
+          padding-bottom: 9px;
           border-bottom: 1px solid rgba(148, 163, 184, .12);
         }
 
         .dispatch-panel h2 {
           margin: 0;
           color: var(--dispatch-text);
-          font-size: 15px;
+          font-size: 14px;
         }
 
-        .dispatch-panel header p {
-          margin: 4px 0 0;
+        .dispatch-panel header p,
+        .resource-section-title small {
+          margin: 3px 0 0;
           color: var(--dispatch-muted);
+          font-size: 11px;
+        }
+
+        .resource-section + .resource-section {
+          margin-top: 14px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(148, 163, 184, .12);
+        }
+
+        .resource-section-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+
+        .resource-section-title span {
+          color: var(--dispatch-text);
           font-size: 12px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: .08em;
         }
 
         .dispatch-list {
           display: flex;
           flex-direction: column;
-          gap: 9px;
-          max-height: 620px;
+          gap: 8px;
           overflow-y: auto;
           padding-right: 3px;
         }
 
-        .dispatch-list::-webkit-scrollbar { width: 8px; }
-        .dispatch-list::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .35); border-radius: 999px; }
+        .dispatch-list--trips { max-height: 540px; }
+        .dispatch-list--short { max-height: 230px; }
+
+        .dispatch-list::-webkit-scrollbar { width: 7px; }
+        .dispatch-list::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .34); border-radius: 999px; }
 
         .dispatch-item {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          padding: 12px;
-          border-radius: 14px;
-          border: 1px solid rgba(148, 163, 184, .16);
-          background: rgba(15, 23, 42, .62);
+          gap: 7px;
+          padding: 10px;
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, .15);
+          background: rgba(15, 23, 42, .54);
           cursor: pointer;
           transition: border-color .15s ease, background .15s ease, transform .15s ease;
         }
 
         .dispatch-item:hover {
-          border-color: rgba(96, 165, 250, .55);
-          background: rgba(30, 41, 59, .86);
+          border-color: rgba(96, 165, 250, .5);
+          background: rgba(30, 41, 59, .75);
           transform: translateY(-1px);
         }
 
         .dispatch-item.selected {
-          border-color: rgba(96, 165, 250, .9);
+          border-color: rgba(96, 165, 250, .85);
           background: rgba(37, 99, 235, .16);
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, .16);
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, .16);
         }
 
         .dispatch-item.drop-ready {
-          border-color: rgba(34, 197, 94, .8);
+          border-color: rgba(34, 197, 94, .78);
           background: rgba(34, 197, 94, .1);
-        }
-
-        .dispatch-item.compact {
-          min-height: 74px;
         }
 
         .dispatch-item.blocked {
           cursor: not-allowed;
           opacity: .65;
-          background: rgba(127, 29, 29, .12);
+          background: rgba(127, 29, 29, .1);
         }
 
         .dispatch-item.blocked:hover {
-          border-color: rgba(239, 68, 68, .35);
+          border-color: rgba(239, 68, 68, .32);
           transform: none;
+        }
+
+        .dispatch-item-row {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
         }
 
         .dispatch-item-main {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
+          min-width: 0;
         }
 
         .dispatch-item-main strong {
           color: var(--dispatch-text);
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.2;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .dispatch-item-main span,
         .dispatch-item-meta {
           color: var(--dispatch-muted);
-          font-size: 12px;
-        }
-
-        .dispatch-drop-hint {
-          color: #93c5fd;
           font-size: 11px;
-          font-weight: 700;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
-        .status-pill {
+        .status-pill,
+        .vehicle-type-pill {
           align-self: flex-start;
-          padding: 4px 8px;
+          padding: 4px 7px;
           border-radius: 999px;
           font-size: 10px;
           font-weight: 900;
           text-transform: uppercase;
           letter-spacing: .04em;
+          white-space: nowrap;
         }
 
         .status-pill.success {
-          background: rgba(34, 197, 94, .14);
+          background: rgba(34, 197, 94, .13);
           color: #86efac;
         }
 
@@ -626,23 +621,29 @@ export default function DispatchBoardPage() {
           color: #fca5a5;
         }
 
+        .vehicle-type-pill {
+          background: rgba(96, 165, 250, .14);
+          color: #bfdbfe;
+          border: 1px solid rgba(96, 165, 250, .22);
+        }
+
+        .vehicle-type-pill.muted-type {
+          background: rgba(148, 163, 184, .1);
+          color: #cbd5e1;
+          border-color: rgba(148, 163, 184, .18);
+        }
+
         .dispatch-preview {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-        }
-
-        .preview-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
+          gap: 9px;
         }
 
         .preview-card {
-          padding: 12px;
-          border-radius: 14px;
+          padding: 11px;
+          border-radius: 12px;
           border: 1px solid rgba(148, 163, 184, .14);
-          background: rgba(15, 23, 42, .66);
+          background: rgba(15, 23, 42, .62);
           display: flex;
           flex-direction: column;
           gap: 5px;
@@ -663,7 +664,7 @@ export default function DispatchBoardPage() {
 
         .preview-card strong {
           color: var(--dispatch-text);
-          font-size: 14px;
+          font-size: 13px;
         }
 
         .preview-card span,
@@ -673,11 +674,18 @@ export default function DispatchBoardPage() {
           font-size: 12px;
         }
 
+        .preview-vehicle-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
         .conflict-box {
           padding: 10px;
-          border-radius: 14px;
-          border: 1px solid rgba(245, 158, 11, .3);
-          background: rgba(120, 53, 15, .2);
+          border-radius: 12px;
+          border: 1px solid rgba(245, 158, 11, .28);
+          background: rgba(120, 53, 15, .18);
         }
 
         .conflict-box button {
@@ -712,7 +720,7 @@ export default function DispatchBoardPage() {
 
         .dispatch-confirm {
           width: 100%;
-          min-height: 44px;
+          min-height: 42px;
           border: 0;
           border-radius: 12px;
           background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -733,26 +741,26 @@ export default function DispatchBoardPage() {
         }
 
         .dispatch-empty {
-          padding: 24px 16px;
-          border: 1px dashed rgba(148, 163, 184, .28);
-          border-radius: 14px;
+          padding: 22px 14px;
+          border: 1px dashed rgba(148, 163, 184, .25);
+          border-radius: 12px;
           color: var(--dispatch-muted);
           font-size: 13px;
           text-align: center;
-          background: rgba(15, 23, 42, .42);
+          background: rgba(15, 23, 42, .38);
         }
 
         .preview-empty { margin-top: 8px; }
 
         @media (max-width: 1320px) {
           .dispatch-layout { grid-template-columns: 1fr 1fr; }
+          .dispatch-preview-panel { grid-column: span 2; }
         }
 
         @media (max-width: 820px) {
           .dispatch-topbar { flex-direction: column; align-items: stretch; }
-          .dispatch-summary-cards { grid-template-columns: 1fr 1fr; }
           .dispatch-layout { grid-template-columns: 1fr; }
-          .preview-grid { grid-template-columns: 1fr; }
+          .dispatch-preview-panel { grid-column: auto; }
         }
       `}</style>
     </div>
