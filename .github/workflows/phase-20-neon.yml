@@ -1,19 +1,16 @@
-name: Phase 20 — Neon DB Integration Tests
+name: Phase 20 Neon DB Integration Tests
 
 on:
-  # Runs automatically whenever phase-20 branch is pushed
   push:
     branches: ["phase-20-*"]
-  # Also runnable manually from GitHub Actions UI
   workflow_dispatch:
 
 jobs:
   phase-20-neon:
-    name: Dashboard gate + Mechanic isolation (Neon DB)
+    name: Phase 20 gates on Neon DB
     runs-on: ubuntu-latest
 
     env:
-      # Real Neon DB — secrets set via API, not hardcoded
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
@@ -37,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phase-20-dashboard-mechanic-isolation
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:
@@ -55,7 +52,7 @@ jobs:
         run: npx prisma migrate deploy
         working-directory: backend
 
-      - name: Sync permissions (seed roles + permissions only, no data wipe)
+      - name: Sync permissions
         run: npx prisma db seed
         working-directory: backend
 
@@ -63,19 +60,14 @@ jobs:
         run: npm run lint
         working-directory: backend
 
-      - name: Start backend server
-        run: |
-          npm run dev &
-          echo "Waiting for server..."
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:4000/api/v1/health && echo "Server ready" && break || sleep 2
-          done
+      - name: Alerts foundation backend test
+        run: npx ts-node scripts/notifications-foundation-test.ts
         working-directory: backend
 
-      - name: "Phase 20 Test 1 — Dashboard permission gate"
+      - name: Dashboard permission gate
         run: npm run test:rbac-dashboard
         working-directory: backend
 
-      - name: "Phase 20 Test 2 — Mechanic assignment isolation"
+      - name: Mechanic assignment isolation
         run: npm run test:rbac-mechanic
         working-directory: backend
