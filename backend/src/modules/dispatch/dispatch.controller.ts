@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { AppError } from '../../utils/appError';
+import { prisma } from '../../lib/prisma';
 import { getActorContext } from '../access/actor-context.service';
 import { can } from '../access/access-policy.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
@@ -32,11 +33,20 @@ export async function checkConflictsController(req: Request, res: Response) {
   assertPermission(actor, 'trip_view');
 
   const { tripId, driverId, vehicleId } = req.body;
-  if (tripId || driverId || vehicleId) {
-    const targets = await getDispatchTargets(tripId ?? '', driverId ?? '', vehicleId ?? '');
-    if (tripId) assertCanReadResource(actor, 'TRIP', targets.trip as unknown as Record<string, unknown>);
-    if (driverId) assertCanReadResource(actor, 'DRIVER', targets.driver as unknown as Record<string, unknown>);
-    if (vehicleId) assertCanReadResource(actor, 'VEHICLE', targets.vehicle as unknown as Record<string, unknown>);
+  if (tripId) {
+    const trip = await prisma.trip.findUnique({ where: { id: tripId } });
+    if (!trip) throw new AppError('Trip not found', 404);
+    assertCanReadResource(actor, 'TRIP', trip as unknown as Record<string, unknown>);
+  }
+  if (driverId) {
+    const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+    if (!driver) throw new AppError('Driver not found', 404);
+    assertCanReadResource(actor, 'DRIVER', driver as unknown as Record<string, unknown>);
+  }
+  if (vehicleId) {
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle) throw new AppError('Vehicle not found', 404);
+    assertCanReadResource(actor, 'VEHICLE', vehicle as unknown as Record<string, unknown>);
   }
 
   const result = await checkConflicts(req.body);
