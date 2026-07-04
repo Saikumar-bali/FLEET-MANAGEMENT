@@ -22,6 +22,7 @@ import { AssetDetailPage } from '../pages/AssetDetailPage';
 import { AssetCategoriesPage } from '../pages/AssetCategoriesPage';
 import { TripsPage } from '../pages/TripsPage';
 import { TripDetailPage } from '../pages/TripDetailPage';
+import DispatchBoardPage from '../pages/DispatchBoardPage';
 import { WorkflowListPage } from '../pages/WorkflowListPage';
 import { WorkflowDetailPage } from '../pages/WorkflowDetailPage';
 import { FuelEntryPage } from '../pages/FuelEntryPage';
@@ -89,6 +90,7 @@ function App() {
                   <Route path="/asset-categories" element={<AssetCategoriesPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['trip_view']} />}>
+                  <Route path="/dispatch-board" element={<DispatchBoardPage />} />
                   <Route path="/trips" element={<TripsPage />} />
                   <Route path="/trips/:id" element={<TripDetailPage />} />
                 </Route>
