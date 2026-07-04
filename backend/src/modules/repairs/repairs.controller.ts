@@ -4,9 +4,35 @@ import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
+import { createNotification } from '../notifications/notifications.service';
 import { createRepair, getRepair, listRepairs, transitionRepair, updateRepair } from './repairs.service';
 
 const RESOURCE: ResourceType = 'REPAIR';
+
+async function notifyAssignedMechanic(repair: any, actorId?: string | null) {
+  if (!repair.assignedToId || repair.assignedToId === actorId) return;
+  await createNotification({
+    title: 'Repair assigned',
+    message: `Repair for ${repair.vehicle?.vehicleNumber ?? 'vehicle'} has been assigned to you.`,
+    category: 'REPAIR',
+    severity: 'INFO',
+    actionUrl: `/repairs/${repair.id}`,
+    recipientPolicy: { type: 'USER', userIds: [repair.assignedToId] },
+    createdById: actorId ?? null,
+  });
+}
+
+async function notifyOps(title: string, message: string, repair: any, actorId?: string | null) {
+  await createNotification({
+    title,
+    message,
+    category: 'REPAIR',
+    severity: 'INFO',
+    actionUrl: `/repairs/${repair.id}`,
+    recipientPolicy: { type: 'GLOBAL', includeRoles: ['super_admin', 'admin', 'manager', 'supervisor'] },
+    createdById: actorId ?? null,
+  });
+}
 
 export async function listRepairsController(req: Request, res: Response) {
   const actor = await getActorContext(req.authUser!.id);
@@ -35,6 +61,7 @@ export async function createRepairController(req: Request, res: Response) {
   assertCanCreateResource(actor, RESOURCE, req.body);
 
   const item = await createRepair({ ...req.body, createdById: req.authUser?.id });
+  await notifyAssignedMechanic(item, req.authUser?.id);
   await createAuditLog(req, { userId: req.authUser?.id, action: 'repair.create', entityType: 'repair', entityId: item.id });
   return sendSuccess(res, item, 'Repair created successfully', 201);
 }
@@ -46,6 +73,9 @@ export async function updateRepairController(req: Request, res: Response) {
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const item = await updateRepair(String(req.params.id), req.body);
+  if (item.assignedToId && item.assignedToId !== existing.assignedToId) {
+    await notifyAssignedMechanic(item, req.authUser?.id);
+  }
   await createAuditLog(req, { userId: req.authUser?.id, action: 'repair.update', entityType: 'repair', entityId: item.id });
   return sendSuccess(res, item, 'Repair updated successfully');
 }
@@ -57,6 +87,17 @@ async function action(req: Request, res: Response, status: any, actionName: stri
 
   const item = await transitionRepair(String(req.params.id), status, req.authUser?.id, req.body.notes);
   if (!item) return sendSuccess(res, null, `Repair ${actionName}d successfully`);
+
+  if (status === 'IN_PROGRESS') {
+    await notifyOps('Repair started', `Repair for ${item.vehicle?.vehicleNumber ?? 'vehicle'} was started.`, item, req.authUser?.id);
+  }
+  if (status === 'COMPLETED') {
+    await notifyOps('Repair completed', `Repair for ${item.vehicle?.vehicleNumber ?? 'vehicle'} was completed.`, item, req.authUser?.id);
+  }
+  if (status === 'CANCELLED') {
+    await notifyOps('Repair cancelled', `Repair for ${item.vehicle?.vehicleNumber ?? 'vehicle'} was cancelled.`, item, req.authUser?.id);
+  }
+
   await createAuditLog(req, { userId: req.authUser?.id, action: `repair.${actionName}`, entityType: 'repair', entityId: item.id });
   return sendSuccess(res, item, `Repair ${actionName}d successfully`);
 }
