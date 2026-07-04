@@ -1,10 +1,9 @@
 import { useState, useCallback } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { navigationRegistry } from '../config/navigation';
 import { SettingsPopover, ThemeSubmenu } from '../components/SettingsPopover';
 import { AccountMenu } from '../components/AccountMenu';
-import { NotificationBell } from '../components/notifications/NotificationBell';
 
 const COLLAPSE_KEY = 'fleet-studio-sidebar-collapsed';
 
@@ -18,6 +17,7 @@ function getStoredCollapse(): boolean {
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(getStoredCollapse);
 
@@ -68,16 +68,26 @@ export function AppLayout() {
     setAccountAnchor(null);
   }, []);
 
+  const handleSidebarClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const button = (event.target as HTMLElement).closest('button');
+    if (button?.getAttribute('title') === 'Notifications') {
+      navigate('/alerts');
+      setIsSidebarOpen(false);
+    }
+  }, [navigate]);
+
   return (
     <div className={`app-shell${isCollapsed ? ' sidebar-collapsed' : ''}`}>
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isCollapsed={isCollapsed}
-        onToggleCollapse={handleToggleCollapse}
-        onOpenSettings={handleOpenSettings}
-        onOpenAccount={handleOpenAccount}
-      />
+      <div onClickCapture={handleSidebarClick}>
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+          onOpenSettings={handleOpenSettings}
+          onOpenAccount={handleOpenAccount}
+        />
+      </div>
       <main className="main-panel">
         <header className="topbar">
           <div className="topbar-title-group">
@@ -96,7 +106,6 @@ export function AppLayout() {
             <h2 className="page-title">{pageTitle}</h2>
             <p className="topbar-copy">{pageDescription}</p>
           </div>
-          <NotificationBell />
         </header>
         <Outlet />
       </main>
