@@ -43,6 +43,7 @@ const PERM_CAPABILITY_MAP: Record<string, CapabilityName[]> = {
 
 const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: string[] }> = {
   'overview': {},
+  'dashboard': {},
   'activity-history': { all: ['trip_view'] },
   'new-trip': { all: ['trip_create'] },
   'driver-portal': { all: ['driver_portal_view'] },
@@ -54,6 +55,7 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'my-issues': { any: ['driver_vehicle_issue_report'] },
   'my-inspections': { any: ['driver_vehicle_inspection_create'] },
   'manage-trips': { all: ['trip_view'] },
+  'dispatch-board': { all: ['trip_view', 'vehicle_view', 'driver_view'] },
   'vehicles': { all: ['vehicle_view'] },
   'drivers': { all: ['driver_view'] },
   'assets': { all: ['asset_view'] },
@@ -94,6 +96,7 @@ const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
   'activity-history': ['driver', 'assistant_driver'],
   'new-trip': ['driver', 'assistant_driver'],
   'manage-trips': ['driver', 'assistant_driver'],
+  'dispatch-board': ['driver', 'assistant_driver'],
   'vehicles': ['driver', 'assistant_driver'],
   'drivers': ['driver', 'assistant_driver'],
   'assets': ['driver', 'assistant_driver'],
@@ -139,6 +142,7 @@ const QUICK_ACTIONS: QuickActionDef[] = [
   { id: 'approve_fuel', label: 'Approve Fuel', path: '/driver-submissions/fuel', icon: 'Fuel', priority: 210 },
   { id: 'approve_expense', label: 'Approve Expenses', path: '/driver-submissions/expenses', icon: 'Expenses', priority: 220 },
   { id: 'manage_trips', label: 'Manage Trips', path: '/trips', icon: 'Trips', priority: 300 },
+  { id: 'dispatch_board', label: 'Dispatch Board', path: '/dispatch-board', icon: 'Activity', priority: 305 },
   { id: 'manage_vehicles', label: 'Vehicles', path: '/vehicles', icon: 'Vehicles', priority: 310 },
   { id: 'manage_drivers', label: 'Drivers', path: '/drivers', icon: 'Drivers', priority: 320 },
   { id: 'view_finance', label: 'Finance', path: '/finance', icon: 'FinanceDashboard', priority: 400 },
@@ -254,226 +258,129 @@ function buildNavigation(
       }
     }
 
+    if (item.id === 'finance-dashboard' && !capabilities.canUseFinance && !capabilities.canViewReports) return false;
+    if (item.id === 'roles' && !capabilities.canManageRoles && !isSuperAdmin) return false;
+    if (item.id === 'users' && !capabilities.canManageUsers && !isSuperAdmin) return false;
+
     return true;
   });
 
-  allowed.sort((a, b) => a.priority - b.priority);
-
-  const sections: NavSection[] = [];
-  const grouped = new Map<string, NavItemDef[]>();
-
-  for (const item of allowed) {
-    const list = grouped.get(item.section) ?? [];
-    list.push(item);
-    grouped.set(item.section, list);
-  }
-
-  for (const sectionKey of ALL_SECTIONS) {
-    const items = grouped.get(sectionKey);
-    if (items && items.length > 0) {
-      sections.push({
-        section: sectionKey,
-        label: NAV_SECTION_LABELS[sectionKey] ?? sectionKey,
-        items,
-      });
-    }
-  }
-
-  return sections;
+  return ALL_SECTIONS.map(section => {
+    const items = allowed
+      .filter(item => item.section === section)
+      .sort((a, b) => a.priority - b.priority);
+    return { section, label: NAV_SECTION_LABELS[section] ?? section, items };
+  }).filter(section => section.items.length > 0);
 }
 
 function buildQuickActions(
-  roleKey: string,
+  workspaceType: WorkspaceType,
   effectivePermissions: string[],
-  profileTypes: string[],
   capabilities: Capabilities,
 ): QuickActionDef[] {
   const permSet = new Set(effectivePermissions);
 
-  if (roleKey === 'super_admin') {
-    return [
-      { id: 'manage_users', label: 'Users', path: '/users', icon: 'Users', priority: 100 },
-      { id: 'manage_roles', label: 'Roles', path: '/roles', icon: 'Roles', priority: 110 },
-      { id: 'manage_trips', label: 'Manage Trips', path: '/trips', icon: 'Trips', priority: 200 },
-      { id: 'view_finance', label: 'Finance', path: '/finance', icon: 'FinanceDashboard', priority: 300 },
-    ];
-  }
-
-  const actions: QuickActionDef[] = [];
-
-  if (capabilities.canUseDriverPortal && profileTypes.includes('DRIVER')) {
-    if (permSet.has('driver_trip_create')) {
-      actions.push({ id: 'create_trip', label: 'Create Trip', path: '/driver-portal/trips/new', icon: 'NewTrip', priority: 100 });
+  return QUICK_ACTIONS.filter((action) => {
+    switch (action.id) {
+      case 'create_trip':
+        return workspaceType === 'DRIVER' && permSet.has('driver_trip_create');
+      case 'checkout_vehicle':
+      case 'return_vehicle':
+        return workspaceType === 'DRIVER' && capabilities.canSelfCheckoutVehicle;
+      case 'add_fuel':
+        return workspaceType === 'DRIVER' && permSet.has('driver_quick_fuel_create');
+      case 'claim_expense':
+        return workspaceType === 'DRIVER' && permSet.has('driver_expense_create');
+      case 'upload_document':
+        return workspaceType === 'DRIVER' && permSet.has('driver_document_upload');
+      case 'report_issue':
+        return workspaceType === 'DRIVER' && permSet.has('driver_vehicle_issue_report');
+      case 'do_inspection':
+        return workspaceType === 'DRIVER' && permSet.has('driver_vehicle_inspection_create');
+      case 'review_submissions':
+        return capabilities.canReviewDriverSubmissions;
+      case 'approve_fuel':
+        return capabilities.canReviewFuel;
+      case 'approve_expense':
+        return capabilities.canReviewExpenses;
+      case 'manage_trips':
+        return capabilities.canManageTrips;
+      case 'dispatch_board':
+        return permSet.has('trip_view') && permSet.has('vehicle_view') && permSet.has('driver_view');
+      case 'manage_vehicles':
+        return capabilities.canManageVehicles;
+      case 'manage_drivers':
+        return capabilities.canManageDrivers;
+      case 'view_finance':
+        return capabilities.canUseFinance;
+      case 'view_reports':
+        return capabilities.canViewReports;
+      case 'manage_users':
+        return capabilities.canManageUsers;
+      case 'manage_roles':
+        return capabilities.canManageRoles;
+      default:
+        return false;
     }
-    if (permSet.has('driver_vehicle_self_checkout') || permSet.has('driver_available_vehicle_select')) {
-      actions.push({ id: 'checkout_vehicle', label: 'Take Vehicle', path: '/driver-portal/vehicles', icon: 'MyVehicle', priority: 110 });
-    }
-    if (permSet.has('driver_quick_fuel_create')) {
-      actions.push({ id: 'add_fuel', label: 'Add Fuel', path: '/driver-portal/fuel/new', icon: 'MyFuel', priority: 120 });
-    }
-    if (permSet.has('driver_expense_create')) {
-      actions.push({ id: 'claim_expense', label: 'Claim Expense', path: '/driver-portal/expenses/new', icon: 'MyExpenses', priority: 130 });
-    }
-    if (permSet.has('driver_document_upload')) {
-      actions.push({ id: 'upload_document', label: 'Upload Document', path: '/driver-portal/documents/upload', icon: 'MyDocuments', priority: 140 });
-    }
-    if (permSet.has('driver_vehicle_issue_report')) {
-      actions.push({ id: 'report_issue', label: 'Report Issue', path: '/driver-portal/vehicles/issue', icon: 'Issues', priority: 150 });
-    }
-  }
-
-  if (capabilities.canReviewDriverSubmissions) {
-    actions.push({ id: 'review_submissions', label: 'Review Submissions', path: '/driver-submissions', icon: 'Submissions', priority: 200 });
-    if (permSet.has('driver_fuel_approve')) {
-      actions.push({ id: 'approve_fuel', label: 'Approve Fuel', path: '/driver-submissions/fuel', icon: 'Fuel', priority: 210 });
-    }
-    if (permSet.has('driver_expense_approve')) {
-      actions.push({ id: 'approve_expense', label: 'Approve Expenses', path: '/driver-submissions/expenses', icon: 'Expenses', priority: 220 });
-    }
-  }
-
-  if (capabilities.canManageTrips) {
-    actions.push({ id: 'manage_trips', label: 'Manage Trips', path: '/trips', icon: 'Trips', priority: 300 });
-  }
-  if (capabilities.canManageVehicles) {
-    actions.push({ id: 'manage_vehicles', label: 'Vehicles', path: '/vehicles', icon: 'Vehicles', priority: 310 });
-  }
-  if (capabilities.canManageDrivers) {
-    actions.push({ id: 'manage_drivers', label: 'Drivers', path: '/drivers', icon: 'Drivers', priority: 320 });
-  }
-  if (capabilities.canUseFinance) {
-    actions.push({ id: 'view_finance', label: 'Finance', path: '/finance', icon: 'FinanceDashboard', priority: 400 });
-  }
-  if (capabilities.canManageUsers) {
-    actions.push({ id: 'manage_users', label: 'Users', path: '/users', icon: 'Users', priority: 500 });
-  }
-  if (capabilities.canManageRoles) {
-    actions.push({ id: 'manage_roles', label: 'Roles & Permissions', path: '/roles', icon: 'Roles', priority: 510 });
-  }
-  if (capabilities.canUseReports || capabilities.canViewReports) {
-    actions.push({ id: 'view_reports', label: 'Reports', path: '/finance/reports', icon: 'Reports', priority: 520 });
-  }
-
-  actions.sort((a, b) => a.priority - b.priority);
-  return actions;
+  }).sort((a, b) => a.priority - b.priority);
 }
 
-function buildEmptyStates(workspaceType: WorkspaceType, capabilities: Capabilities, profileTypes: string[]): string[] {
-  const states: string[] = [];
+async function getPrimaryProfiles(userId: string, primaryLinks: Awaited<ReturnType<typeof getUserProfileLinks>>): Promise<PrimaryProfiles> {
+  const primaryDriver = await getDriverIdForUser(userId);
+  const mechanicLink = primaryLinks.find(l => l.profileType === 'MECHANIC' && l.isPrimary);
+  const financeLink = primaryLinks.find(l => l.profileType === 'FINANCE' && l.isPrimary);
+  const collectorLink = primaryLinks.find(l => l.profileType === 'COLLECTOR' && l.isPrimary);
 
-  if (workspaceType === 'DRIVER' && !profileTypes.includes('DRIVER')) {
-    states.push('No active driver profile. Contact an admin to link your account to a driver.');
-  }
+  const [driver, mechanic, finance, collector] = await Promise.all([
+    primaryDriver ? prisma.driver.findUnique({ where: { id: primaryDriver }, select: { id: true, name: true, mobile: true, status: true } }) : null,
+    mechanicLink ? prisma.mechanic.findUnique({ where: { id: mechanicLink.profileId }, select: { id: true, name: true } }) : null,
+    financeLink ? prisma.financeProfile.findUnique({ where: { id: financeLink.profileId }, select: { id: true, name: true } }) : null,
+    collectorLink ? prisma.collector.findUnique({ where: { id: collectorLink.profileId }, select: { id: true, name: true } }) : null,
+  ]);
 
-  if (!capabilities.canUseDriverPortal && profileTypes.includes('DRIVER')) {
-    states.push('Driver portal access is restricted. You may be missing required permissions.');
-  }
-
-  if (!capabilities.canManageTrips && !capabilities.canCreateTrips && workspaceType !== 'SUPER_ADMIN') {
-    states.push('No trip management access. Contact an admin to grant trip permissions.');
-  }
-
-  return states;
+  return { driver, mechanic, finance, collector };
 }
 
-function buildDiagnostics(roleKey: string, profileTypes: string[], effectivePermissions: string[], dataScopes: unknown[]): string[] {
-  const diag: string[] = [];
+export async function buildWorkspaceForUser(userId: string): Promise<WorkspaceResponse> {
+  const [user, profileLinks, effectivePermissions] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, include: { role: true } }),
+    getUserProfileLinks(userId),
+    getEffectivePermissions(userId),
+  ]);
 
-  const driverPerms = effectivePermissions.filter(p => p.startsWith('driver_'));
-  if (profileTypes.includes('DRIVER') && driverPerms.length === 0) {
-    diag.push('Driver profile detected but no driver-related permissions found.');
-  }
+  if (!user) throw new Error('User not found');
 
-  if (profileTypes.includes('DRIVER') && !effectivePermissions.includes('driver_portal_view')) {
-    diag.push('Missing driver_portal_view permission — driver portal will be limited.');
-  }
-
-  if (dataScopes.length === 0 && profileTypes.length === 0 && roleKey !== 'super_admin') {
-    diag.push('No profile links or data scopes — access may be limited to role-based permissions only.');
-  }
-
-  return diag;
-}
-
-export async function getWorkspace(userId: string): Promise<WorkspaceResponse> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      role: true,
-      permissionOverrides: {
-        where: {
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
-        include: { permission: true },
-      },
-      dataScopes: true,
-      profileLinks: {
-        where: { status: 'ACTIVE' },
-        orderBy: [{ isPrimary: 'desc' }],
-      },
-    },
-  });
-
-  if (!user) {
-    throw new Error('User not found');
-  }
-
-  const permResult = await getEffectivePermissions(userId);
-  const effectivePermissions = permResult.effectivePermissions;
-  const profileTypes = await getProfileTypesForUser(userId);
-  const profileLinks = user.profileLinks;
-  const hasActiveLinks = profileLinks.length > 0;
-  const hasPrimaryDriverProfile = profileLinks.some(
-    (l) => l.profileType === 'DRIVER' && l.isPrimary && l.status === 'ACTIVE',
-  );
-
-  const driverId = await getDriverIdForUser(userId);
-  const workspaceType = determineWorkspaceType(user.role.key, profileTypes, effectivePermissions, hasActiveLinks);
-
+  const activeLinks = profileLinks.filter(l => l.status === 'ACTIVE');
+  const primaryLinks = activeLinks.filter(l => l.isPrimary);
+  const profileTypes = getProfileTypesForUser(activeLinks);
+  const roleKey = user.role.key;
+  const hasActiveLinks = activeLinks.length > 0;
+  const hasPrimaryDriverProfile = primaryLinks.some(l => l.profileType === 'DRIVER');
   const capabilities = buildCapabilities(effectivePermissions, profileTypes);
-  const navigation = buildNavigation(user.role.key, effectivePermissions, profileTypes, capabilities, hasPrimaryDriverProfile, hasActiveLinks);
-  const quickActions = buildQuickActions(user.role.key, effectivePermissions, profileTypes, capabilities);
-  const emptyStates = buildEmptyStates(workspaceType, capabilities, profileTypes);
-  const diagnostics = buildDiagnostics(user.role.key, profileTypes, effectivePermissions, user.dataScopes);
+  const workspaceType = determineWorkspaceType(roleKey, profileTypes, effectivePermissions, hasActiveLinks);
+  const primaryProfiles = await getPrimaryProfiles(userId, primaryLinks);
+  const navigation = buildNavigation(roleKey, effectivePermissions, profileTypes, capabilities, hasPrimaryDriverProfile, hasActiveLinks);
+  const quickActions = buildQuickActions(workspaceType, effectivePermissions, capabilities);
 
-  const primaryProfiles: PrimaryProfiles = {
-    driver: null,
-    mechanic: null,
-    finance: null,
-    collector: null,
-  };
-
-  if (driverId) {
-    const driver = await prisma.driver.findUnique({
-      where: { id: driverId },
-      select: { id: true, name: true, mobile: true, status: true },
-    });
-    primaryProfiles.driver = driver;
+  const diagnostics: string[] = [];
+  if ((roleKey === 'driver' || profileTypes.includes('DRIVER')) && !primaryProfiles.driver) {
+    diagnostics.push('Driver profile link missing or inactive. Driver portal is limited until a primary active DRIVER link exists.');
   }
+  if (workspaceType === 'VIEWER' && effectivePermissions.length === 0) {
+    diagnostics.push('No permissions assigned. Contact an administrator for access.');
+  }
+
+  const emptyStates: string[] = [];
+  if (navigation.length === 0) emptyStates.push('No navigation modules available for this role.');
+  if (quickActions.length === 0) emptyStates.push('No quick actions available for this role.');
 
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      roleKey: user.role.key,
-    },
+    user: { id: user.id, name: user.name, username: user.username, roleKey },
     workspaceType,
-    profileLinks: profileLinks.map((l) => ({
-      id: l.id,
-      profileType: l.profileType,
-      profileId: l.profileId,
-      isPrimary: l.isPrimary,
-      status: l.status,
-    })),
+    profileLinks: activeLinks.map(l => ({ id: l.id, profileType: l.profileType, profileId: l.profileId, isPrimary: l.isPrimary, status: l.status })),
     primaryProfiles,
     effectivePermissions,
-    dataScopes: user.dataScopes.map((s) => ({
-      id: s.id,
-      scopeType: s.scopeType,
-      scopeId: s.scopeId,
-      accessLevel: s.accessLevel,
-    })),
+    dataScopes: [],
     capabilities,
     navigation,
     quickActions,
