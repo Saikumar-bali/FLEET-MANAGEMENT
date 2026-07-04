@@ -1,0 +1,55 @@
+name: Phase 21 Driver Assignment
+
+on:
+  push:
+    branches: ["phase-21-driver-assignment-workflow"]
+  workflow_dispatch:
+
+jobs:
+  driver-assignment:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleet_phase21_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_phase21_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_phase21_test
+      NODE_ENV: development
+      JWT_SECRET: phase21-ci-secret
+      JWT_REFRESH_SECRET: phase21-ci-refresh-secret
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: .storage/uploads
+      RECEIPT_EXTRACTION_PROVIDER: mock
+      ADMIN_EMAIL: admin@fleet-ci.test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      ENABLE_DEMO_USERS: "true"
+      API_BASE_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+        working-directory: backend
+      - run: npx prisma generate
+        working-directory: backend
+      - run: npx prisma migrate deploy
+        working-directory: backend
+      - run: npx prisma db seed
+        working-directory: backend
+      - run: npm run lint
+        working-directory: backend
+      - run: npm run test:driver-assignment
+        working-directory: backend
