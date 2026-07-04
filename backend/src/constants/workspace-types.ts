@@ -131,6 +131,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'my-issues', label: 'My Issues', path: '/driver-portal/vehicles/issue', icon: 'Issues', section: 'DRIVER', priority: 150 },
   { id: 'my-inspections', label: 'My Inspections', path: '/driver-portal/vehicles/inspect', icon: 'Inspections', section: 'DRIVER', priority: 160 },
   { id: 'manage-trips', label: 'Manage Trips', path: '/trips', icon: 'Trips', section: 'OPERATIONS', priority: 200 },
+  { id: 'dispatch-board', label: 'Dispatch Board', path: '/dispatch-board', icon: 'Activity', section: 'OPERATIONS', priority: 205 },
   { id: 'vehicles', label: 'Vehicles', path: '/vehicles', icon: 'Vehicles', section: 'OPERATIONS', priority: 210 },
   { id: 'drivers', label: 'Drivers', path: '/drivers', icon: 'Drivers', section: 'OPERATIONS', priority: 220 },
   { id: 'assets', label: 'Assets', path: '/assets', icon: 'Assets', section: 'OPERATIONS', priority: 225 },
