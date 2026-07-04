@@ -18,8 +18,15 @@ export type VehicleRecord = {
   currentDriverId?: string | null;
 };
 
-export type UnavailableItem<T> = {
-  item: T;
+export type UnavailableVehicleItem = {
+  vehicle?: VehicleRecord;
+  item?: VehicleRecord;
+  reason: string;
+};
+
+export type UnavailableDriverItem = {
+  driver?: DriverRecord;
+  item?: DriverRecord;
   reason: string;
 };
 
@@ -46,9 +53,9 @@ export type BoardSummary = {
 
 export type BoardData = {
   availableVehicles: VehicleRecord[];
-  unavailableVehicles: UnavailableItem<VehicleRecord>[];
+  unavailableVehicles: UnavailableVehicleItem[];
   availableDrivers: DriverRecord[];
-  unavailableDrivers: UnavailableItem<DriverRecord>[];
+  unavailableDrivers: UnavailableDriverItem[];
   unassignedTrips: TripRecord[];
   summary: BoardSummary;
 };
