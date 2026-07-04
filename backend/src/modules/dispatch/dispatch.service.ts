@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { createNotification } from '../notifications/notifications.service';
@@ -23,12 +24,32 @@ const ROUTE_ESTIMATES: Record<string, Record<string, { distanceKm: number; durat
   },
 };
 
-export async function getBoardData() {
+type BoardScope = {
+  vehicleWhere?: Prisma.VehicleWhereInput;
+  driverWhere?: Prisma.DriverWhereInput;
+  tripWhere?: Prisma.TripWhereInput;
+};
+
+export async function getBoardData(scope: BoardScope = {}) {
   const [vehicles, drivers, unassignedTrips, scheduledTrips] = await Promise.all([
-    prisma.vehicle.findMany({ orderBy: { vehicleNumber: 'asc' } }),
-    prisma.driver.findMany({ orderBy: { name: 'asc' } }),
-    prisma.trip.findMany({ where: { status: 'DRAFT', driverId: null }, include: { vehicle: { select: { id: true, vehicleNumber: true } } }, orderBy: { createdAt: 'desc' } }),
-    prisma.trip.count({ where: { status: { in: ['SCHEDULED', 'STARTED'] }, plannedStartAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } }),
+    prisma.vehicle.findMany({ where: scope.vehicleWhere, orderBy: { vehicleNumber: 'asc' } }),
+    prisma.driver.findMany({ where: scope.driverWhere, orderBy: { name: 'asc' } }),
+    prisma.trip.findMany({
+      where: {
+        status: 'DRAFT',
+        driverId: null,
+        ...(scope.tripWhere ? { AND: [scope.tripWhere] } : {}),
+      },
+      include: { vehicle: { select: { id: true, vehicleNumber: true } } },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.trip.count({
+      where: {
+        status: { in: ['SCHEDULED', 'STARTED'] },
+        plannedStartAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+        ...(scope.tripWhere ? { AND: [scope.tripWhere] } : {}),
+      },
+    }),
   ]);
 
   const availableVehicles = vehicles.filter((v) => v.status === 'AVAILABLE');
@@ -161,17 +182,22 @@ export async function checkConflicts(input: ConflictCheckInput) {
   return { hasConflict: conflicts.length > 0, conflicts };
 }
 
-export async function assignTrip(tripId: string, driverId: string, vehicleId: string, userId: string) {
-  const trip = await prisma.trip.findUnique({ where: { id: tripId }, include: { vehicle: true, driver: true } });
+export async function getDispatchTargets(tripId: string, driverId: string, vehicleId: string) {
+  const [trip, driver, vehicle] = await Promise.all([
+    prisma.trip.findUnique({ where: { id: tripId }, include: { vehicle: true, driver: true } }),
+    prisma.driver.findUnique({ where: { id: driverId } }),
+    prisma.vehicle.findUnique({ where: { id: vehicleId } }),
+  ]);
   if (!trip) throw new AppError('Trip not found', 404);
-  if (trip.status !== 'DRAFT') throw new AppError('Only draft trips can be assigned', 400);
-
-  const driver = await prisma.driver.findUnique({ where: { id: driverId } });
   if (!driver) throw new AppError('Driver not found', 404);
-  if (driver.status !== 'AVAILABLE') throw new AppError(`Driver ${driver.name} is not available`, 400);
-
-  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (!vehicle) throw new AppError('Vehicle not found', 404);
+  return { trip, driver, vehicle };
+}
+
+export async function assignTrip(tripId: string, driverId: string, vehicleId: string, userId: string) {
+  const { trip, driver, vehicle } = await getDispatchTargets(tripId, driverId, vehicleId);
+  if (trip.status !== 'DRAFT') throw new AppError('Only draft trips can be assigned', 400);
+  if (driver.status !== 'AVAILABLE') throw new AppError(`Driver ${driver.name} is not available`, 400);
   if (vehicle.status !== 'AVAILABLE') throw new AppError(`Vehicle ${vehicle.vehicleNumber} is not available`, 400);
 
   const conflictCheck = await checkConflicts({ tripId, driverId, vehicleId, plannedStartAt: trip.plannedStartAt?.toISOString() ?? null, plannedEndAt: trip.plannedEndAt?.toISOString() ?? null });
