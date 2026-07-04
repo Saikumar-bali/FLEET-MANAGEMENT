@@ -20,6 +20,11 @@ function normalizeBlockedDrivers(board: BoardData | null): BlockedDriver[] {
     .filter((entry): entry is BlockedDriver => Boolean(entry.item));
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return 'No planned start';
+  return new Date(value).toLocaleString();
+}
+
 export default function DispatchBoardPage() {
   const auth = useAuth();
   const [board, setBoard] = useState<BoardData | null>(null);
@@ -145,273 +150,609 @@ export default function DispatchBoardPage() {
 
   return (
     <div className="page-container dispatch-board">
-      <div className="dispatch-hero">
+      <div className="dispatch-topbar">
         <div>
-          <div className="dispatch-kicker">OPERATIONS COMMAND CENTER</div>
+          <div className="dispatch-kicker">OPERATIONS</div>
           <h1>Dispatch Board</h1>
-          <p>Plan trips by matching available vehicles and drivers, checking route estimates, and blocking conflicts before assignment.</p>
+          <p>Assign a trip only after driver, vehicle, route and conflict checks are clear.</p>
         </div>
-        <div className="dispatch-hero-actions">
-          <div className="dispatch-health-pill">Live availability</div>
-          <button type="button" className="btn-secondary" onClick={refresh}>Refresh Board</button>
-        </div>
+        <button type="button" className="dispatch-refresh-button" onClick={refresh} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh board'}
+        </button>
       </div>
 
       {error && <div className="error-message dispatch-alert">{error}</div>}
 
       <div className="dispatch-summary-cards">
-        <div className="summary-card summary-card--available">
-          <span className="summary-card-value">{board.summary.availableVehicles}</span>
-          <span className="summary-card-label">Available Vehicles</span>
+        <div className="summary-card summary-card--success">
+          <span>{board.summary.availableVehicles}</span>
+          <p>Available vehicles</p>
         </div>
-        <div className="summary-card summary-card--available">
-          <span className="summary-card-value">{board.summary.availableDrivers}</span>
-          <span className="summary-card-label">Available Drivers</span>
+        <div className="summary-card summary-card--success">
+          <span>{board.summary.availableDrivers}</span>
+          <p>Available drivers</p>
         </div>
-        <div className="summary-card summary-card--pending">
-          <span className="summary-card-value">{board.summary.unassignedTrips}</span>
-          <span className="summary-card-label">Unassigned Trips</span>
+        <div className="summary-card summary-card--warning">
+          <span>{board.summary.unassignedTrips}</span>
+          <p>Unassigned trips</p>
         </div>
-        <div className="summary-card summary-card--blocked">
-          <span className="summary-card-value">{blockedVehicles.length + blockedDrivers.length}</span>
-          <span className="summary-card-label">Blocked Resources</span>
+        <div className="summary-card summary-card--danger">
+          <span>{blockedVehicles.length + blockedDrivers.length}</span>
+          <p>Blocked resources</p>
         </div>
       </div>
 
-      <div className="dispatch-helper-strip">
-        <span>1. Select a trip</span>
-        <span>2. Drag/click a driver</span>
-        <span>3. Drag/click a vehicle</span>
-        <span>4. Confirm assignment</span>
+      <div className="dispatch-workflow-strip">
+        <span className={selectedTrip ? 'done' : 'active'}>1. Choose trip</span>
+        <span className={selectedDriver ? 'done' : selectedTrip ? 'active' : ''}>2. Choose driver</span>
+        <span className={selectedVehicle ? 'done' : selectedDriver ? 'active' : ''}>3. Choose vehicle</span>
+        <span className={canAssign ? 'active' : ''}>4. Confirm</span>
       </div>
 
-      <div className="dispatch-columns">
-        <div className="dispatch-column dispatch-column--vehicles">
-          <div className="dispatch-column-header">
-            <h3>Vehicles</h3>
-            <span>{board.availableVehicles.length} ready</span>
-          </div>
-          <div className="dispatch-list">
-            {board.availableVehicles.map((v) => (
-              <div key={v.id}
-                className={`dispatch-card dispatch-card--vehicle ${selectedVehicle?.id === v.id ? 'dispatch-card--selected' : ''}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, 'vehicle', v.id)}
-                onClick={() => setSelectedVehicle(v)}>
-                <div className="dispatch-card-title">{v.vehicleNumber}</div>
-                <div className="dispatch-card-subtitle">{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</div>
-                <span className="dispatch-card-badge dispatch-card-badge--available">AVAILABLE</span>
-              </div>
-            ))}
-            {blockedVehicles.map(({ item: v, reason }) => (
-              <div key={v.id} className="dispatch-card dispatch-card--unavailable disabled" title={reason}>
-                <div className="dispatch-card-title">{v.vehicleNumber}</div>
-                <div className="dispatch-card-subtitle">{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</div>
-                <span className="dispatch-card-badge dispatch-card-badge--blocked">{reason}</span>
-              </div>
-            ))}
-            {board.availableVehicles.length === 0 && blockedVehicles.length === 0 && (
-              <div className="dispatch-empty">No vehicles found</div>
-            )}
-          </div>
-        </div>
-
-        <div className="dispatch-column dispatch-column--drivers">
-          <div className="dispatch-column-header">
-            <h3>Drivers</h3>
-            <span>{board.availableDrivers.length} ready</span>
-          </div>
-          <div className="dispatch-list">
-            {board.availableDrivers.map((d) => (
-              <div key={d.id}
-                className={`dispatch-card dispatch-card--driver ${selectedDriver?.id === d.id ? 'dispatch-card--selected' : ''}`}
-                draggable
-                onDragStart={(e) => handleDragStart(e, 'driver', d.id)}
-                onClick={() => setSelectedDriver(d)}>
-                <div className="dispatch-card-title">{d.name}</div>
-                <div className="dispatch-card-subtitle">{d.mobile}</div>
-                <span className="dispatch-card-badge dispatch-card-badge--available">AVAILABLE</span>
-              </div>
-            ))}
-            {blockedDrivers.map(({ item: d, reason }) => (
-              <div key={d.id} className="dispatch-card dispatch-card--unavailable disabled" title={reason}>
-                <div className="dispatch-card-title">{d.name}</div>
-                <div className="dispatch-card-subtitle">{d.mobile}</div>
-                <span className="dispatch-card-badge dispatch-card-badge--blocked">{reason}</span>
-              </div>
-            ))}
-            {board.availableDrivers.length === 0 && blockedDrivers.length === 0 && (
-              <div className="dispatch-empty">No drivers found</div>
-            )}
-          </div>
-        </div>
-
-        <div className="dispatch-column dispatch-column--trips">
-          <div className="dispatch-column-header">
-            <h3>Unassigned Trips</h3>
-            <span>{board.unassignedTrips.length} waiting</span>
-          </div>
+      <div className="dispatch-layout">
+        <section className="dispatch-panel dispatch-panel--trips">
+          <header>
+            <div>
+              <h2>Trips waiting for dispatch</h2>
+              <p>{board.unassignedTrips.length} draft trips</p>
+            </div>
+          </header>
           <div className="dispatch-list">
             {board.unassignedTrips.map((t) => (
-              <div key={t.id}
-                className={`dispatch-card dispatch-card--trip ${selectedTrip?.id === t.id ? 'dispatch-card--selected' : ''} ${dragOver === t.id ? 'dispatch-card--drag-over' : ''}`}
+              <article key={t.id}
+                className={`dispatch-item dispatch-trip ${selectedTrip?.id === t.id ? 'selected' : ''} ${dragOver === t.id ? 'drop-ready' : ''}`}
                 onDragOver={(e) => handleTripDragOver(e, t.id)}
                 onDragLeave={handleTripDragLeave}
                 onDrop={(e) => handleDrop(e, t)}
                 onClick={() => handleSelectTrip(t)}>
-                <div className="dispatch-card-title">{t.tripNumber}</div>
-                <div className="dispatch-card-subtitle">{t.originName} → {t.destinationName}</div>
-                <div className="dispatch-card-meta">
-                  {t.plannedStartAt ? new Date(t.plannedStartAt).toLocaleString() : 'No planned start'}
+                <div className="dispatch-item-main">
+                  <strong>{t.tripNumber}</strong>
+                  <span>{t.originName} → {t.destinationName}</span>
                 </div>
-                <span className="dispatch-drop-hint">Drop driver/vehicle here</span>
-              </div>
+                <div className="dispatch-item-meta">{formatDate(t.plannedStartAt)}</div>
+                <div className="dispatch-drop-hint">Drop driver or vehicle here</div>
+              </article>
             ))}
             {board.unassignedTrips.length === 0 && (
-              <div className="dispatch-empty">No unassigned trips</div>
+              <div className="dispatch-empty">No unassigned trips. New draft trips will appear here.</div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="dispatch-column dispatch-column--preview">
-          <div className="dispatch-column-header">
-            <h3>Assignment Preview</h3>
-            <span>{checking ? 'checking...' : hardConflicts.length ? 'blocked' : 'ready'}</span>
+        <section className="dispatch-panel">
+          <header>
+            <div>
+              <h2>Drivers</h2>
+              <p>{board.availableDrivers.length} ready · {blockedDrivers.length} blocked</p>
+            </div>
+          </header>
+          <div className="dispatch-list">
+            {board.availableDrivers.map((d) => (
+              <article key={d.id}
+                className={`dispatch-item compact ${selectedDriver?.id === d.id ? 'selected' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'driver', d.id)}
+                onClick={() => setSelectedDriver(d)}>
+                <div className="dispatch-item-main">
+                  <strong>{d.name}</strong>
+                  <span>{d.mobile}</span>
+                </div>
+                <span className="status-pill success">Available</span>
+              </article>
+            ))}
+            {blockedDrivers.map(({ item: d, reason }) => (
+              <article key={d.id} className="dispatch-item compact blocked" title={reason}>
+                <div className="dispatch-item-main">
+                  <strong>{d.name}</strong>
+                  <span>{d.mobile}</span>
+                </div>
+                <span className="status-pill blocked">{reason}</span>
+              </article>
+            ))}
           </div>
+        </section>
+
+        <section className="dispatch-panel">
+          <header>
+            <div>
+              <h2>Vehicles</h2>
+              <p>{board.availableVehicles.length} ready · {blockedVehicles.length} blocked</p>
+            </div>
+          </header>
+          <div className="dispatch-list">
+            {board.availableVehicles.map((v) => (
+              <article key={v.id}
+                className={`dispatch-item compact ${selectedVehicle?.id === v.id ? 'selected' : ''}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'vehicle', v.id)}
+                onClick={() => setSelectedVehicle(v)}>
+                <div className="dispatch-item-main">
+                  <strong>{v.vehicleNumber}</strong>
+                  <span>{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</span>
+                </div>
+                <span className="status-pill success">Available</span>
+              </article>
+            ))}
+            {blockedVehicles.map(({ item: v, reason }) => (
+              <article key={v.id} className="dispatch-item compact blocked" title={reason}>
+                <div className="dispatch-item-main">
+                  <strong>{v.vehicleNumber}</strong>
+                  <span>{v.vehicleType}{v.brand ? ` · ${v.brand}` : ''}</span>
+                </div>
+                <span className="status-pill blocked">{reason}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <aside className="dispatch-panel dispatch-preview-panel">
+          <header>
+            <div>
+              <h2>Assignment</h2>
+              <p>{checking ? 'Checking conflicts...' : hardConflicts.length ? 'Blocked' : 'Ready'}</p>
+            </div>
+          </header>
+
           {selectedTrip ? (
             <div className="dispatch-preview">
-              <div className="dispatch-preview-section dispatch-preview-section--trip">
-                <h4>Trip</h4>
-                <p><strong>{selectedTrip.tripNumber}</strong></p>
-                <p>{selectedTrip.originName} → {selectedTrip.destinationName}</p>
-                {selectedTrip.plannedStartAt && <p>{new Date(selectedTrip.plannedStartAt).toLocaleString()}</p>}
+              <div className="preview-card route-card">
+                <label>Trip</label>
+                <strong>{selectedTrip.tripNumber}</strong>
+                <span>{selectedTrip.originName} → {selectedTrip.destinationName}</span>
+                <small>{formatDate(selectedTrip.plannedStartAt)}</small>
+              </div>
+
+              <div className="preview-grid">
+                <div className="preview-card">
+                  <label>Driver</label>
+                  {selectedDriver ? <strong>{selectedDriver.name}</strong> : <span className="muted">Not selected</span>}
+                  {selectedDriver && <small>{selectedDriver.mobile}</small>}
+                </div>
+                <div className="preview-card">
+                  <label>Vehicle</label>
+                  {selectedVehicle ? <strong>{selectedVehicle.vehicleNumber}</strong> : <span className="muted">Not selected</span>}
+                  {selectedVehicle && <small>{selectedVehicle.vehicleType}</small>}
+                </div>
               </div>
 
               {routeEstimate && (
-                <div className="dispatch-preview-section">
-                  <h4>Route Estimate</h4>
+                <div className="preview-card">
+                  <label>Route estimate</label>
                   {routeEstimate.status === 'AVAILABLE' ? (
-                    <p className="route-pill">{routeEstimate.distanceKm} km · ~{routeEstimate.estimatedDurationMin} min</p>
+                    <strong>{routeEstimate.distanceKm} km · {routeEstimate.estimatedDurationMin} min</strong>
                   ) : (
-                    <p className="text-muted">{routeEstimate.message ?? 'Route estimate unavailable'}</p>
+                    <span className="muted">{routeEstimate.message ?? 'Route estimate unavailable'}</span>
                   )}
                 </div>
               )}
 
-              <div className="dispatch-preview-section">
-                <h4>Driver</h4>
-                {selectedDriver ? (
-                  <p><strong>{selectedDriver.name}</strong> · {selectedDriver.mobile}</p>
-                ) : (
-                  <p className="text-muted">Drag or click a driver</p>
-                )}
-              </div>
-
-              <div className="dispatch-preview-section">
-                <h4>Vehicle</h4>
-                {selectedVehicle ? (
-                  <p><strong>{selectedVehicle.vehicleNumber}</strong> · {selectedVehicle.vehicleType}</p>
-                ) : (
-                  <p className="text-muted">Drag or click a vehicle</p>
-                )}
-              </div>
-
-              {checking && <p className="text-muted">Checking conflicts...</p>}
-
               {conflicts.length > 0 && (
-                <div className="dispatch-conflicts">
-                  <h4 onClick={() => setShowConflicts(!showConflicts)}>
-                    Conflicts ({conflicts.length}) {showConflicts ? '▲' : '▼'}
-                  </h4>
+                <div className="conflict-box">
+                  <button type="button" onClick={() => setShowConflicts(!showConflicts)}>
+                    {hardConflicts.length ? 'Conflicts found' : 'Warnings'} ({conflicts.length}) {showConflicts ? '▲' : '▼'}
+                  </button>
                   {showConflicts && conflicts.map((c, i) => (
-                    <div key={`${c.type}-${i}`} className={`dispatch-conflict dispatch-conflict--${c.severity.toLowerCase()}`}>
-                      <strong>{c.severity === 'HARD' ? '⛔' : '⚠️'}</strong> {c.message}
+                    <div key={`${c.type}-${i}`} className={`conflict-row ${c.severity.toLowerCase()}`}>
+                      {c.severity === 'HARD' ? '⛔' : '⚠️'} {c.message}
                     </div>
                   ))}
                 </div>
               )}
 
-              {assigned && (
-                <div className="dispatch-assigned-message">Trip assigned successfully!</div>
-              )}
+              {assigned && <div className="dispatch-success">Trip assigned successfully.</div>}
 
-              <button type="button"
-                className="btn-primary dispatch-confirm"
-                disabled={!canAssign || assigning}
-                onClick={handleAssign}>
-                {assigning ? 'Assigning...' : hardConflicts.length ? 'Resolve Conflicts First' : 'Confirm Assignment'}
+              <button type="button" className="dispatch-confirm" disabled={!canAssign || assigning} onClick={handleAssign}>
+                {assigning ? 'Assigning...' : hardConflicts.length ? 'Resolve conflicts first' : 'Confirm assignment'}
               </button>
             </div>
           ) : (
-            <div className="dispatch-empty dispatch-empty--preview">Select an unassigned trip to start dispatching.</div>
+            <div className="dispatch-empty preview-empty">Select a trip to begin dispatching.</div>
           )}
-        </div>
+        </aside>
       </div>
 
       <style>{`
-        .dispatch-board { max-width: 1480px; }
-        .dispatch-hero {
-          display: flex; justify-content: space-between; gap: 24px; align-items: center;
-          padding: 24px; border: 1px solid rgba(148,163,184,.22); border-radius: 20px;
-          background: radial-gradient(circle at top left, rgba(59,130,246,.22), transparent 32%), linear-gradient(135deg, rgba(15,23,42,.96), rgba(30,41,59,.88));
-          color: #f8fafc; margin-bottom: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.18);
+        .dispatch-board {
+          max-width: 1500px;
+          color: #e5e7eb;
+          --dispatch-bg: #0b0f16;
+          --dispatch-card: #121821;
+          --dispatch-card-soft: #0f172a;
+          --dispatch-border: rgba(148, 163, 184, 0.18);
+          --dispatch-muted: #94a3b8;
+          --dispatch-text: #f8fafc;
+          --dispatch-blue: #60a5fa;
+          --dispatch-green: #22c55e;
+          --dispatch-yellow: #f59e0b;
+          --dispatch-red: #ef4444;
         }
-        .dispatch-kicker { font-size: 11px; letter-spacing: .16em; color: #93c5fd; font-weight: 700; margin-bottom: 6px; }
-        .dispatch-hero h1 { margin: 0; font-size: 32px; }
-        .dispatch-hero p { margin: 8px 0 0; max-width: 760px; color: #cbd5e1; }
-        .dispatch-hero-actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-end; }
-        .dispatch-health-pill { padding: 8px 12px; border-radius: 999px; background: rgba(16,185,129,.16); color: #86efac; font-size: 12px; font-weight: 700; border: 1px solid rgba(134,239,172,.25); }
-        .dispatch-alert { margin-bottom: 16px; }
-        .dispatch-summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-        .summary-card { padding: 18px; border-radius: 18px; display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(148,163,184,.18); background: var(--color-surface, #fff); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
-        .summary-card--available { border-left: 4px solid #22c55e; }
-        .summary-card--pending { border-left: 4px solid #f59e0b; }
-        .summary-card--blocked { border-left: 4px solid #ef4444; }
-        .summary-card-value { font-size: 32px; font-weight: 800; line-height: 1; }
-        .summary-card-label { font-size: 13px; color: var(--color-text-secondary, #94a3b8); }
-        .dispatch-helper-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
-        .dispatch-helper-strip span { padding: 8px 12px; border-radius: 999px; background: rgba(59,130,246,.1); color: #60a5fa; font-size: 12px; font-weight: 700; border: 1px solid rgba(59,130,246,.18); }
-        .dispatch-columns { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(280px, 1.15fr) minmax(300px, 1.15fr); gap: 16px; align-items: start; }
-        .dispatch-column { background: var(--color-surface, #fff); border-radius: 18px; border: 1px solid var(--color-border, #e2e8f0); padding: 16px; min-height: 520px; box-shadow: 0 14px 35px rgba(15,23,42,.08); }
-        .dispatch-column-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .dispatch-column-header h3 { margin: 0; font-size: 15px; font-weight: 800; }
-        .dispatch-column-header span { font-size: 11px; color: var(--color-text-secondary, #94a3b8); text-transform: uppercase; letter-spacing: .08em; }
-        .dispatch-list { display: flex; flex-direction: column; gap: 9px; max-height: 620px; overflow-y: auto; padding-right: 2px; }
-        .dispatch-card { padding: 13px; border-radius: 14px; border: 1px solid var(--color-border, #e2e8f0); cursor: pointer; transition: all .15s ease; position: relative; background: rgba(255,255,255,.02); }
-        .dispatch-card:hover { border-color: #60a5fa; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15,23,42,.12); }
-        .dispatch-card--selected { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
-        .dispatch-card--drag-over { border-color: #22c55e; background: rgba(34,197,94,.08); }
-        .dispatch-card.disabled { opacity: .72; cursor: not-allowed; background: rgba(148,163,184,.08); }
-        .dispatch-card.disabled:hover { transform: none; box-shadow: none; border-color: var(--color-border, #e2e8f0); }
-        .dispatch-card-title { font-weight: 800; font-size: 14px; }
-        .dispatch-card-subtitle { font-size: 12px; color: var(--color-text-secondary, #94a3b8); margin-top: 3px; }
-        .dispatch-card-meta { font-size: 11px; color: var(--color-text-secondary, #94a3b8); margin-top: 6px; }
-        .dispatch-card-badge { display: inline-block; font-size: 10px; padding: 3px 8px; border-radius: 999px; margin-top: 8px; font-weight: 800; }
-        .dispatch-card-badge--available { background: rgba(34,197,94,.14); color: #22c55e; }
-        .dispatch-card-badge--blocked { background: rgba(239,68,68,.12); color: #f87171; }
-        .dispatch-drop-hint { display: inline-block; margin-top: 8px; font-size: 11px; color: #60a5fa; }
-        .dispatch-empty { padding: 24px; text-align: center; color: var(--color-text-secondary, #94a3b8); font-size: 13px; border: 1px dashed var(--color-border, #e2e8f0); border-radius: 14px; }
-        .dispatch-empty--preview { margin-top: 10px; }
-        .dispatch-preview { display: flex; flex-direction: column; gap: 12px; }
-        .dispatch-preview-section { border-bottom: 1px solid var(--color-border, #e2e8f0); padding-bottom: 10px; }
-        .dispatch-preview-section h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--color-text-secondary, #94a3b8); margin: 0 0 6px; }
-        .dispatch-preview-section p { margin: 0 0 3px; font-size: 14px; }
-        .dispatch-preview-section--trip { background: rgba(59,130,246,.08); padding: 12px; border-radius: 14px; border: 1px solid rgba(59,130,246,.14); }
-        .text-muted { color: var(--color-text-secondary, #94a3b8); font-size: 13px; }
-        .route-pill { display: inline-block; padding: 8px 10px; border-radius: 999px; background: rgba(59,130,246,.1); color: #60a5fa; font-weight: 700; }
-        .dispatch-conflicts { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.24); border-radius: 14px; padding: 12px; }
-        .dispatch-conflicts h4 { cursor: pointer; margin: 0 0 8px; }
-        .dispatch-conflict { font-size: 13px; padding: 4px 0; }
-        .dispatch-conflict--hard { color: #f87171; }
-        .dispatch-conflict--soft { color: #fbbf24; }
-        .dispatch-assigned-message { background: rgba(34,197,94,.12); color: #22c55e; padding: 12px; border-radius: 12px; text-align: center; font-weight: 800; border: 1px solid rgba(34,197,94,.2); }
-        .dispatch-confirm { width: 100%; margin-top: 6px; min-height: 44px; font-weight: 800; }
-        @media (max-width: 1320px) { .dispatch-columns { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 768px) {
-          .dispatch-hero { flex-direction: column; align-items: flex-start; }
-          .dispatch-hero-actions { align-items: flex-start; }
+
+        .dispatch-topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 18px 20px;
+          margin-bottom: 16px;
+          border: 1px solid var(--dispatch-border);
+          border-radius: 18px;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.92));
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .dispatch-kicker {
+          color: var(--dispatch-blue);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .16em;
+          text-transform: uppercase;
+          margin-bottom: 5px;
+        }
+
+        .dispatch-topbar h1 {
+          margin: 0;
+          color: var(--dispatch-text);
+          font-size: 26px;
+          line-height: 1.15;
+        }
+
+        .dispatch-topbar p {
+          margin: 6px 0 0;
+          color: var(--dispatch-muted);
+          font-size: 14px;
+        }
+
+        .dispatch-refresh-button {
+          border: 1px solid rgba(96, 165, 250, .35);
+          background: rgba(37, 99, 235, .16);
+          color: #bfdbfe;
+          padding: 10px 14px;
+          border-radius: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .dispatch-refresh-button:hover:not(:disabled) {
+          background: rgba(37, 99, 235, .26);
+          border-color: rgba(96, 165, 250, .55);
+        }
+
+        .dispatch-refresh-button:disabled {
+          opacity: .55;
+          cursor: wait;
+        }
+
+        .dispatch-alert { margin-bottom: 14px; }
+
+        .dispatch-summary-cards {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .summary-card {
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: var(--dispatch-card);
+          border: 1px solid var(--dispatch-border);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+        }
+
+        .summary-card span {
+          display: block;
+          color: var(--dispatch-text);
+          font-size: 28px;
+          font-weight: 900;
+          line-height: 1;
+        }
+
+        .summary-card p {
+          margin: 7px 0 0;
+          color: var(--dispatch-muted);
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: .04em;
+        }
+
+        .summary-card--success { border-left: 3px solid var(--dispatch-green); }
+        .summary-card--warning { border-left: 3px solid var(--dispatch-yellow); }
+        .summary-card--danger { border-left: 3px solid var(--dispatch-red); }
+
+        .dispatch-workflow-strip {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+
+        .dispatch-workflow-strip span {
+          padding: 7px 10px;
+          border-radius: 999px;
+          border: 1px solid var(--dispatch-border);
+          background: rgba(15, 23, 42, .72);
+          color: var(--dispatch-muted);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .dispatch-workflow-strip span.active {
+          border-color: rgba(96, 165, 250, .45);
+          background: rgba(37, 99, 235, .16);
+          color: #bfdbfe;
+        }
+
+        .dispatch-workflow-strip span.done {
+          border-color: rgba(34, 197, 94, .45);
+          background: rgba(34, 197, 94, .12);
+          color: #86efac;
+        }
+
+        .dispatch-layout {
+          display: grid;
+          grid-template-columns: minmax(300px, 1.15fr) minmax(230px, .85fr) minmax(230px, .85fr) minmax(310px, 1fr);
+          gap: 14px;
+          align-items: start;
+        }
+
+        .dispatch-panel {
+          min-height: 520px;
+          padding: 14px;
+          border-radius: 18px;
+          border: 1px solid var(--dispatch-border);
+          background: rgba(17, 24, 39, .82);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, .18);
+        }
+
+        .dispatch-panel header {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 12px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid rgba(148, 163, 184, .12);
+        }
+
+        .dispatch-panel h2 {
+          margin: 0;
+          color: var(--dispatch-text);
+          font-size: 15px;
+        }
+
+        .dispatch-panel header p {
+          margin: 4px 0 0;
+          color: var(--dispatch-muted);
+          font-size: 12px;
+        }
+
+        .dispatch-list {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+          max-height: 620px;
+          overflow-y: auto;
+          padding-right: 3px;
+        }
+
+        .dispatch-list::-webkit-scrollbar { width: 8px; }
+        .dispatch-list::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .35); border-radius: 999px; }
+
+        .dispatch-item {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(148, 163, 184, .16);
+          background: rgba(15, 23, 42, .62);
+          cursor: pointer;
+          transition: border-color .15s ease, background .15s ease, transform .15s ease;
+        }
+
+        .dispatch-item:hover {
+          border-color: rgba(96, 165, 250, .55);
+          background: rgba(30, 41, 59, .86);
+          transform: translateY(-1px);
+        }
+
+        .dispatch-item.selected {
+          border-color: rgba(96, 165, 250, .9);
+          background: rgba(37, 99, 235, .16);
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, .16);
+        }
+
+        .dispatch-item.drop-ready {
+          border-color: rgba(34, 197, 94, .8);
+          background: rgba(34, 197, 94, .1);
+        }
+
+        .dispatch-item.compact {
+          min-height: 74px;
+        }
+
+        .dispatch-item.blocked {
+          cursor: not-allowed;
+          opacity: .65;
+          background: rgba(127, 29, 29, .12);
+        }
+
+        .dispatch-item.blocked:hover {
+          border-color: rgba(239, 68, 68, .35);
+          transform: none;
+        }
+
+        .dispatch-item-main {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .dispatch-item-main strong {
+          color: var(--dispatch-text);
+          font-size: 14px;
+          line-height: 1.2;
+        }
+
+        .dispatch-item-main span,
+        .dispatch-item-meta {
+          color: var(--dispatch-muted);
+          font-size: 12px;
+        }
+
+        .dispatch-drop-hint {
+          color: #93c5fd;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .status-pill {
+          align-self: flex-start;
+          padding: 4px 8px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: .04em;
+        }
+
+        .status-pill.success {
+          background: rgba(34, 197, 94, .14);
+          color: #86efac;
+        }
+
+        .status-pill.blocked {
+          background: rgba(239, 68, 68, .14);
+          color: #fca5a5;
+        }
+
+        .dispatch-preview {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .preview-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .preview-card {
+          padding: 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(148, 163, 184, .14);
+          background: rgba(15, 23, 42, .66);
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .route-card {
+          border-color: rgba(96, 165, 250, .28);
+          background: rgba(37, 99, 235, .1);
+        }
+
+        .preview-card label {
+          color: var(--dispatch-muted);
+          font-size: 10px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: .08em;
+        }
+
+        .preview-card strong {
+          color: var(--dispatch-text);
+          font-size: 14px;
+        }
+
+        .preview-card span,
+        .preview-card small,
+        .muted {
+          color: var(--dispatch-muted);
+          font-size: 12px;
+        }
+
+        .conflict-box {
+          padding: 10px;
+          border-radius: 14px;
+          border: 1px solid rgba(245, 158, 11, .3);
+          background: rgba(120, 53, 15, .2);
+        }
+
+        .conflict-box button {
+          width: 100%;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #fbbf24;
+          font-weight: 900;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .conflict-row {
+          margin-top: 8px;
+          color: #fde68a;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .conflict-row.hard { color: #fca5a5; }
+
+        .dispatch-success {
+          padding: 10px;
+          border-radius: 12px;
+          background: rgba(34, 197, 94, .12);
+          border: 1px solid rgba(34, 197, 94, .28);
+          color: #86efac;
+          font-weight: 800;
+          text-align: center;
+        }
+
+        .dispatch-confirm {
+          width: 100%;
+          min-height: 44px;
+          border: 0;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .dispatch-confirm:hover:not(:disabled) {
+          filter: brightness(1.08);
+        }
+
+        .dispatch-confirm:disabled {
+          background: rgba(51, 65, 85, .9) !important;
+          color: #94a3b8 !important;
+          cursor: not-allowed;
+          opacity: .85;
+        }
+
+        .dispatch-empty {
+          padding: 24px 16px;
+          border: 1px dashed rgba(148, 163, 184, .28);
+          border-radius: 14px;
+          color: var(--dispatch-muted);
+          font-size: 13px;
+          text-align: center;
+          background: rgba(15, 23, 42, .42);
+        }
+
+        .preview-empty { margin-top: 8px; }
+
+        @media (max-width: 1320px) {
+          .dispatch-layout { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 820px) {
+          .dispatch-topbar { flex-direction: column; align-items: stretch; }
           .dispatch-summary-cards { grid-template-columns: 1fr 1fr; }
-          .dispatch-columns { grid-template-columns: 1fr; }
+          .dispatch-layout { grid-template-columns: 1fr; }
+          .preview-grid { grid-template-columns: 1fr; }
         }
       `}</style>
     </div>
