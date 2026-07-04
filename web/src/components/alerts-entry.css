@@ -1,0 +1,28 @@
+.sidebar-icon-bar-button[title="Notifications"] {
+  position: relative;
+}
+
+.sidebar-icon-bar-button[title="Notifications"][data-alert-count]:not([data-alert-count="0"]) {
+  color: var(--color-accent-text);
+}
+
+.sidebar-icon-bar-button[title="Notifications"][data-alert-count]:not([data-alert-count="0"])::after {
+  content: attr(data-alert-count);
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  border: 2px solid var(--color-icon-bar-bg);
+  box-shadow: var(--shadow-xs);
+}
