@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getMyDriverTrips, startDriverTrip, endDriverTrip, cancelDriverTrip } from '../../services/api';
+import { getMyDriverTrips, cancelDriverTrip } from '../../services/api';
+import { confirmDriverTripAssignment, declineDriverTripAssignment, endAssignedDriverTrip, startAssignedDriverTrip } from '../../services/driverAssignments';
 import type { DriverPortalTrip } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
@@ -50,10 +51,12 @@ export function DriverTripsPage() {
 
   const handleAction = async (action: string, tripId: string) => {
     if (!auth.accessToken) return;
-    setActionLoading(tripId);
+    setActionLoading(`${tripId}:${action}`);
     try {
-      if (action === 'start') await startDriverTrip(auth.accessToken, tripId);
-      else if (action === 'end') await endDriverTrip(auth.accessToken, tripId);
+      if (action === 'confirm') await confirmDriverTripAssignment(auth.accessToken, tripId);
+      else if (action === 'decline') await declineDriverTripAssignment(auth.accessToken, tripId);
+      else if (action === 'start') await startAssignedDriverTrip(auth.accessToken, tripId);
+      else if (action === 'end') await endAssignedDriverTrip(auth.accessToken, tripId);
       else if (action === 'cancel') await cancelDriverTrip(auth.accessToken, tripId);
       loadTrips(page);
     } catch (e: any) {
@@ -76,7 +79,7 @@ export function DriverTripsPage() {
       <PageHeader
         eyebrow="Driver Portal"
         title="My Trips"
-        description="Trips assigned to you."
+        description="Trips assigned to you. Confirm assignments before starting a manager-assigned trip."
         actions={canCreate ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/trips/create')}>Create Trip</button> : undefined}
       />
 
@@ -105,41 +108,48 @@ export function DriverTripsPage() {
                 </tr>
               </thead>
               <tbody>
-                {trips.map((trip) => (
-                  <tr key={trip.id}>
-                    <td>{trip.tripNumber}</td>
-                    <td>{trip.tripType}</td>
-                    <td>{trip.originName} → {trip.destinationName}</td>
-                    <td>{trip.vehicle.vehicleNumber}</td>
-                    <td><span className={tripStatusClass(trip.status)}>{trip.status}</span></td>
-                    <td>{trip.distanceKm ? `${trip.distanceKm} km` : '—'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.25rem' }}>
-                        {canStart && (trip.status === 'DRAFT' || trip.status === 'SCHEDULED') && (
-                          <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                            disabled={actionLoading === trip.id}
-                            onClick={() => handleAction('start', trip.id)}>
-                            {actionLoading === trip.id ? '...' : 'Start'}
-                          </button>
-                        )}
-                        {canEnd && trip.status === 'STARTED' && (
-                          <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                            disabled={actionLoading === trip.id}
-                            onClick={() => handleAction('end', trip.id)}>
-                            {actionLoading === trip.id ? '...' : 'End'}
-                          </button>
-                        )}
-                        {canCancel && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
-                          <button type="button" className="secondary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                            disabled={actionLoading === trip.id}
-                            onClick={() => handleAction('cancel', trip.id)}>
-                            {actionLoading === trip.id ? '...' : 'Cancel'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {trips.map((trip) => {
+                  const busy = actionLoading?.startsWith(`${trip.id}:`);
+                  return (
+                    <tr key={trip.id}>
+                      <td>{trip.tripNumber}</td>
+                      <td>{trip.tripType}</td>
+                      <td>{trip.originName} → {trip.destinationName}</td>
+                      <td>{trip.vehicle.vehicleNumber}</td>
+                      <td><span className={tripStatusClass(trip.status)}>{trip.status}</span></td>
+                      <td>{trip.distanceKm ? `${trip.distanceKm} km` : '—'}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                          {canStart && trip.status === 'SCHEDULED' && (
+                            <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('confirm', trip.id)}>
+                              Confirm
+                            </button>
+                          )}
+                          {canCancel && trip.status === 'SCHEDULED' && (
+                            <button type="button" className="secondary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('decline', trip.id)}>
+                              Decline
+                            </button>
+                          )}
+                          {canStart && (trip.status === 'DRAFT' || trip.status === 'SCHEDULED') && (
+                            <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('start', trip.id)}>
+                              {busy ? '...' : 'Start'}
+                            </button>
+                          )}
+                          {canEnd && trip.status === 'STARTED' && (
+                            <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('end', trip.id)}>
+                              {busy ? '...' : 'End'}
+                            </button>
+                          )}
+                          {canCancel && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
+                            <button type="button" className="secondary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('cancel', trip.id)}>
+                              {busy ? '...' : 'Cancel'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -4,6 +4,7 @@ import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanDeleteResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
+import { syncAssignmentAfterSchedule } from './trip-assignment.service';
 import {
   cancelTrip,
   completeTrip,
@@ -88,16 +89,17 @@ export async function scheduleTripController(req: Request, res: Response) {
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await scheduleTrip(String(req.params.id), req.body, req.authUser?.id);
+  const assignment = await syncAssignmentAfterSchedule(trip.id, req.authUser?.id);
 
   await createAuditLog(req, {
     userId: req.authUser?.id,
     action: 'trip.schedule',
     entityType: 'trip',
     entityId: trip.id,
-    metadata: { tripNumber: trip.tripNumber },
+    metadata: { tripNumber: trip.tripNumber, assignmentId: assignment?.id ?? null },
   });
 
-  return sendSuccess(res, trip, 'Trip scheduled successfully');
+  return sendSuccess(res, { trip, assignment }, 'Trip scheduled successfully');
 }
 
 export async function startTripController(req: Request, res: Response) {
