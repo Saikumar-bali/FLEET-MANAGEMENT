@@ -1,12 +1,15 @@
-import { useState, useCallback } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { navigationRegistry } from '../config/navigation';
 import { SettingsPopover, ThemeSubmenu } from '../components/SettingsPopover';
 import { AccountMenu } from '../components/AccountMenu';
-import { NotificationBell } from '../components/notifications/NotificationBell';
+import { useAuth } from '../context/AuthContext';
+import { getMyNotificationCount } from '../services/notifications';
+import '../components/alerts-entry.css';
 
 const COLLAPSE_KEY = 'fleet-studio-sidebar-collapsed';
+const ALERT_COUNT_REFRESH_MS = 12000;
 
 function getStoredCollapse(): boolean {
   try {
@@ -18,8 +21,11 @@ function getStoredCollapse(): boolean {
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const auth = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(getStoredCollapse);
+  const [alertCount, setAlertCount] = useState(0);
 
   const [settingsAnchor, setSettingsAnchor] = useState<DOMRect | null>(null);
   const [showThemeSubmenu, setShowThemeSubmenu] = useState(false);
@@ -35,6 +41,37 @@ export function AppLayout() {
   const pageTitle = currentItem?.pageTitle ?? 'Fleet Management';
   const pageDescription = currentItem?.pageDescription ?? 'Workspace';
   const sectionLabel = currentItem?.section ?? 'Workspace';
+
+  const refreshAlertCount = useCallback(async () => {
+    if (!auth.accessToken) {
+      setAlertCount(0);
+      return;
+    }
+    try {
+      const response = await getMyNotificationCount(auth.accessToken);
+      setAlertCount(response.data.unreadCount || 0);
+    } catch {
+      setAlertCount(0);
+    }
+  }, [auth.accessToken]);
+
+  useEffect(() => {
+    void refreshAlertCount();
+    const timer = window.setInterval(() => void refreshAlertCount(), ALERT_COUNT_REFRESH_MS);
+    const onFocus = () => void refreshAlertCount();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refreshAlertCount]);
+
+  useEffect(() => {
+    const button = document.querySelector<HTMLButtonElement>('.sidebar-icon-bar-button[title="Notifications"]');
+    if (!button) return;
+    button.setAttribute('aria-label', `Open alerts${alertCount > 0 ? `, ${alertCount} unread` : ''}`);
+    button.setAttribute('data-alert-count', alertCount > 99 ? '99+' : String(alertCount));
+  }, [alertCount, location.pathname]);
 
   const handleToggleCollapse = useCallback(() => {
     setIsCollapsed((prev) => {
@@ -68,16 +105,27 @@ export function AppLayout() {
     setAccountAnchor(null);
   }, []);
 
+  const handleSidebarClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const button = (event.target as HTMLElement).closest('button');
+    if (button?.getAttribute('title') === 'Notifications') {
+      navigate('/alerts');
+      setIsSidebarOpen(false);
+      void refreshAlertCount();
+    }
+  }, [navigate, refreshAlertCount]);
+
   return (
     <div className={`app-shell${isCollapsed ? ' sidebar-collapsed' : ''}`}>
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isCollapsed={isCollapsed}
-        onToggleCollapse={handleToggleCollapse}
-        onOpenSettings={handleOpenSettings}
-        onOpenAccount={handleOpenAccount}
-      />
+      <div onClickCapture={handleSidebarClick}>
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+          onOpenSettings={handleOpenSettings}
+          onOpenAccount={handleOpenAccount}
+        />
+      </div>
       <main className="main-panel">
         <header className="topbar">
           <div className="topbar-title-group">
@@ -96,7 +144,6 @@ export function AppLayout() {
             <h2 className="page-title">{pageTitle}</h2>
             <p className="topbar-copy">{pageDescription}</p>
           </div>
-          <NotificationBell />
         </header>
         <Outlet />
       </main>

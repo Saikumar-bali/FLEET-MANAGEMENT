@@ -52,12 +52,14 @@ export async function createTripController(req: Request, res: Response) {
     createdById: req.authUser?.id,
   });
 
+  const assignment = trip.driverId ? await syncAssignmentAfterSchedule(trip.id, req.authUser?.id) : null;
+
   await createAuditLog(req, {
     userId: req.authUser?.id,
     action: 'trip.create',
     entityType: 'trip',
     entityId: trip.id,
-    metadata: { tripNumber: trip.tripNumber, tripType: trip.tripType },
+    metadata: { tripNumber: trip.tripNumber, tripType: trip.tripType, assignmentId: assignment?.id ?? null },
   });
 
   return sendSuccess(res, trip, 'Trip created successfully', 201);
@@ -70,13 +72,14 @@ export async function updateTripController(req: Request, res: Response) {
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await updateTrip(String(req.params.id), req.body, req.authUser?.id);
+  const assignment = trip.driverId && trip.driverId !== existing.driverId ? await syncAssignmentAfterSchedule(trip.id, req.authUser?.id) : null;
 
   await createAuditLog(req, {
     userId: req.authUser?.id,
     action: 'trip.update',
     entityType: 'trip',
     entityId: trip.id,
-    metadata: { tripNumber: trip.tripNumber },
+    metadata: { tripNumber: trip.tripNumber, assignmentId: assignment?.id ?? null },
   });
 
   return sendSuccess(res, trip, 'Trip updated successfully');
@@ -89,7 +92,11 @@ export async function scheduleTripController(req: Request, res: Response) {
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
 
   const trip = await scheduleTrip(String(req.params.id), req.body, req.authUser?.id);
-  const assignment = await syncAssignmentAfterSchedule(trip.id, req.authUser?.id);
+  const driverChangedDuringSchedule = Boolean(trip.driverId && trip.driverId !== existing.driverId);
+  const driverAddedDuringSchedule = Boolean(trip.driverId && !existing.driverId);
+  const assignment = driverChangedDuringSchedule || driverAddedDuringSchedule
+    ? await syncAssignmentAfterSchedule(trip.id, req.authUser?.id)
+    : null;
 
   await createAuditLog(req, {
     userId: req.authUser?.id,
