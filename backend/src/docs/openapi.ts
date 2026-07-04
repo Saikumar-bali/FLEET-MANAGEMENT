@@ -28,6 +28,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
   },
   servers: [
+    { url: 'https://saikumarbali555-3300s-projects-backend.vercel.app/api/v1', description: 'Production' },
     { url: '/api/v1', description: 'Same-origin (local dev proxy or deployed)' },
   ],
   tags: [
