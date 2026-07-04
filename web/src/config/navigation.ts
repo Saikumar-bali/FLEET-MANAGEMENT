@@ -221,6 +221,19 @@ export const navigationRegistry: NavItem[] = [
 
   // ── OPERATIONS ─────────────────────────────────────────────
   {
+    id: 'dispatch-board',
+    label: 'Dispatch Board',
+    path: '/dispatch-board',
+    icon: 'Activity',
+    section: 'OPERATIONS',
+    requiredPermissions: ['trip_view'],
+    hiddenForRoleKeys: ['driver'],
+    priority: 205,
+    description: 'Dispatch board with drag-drop assignment',
+    pageTitle: 'Dispatch Board',
+    pageDescription: 'Assign drivers and vehicles to trips',
+  },
+  {
     id: 'manage-trips',
     label: 'Manage Trips',
     path: '/trips',
