@@ -3,6 +3,7 @@ import { PageHeader } from '../components/PageHeader';
 import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { approveBilling, getPodBillingChain, rejectBilling, rejectPod, verifyPod } from '../services/podBilling';
 import type { PodDocument, TripBillingChainRecord } from '../services/podBilling';
 
@@ -26,6 +27,7 @@ function tripLabel(pod: PodDocument) {
 
 export default function PodBillingChainPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const [pods, setPods] = useState<PodDocument[]>([]);
   const [billings, setBillings] = useState<TripBillingChainRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,11 @@ export default function PodBillingChainPage() {
         setPods(res.data?.pods || []);
         setBillings(res.data?.pendingBillings || []);
       })
-      .catch((e) => setError(e.message || 'Failed to load POD chain'))
+      .catch((e) => {
+        const msg = e.message || 'Failed to load POD chain';
+        setError(msg);
+        showToast(msg, 'error');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -60,13 +66,17 @@ export default function PodBillingChainPage() {
   const handleVerify = async (pod: PodDocument) => {
     if (!auth.accessToken) return;
     setBusy(`verify:${pod.id}`);
+    setError(null);
     try {
-      await verifyPod(auth.accessToken, pod.id, { ratePerKm: ratePerKm || undefined, notes: notes || undefined });
+      const response = await verifyPod(auth.accessToken, pod.id, { ratePerKm: ratePerKm || undefined, notes: notes || undefined });
       setRatePerKm('');
       setNotes('');
+      showToast(response.data?.billingCreated ? 'POD verified and billing draft created.' : 'POD verified.', 'success');
       load();
     } catch (e: any) {
-      setError(e.message || 'POD verification failed');
+      const msg = e.message || 'POD verification failed';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setBusy(null);
     }
@@ -77,11 +87,15 @@ export default function PodBillingChainPage() {
     const reason = window.prompt('Reason for rejecting POD?');
     if (!reason) return;
     setBusy(`reject-pod:${pod.id}`);
+    setError(null);
     try {
       await rejectPod(auth.accessToken, pod.id, reason);
+      showToast('POD rejected.', 'success');
       load();
     } catch (e: any) {
-      setError(e.message || 'POD rejection failed');
+      const msg = e.message || 'POD rejection failed';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setBusy(null);
     }
@@ -90,12 +104,16 @@ export default function PodBillingChainPage() {
   const handleApproveBilling = async (billing: TripBillingChainRecord) => {
     if (!auth.accessToken) return;
     setBusy(`approve-billing:${billing.id}`);
+    setError(null);
     try {
       await approveBilling(auth.accessToken, billing.id, notes || undefined);
       setNotes('');
+      showToast('Billing approved.', 'success');
       load();
     } catch (e: any) {
-      setError(e.message || 'Billing approval failed');
+      const msg = e.message || 'Billing approval failed';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setBusy(null);
     }
@@ -106,11 +124,15 @@ export default function PodBillingChainPage() {
     const reason = window.prompt('Reason for rejecting billing?');
     if (!reason) return;
     setBusy(`reject-billing:${billing.id}`);
+    setError(null);
     try {
       await rejectBilling(auth.accessToken, billing.id, reason);
+      showToast('Billing rejected.', 'success');
       load();
     } catch (e: any) {
-      setError(e.message || 'Billing rejection failed');
+      const msg = e.message || 'Billing rejection failed';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setBusy(null);
     }
