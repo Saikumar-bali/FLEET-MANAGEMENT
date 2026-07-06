@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { getMyDriverTrips, cancelDriverTrip } from '../../services/api';
 import { uploadTripPod } from '../../services/podBilling';
 import { confirmDriverTripAssignment, declineDriverTripAssignment, endAssignedDriverTrip, startAssignedDriverTrip } from '../../services/driverAssignments';
@@ -19,8 +20,20 @@ function tripStatusClass(status: string) {
   }
 }
 
+function actionSuccessMessage(action: string) {
+  switch (action) {
+    case 'confirm': return 'Trip assignment confirmed.';
+    case 'decline': return 'Trip assignment declined.';
+    case 'start': return 'Trip started.';
+    case 'end': return 'Trip completed.';
+    case 'cancel': return 'Trip cancelled.';
+    default: return 'Trip updated.';
+  }
+}
+
 export function DriverTripsPage() {
   const auth = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const [trips, setTrips] = useState<DriverPortalTrip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +63,11 @@ export function DriverTripsPage() {
         setTrips(res.data?.items || []);
         setTotalPages(res.data?.totalPages || 1);
       })
-      .catch((e) => setError(e.message || 'Failed to load trips'))
+      .catch((e) => {
+        const msg = e.message || 'Failed to load trips';
+        setError(msg);
+        showToast(msg, 'error');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -67,9 +84,14 @@ export function DriverTripsPage() {
       else if (action === 'start') await startAssignedDriverTrip(auth.accessToken, tripId);
       else if (action === 'end') await endAssignedDriverTrip(auth.accessToken, tripId);
       else if (action === 'cancel') await cancelDriverTrip(auth.accessToken, tripId);
+      const msg = actionSuccessMessage(action);
+      setSuccess(msg);
+      showToast(msg, 'success');
       loadTrips(page);
     } catch (e: any) {
-      setError(e.message || `Failed to ${action} trip`);
+      const msg = e.message || `Failed to ${action} trip`;
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -97,12 +119,16 @@ export function DriverTripsPage() {
         receiverMobile,
         deliveryNotes,
       });
-      setSuccess(`POD uploaded for ${podTrip.tripNumber}. It is now waiting for verification.`);
+      const msg = `POD uploaded for ${podTrip.tripNumber}. It is now waiting for verification.`;
+      setSuccess(msg);
+      showToast(msg, 'success');
       setPodTrip(null);
       setPodFile(null);
       loadTrips(page);
     } catch (e: any) {
-      setError(e.message || 'Failed to upload POD');
+      const msg = e.message || 'Failed to upload POD';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setActionLoading(null);
     }
