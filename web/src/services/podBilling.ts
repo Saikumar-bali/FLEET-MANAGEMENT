@@ -25,6 +25,15 @@ export type PodDocument = {
   id: string;
   title: string;
   documentNumber?: string | null;
+  originalFileName?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  fileExtension?: string | null;
+  documentStatus?: string | null;
+  documentType?: string | null;
+  documentCategory?: string | null;
+  expiryDate?: string | null;
+  fileUrl?: string | null;
   verificationStatus: string;
   reviewComments?: string | null;
   createdAt: string;
