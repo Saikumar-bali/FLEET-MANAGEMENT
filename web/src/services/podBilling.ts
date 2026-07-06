@@ -4,6 +4,11 @@ import { ApiError } from '../types/api';
 
 type RequestOptions = RequestInit & { token?: string | null };
 
+type PodViewResponse = {
+  document: PodDocument & { fileUrl?: string | null };
+  url: string | null;
+};
+
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
@@ -88,6 +93,10 @@ export type PodBillingChain = {
 export function getPodBillingChain(token: string, status?: string) {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
   return request<PodBillingChain>(`/pod-billing/chain${query}`, { token });
+}
+
+export function viewPodDocument(token: string, documentId: string) {
+  return request<PodViewResponse>(`/pod-billing/pods/${documentId}/view`, { token });
 }
 
 export function verifyPod(token: string, documentId: string, payload: Record<string, unknown>) {
