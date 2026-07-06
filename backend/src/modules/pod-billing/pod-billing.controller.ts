@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
+import { AppError } from '../../utils/appError';
+import { getDocumentById } from '../documents/documents.service';
 import {
   approveBilling,
   listPodBillingChain,
@@ -17,6 +19,14 @@ export async function uploadTripPodController(req: Request, res: Response) {
 export async function listPodBillingChainController(req: Request, res: Response) {
   const result = await listPodBillingChain(req.query as Record<string, unknown>);
   return sendSuccess(res, result);
+}
+
+export async function viewPodDocumentController(req: Request, res: Response) {
+  const document = await getDocumentById(String(req.params.id));
+  if (document.documentType !== 'TRIP_POD') {
+    throw new AppError('Selected document is not a trip POD', 400);
+  }
+  return sendSuccess(res, { document, url: document.fileUrl });
 }
 
 export async function verifyPodController(req: Request, res: Response) {
