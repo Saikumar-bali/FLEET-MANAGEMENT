@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyDriverTrips, cancelDriverTrip } from '../../services/api';
+import { uploadTripPod } from '../../services/podBilling';
 import { confirmDriverTripAssignment, declineDriverTripAssignment, endAssignedDriverTrip, startAssignedDriverTrip } from '../../services/driverAssignments';
 import type { DriverPortalTrip } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
@@ -24,10 +25,16 @@ export function DriverTripsPage() {
   const [trips, setTrips] = useState<DriverPortalTrip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [podTrip, setPodTrip] = useState<DriverPortalTrip | null>(null);
+  const [podFile, setPodFile] = useState<File | null>(null);
+  const [receiverName, setReceiverName] = useState('');
+  const [receiverMobile, setReceiverMobile] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
 
   useEffect(() => {
     if (!auth.accessToken) return;
@@ -52,6 +59,8 @@ export function DriverTripsPage() {
   const handleAction = async (action: string, tripId: string) => {
     if (!auth.accessToken) return;
     setActionLoading(`${tripId}:${action}`);
+    setError(null);
+    setSuccess(null);
     try {
       if (action === 'confirm') await confirmDriverTripAssignment(auth.accessToken, tripId);
       else if (action === 'decline') await declineDriverTripAssignment(auth.accessToken, tripId);
@@ -66,10 +75,44 @@ export function DriverTripsPage() {
     }
   };
 
+  const openPodUpload = (trip: DriverPortalTrip) => {
+    setPodTrip(trip);
+    setPodFile(null);
+    setReceiverName('');
+    setReceiverMobile('');
+    setDeliveryNotes('');
+    setError(null);
+    setSuccess(null);
+  };
+
+  const submitPodUpload = async () => {
+    if (!auth.accessToken || !podTrip || !podFile) return;
+    setActionLoading(`${podTrip.id}:pod`);
+    setError(null);
+    setSuccess(null);
+    try {
+      await uploadTripPod(auth.accessToken, podTrip.id, {
+        file: podFile,
+        receiverName,
+        receiverMobile,
+        deliveryNotes,
+      });
+      setSuccess(`POD uploaded for ${podTrip.tripNumber}. It is now waiting for verification.`);
+      setPodTrip(null);
+      setPodFile(null);
+      loadTrips(page);
+    } catch (e: any) {
+      setError(e.message || 'Failed to upload POD');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const canStart = permissions.includes('driver_trip_start');
   const canEnd = permissions.includes('driver_trip_end');
   const canCancel = permissions.includes('driver_trip_cancel');
   const canCreate = permissions.includes('driver_trip_create');
+  const canUploadPod = permissions.includes('driver_pod_upload');
 
   if (loading && trips.length === 0) return <LoadingState message="Loading your trips..." />;
   if (error && trips.length === 0) return <ErrorState message={error} onRetry={() => loadTrips(page)} />;
@@ -79,11 +122,45 @@ export function DriverTripsPage() {
       <PageHeader
         eyebrow="Driver Portal"
         title="My Trips"
-        description="Trips assigned to you. Confirm assignments before starting a manager-assigned trip."
+        description="Trips assigned to you. Complete the trip, then upload POD so billing can start."
         actions={canCreate ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/trips/create')}>Create Trip</button> : undefined}
       />
 
       {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {success && <div className="alert alert-success" style={{ marginBottom: '1rem' }}>{success}</div>}
+
+      {podTrip && (
+        <div className="state-panel" style={{ marginBottom: '1rem', alignItems: 'stretch' }}>
+          <div>
+            <h3>Upload POD for {podTrip.tripNumber}</h3>
+            <p>Attach delivery photo, signed LR, challan, or customer acknowledgement. Finance billing starts only after verification.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '.75rem', marginTop: '.75rem' }}>
+            <label className="form-field">
+              Receiver name
+              <input value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Customer/site receiver" />
+            </label>
+            <label className="form-field">
+              Receiver mobile
+              <input value={receiverMobile} onChange={(e) => setReceiverMobile(e.target.value)} placeholder="Optional mobile" />
+            </label>
+            <label className="form-field" style={{ gridColumn: '1 / -1' }}>
+              Delivery notes
+              <input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} placeholder="Delivered in good condition, unload complete, etc." />
+            </label>
+            <label className="form-field" style={{ gridColumn: '1 / -1' }}>
+              POD file
+              <input type="file" accept="image/*,.pdf" onChange={(e) => setPodFile(e.target.files?.[0] || null)} />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.75rem', flexWrap: 'wrap' }}>
+            <button type="button" className="primary-button" disabled={!podFile || actionLoading === `${podTrip.id}:pod`} onClick={submitPodUpload}>
+              {actionLoading === `${podTrip.id}:pod` ? 'Uploading...' : 'Submit POD'}
+            </button>
+            <button type="button" className="secondary-button" onClick={() => setPodTrip(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {trips.length === 0 ? (
         <div className="state-panel">
@@ -138,6 +215,11 @@ export function DriverTripsPage() {
                           {canEnd && trip.status === 'STARTED' && (
                             <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => handleAction('end', trip.id)}>
                               {busy ? '...' : 'End'}
+                            </button>
+                          )}
+                          {canUploadPod && trip.status === 'COMPLETED' && (
+                            <button type="button" className="primary-button" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} disabled={busy} onClick={() => openPodUpload(trip)}>
+                              Upload POD
                             </button>
                           )}
                           {canCancel && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
