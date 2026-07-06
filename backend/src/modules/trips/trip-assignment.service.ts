@@ -8,6 +8,7 @@ type AssignmentRow = {
   id: string;
   tripId: string;
   driverId: string;
+  assignedById: string | null;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REASSIGNED' | 'CANCELLED';
 };
 
@@ -47,7 +48,7 @@ async function notifyOps(title: string, message: string, actionUrl?: string | nu
 
 async function openAssignment(tripId: string) {
   const rows = await prisma.$queryRawUnsafe<AssignmentRow[]>(
-    'SELECT id, trip_id AS "tripId", driver_id AS "driverId", status FROM trip_driver_assignments WHERE trip_id=$1 AND status IN ($2,$3) ORDER BY created_at DESC LIMIT 1',
+    'SELECT id, trip_id AS "tripId", driver_id AS "driverId", assigned_by_id AS "assignedById", status FROM trip_driver_assignments WHERE trip_id=$1 AND status IN ($2,$3) ORDER BY created_at DESC LIMIT 1',
     tripId,
     'PENDING',
     'ACCEPTED',
@@ -57,7 +58,7 @@ async function openAssignment(tripId: string) {
 
 async function pendingAssignmentForDriver(tripId: string, driverId: string) {
   const rows = await prisma.$queryRawUnsafe<AssignmentRow[]>(
-    'SELECT id, trip_id AS "tripId", driver_id AS "driverId", status FROM trip_driver_assignments WHERE trip_id=$1 AND driver_id=$2 AND status=$3 ORDER BY created_at DESC LIMIT 1',
+    'SELECT id, trip_id AS "tripId", driver_id AS "driverId", assigned_by_id AS "assignedById", status FROM trip_driver_assignments WHERE trip_id=$1 AND driver_id=$2 AND status=$3 ORDER BY created_at DESC LIMIT 1',
     tripId,
     driverId,
     'PENDING',
@@ -222,10 +223,27 @@ export async function rejectTripAssignment(input: { tripId: string; driverId: st
 }
 
 export async function startAcceptedAssignedTrip(input: { tripId: string; driverId: string; userId?: string | null; startOdometer?: number; notes?: string | null }) {
+  const tripBefore = await getTripById(input.tripId);
+  if (tripBefore.driverId !== input.driverId) throw new AppError('Trip is not assigned to your driver profile', 403);
+
   const assignment = await openAssignment(input.tripId);
-  if (!assignment || assignment.driverId !== input.driverId || assignment.status !== 'ACCEPTED') {
+  const selfStarted = tripBefore.createdById === input.userId;
+  const selfAcceptedAssignment = assignment?.driverId === input.driverId && assignment?.assignedById === input.userId;
+  const canStart = assignment?.status === 'ACCEPTED' || !assignment || selfStarted || selfAcceptedAssignment;
+
+  if (!canStart) {
     throw new AppError('Driver must accept this assignment before starting the trip', 400);
   }
+
+  if (assignment?.status === 'PENDING' && selfAcceptedAssignment) {
+    await prisma.$executeRawUnsafe(
+      'UPDATE trip_driver_assignments SET status=$1, responded_at=NOW(), response_notes=$2, updated_at=NOW() WHERE id=$3',
+      'ACCEPTED',
+      'Auto-accepted because the driver started their own assignment',
+      assignment.id,
+    );
+  }
+
   const trip = await startTrip(input.tripId, { startOdometer: input.startOdometer, notes: input.notes }, input.userId);
   await notifyOps('Trip started', `Driver started trip ${trip.tripNumber}.`, `/trips/${trip.id}`);
   return trip;
