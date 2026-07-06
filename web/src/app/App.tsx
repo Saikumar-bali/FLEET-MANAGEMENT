@@ -168,6 +168,7 @@ function App() {
                   <Route path="/driver-portal/vehicles/inspect" element={<DriverVehicleInspectionPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['driver_submission_view']} />}>
+                  <Route path="/driver-submissions" element={<Navigate to="/driver-submissions/fuel" replace />} />
                   <Route path="/driver-submissions/fuel" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FuelSubmissionsPage /></Suspense>} />
                   <Route path="/driver-submissions/expenses" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><ExpenseSubmissionsPage /></Suspense>} />
                   <Route path="/driver-submissions/documents" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><DocumentSubmissionsPage /></Suspense>} />
