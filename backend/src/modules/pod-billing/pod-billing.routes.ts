@@ -10,6 +10,7 @@ import {
   rejectPodController,
   uploadTripPodController,
   verifyPodController,
+  viewPodDocumentController,
 } from './pod-billing.controller';
 
 const upload = multer({
@@ -31,6 +32,12 @@ router.get(
   '/pod-billing/chain',
   requireAnyPermission(['driver_submission_view', 'driver_document_verify', 'documents_verify', 'trip_billing_view', 'finance_approve']),
   asyncHandler(listPodBillingChainController),
+);
+
+router.get(
+  '/pod-billing/pods/:id/view',
+  requireAnyPermission(['driver_submission_view', 'driver_document_verify', 'documents_verify', 'trip_billing_view', 'finance_approve']),
+  asyncHandler(viewPodDocumentController),
 );
 
 router.post(
