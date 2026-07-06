@@ -50,7 +50,7 @@ async function assertTripPod(documentId: string) {
     throw new AppError('Selected document is not a trip POD', 400);
   }
 
-  return pod;
+  return pod as typeof pod & { trip: NonNullable<typeof pod.trip> };
 }
 
 async function autoCreateBillingForVerifiedPod(
@@ -247,7 +247,7 @@ export async function verifyPod(req: Request, documentId: string, body: Record<s
     },
   });
 
-  const billingResult = await autoCreateBillingForVerifiedPod(pod.tripId!, userId, {
+  const billingResult = await autoCreateBillingForVerifiedPod(pod.tripId, userId, {
     customerId: body.customerId ? String(body.customerId) : undefined,
     ratePerKm: body.ratePerKm,
     freightAmount: body.freightAmount,
