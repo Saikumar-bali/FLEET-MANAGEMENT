@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getPayments, createPayment, deletePayment } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -8,6 +9,7 @@ import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
+import FinancePaymentClosurePage from './FinancePaymentClosurePage';
 
 type PaymentForm = {
   transactionId: string;
@@ -45,7 +47,7 @@ const initialForm: PaymentForm = {
   notes: '',
 };
 
-export function FinancePaymentsPage() {
+function FinancePaymentsManagerPage() {
   const auth = useAuth();
   const { showToast } = useToast();
   const [items, setItems] = useState<PaymentRecord[]>([]);
@@ -348,6 +350,17 @@ export function FinancePaymentsPage() {
       </div>
     </section>
   );
+}
+
+export function FinancePaymentsPage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+
+  if (params.get('view') === 'closure') {
+    return <FinancePaymentClosurePage />;
+  }
+
+  return <FinancePaymentsManagerPage />;
 }
 
 export default FinancePaymentsPage;
