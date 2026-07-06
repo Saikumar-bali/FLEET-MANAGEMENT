@@ -8,6 +8,7 @@ const financeTabs = [
   { label: 'Categories', testId: 'finance-tab-categories', path: '/finance/categories', permissionKeys: ['finance_view'] },
   { label: 'Vendors', testId: 'finance-tab-vendors', path: '/finance/vendors', permissionKeys: ['vendors_view'] },
   { label: 'Customers', testId: 'finance-tab-customers', path: '/finance/customers', permissionKeys: ['customers_view'] },
+  { label: 'POD Chain', testId: 'finance-tab-pod-chain', path: '/finance/pod-chain', permissionKeys: ['trip_billing_view', 'finance_approve', 'driver_document_verify', 'documents_verify'] },
   { label: 'Trip Billing', testId: 'finance-tab-trip-billing', path: '/finance/trip-billings', permissionKeys: ['trip_billing_view'] },
   { label: 'Payments', testId: 'finance-tab-payments', path: '/finance/payments', permissionKeys: ['payments_view'] },
 ];
