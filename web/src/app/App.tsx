@@ -56,6 +56,7 @@ const FinanceVendorsPage = lazy(() => import('../pages/FinanceVendorsPage'));
 const FinanceCustomersPage = lazy(() => import('../pages/FinanceCustomersPage'));
 const FinanceTripBillingsPage = lazy(() => import('../pages/FinanceTripBillingsPage'));
 const FinancePaymentsPage = lazy(() => import('../pages/FinancePaymentsPage'));
+const PodBillingChainPage = lazy(() => import('../pages/PodBillingChainPage'));
 const FuelSubmissionsPage = lazy(() => import('../pages/driver-submissions/FuelSubmissionsPage').then(m => ({ default: m.FuelSubmissionsPage })));
 const ExpenseSubmissionsPage = lazy(() => import('../pages/driver-submissions/ExpenseSubmissionsPage').then(m => ({ default: m.ExpenseSubmissionsPage })));
 const DocumentSubmissionsPage = lazy(() => import('../pages/driver-submissions/DocumentSubmissionsPage').then(m => ({ default: m.DocumentSubmissionsPage })));
@@ -136,6 +137,7 @@ function App() {
                     <Route path="/finance/customers" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceCustomersPage /></Suspense>} />
                   </Route>
                   <Route element={<ProtectedRoute requiredPermissions={['trip_billing_view']} />}>
+                    <Route path="/finance/pod-chain" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><PodBillingChainPage /></Suspense>} />
                     <Route path="/finance/trip-billings" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceTripBillingsPage /></Suspense>} />
                   </Route>
                   <Route element={<ProtectedRoute requiredPermissions={['payments_view']} />}>
