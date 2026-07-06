@@ -50,7 +50,9 @@ async function assertTripPod(documentId: string) {
     throw new AppError('Selected document is not a trip POD', 400);
   }
 
-  return pod as typeof pod & { trip: NonNullable<typeof pod.trip> };
+  const trip = pod.trip;
+  const tripId = pod.tripId;
+  return { ...pod, trip, tripId };
 }
 
 async function autoCreateBillingForVerifiedPod(
