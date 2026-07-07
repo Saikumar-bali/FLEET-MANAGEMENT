@@ -1645,12 +1645,12 @@ textarea:focus {
 .list-detail-layout {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.95fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
 }
 
 .selection-panel {
   display: grid;
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .detail-panel {
