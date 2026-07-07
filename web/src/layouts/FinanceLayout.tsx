@@ -24,7 +24,7 @@ export function FinanceLayout() {
   );
 
   return (
-    <section className="page-content">
+    <section className="finance-layout">
       <div className="finance-tabs">
         {visibleTabs.map((tab) => {
           const isActive =
