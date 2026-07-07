@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { navigationRegistry } from '../config/navigation';
@@ -9,7 +9,8 @@ import { getMyNotificationCount } from '../services/notifications';
 import '../components/alerts-entry.css';
 
 const COLLAPSE_KEY = 'fleet-studio-sidebar-collapsed';
-const ALERT_COUNT_REFRESH_MS = 12000;
+const ALERT_COUNT_REFRESH_MS = 60000;
+const ALERT_COUNT_STALE_MS = 30000;
 
 function getStoredCollapse(): boolean {
   try {
@@ -23,6 +24,8 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
+  const alertCountInFlightRef = useRef(false);
+  const alertCountLastFetchRef = useRef(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(getStoredCollapse);
   const [alertCount, setAlertCount] = useState(0);
@@ -42,21 +45,37 @@ export function AppLayout() {
   const pageDescription = currentItem?.pageDescription ?? 'Workspace';
   const sectionLabel = currentItem?.section ?? 'Workspace';
 
-  const refreshAlertCount = useCallback(async () => {
+  const refreshAlertCount = useCallback(async (force = false) => {
     if (!auth.accessToken) {
       setAlertCount(0);
+      alertCountLastFetchRef.current = 0;
       return;
     }
+
+    const now = Date.now();
+    if (!force && now - alertCountLastFetchRef.current < ALERT_COUNT_STALE_MS) {
+      return;
+    }
+
+    if (alertCountInFlightRef.current) {
+      return;
+    }
+
+    alertCountInFlightRef.current = true;
     try {
       const response = await getMyNotificationCount(auth.accessToken);
+      alertCountLastFetchRef.current = Date.now();
       setAlertCount(response.data.unreadCount || 0);
     } catch {
+      alertCountLastFetchRef.current = Date.now();
       setAlertCount(0);
+    } finally {
+      alertCountInFlightRef.current = false;
     }
   }, [auth.accessToken]);
 
   useEffect(() => {
-    void refreshAlertCount();
+    void refreshAlertCount(true);
     const timer = window.setInterval(() => void refreshAlertCount(), ALERT_COUNT_REFRESH_MS);
     const onFocus = () => void refreshAlertCount();
     window.addEventListener('focus', onFocus);
