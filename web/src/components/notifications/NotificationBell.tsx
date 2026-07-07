@@ -1,30 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getMyNotificationCount, getMyNotifications, type NotificationItem } from '../../services/notifications';
+import { getMyNotifications, type NotificationItem } from '../../services/notifications';
 
 export function NotificationBell() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const refreshInFlightRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [count, setCount] = useState(0);
 
   async function refresh() {
-    if (!auth.accessToken) return;
-    const list = await getMyNotifications(auth.accessToken);
-    const unread = await getMyNotificationCount(auth.accessToken);
-    setItems(list.data.items || []);
-    setCount(unread.data.unreadCount || 0);
+    if (!auth.accessToken || refreshInFlightRef.current) return;
+
+    refreshInFlightRef.current = true;
+    try {
+      const list = await getMyNotifications(auth.accessToken);
+      setItems(list.data.items || []);
+      setCount(list.data.unreadCount || 0);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
   }
 
-  useEffect(() => {
-    void refresh();
-  }, [auth.accessToken]);
+  function handleToggle() {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen) {
+      void refresh();
+    }
+  }
 
   return (
     <div style={{ position: 'relative' }}>
-      <button type="button" className="btn-secondary" data-testid="alerts-bell" onClick={() => { setOpen(!open); void refresh(); }}>
+      <button type="button" className="btn-secondary" data-testid="alerts-bell" onClick={handleToggle}>
         Alerts {count > 0 ? `(${count})` : ''}
       </button>
       {open && (
