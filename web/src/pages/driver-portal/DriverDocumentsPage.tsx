@@ -7,6 +7,9 @@ import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 
+const DOC_TYPES = ['VEHICLE_RC', 'VEHICLE_INSURANCE', 'VEHICLE_PERMIT', 'VEHICLE_FITNESS', 'VEHICLE_PUC', 'ROAD_TAX', 'FASTAG', 'AIS140_GPS', 'DRIVER_LICENSE', 'DRIVER_ID_PROOF', 'TRIP_POD', 'TRIP_CHALLAN', 'TRIP_LR', 'TRIP_EWAY_BILL', 'CUSTOMER_PO', 'INVOICE', 'PAYMENT_PROOF', 'FUEL_BILL', 'EXPENSE_BILL', 'MAINTENANCE_BILL', 'REPAIR_BILL', 'VENDOR_DOCUMENT', 'CUSTOMER_DOCUMENT', 'GENERAL'];
+const DOC_CATEGORIES = ['VEHICLE', 'DRIVER', 'TRIP', 'COMPLIANCE', 'FINANCE', 'MAINTENANCE', 'REPAIR', 'VENDOR', 'CUSTOMER', 'GENERAL'];
+
 function docStatusClass(status: string) {
   switch (status) {
     case 'VERIFIED': return 'status-pill status-pill-success';
@@ -30,6 +33,8 @@ export function DriverDocumentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
 
   useEffect(() => {
     if (!auth.accessToken) return;
@@ -39,7 +44,12 @@ export function DriverDocumentsPage() {
   const loadData = (p: number) => {
     if (!auth.accessToken) return;
     setLoading(true);
-    getMyDriverDocuments(auth.accessToken, { page: p, limit: 20 })
+    getMyDriverDocuments(auth.accessToken, {
+      page: p,
+      limit: 20,
+      ...(filterType ? { documentType: filterType } : {}),
+      ...(filterCategory ? { documentCategory: filterCategory } : {}),
+    })
       .then((res) => {
         setDocs(res.data?.items || []);
         setTotalPages(res.data?.totalPages || 1);
@@ -48,9 +58,11 @@ export function DriverDocumentsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(page); }, [auth.accessToken, page]);
+  useEffect(() => { setPage(1); }, [filterType, filterCategory]);
+  useEffect(() => { loadData(page); }, [auth.accessToken, page, filterType, filterCategory]);
 
   const canUpload = permissions.includes('driver_document_upload');
+  const hasFilters = filterType || filterCategory;
 
   if (loading && docs.length === 0) return <LoadingState message="Loading documents..." />;
   if (error && docs.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
@@ -64,11 +76,35 @@ export function DriverDocumentsPage() {
         actions={canUpload ? <button type="button" className="primary-button" onClick={() => navigate('/driver-portal/documents/upload')}>Upload Document</button> : undefined}
       />
 
+      <div className="filter-bar" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="">All Types</option>
+            {DOC_TYPES.map((t) => (
+              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+            <option value="">All Categories</option>
+            {DOC_CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        {hasFilters && (
+          <button type="button" className="secondary-button" onClick={() => { setFilterType(''); setFilterCategory(''); }}>
+            Clear Filters
+          </button>
+        )}
+      </div>
+
       {docs.length === 0 ? (
         <div className="state-panel">
           <div>
-            <h3>No documents found</h3>
-            <p>You have no documents uploaded yet. Upload a document to get started.</p>
+            <h3>{hasFilters ? 'No matching documents' : 'No documents found'}</h3>
+            <p>{hasFilters ? 'No documents match the selected filters.' : 'You have no documents uploaded yet. Upload a document to get started.'}</p>
           </div>
         </div>
       ) : (

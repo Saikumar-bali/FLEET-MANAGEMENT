@@ -303,6 +303,8 @@ export async function driverDocumentsController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
   const page = Number(req.query.page) || 1;
   const limit = Math.min(Number(req.query.limit) || 20, 100);
+  const documentType = req.query.documentType as string | undefined;
+  const documentCategory = req.query.documentCategory as string | undefined;
 
   const driverTripIds = await prisma.trip.findMany({
     where: { driverId: driver.id },
@@ -324,7 +326,7 @@ export async function driverDocumentsController(req: Request, res: Response) {
     select: { id: true },
   }).then(rows => rows.map(r => r.id));
 
-  const where = {
+  const where: Record<string, unknown> = {
     documentStatus: 'ACTIVE' as const,
     OR: [
       { driverId: driver.id },
@@ -334,6 +336,13 @@ export async function driverDocumentsController(req: Request, res: Response) {
       { uploadedById: req.authUser!.id },
     ],
   };
+
+  if (documentType) {
+    where.documentType = documentType;
+  }
+  if (documentCategory) {
+    where.documentCategory = documentCategory;
+  }
 
   const [items, total] = await Promise.all([
     prisma.document.findMany({
