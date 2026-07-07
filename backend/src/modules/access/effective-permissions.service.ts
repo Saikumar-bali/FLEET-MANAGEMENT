@@ -7,7 +7,35 @@ export type EffectivePermissionsResult = {
   effectivePermissions: string[];
 };
 
+const PERMISSION_CACHE_TTL_MS = 15000;
+const permissionCache = new Map<string, { expiresAt: number; value: EffectivePermissionsResult }>();
+
+function cloneResult(result: EffectivePermissionsResult): EffectivePermissionsResult {
+  return {
+    rolePermissions: [...result.rolePermissions],
+    userAllowedPermissions: [...result.userAllowedPermissions],
+    userDeniedPermissions: [...result.userDeniedPermissions],
+    effectivePermissions: [...result.effectivePermissions],
+  };
+}
+
+export function invalidateEffectivePermissions(userId?: string) {
+  if (userId) {
+    permissionCache.delete(userId);
+    return;
+  }
+
+  permissionCache.clear();
+}
+
 export async function getEffectivePermissions(userId: string): Promise<EffectivePermissionsResult> {
+  if (process.env.NODE_ENV !== 'test') {
+    const cached = permissionCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cloneResult(cached.value);
+    }
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -44,9 +72,6 @@ export async function getEffectivePermissions(userId: string): Promise<Effective
     }
   }
 
-  const deniedSet = new Set(userDeniedPermissions);
-  const allowedSet = new Set(userAllowedPermissions);
-
   const combined = new Set(rolePermissions);
   for (const key of userAllowedPermissions) {
     combined.add(key);
@@ -55,7 +80,16 @@ export async function getEffectivePermissions(userId: string): Promise<Effective
     combined.delete(key);
   }
 
-  const effectivePermissions = Array.from(combined);
+  const result = {
+    rolePermissions,
+    userAllowedPermissions,
+    userDeniedPermissions,
+    effectivePermissions: Array.from(combined),
+  };
 
-  return { rolePermissions, userAllowedPermissions, userDeniedPermissions, effectivePermissions };
+  if (process.env.NODE_ENV !== 'test') {
+    permissionCache.set(userId, { expiresAt: Date.now() + PERMISSION_CACHE_TTL_MS, value: cloneResult(result) });
+  }
+
+  return result;
 }
