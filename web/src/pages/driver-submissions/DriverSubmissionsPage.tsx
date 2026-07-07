@@ -24,12 +24,7 @@ export function DriverSubmissionsPage() {
 
   const canView = auth.permissions?.includes('driver_submission_view');
   const canReview = auth.permissions?.includes('driver_submission_review');
-
-  const accessibleTypes = SUBMISSION_TYPES.filter((type) => {
-    if (canReview) return true;
-    if (canView) return true;
-    return false;
-  });
+  const hasAccess = canView || canReview;
 
   return (
     <section className="page-content">
@@ -39,7 +34,7 @@ export function DriverSubmissionsPage() {
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', padding: '1rem' }}>
-        {accessibleTypes.map((type) => (
+        {hasAccess && SUBMISSION_TYPES.map((type) => (
           <button
             key={type.id}
             type="button"
