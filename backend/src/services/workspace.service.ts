@@ -68,7 +68,7 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'trip-billing': { all: ['trip_billing_view'] },
   'payments': { all: ['payments_view'] },
   'finance-transactions': { all: ['finance_transactions_view'] },
-  'finance-accounts': { all: ['finance_accounts_view'] },
+  'finance-accounts': { all: ['finance_view'] },
   'finance-vendors': { all: ['vendors_view'] },
   'finance-customers': { all: ['customers_view'] },
   'finance-reports': { any: ['finance_view', 'pnl_view'] },

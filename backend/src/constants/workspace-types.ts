@@ -142,7 +142,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'finance-dashboard', label: 'Finance Dashboard', path: '/finance', icon: 'FinanceDashboard', section: 'FINANCE', priority: 300 },
   { id: 'finance-fuel', label: 'Fuel Expenses', path: '/fuel', icon: 'Fuel', section: 'FINANCE', priority: 310 },
   { id: 'finance-expenses', label: 'Driver Expenses', path: '/expenses', icon: 'Expenses', section: 'FINANCE', priority: 320 },
-  { id: 'trip-billing', label: 'Trip Billing', path: '/finance/billings', icon: 'Billing', section: 'FINANCE', priority: 330 },
+  { id: 'trip-billing', label: 'Trip Billing', path: '/finance/trip-billings', icon: 'Billing', section: 'FINANCE', priority: 330 },
   { id: 'payments', label: 'Payments', path: '/finance/payments', icon: 'Payments', section: 'FINANCE', priority: 340 },
   { id: 'finance-transactions', label: 'Transactions', path: '/finance/transactions', icon: 'Transactions', section: 'FINANCE', priority: 350 },
   { id: 'finance-accounts', label: 'Accounts', path: '/finance/accounts', icon: 'Accounts', section: 'FINANCE', priority: 360 },

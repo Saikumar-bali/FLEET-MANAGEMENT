@@ -56,7 +56,9 @@ const FinanceVendorsPage = lazy(() => import('../pages/FinanceVendorsPage'));
 const FinanceCustomersPage = lazy(() => import('../pages/FinanceCustomersPage'));
 const FinanceTripBillingsPage = lazy(() => import('../pages/FinanceTripBillingsPage'));
 const FinancePaymentsPage = lazy(() => import('../pages/FinancePaymentsPage'));
+const FinanceReportsPage = lazy(() => import('../pages/FinanceReportsPage'));
 const PodBillingChainPage = lazy(() => import('../pages/PodBillingChainPage'));
+const DriverSubmissionsPage = lazy(() => import('../pages/driver-submissions/DriverSubmissionsPage').then(m => ({ default: m.DriverSubmissionsPage })));
 const FuelSubmissionsPage = lazy(() => import('../pages/driver-submissions/FuelSubmissionsPage').then(m => ({ default: m.FuelSubmissionsPage })));
 const ExpenseSubmissionsPage = lazy(() => import('../pages/driver-submissions/ExpenseSubmissionsPage').then(m => ({ default: m.ExpenseSubmissionsPage })));
 const DocumentSubmissionsPage = lazy(() => import('../pages/driver-submissions/DocumentSubmissionsPage').then(m => ({ default: m.DocumentSubmissionsPage })));
@@ -143,6 +145,9 @@ function App() {
                   <Route element={<ProtectedRoute requiredPermissions={['payments_view']} />}>
                     <Route path="/finance/payments" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinancePaymentsPage /></Suspense>} />
                   </Route>
+                  <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>
+                    <Route path="/finance/reports" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FinanceReportsPage /></Suspense>} />
+                  </Route>
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['role_view']} />}>
                   <Route path="/roles" element={<RolesPage />} />
@@ -168,7 +173,7 @@ function App() {
                   <Route path="/driver-portal/vehicles/inspect" element={<DriverVehicleInspectionPage />} />
                 </Route>
                 <Route element={<ProtectedRoute requiredPermissions={['driver_submission_view']} />}>
-                  <Route path="/driver-submissions" element={<Navigate to="/driver-submissions/fuel" replace />} />
+                  <Route path="/driver-submissions" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><DriverSubmissionsPage /></Suspense>} />
                   <Route path="/driver-submissions/fuel" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><FuelSubmissionsPage /></Suspense>} />
                   <Route path="/driver-submissions/expenses" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><ExpenseSubmissionsPage /></Suspense>} />
                   <Route path="/driver-submissions/documents" element={<Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}><DocumentSubmissionsPage /></Suspense>} />
