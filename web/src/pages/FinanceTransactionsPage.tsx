@@ -177,7 +177,7 @@ export function FinanceTransactionsPage() {
   if (error && items.length === 0) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section className="page-content">
+    <div>
       <div className="section-header">
         <div>
           <PageHeader
@@ -373,7 +373,7 @@ export function FinanceTransactionsPage() {
           </article>
         </aside>
       </div>
-    </section>
+    </div>
   );
 }
 

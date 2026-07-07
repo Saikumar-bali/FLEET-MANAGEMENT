@@ -131,7 +131,7 @@ export function FinanceCategoriesPage() {
   if (error && categories.length === 0) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section className="page-content">
+    <div>
       <div className="section-header">
         <div>
           <PageHeader
@@ -252,7 +252,7 @@ export function FinanceCategoriesPage() {
           </article>
         </aside>
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -86,8 +86,6 @@ export function FinanceTripBillingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
-
   const canCreate = auth.hasPermission('trip_billing_create');
   const canUpdate = auth.hasPermission('trip_billing_update');
   const canDelete = auth.hasPermission('trip_billing_delete');
@@ -103,9 +101,7 @@ export function FinanceTripBillingsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await getTripBillings(auth.accessToken, {
-          ...(filterPaymentStatus ? { status: filterPaymentStatus } : {}),
-        });
+        const response = await getTripBillings(auth.accessToken);
         const items = response.data?.items ?? [];
         setItems(items);
         if (items.length > 0 && !selectedId) {
@@ -121,7 +117,7 @@ export function FinanceTripBillingsPage() {
       }
     };
     void load();
-  }, [auth.accessToken, filterPaymentStatus]);
+  }, [auth.accessToken]);
 
   useEffect(() => {
     if (selected) {
@@ -247,7 +243,7 @@ export function FinanceTripBillingsPage() {
   if (error && items.length === 0) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
 
   return (
-    <section className="page-content">
+    <div>
       <div className="section-header">
         <div>
           <PageHeader
@@ -263,21 +259,6 @@ export function FinanceTripBillingsPage() {
             </button>
           ) : null}
         </div>
-      </div>
-
-      <div className="filter-bar">
-        <label>
-          <span className="field-label">Payment Status</span>
-          <select value={filterPaymentStatus} onChange={(e) => setFilterPaymentStatus(e.target.value)}>
-            <option value="">All Statuses</option>
-            <option value="UNBILLED">Unbilled</option>
-            <option value="BILLED">Billed</option>
-            <option value="PARTIALLY_PAID">Partially Paid</option>
-            <option value="PAID">Paid</option>
-            <option value="OVERDUE">Overdue</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
-        </label>
       </div>
 
       <div className="list-detail-layout">
@@ -297,55 +278,57 @@ export function FinanceTripBillingsPage() {
           {items.length === 0 ? (
             <EmptyState message="No trip billings found. Create the first billing to continue." />
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Invoice#</th>
-                  <th>Customer</th>
-                  <th>Freight Amount</th>
-                  <th>Total Amount</th>
-                  <th>Net Receivable</th>
-                  <th>Paid</th>
-                  <th>Balance</th>
-                  <th>Payment Status</th>
-                  <th>Due Date</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={item.id === selectedId ? 'row-active' : ''}
-                    onClick={() => setSelectedId(item.id)}
-                  >
-                    <td>{item.invoiceNumber ?? '—'}</td>
-                    <td>{item.customer?.name ?? '—'}</td>
-                    <td>{item.freightAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td>{item.netReceivable.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td>{item.paidAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td>{item.balanceAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td><StatusBadge status={item.paymentStatus} /></td>
-                    <td>{item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-IN') : '—'}</td>
-                    <td>
-                      {canDelete ? (
-                        <button
-                          type="button"
-                          className="danger-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleDelete(item.id);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                    </td>
+            <div className="data-table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Invoice#</th>
+                    <th>Customer</th>
+                    <th>Freight Amount</th>
+                    <th>Total Amount</th>
+                    <th>Net Receivable</th>
+                    <th>Paid</th>
+                    <th>Balance</th>
+                    <th>Payment Status</th>
+                    <th>Due Date</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={item.id === selectedId ? 'row-active' : ''}
+                      onClick={() => setSelectedId(item.id)}
+                    >
+                      <td>{item.invoiceNumber ?? '—'}</td>
+                      <td>{item.customer?.name ?? '—'}</td>
+                      <td>{item.freightAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td>{item.netReceivable.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td>{item.paidAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td>{item.balanceAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                      <td><StatusBadge status={item.paymentStatus} /></td>
+                      <td>{item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-IN') : '—'}</td>
+                      <td>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            className="danger-button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleDelete(item.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </article>
 
@@ -360,7 +343,7 @@ export function FinanceTripBillingsPage() {
               </div>
             </div>
 
-            <form data-testid="finance-trip-billing-form" className="stack-form" onSubmit={handleSubmit}>
+            <form data-testid="finance-trip-billing-form" className="stack-form form-grid" onSubmit={handleSubmit}>
               <label>
                 <span className="field-label">Trip ID</span>
                 <input value={form.tripId} onChange={(e) => setForm((f) => ({ ...f, tripId: e.target.value }))} required />
@@ -484,7 +467,7 @@ export function FinanceTripBillingsPage() {
           </article>
         </aside>
       </div>
-    </section>
+    </div>
   );
 }
 
