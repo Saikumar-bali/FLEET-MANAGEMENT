@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config';
 import { errorHandler } from './middlewares/errorHandler';
+import { requestTiming } from './middlewares/requestTiming';
 import healthRoutes from './modules/health/health.routes';
 import authRoutes from './modules/auth/auth.routes';
 import roleRoutes from './modules/roles/roles.routes';
@@ -53,6 +54,7 @@ app.use(
 );
 app.use(cors({ origin: config.corsOrigins }));
 app.use(morgan('dev'));
+app.use(requestTiming);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
