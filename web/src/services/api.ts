@@ -959,10 +959,12 @@ export function getMyDriverVehicles(token: string) {
   return request<{ vehicles: DriverPortalVehicle[]; primaryVehicle: { id: string; vehicleNumber: string } | null; emptyReason: string | null }>('/me/driver-vehicles', { token });
 }
 
-export function getMyDriverDocuments(token: string, params?: { page?: number; limit?: number }) {
+export function getMyDriverDocuments(token: string, params?: { page?: number; limit?: number; documentType?: string; documentCategory?: string }) {
   const query = new URLSearchParams();
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.documentType) query.set('documentType', params.documentType);
+  if (params?.documentCategory) query.set('documentCategory', params.documentCategory);
   const qs = query.toString();
   return request<{ items: DriverPortalDocument[]; total: number; page: number; limit: number; totalPages: number }>(`/me/driver-documents${qs ? `?${qs}` : ''}`, { token });
 }

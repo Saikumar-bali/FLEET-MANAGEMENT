@@ -5,7 +5,7 @@ import { uploadDriverDocument, getMyDriverVehicles, getMyDriverTrips } from '../
 import type { DriverPortalVehicle, DriverPortalTrip } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
 
-const DOC_TYPES = ['GENERAL', 'FUEL_BILL', 'VEHICLE_RC', 'DRIVER_LICENSE', 'INSURANCE', 'TRIP_DOCUMENT', 'POD', 'LR', 'CHALLAN'];
+const DOC_TYPES = ['GENERAL', 'FUEL_BILL', 'EXPENSE_BILL', 'VEHICLE_RC', 'VEHICLE_INSURANCE', 'DRIVER_LICENSE', 'DRIVER_ID_PROOF', 'TRIP_POD', 'TRIP_LR', 'TRIP_CHALLAN', 'TRIP_EWAY_BILL', 'PAYMENT_PROOF'];
 const DOC_CATEGORIES = ['TRIP', 'VEHICLE', 'DRIVER', 'COMPLIANCE', 'FINANCE', 'GENERAL'];
 
 export function DriverDocumentUploadPage() {
