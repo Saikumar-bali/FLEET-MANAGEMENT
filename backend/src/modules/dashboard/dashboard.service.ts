@@ -2,7 +2,44 @@ import { prisma } from '../../lib/prisma';
 import type { ActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource } from '../access/scoped-enforcement.service';
 
+const OVERVIEW_CACHE_TTL_MS = Number.parseInt(process.env.DASHBOARD_OVERVIEW_CACHE_MS || '15000', 10);
+type DashboardOverviewPayload = Record<string, unknown>;
+const overviewCache = new Map<string, { expiresAt: number; value: DashboardOverviewPayload }>();
+
+function buildOverviewCacheKey(actor: ActorContext) {
+  const scopes = actor.dataScopes
+    .map((scope) => `${scope.scopeType}:${scope.scopeId ?? '*'}:${scope.accessLevel}`)
+    .sort()
+    .join('|');
+  const perms = actor.effectivePermissions.slice().sort().join('|');
+  return `${actor.user.id}:${actor.roleKey}:${scopes}:${perms}`;
+}
+
+function cloneOverview(value: DashboardOverviewPayload): DashboardOverviewPayload {
+  return { ...value };
+}
+
 export class DashboardService {
+  async getOverview(actor: ActorContext): Promise<DashboardOverviewPayload> {
+    const cacheKey = buildOverviewCacheKey(actor);
+    const cached = overviewCache.get(cacheKey);
+
+    if (process.env.NODE_ENV !== 'test' && cached && cached.expiresAt > Date.now()) {
+      return cloneOverview(cached.value);
+    }
+
+    const overview = await this.loadOverview(actor);
+
+    if (process.env.NODE_ENV !== 'test') {
+      overviewCache.set(cacheKey, {
+        expiresAt: Date.now() + OVERVIEW_CACHE_TTL_MS,
+        value: cloneOverview(overview),
+      });
+    }
+
+    return overview;
+  }
+
   /**
    * `actor` is required — this endpoint previously ran fully global,
    * unscoped aggregates for any authenticated user. Every count/aggregate
@@ -12,7 +49,7 @@ export class DashboardService {
    * numbers consistent with what they can actually open and view elsewhere
    * in the app — never a fleet-wide total they don't have access to.
    */
-  async getOverview(actor: ActorContext) {
+  private async loadOverview(actor: ActorContext): Promise<DashboardOverviewPayload> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
