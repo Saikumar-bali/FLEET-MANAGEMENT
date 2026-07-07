@@ -30,6 +30,14 @@ function uniqueRecipients(rows: RecipientRow[]) {
   return Array.from(new Map(rows.map((row) => [row.userId, row])).values());
 }
 
+async function getUnreadCountValue(userId: string) {
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+    'SELECT COUNT(*)::bigint AS count FROM notification_recipients WHERE user_id=$1 AND read_at IS NULL AND archived_at IS NULL',
+    userId,
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function resolveRecipients(policy: RecipientPolicy) {
   if (policy.type === 'USER') {
     if (policy.userIds.length === 0) return [];
@@ -73,19 +81,19 @@ export async function createNotification(input: CreateNotificationInput) {
 }
 
 export async function listNotifications(userId: string) {
-  const items = await prisma.$queryRawUnsafe(
-    'SELECT n.id,n.title,n.message,n.category,n.severity,n.action_url AS "actionUrl",n.created_at AS "createdAt",nr.read_at AS "readAt" FROM notification_recipients nr JOIN notifications n ON n.id=nr.notification_id WHERE nr.user_id=$1 AND nr.archived_at IS NULL ORDER BY n.created_at DESC LIMIT 50',
-    userId,
-  );
-  return { items };
+  const [items, unreadCount] = await Promise.all([
+    prisma.$queryRawUnsafe(
+      'SELECT n.id,n.title,n.message,n.category,n.severity,n.action_url AS "actionUrl",n.created_at AS "createdAt",nr.read_at AS "readAt" FROM notification_recipients nr JOIN notifications n ON n.id=nr.notification_id WHERE nr.user_id=$1 AND nr.archived_at IS NULL ORDER BY n.created_at DESC LIMIT 50',
+      userId,
+    ),
+    getUnreadCountValue(userId),
+  ]);
+
+  return { items, unreadCount };
 }
 
 export async function unreadCount(userId: string) {
-  const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-    'SELECT COUNT(*)::bigint AS count FROM notification_recipients WHERE user_id=$1 AND read_at IS NULL AND archived_at IS NULL',
-    userId,
-  );
-  return { unreadCount: Number(rows[0]?.count ?? 0) };
+  return { unreadCount: await getUnreadCountValue(userId) };
 }
 
 export async function markRead(userId: string, id: string) {
