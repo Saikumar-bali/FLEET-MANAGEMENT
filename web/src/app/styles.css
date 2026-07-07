@@ -1651,6 +1651,7 @@ textarea:focus {
 .selection-panel {
   display: grid;
   gap: 0;
+  align-content: start;
 }
 
 .detail-panel {
@@ -2786,11 +2787,21 @@ fieldset.form-section {
   cursor: not-allowed;
 }
 
+.finance-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--page-padding);
+  max-width: var(--content-max-width);
+  width: 100%;
+  margin: 0 auto;
+}
+
 .finance-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding: var(--space-5);
+  gap: 0;
+  padding: 0;
   border: 1px solid var(--color-border-light);
   border-top: none;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -3339,7 +3350,7 @@ fieldset.form-section {
   display: flex;
   gap: 2px;
   padding: 0;
-  margin: 0 0 var(--space-4, 16px);
+  margin: 0;
   border-bottom: 1px solid var(--color-border, #dadce0);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
