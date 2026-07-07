@@ -377,7 +377,7 @@ export const navigationRegistry: NavItem[] = [
   {
     id: 'trip-billing',
     label: 'Trip Billing',
-    path: '/finance/billings',
+    path: '/finance/trip-billings',
     icon: 'Billing',
     section: 'FINANCE',
     requiredPermissions: ['trip_billing_view'],
@@ -419,7 +419,7 @@ export const navigationRegistry: NavItem[] = [
     path: '/finance/accounts',
     icon: 'Accounts',
     section: 'FINANCE',
-    requiredPermissions: ['finance_accounts_view'],
+    requiredPermissions: ['finance_view'],
     hiddenForRoleKeys: ['driver'],
     priority: 360,
     description: 'Bank and cash accounts',
