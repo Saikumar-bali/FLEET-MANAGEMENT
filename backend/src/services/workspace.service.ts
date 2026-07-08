@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma';
 import { getEffectivePermissions } from '../modules/access/effective-permissions.service';
-import { getUserProfileLinks, getDriverIdForUser, getProfileTypesForUser } from '../modules/user-profile-links/user-profile-links.service';
 import type { WorkspaceType, Capabilities, CapabilityName, NavSection, NavItemDef, QuickActionDef, WorkspaceResponse, PrimaryProfiles } from '../constants/workspace-types';
 import { NAV_ITEMS, ALL_SECTIONS, NAV_SECTION_LABELS } from '../constants/workspace-types';
 
@@ -63,15 +62,6 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'maintenance': { all: ['maintenance_view'] },
   'repairs': { all: ['repair_view'] },
   'finance-dashboard': { any: ['finance_view', 'pnl_view'] },
-  'finance-fuel': { all: ['fuel_view'] },
-  'finance-expenses': { all: ['expense_view'] },
-  'trip-billing': { all: ['trip_billing_view'] },
-  'payments': { all: ['payments_view'] },
-  'finance-transactions': { all: ['finance_transactions_view'] },
-  'finance-accounts': { all: ['finance_view'] },
-  'finance-vendors': { all: ['vendors_view'] },
-  'finance-customers': { all: ['customers_view'] },
-  'finance-reports': { any: ['finance_view', 'pnl_view'] },
   'compliance-dashboard': { all: ['vehicle_compliance_view'] },
   'documents': { all: ['documents_view'] },
   'driver-submissions': { any: ['driver_submission_view', 'driver_submission_review'] },
@@ -397,8 +387,26 @@ function buildDiagnostics(roleKey: string, profileTypes: string[], effectivePerm
   return diag;
 }
 
-export async function getWorkspace(userId: string): Promise<WorkspaceResponse> {
-  const user = await prisma.user.findUnique({
+const WORKSPACE_CACHE_TTL_MS = 30000;
+const workspaceCache = new Map<string, { expiresAt: number; value: WorkspaceResponse }>();
+
+type PreloadedUser = {
+  id: string;
+  name: string;
+  username: string | null;
+  role: { id: string; name: string; key: string; status: string };
+  permissionOverrides: { effect: string; permission: { key: string } }[];
+  dataScopes: { id: string; scopeType: string; scopeId: string | null; accessLevel: string; expiresAt: Date | null }[];
+  profileLinks: { id: string; profileType: string; profileId: string; isPrimary: boolean; status: string }[];
+};
+
+export async function getWorkspace(userId: string, preloadedUser?: PreloadedUser): Promise<WorkspaceResponse> {
+  const cached = workspaceCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  const user = preloadedUser ?? await prisma.user.findUnique({
     where: { id: userId },
     include: {
       role: true,
@@ -422,14 +430,18 @@ export async function getWorkspace(userId: string): Promise<WorkspaceResponse> {
 
   const permResult = await getEffectivePermissions(userId);
   const effectivePermissions = permResult.effectivePermissions;
-  const profileTypes = await getProfileTypesForUser(userId);
+  // Derive profileTypes from preloaded profileLinks instead of querying DB
+  const profileTypes = [...new Set(user.profileLinks.map(l => l.profileType))];
   const profileLinks = user.profileLinks;
   const hasActiveLinks = profileLinks.length > 0;
   const hasPrimaryDriverProfile = profileLinks.some(
     (l) => l.profileType === 'DRIVER' && l.isPrimary && l.status === 'ACTIVE',
   );
 
-  const driverId = await getDriverIdForUser(userId);
+  // Derive driverId from preloaded profileLinks instead of querying DB
+  const driverLink = user.profileLinks.find(l => l.profileType === 'DRIVER' && l.isPrimary)
+    ?? user.profileLinks.find(l => l.profileType === 'DRIVER');
+  const driverId = driverLink?.profileId ?? null;
   const workspaceType = determineWorkspaceType(user.role.key, profileTypes, effectivePermissions, hasActiveLinks);
 
   const capabilities = buildCapabilities(effectivePermissions, profileTypes);
@@ -453,7 +465,7 @@ export async function getWorkspace(userId: string): Promise<WorkspaceResponse> {
     primaryProfiles.driver = driver;
   }
 
-  return {
+  const result: WorkspaceResponse = {
     user: {
       id: user.id,
       name: user.name,
@@ -482,4 +494,7 @@ export async function getWorkspace(userId: string): Promise<WorkspaceResponse> {
     emptyStates,
     diagnostics,
   };
+
+  workspaceCache.set(userId, { expiresAt: Date.now() + WORKSPACE_CACHE_TTL_MS, value: result });
+  return result;
 }

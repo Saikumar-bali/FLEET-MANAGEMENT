@@ -28,8 +28,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
   },
   servers: [
-    { url: 'https://saikumarbali555-3300s-projects-backend.vercel.app/api/v1', description: 'Production' },
-    { url: '/api/v1', description: 'Same-origin (local dev proxy or deployed)' },
+    { url: '/api/v1', description: 'Same-origin (recommended)' },
+    { url: 'https://backend-alpha-ten-24.vercel.app/api/v1', description: 'Production' },
   ],
   tags: [
     { name: 'Health' },

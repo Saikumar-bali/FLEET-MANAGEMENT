@@ -7,8 +7,49 @@ export type EffectivePermissionsResult = {
   effectivePermissions: string[];
 };
 
-export async function getEffectivePermissions(userId: string): Promise<EffectivePermissionsResult> {
-  const user = await prisma.user.findUnique({
+const PERMISSION_CACHE_TTL_MS = 15000;
+const permissionCache = new Map<string, { expiresAt: number; value: EffectivePermissionsResult }>();
+
+function cloneResult(result: EffectivePermissionsResult): EffectivePermissionsResult {
+  return {
+    rolePermissions: [...result.rolePermissions],
+    userAllowedPermissions: [...result.userAllowedPermissions],
+    userDeniedPermissions: [...result.userDeniedPermissions],
+    effectivePermissions: [...result.effectivePermissions],
+  };
+}
+
+export function invalidateEffectivePermissions(userId?: string) {
+  if (userId) {
+    permissionCache.delete(userId);
+    return;
+  }
+
+  permissionCache.clear();
+}
+
+type PreloadedUser = {
+  role: {
+    rolePermissions?: { permission: { key: string } }[];
+  };
+  permissionOverrides?: {
+    effect: string;
+    permission: { key: string };
+  }[];
+};
+
+export async function getEffectivePermissions(
+  userId: string,
+  preloadedUser?: PreloadedUser,
+): Promise<EffectivePermissionsResult> {
+  if (process.env.NODE_ENV !== 'test') {
+    const cached = permissionCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cloneResult(cached.value);
+    }
+  }
+
+  const user = preloadedUser ?? await prisma.user.findUnique({
     where: { id: userId },
     include: {
       role: {
@@ -31,12 +72,12 @@ export async function getEffectivePermissions(userId: string): Promise<Effective
     return { rolePermissions: [], userAllowedPermissions: [], userDeniedPermissions: [], effectivePermissions: [] };
   }
 
-  const rolePermissions = user.role.rolePermissions.map(rp => rp.permission.key);
+  const rolePermissions = (user.role.rolePermissions ?? []).map(rp => rp.permission.key);
 
   const userAllowedPermissions: string[] = [];
   const userDeniedPermissions: string[] = [];
 
-  for (const ov of user.permissionOverrides) {
+  for (const ov of (user.permissionOverrides ?? [])) {
     if (ov.effect === 'ALLOW') {
       userAllowedPermissions.push(ov.permission.key);
     } else if (ov.effect === 'DENY') {

@@ -21,8 +21,30 @@ export type ActorContext = {
   dataScopes: DataScopeEntry[];
 };
 
-export async function getActorContext(userId: string): Promise<ActorContext> {
-  const user = await prisma.user.findUnique({
+type PreloadedUser = {
+  id: string;
+  name: string;
+  username: string | null;
+  email: string;
+  mobile: string | null;
+  status: string;
+  role: {
+    id: string;
+    name: string;
+    key: string;
+    status: string;
+  };
+  dataScopes: {
+    id: string;
+    scopeType: string;
+    scopeId: string | null;
+    accessLevel: string;
+    expiresAt: Date | null;
+  }[];
+};
+
+export async function getActorContext(userId: string, preloadedUser?: PreloadedUser): Promise<ActorContext> {
+  const user = preloadedUser ?? await prisma.user.findUnique({
     where: { id: userId },
     include: {
       role: true,
@@ -64,12 +86,12 @@ export async function getActorContext(userId: string): Promise<ActorContext> {
       username: user.username,
       email: user.email,
       mobile: user.mobile,
-      status: user.status,
+      status: user.status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED',
       role: {
         id: user.role.id,
         name: user.role.name,
         key: user.role.key,
-        status: user.role.status,
+        status: user.role.status as 'ACTIVE' | 'INACTIVE',
       },
     },
     roleKey,

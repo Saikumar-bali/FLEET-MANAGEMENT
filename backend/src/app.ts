@@ -57,6 +57,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/v1/health', healthRoutes);
+app.use('/docs', docsRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
@@ -71,7 +72,6 @@ app.use('/api/v1/fuel', fuelRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/repairs', repairRoutes);
-app.use('/api/v1/docs', docsRoutes);
 app.use('/api/v1', vehicleComplianceRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1', podBillingRoutes);
