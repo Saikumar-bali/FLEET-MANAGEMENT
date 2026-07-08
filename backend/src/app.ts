@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -84,6 +85,17 @@ app.use('/api/v1', driverPortalRoutes);
 app.use('/api/v1', driverSubmissionRoutes);
 app.use('/api/v1', workspaceRoutes);
 app.use('/api/v1/dispatch', dispatchRoutes);
+
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging') {
+  const webDistPath = path.resolve(__dirname, '../../../web/dist');
+  app.use(express.static(webDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/docs')) {
+      return next();
+    }
+    res.sendFile(path.join(webDistPath, 'index.html'));
+  });
+}
 
 app.use((_req, res) => sendError(res, 'Route not found', 404));
 
