@@ -7,6 +7,7 @@ declare global {
       authPermissions?: string[];
       authEffectivePermissions?: EffectivePermissions;
       authDataScopes?: DataScopeEntry[];
+      authPreloadedUser?: any;
       authActorContext?: {
         user: RequestUser;
         roleKey: string;

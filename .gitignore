@@ -17,3 +17,11 @@ uploads/
 .vercel
 
 .commandcode/
+
+# Debug/test files
+web/check-*.cjs
+web/debug-*.{png,cjs}
+web/smoke-test*.cjs
+web/screenshot-*.png
+test-pod.pdf
+.mimocode/

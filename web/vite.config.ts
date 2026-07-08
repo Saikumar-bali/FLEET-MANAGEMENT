@@ -15,4 +15,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'router-vendor': ['react-router', 'react-router-dom'],
+          'charts-vendor': ['recharts'],
+        },
+      },
+    },
+  },
 });

@@ -30,6 +30,7 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
     return next(new AppError('Invalid or expired token', 401));
   }
 
+  // Single query: user + role + rolePermissions + permission + permissionOverrides + dataScopes + profileLinks
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
     include: {
@@ -42,6 +43,21 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
           },
         },
       },
+      permissionOverrides: {
+        where: {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        include: { permission: true },
+      },
+      dataScopes: {
+        where: {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+      },
+      profileLinks: {
+        where: { status: 'ACTIVE' },
+        orderBy: [{ isPrimary: 'desc' }],
+      },
     },
   });
 
@@ -49,7 +65,7 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
     return next(new AppError('User is not authorized', 401));
   }
 
-  const effectivePermissions = await getEffectivePermissions(user.id);
+  const effectivePermissions = await getEffectivePermissions(user.id, user);
 
   req.authUser = {
     id: user.id,
@@ -67,9 +83,10 @@ export async function authMiddleware(req: Request, _res: Response, next: NextFun
   };
   req.authPermissions = effectivePermissions.effectivePermissions;
   req.authEffectivePermissions = effectivePermissions;
+  req.authPreloadedUser = user;
 
   try {
-    const actorContext = await getActorContext(user.id);
+    const actorContext = await getActorContext(user.id, user);
     req.authActorContext = actorContext;
     req.authDataScopes = actorContext.dataScopes;
   } catch {

@@ -51,41 +51,32 @@ export class DashboardService {
     });
 
     const [
-      totalVehicles,
-      activeVehicles,
+      vehicleStatusGroups,
       driversCount,
-      activeTrips,
-      completedTripsThisMonth,
-      pendingTrips,
+      tripStatusGroups,
       fuelAgg,
       expenseAgg,
       maintenanceOpen,
       repairsOpen,
-      complianceExpired,
+      complianceStatusGroups,
       complianceExpiring7,
       complianceExpiring30,
       recentTrips,
       recentFuel,
       recentExpenses,
-      totalDocuments,
-      activeDocuments,
-      archivedDocuments,
-      unverifiedDocuments,
-      rejectedDocuments,
+      docStatusGroups,
+      docVerificationGroups,
       expiringDocs30,
       expiredDocs,
       storageUsageAgg,
       docsByCategory,
       recentDocuments,
     ] = await Promise.all([
-      prisma.vehicle.count({ where: vehicleWhere() }),
-      prisma.vehicle.count({ where: vehicleWhere({ status: 'AVAILABLE' }) }),
+      // Vehicle: 1 query replaces 2
+      prisma.vehicle.groupBy({ by: ['status'], _count: true, where: vehicleWhere() }),
       prisma.driver.count({ where: driverWhere() }),
-      prisma.trip.count({ where: tripWhere({ status: 'STARTED' }) }),
-      prisma.trip.count({
-        where: tripWhere({ status: 'COMPLETED', updatedAt: { gte: startOfMonth } }),
-      }),
-      prisma.trip.count({ where: tripWhere({ status: 'SCHEDULED' }) }),
+      // Trip: 1 query replaces 3
+      prisma.trip.groupBy({ by: ['status'], _count: true, where: tripWhere() }),
       prisma.fuelEntry.aggregate({
         _sum: { totalAmount: true },
         where: fuelWhere({ fuelDate: { gte: startOfMonth, lte: endOfMonth } }),
@@ -98,9 +89,8 @@ export class DashboardService {
         where: maintenanceWhere({ status: { in: ['SUBMITTED', 'APPROVED'] } }),
       }),
       prisma.repair.count({ where: repairWhere({ status: 'IN_PROGRESS' }) }),
-      prisma.vehicleComplianceDocument.count({
-        where: { status: 'EXPIRED' },
-      }),
+      // Compliance: 1 query replaces 3
+      prisma.vehicleComplianceDocument.groupBy({ by: ['status'], _count: true }),
       prisma.vehicleComplianceDocument.count({
         where: {
           status: { in: ['ACTIVE', 'VERIFIED'] },
@@ -131,11 +121,17 @@ export class DashboardService {
         where: expenseWhere(),
         select: { id: true, vehicleId: true, category: true, amount: true, notes: true, expenseDate: true },
       }),
-      prisma.document.count({ where: documentWhere({ documentStatus: { not: 'DELETED' } }) }),
-      prisma.document.count({ where: documentWhere({ documentStatus: 'ACTIVE' }) }),
-      prisma.document.count({ where: documentWhere({ documentStatus: 'ARCHIVED' }) }),
-      prisma.document.count({ where: documentWhere({ verificationStatus: 'PENDING', documentStatus: 'ACTIVE' }) }),
-      prisma.document.count({ where: documentWhere({ verificationStatus: 'REJECTED', documentStatus: 'ACTIVE' }) }),
+      // Document: 2 queries replace 7 (groupBy status + verification)
+      prisma.document.groupBy({
+        by: ['documentStatus'],
+        _count: true,
+        where: documentWhere({ documentStatus: { not: 'DELETED' } }),
+      }),
+      prisma.document.groupBy({
+        by: ['verificationStatus'],
+        _count: true,
+        where: documentWhere({ documentStatus: 'ACTIVE' }),
+      }),
       prisma.document.count({
         where: documentWhere({
           documentStatus: 'ACTIVE',
@@ -170,7 +166,34 @@ export class DashboardService {
       }),
     ]);
 
+    // Derive vehicle counts from groupBy
+    const vehicleCountMap = new Map(vehicleStatusGroups.map(g => [g.status, g._count]));
+    const totalVehicles = Array.from(vehicleCountMap.values()).reduce((sum: number, c: number) => sum + c, 0);
+    const activeVehicles = vehicleCountMap.get('AVAILABLE') ?? 0;
     const inactiveVehicles = totalVehicles - activeVehicles;
+
+    // Derive trip counts from groupBy
+    const tripCountMap = new Map(tripStatusGroups.map(g => [g.status, g._count]));
+    const activeTrips = tripCountMap.get('STARTED') ?? 0;
+    const pendingTrips = tripCountMap.get('SCHEDULED') ?? 0;
+    // completedTripsThisMonth needs the scoped filter, use the count directly
+    const completedTripsThisMonth = await prisma.trip.count({
+      where: tripWhere({ status: 'COMPLETED', updatedAt: { gte: startOfMonth } }),
+    });
+
+    // Derive compliance counts from groupBy
+    const complianceCountMap = new Map(complianceStatusGroups.map(g => [g.status, g._count]));
+    const complianceExpired = complianceCountMap.get('EXPIRED') ?? 0;
+
+    // Derive document counts from groupBy
+    const docStatusMap = new Map(docStatusGroups.map(g => [g.documentStatus, g._count]));
+    const totalDocuments = Array.from(docStatusMap.values()).reduce((sum: number, c: number) => sum + c, 0);
+    const activeDocuments = docStatusMap.get('ACTIVE') ?? 0;
+    const archivedDocuments = docStatusMap.get('ARCHIVED') ?? 0;
+
+    const docVerificationMap = new Map(docVerificationGroups.map(g => [g.verificationStatus, g._count]));
+    const unverifiedDocuments = docVerificationMap.get('PENDING') ?? 0;
+    const rejectedDocuments = docVerificationMap.get('REJECTED') ?? 0;
 
     return {
       totalVehicles,
