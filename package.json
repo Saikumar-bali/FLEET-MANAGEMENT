@@ -2,7 +2,12 @@
   "name": "fleet-management",
   "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "web"
+  ],
   "scripts": {
+    "dev": "PORT=4000 npm --prefix backend run dev & npm --prefix web run dev -- --port 3000",
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
     "backend:lint": "npm --prefix backend run lint",
@@ -10,6 +15,7 @@
     "web:build": "npm --prefix web run build",
     "web:lint": "npm --prefix web run lint",
     "build": "npm run backend:build && npm run web:build",
-    "lint": "npm run backend:lint && npm run web:lint"
+    "lint": "npm run backend:lint && npm run web:lint",
+    "start": "node backend/dist/src/server.js"
   }
 }
