@@ -3,15 +3,15 @@ import { prisma } from '../lib/prisma';
 
 export async function initDatabase(): Promise<void> {
   if (!config.databaseUrl) {
-    throw new Error('DATABASE_URL is required to initialize the database');
+    console.error('🚨 DATABASE_URL is missing. Please set it in Settings -> Environment Variables.');
+    return;
   }
 
   try {
     await prisma.$queryRaw`SELECT 1`;
     console.log('Database connected successfully');
   } catch (error) {
-    console.error('Database connection failed:', error);
-    throw error;
+    console.error('🚨 Database connection failed. Please ensure the DATABASE_URL is valid and the database is accessible:', error);
   }
 }
 
