@@ -67,7 +67,6 @@ const DriverVehicleIssuePage = lazy(() => import('../pages/driver-portal/DriverV
 const DriverVehicleInspectionPage = lazy(() => import('../pages/driver-portal/DriverVehicleInspectionPage').then(m => ({ default: m.DriverVehicleInspectionPage })));
 
 // Driver submissions
->>>>>>> Stashed changes
 const FuelSubmissionsPage = lazy(() => import('../pages/driver-submissions/FuelSubmissionsPage').then(m => ({ default: m.FuelSubmissionsPage })));
 const ExpenseSubmissionsPage = lazy(() => import('../pages/driver-submissions/ExpenseSubmissionsPage').then(m => ({ default: m.ExpenseSubmissionsPage })));
 const DocumentSubmissionsPage = lazy(() => import('../pages/driver-submissions/DocumentSubmissionsPage').then(m => ({ default: m.DocumentSubmissionsPage })));
