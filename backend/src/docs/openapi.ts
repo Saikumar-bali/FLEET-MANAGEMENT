@@ -61,6 +61,10 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Profile Links' },
     { name: 'Driver Portal' },
     { name: 'Driver Submissions' },
+    { name: 'Dispatch' },
+    { name: 'Dashboard' },
+    { name: 'Workspace' },
+    { name: 'POD Billing' },
   ],
   components: {
     securitySchemes: {
@@ -1830,6 +1834,111 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/me/driver-expenses': {
       get: { tags: ['Driver Portal'], summary: 'Get expenses for linked driver (requires active DRIVER UserProfileLink)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated expenses for linked driver' } } },
+    },
+
+    // ─── Driver Portal Actions ───
+    '/me/driver-context': {
+      get: { tags: ['Driver Portal'], summary: 'Get driver context (profile, vehicle, trip status)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Driver context data' } } },
+    },
+    '/me/driver-trips/{id}/start': {
+      patch: { tags: ['Driver Portal'], summary: 'Start a driver trip (requires driver_trip_start)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip started' } } },
+    },
+    '/me/driver-trips/{id}/end': {
+      patch: { tags: ['Driver Portal'], summary: 'End a driver trip (requires driver_trip_end)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip ended' } } },
+    },
+    '/me/driver-trips/{id}/cancel': {
+      patch: { tags: ['Driver Portal'], summary: 'Cancel a driver trip (requires driver_trip_cancel)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip cancelled' } } },
+    },
+    '/me/driver-fuel/receipt-upload': {
+      post: { tags: ['Driver Portal'], summary: 'Upload fuel receipt image (requires driver_quick_fuel_create)', security: [{ bearerAuth: [] }], requestBody: { content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } } } }, responses: { '200': { description: 'Receipt uploaded and parsed' } } },
+    },
+    '/me/driver-fuel/extract-receipt': {
+      post: { tags: ['Driver Portal'], summary: 'Extract fuel data from receipt image (requires driver_quick_fuel_create)', security: [{ bearerAuth: [] }], requestBody: { content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } } } }, responses: { '200': { description: 'Extracted fuel data' } } },
+    },
+    '/me/driver-expenses/receipt-upload': {
+      post: { tags: ['Driver Portal'], summary: 'Upload expense receipt image (requires driver_expense_create)', security: [{ bearerAuth: [] }], requestBody: { content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } } } }, responses: { '200': { description: 'Receipt uploaded' } } },
+    },
+    '/me/driver-documents/{id}': {
+      post: { tags: ['Driver Portal'], summary: 'Upload driver document (requires driver_document_upload)', security: [{ bearerAuth: [] }], requestBody: { content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } } } }, responses: { '200': { description: 'Document uploaded' } } },
+    },
+    '/me/driver-vehicle-issues': {
+      post: { tags: ['Driver Portal'], summary: 'Report a vehicle issue (requires driver_vehicle_issue_report)', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { vehicleId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, severity: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] } }, required: ['vehicleId', 'title'] } } } }, responses: { '201': { description: 'Issue reported' } } },
+    },
+    '/me/driver-vehicle-inspections': {
+      post: { tags: ['Driver Portal'], summary: 'Create vehicle inspection (requires driver_vehicle_inspection_create)', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { vehicleId: { type: 'string' }, inspectionType: { type: 'string', enum: ['PRE_TRIP', 'POST_TRIP', 'DAILY', 'WEEKLY'] }, notes: { type: 'string' }, items: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, status: { type: 'string', enum: ['PASS', 'FAIL', 'NA'] }, notes: { type: 'string' } } } } }, required: ['vehicleId', 'inspectionType'] } } } }, responses: { '201': { description: 'Inspection created' } } },
+    },
+
+    // ─── Driver Trip Assignments ───
+    '/me/driver-trip-assignments/{id}/confirm': {
+      post: { tags: ['Driver Portal'], summary: 'Accept trip assignment (requires driver_trip_start)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Assignment accepted' } } },
+    },
+    '/me/driver-trip-assignments/{id}/decline': {
+      post: { tags: ['Driver Portal'], summary: 'Decline trip assignment (requires driver_trip_cancel)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Assignment declined' } } },
+    },
+    '/me/driver-trip-assignments/{id}/start': {
+      post: { tags: ['Driver Portal'], summary: 'Start assigned trip (requires driver_trip_start)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip started' } } },
+    },
+    '/me/driver-trip-assignments/{id}/end': {
+      post: { tags: ['Driver Portal'], summary: 'End assigned trip (requires driver_trip_end)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Trip ended' } } },
+    },
+
+    // ─── Dispatch ───
+    '/dispatch/board': {
+      get: { tags: ['Dispatch'], summary: 'Get dispatch board data (available drivers, vehicles, unassigned trips)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Dispatch board with drivers, vehicles, trips, and conflicts' } } },
+    },
+    '/dispatch/check-conflicts': {
+      post: { tags: ['Dispatch'], summary: 'Check scheduling conflicts for a trip assignment', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { tripId: { type: 'string' }, driverId: { type: 'string' }, vehicleId: { type: 'string' }, plannedStartAt: { type: 'string', format: 'date-time' }, plannedEndAt: { type: 'string', format: 'date-time' } }, required: ['tripId'] } } } }, responses: { '200': { description: 'Conflict check results' } } },
+    },
+    '/dispatch/assign': {
+      post: { tags: ['Dispatch'], summary: 'Assign a trip to a driver and vehicle', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { tripId: { type: 'string' }, driverId: { type: 'string' }, vehicleId: { type: 'string' } }, required: ['tripId', 'driverId', 'vehicleId'] } } } }, responses: { '200': { description: 'Trip assigned successfully' }, '409': { description: 'Conflict detected' } } },
+    },
+    '/dispatch/route-estimate': {
+      get: { tags: ['Dispatch'], summary: 'Get route estimate (distance, duration) between two locations', security: [{ bearerAuth: [] }], parameters: [{ name: 'origin', in: 'query', required: true, schema: { type: 'string' }, description: 'Origin location name or address' }, { name: 'destination', in: 'query', required: true, schema: { type: 'string' }, description: 'Destination location name or address' }], responses: { '200': { description: 'Route estimate with distance and duration' } } },
+    },
+
+    // ─── Dashboard ───
+    '/dashboard/overview': {
+      get: { tags: ['Dashboard'], summary: 'Get dashboard overview stats, charts, and recent activity', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Dashboard overview with vehicle/driver/trip counts, fuel/expense totals, compliance alerts, documents summary, and recent activity lists' } } },
+    },
+
+    // ─── Workspace & Notifications ───
+    '/me/workspace': {
+      get: { tags: ['Workspace'], summary: 'Get workspace config (navigation tree, permissions, capabilities, profile links)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Workspace response with user info, navigation, capabilities, permissions, and data scopes' } } },
+    },
+    '/me/notifications': {
+      get: { tags: ['Workspace'], summary: 'List notifications for current user', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated notifications' } } },
+    },
+    '/me/notifications/unread-count': {
+      get: { tags: ['Workspace'], summary: 'Get unread notification count', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Unread count' } } },
+    },
+    '/me/notifications/{id}/ack': {
+      get: { tags: ['Workspace'], summary: 'Mark a notification as read', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Notification marked as read' } } },
+    },
+    '/me/notifications-ack-all': {
+      get: { tags: ['Workspace'], summary: 'Mark all notifications as read', security: [{ bearerAuth: [] }], responses: { '200': { description: 'All notifications marked as read' } } },
+    },
+
+    // ─── POD Billing ───
+    '/me/driver-trips/{id}/pod': {
+      post: { tags: ['POD Billing'], summary: 'Upload Proof of Delivery for a trip (requires driver_pod_upload)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'multipart/form-data': { schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } } } }, responses: { '200': { description: 'POD uploaded' } } },
+    },
+    '/pod-billing/chain': {
+      get: { tags: ['POD Billing'], summary: 'List POD billing chain (trip → POD → billing status)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated POD billing chain' } } },
+    },
+    '/pod-billing/pods/{id}/view': {
+      get: { tags: ['POD Billing'], summary: 'View POD document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'POD document content' } } },
+    },
+    '/pod-billing/pods/{id}/verify': {
+      post: { tags: ['POD Billing'], summary: 'Verify a POD document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'POD verified' } } },
+    },
+    '/pod-billing/pods/{id}/reject': {
+      post: { tags: ['POD Billing'], summary: 'Reject a POD document', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'POD rejected' } } },
+    },
+    '/pod-billing/billings/{id}/approve': {
+      post: { tags: ['POD Billing'], summary: 'Approve a trip billing (requires finance_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Billing approved' } } },
+    },
+    '/pod-billing/billings/{id}/reject': {
+      post: { tags: ['POD Billing'], summary: 'Reject a trip billing (requires finance_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Billing rejected' } } },
     },
 
     // ─── Driver Submission Review (admin/manager review workflow) ───
