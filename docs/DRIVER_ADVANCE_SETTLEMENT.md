@@ -2,19 +2,22 @@
 
 ## Status
 
-Submitted for review on branch `phase-driver-advance-settlement`.
+Complete module pass on branch `phase-driver-advance-settlement`.
 
 ## Business Flow
 
-1. Finance creates a driver advance for a driver, optionally linked to a vehicle and trip.
-2. Finance issues the advance. The system records the issued amount and creates a finance transfer transaction linked to the advance.
-3. Driver travels and submits fuel/expense spends through existing driver portal fuel and expense flows.
-4. Manager/finance reviews those fuel and expense submissions through the existing driver submission review workflow.
-5. A driver settlement is created against the issued advance.
-6. The settlement pulls approved fuel and approved expense spends for the same driver/vehicle/trip scope.
-7. Driver or finance records returned cash.
-8. Finance approves and settles the settlement.
-9. The system updates the advance with settled amount, returned amount, balance due from driver, or reimbursement due to driver.
+1. Finance creates a driver advance draft for a driver, optionally linked to vehicle, trip, finance account, and due date.
+2. Finance submits the advance for approval.
+3. Manager/finance approves, rejects, or sends the advance back for changes.
+4. Finance issues only approved advances. Issue creates a `TRANSFER` finance transaction and updates account balance when an account is selected.
+5. Driver travels and submits fuel/expense spends through existing driver portal fuel and expense flows.
+6. Manager/finance reviews those fuel and expense submissions through the existing driver submission review workflow.
+7. Driver or finance creates a settlement against the issued advance.
+8. Settlement pulls approved fuel and expense spends for the same driver/vehicle/trip scope, excluding spends already settled elsewhere.
+9. Driver or finance records returned cash.
+10. Finance submits/reviews/approves/settles the settlement.
+11. The system updates advance settled amount, returned amount, outstanding balance, overdue state, or reimbursement due to driver.
+12. If an issued/partially-settled advance is cancelled before active settlement, the outstanding cash balance is reversed back into finance through a transfer transaction.
 
 ## Calculation
 
@@ -33,16 +36,38 @@ Only one of `balanceDueFromDriver` and `reimbursementDueToDriver` should be posi
 
 Advance issue is cash movement, not final business expense.
 
-Fuel and expense modules already contribute to P&L. The settlement uses `TRANSFER` finance transactions for advance cash movement and returned cash to avoid double counting fuel/expense costs as both expenses and finance transactions.
+Fuel and expense modules already contribute to P&L. Advance issue, return, reversal, and reimbursement use `TRANSFER` finance transactions with `sourceModule='DRIVER'` to avoid double counting fuel/expense costs.
+
+## Data Integrity Rules
+
+- Advance cannot be issued unless status is `APPROVED`.
+- Draft/needs-changes advances can be edited.
+- Submitted advances can be approved, rejected, or returned for changes.
+- Driver cannot have duplicate active/outstanding advances.
+- Issued advance cancellation reverses outstanding cash balance into the finance account when account is present.
+- Only one active settlement can exist per advance.
+- Fuel/expense lines are excluded after they are attached to a settlement.
+- Driver portal endpoints are scoped to the authenticated user's linked driver profile.
+- Due date is stored on advance and overdue filtering/reporting is supported.
 
 ## Tables
 
-Created through migration:
+Created or extended through migrations:
 
 - `driver_advances`
 - `driver_settlements`
 - `driver_settlement_lines`
 - `driver_settlement_history`
+
+Lifecycle columns added to `driver_advances`:
+
+- `due_date`
+- `submitted_at`
+- `approved_at`
+- `reviewed_at`
+- `approved_by_id`
+- `reviewed_by_id`
+- `review_comments`
 
 ## Permissions
 
@@ -51,8 +76,12 @@ Finance/admin side:
 - `driver_advance_view`
 - `driver_advance_create`
 - `driver_advance_update`
+- `driver_advance_submit`
+- `driver_advance_review`
+- `driver_advance_approve`
 - `driver_advance_issue`
 - `driver_advance_cancel`
+- `driver_advance_report`
 - `driver_settlement_view`
 - `driver_settlement_create`
 - `driver_settlement_review`
@@ -73,16 +102,21 @@ Finance/admin:
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/v1/driver-advances` | List advances |
+| GET | `/api/v1/driver-advances` | List advances, including overdue filter |
+| GET | `/api/v1/driver-advances/reports/summary` | Aggregate totals and driver-wise outstanding report |
 | POST | `/api/v1/driver-advances` | Create draft advance |
-| GET | `/api/v1/driver-advances/:id` | Read advance |
-| PATCH | `/api/v1/driver-advances/:id` | Update draft advance |
-| PATCH | `/api/v1/driver-advances/:id/issue` | Issue advance |
-| PATCH | `/api/v1/driver-advances/:id/cancel` | Cancel advance |
+| GET | `/api/v1/driver-advances/:id` | Read advance with settlements/history |
+| PATCH | `/api/v1/driver-advances/:id` | Update draft/needs-changes advance |
+| PATCH | `/api/v1/driver-advances/:id/submit` | Submit advance for approval |
+| PATCH | `/api/v1/driver-advances/:id/approve` | Approve advance |
+| PATCH | `/api/v1/driver-advances/:id/reject` | Reject advance |
+| PATCH | `/api/v1/driver-advances/:id/request-changes` | Send advance back for correction |
+| PATCH | `/api/v1/driver-advances/:id/issue` | Issue approved advance |
+| PATCH | `/api/v1/driver-advances/:id/cancel` | Cancel advance and reverse outstanding issued cash if required |
 | GET | `/api/v1/driver-advances/:id/settlements` | List settlements for advance |
 | POST | `/api/v1/driver-advances/:id/settlements` | Create settlement |
 | GET | `/api/v1/driver-settlements` | List settlements |
-| GET | `/api/v1/driver-settlements/:id` | Read settlement |
+| GET | `/api/v1/driver-settlements/:id` | Read settlement with lines/history |
 | GET | `/api/v1/driver-settlements/:id/summary` | Settlement summary |
 | PATCH | `/api/v1/driver-settlements/:id/submit` | Submit settlement |
 | PATCH | `/api/v1/driver-settlements/:id/review` | Mark under review |
@@ -104,9 +138,22 @@ Driver portal:
 | PATCH | `/api/v1/me/driver-settlements/:id/submit` | Submit own settlement |
 | POST | `/api/v1/me/driver-settlements/:id/cash-return` | Add returned cash |
 
+## Web UI
+
+Finance:
+
+- `/finance/driver-advances`
+- `/finance/driver-settlements`
+
+Driver portal:
+
+- `/driver-portal/advances`
+
+The finance layout includes tabs for driver advances and settlements. The driver portal layout includes an Advances tab for own balances, settlements, and cash return submission.
+
 ## Example Scenario
 
-Finance gives driver `₹5,000` advance.
+Finance creates advance `₹5,000`, submits, approves, and issues it.
 
 Approved spends:
 
@@ -132,10 +179,4 @@ advance status:       SETTLED
 npm --prefix backend run test:driver-advance-settlement
 ```
 
-This test creates isolated prefixed test data, verifies driver cannot create an advance, issues an advance, seeds approved fuel/expense spends, creates a settlement, approves it, settles it, and verifies the final balance is zero.
-
-## Known Scope
-
-This branch adds backend API, database migration, permissions, audit/history, and local scenario test coverage.
-
-The web UI pages are not implemented in this branch yet. Add them after backend scenario tests pass.
+This test creates isolated prefixed test data, verifies driver cannot create an advance, creates/submits/approves/issues an advance, blocks duplicate active advance, seeds approved fuel/expense spends, creates a settlement, approves it, settles it, verifies final balance is zero, and checks the aggregate report endpoint.
