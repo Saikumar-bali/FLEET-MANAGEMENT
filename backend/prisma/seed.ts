@@ -8,6 +8,36 @@ const adminPassword = process.env.ADMIN_PASSWORD?.trim();
 const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase() || 'development';
 const demoUsersEnabled = process.env.ENABLE_DEMO_USERS === 'true';
 
+const driverAdvanceSettlementPermissionKeys = [
+  'driver_advance_view',
+  'driver_advance_create',
+  'driver_advance_update',
+  'driver_advance_issue',
+  'driver_advance_cancel',
+  'driver_settlement_view',
+  'driver_settlement_create',
+  'driver_settlement_review',
+  'driver_settlement_approve',
+  'driver_settlement_settle',
+  'driver_settlement_cancel',
+];
+
+const driverAdvanceSettlementOwnPermissionKeys = [
+  'driver_advance_view_own',
+  'driver_settlement_view_own',
+  'driver_settlement_submit_own',
+  'driver_cash_return_submit',
+];
+
+const driverAdvanceSettlementRolePermissionMap: Record<string, string[]> = {
+  super_admin: [...driverAdvanceSettlementPermissionKeys, ...driverAdvanceSettlementOwnPermissionKeys],
+  admin: [...driverAdvanceSettlementPermissionKeys, ...driverAdvanceSettlementOwnPermissionKeys],
+  manager: driverAdvanceSettlementPermissionKeys,
+  finance: driverAdvanceSettlementPermissionKeys,
+  driver: driverAdvanceSettlementOwnPermissionKeys,
+  viewer: ['driver_advance_view', 'driver_settlement_view'],
+};
+
 function validateSeedEnvironment() {
   if (!adminEmail || !adminPassword) {
     throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required to seed the super admin user');
@@ -48,8 +78,17 @@ async function seedRolesAndPermissions() {
   const permissions = await prisma.permission.findMany();
   const roleIdByKey = new Map(roles.map((role) => [role.key, role.id]));
   const permissionIdByKey = new Map(permissions.map((permission) => [permission.key, permission.id]));
+  const mergedRolePermissionMap = Object.fromEntries(
+    Object.entries(defaultRolePermissionMap).map(([roleKey, permissionKeys]) => [
+      roleKey,
+      Array.from(new Set([
+        ...permissionKeys,
+        ...(driverAdvanceSettlementRolePermissionMap[roleKey] ?? []),
+      ])),
+    ]),
+  );
 
-  for (const [roleKey, permissionKeys] of Object.entries(defaultRolePermissionMap)) {
+  for (const [roleKey, permissionKeys] of Object.entries(mergedRolePermissionMap)) {
     const roleId = roleIdByKey.get(roleKey);
 
     if (!roleId) {
