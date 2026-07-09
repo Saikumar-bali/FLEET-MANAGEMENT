@@ -2,11 +2,12 @@ import { z } from 'zod';
 
 const paymentModeEnum = z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'OTHER']);
 const settlementStatusEnum = z.enum(['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'SETTLED', 'REJECTED', 'NEEDS_CHANGES', 'CANCELLED']);
-const advanceStatusEnum = z.enum(['DRAFT', 'ISSUED', 'PARTIALLY_SETTLED', 'SETTLED', 'CANCELLED']);
+const advanceStatusEnum = z.enum(['DRAFT', 'SUBMITTED', 'APPROVED', 'ISSUED', 'PARTIALLY_SETTLED', 'SETTLED', 'REJECTED', 'NEEDS_CHANGES', 'CANCELLED']);
 
 const optionalId = z.string().min(1).optional().nullable();
 const positiveMoney = z.coerce.number().finite().gt(0, 'Amount must be greater than 0');
 const nonNegativeMoney = z.coerce.number().finite().min(0, 'Amount cannot be negative');
+const optionalDate = z.string().datetime().optional().nullable().or(z.string().min(1).optional().nullable());
 
 export const idParamsSchema = z.object({ id: z.string().min(1) });
 
@@ -18,6 +19,15 @@ export const driverAdvanceQuerySchema = z.object({
   driverId: z.string().optional(),
   vehicleId: z.string().optional(),
   tripId: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  overdueOnly: z.coerce.boolean().optional(),
+});
+
+export const driverAdvanceReportQuerySchema = z.object({
+  status: advanceStatusEnum.optional(),
+  driverId: z.string().optional(),
+  vehicleId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
 });
@@ -42,16 +52,19 @@ export const createDriverAdvanceSchema = z.object({
   accountId: optionalId,
   amount: positiveMoney,
   paymentMode: paymentModeEnum.default('CASH'),
+  dueDate: optionalDate,
   purpose: z.string().max(500).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
 
 export const updateDriverAdvanceSchema = z.object({
+  driverId: z.string().min(1).optional(),
   vehicleId: optionalId,
   tripId: optionalId,
   accountId: optionalId,
   amount: positiveMoney.optional(),
   paymentMode: paymentModeEnum.optional(),
+  dueDate: optionalDate,
   purpose: z.string().max(500).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
@@ -60,6 +73,11 @@ export const issueDriverAdvanceSchema = z.object({
   accountId: optionalId,
   paymentMode: paymentModeEnum.optional(),
   referenceNumber: z.string().max(100).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+export const transitionAdvanceSchema = z.object({
+  reason: z.string().max(1000).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
 
