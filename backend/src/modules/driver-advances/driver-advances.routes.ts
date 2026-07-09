@@ -5,6 +5,7 @@ import { validateRequest } from '../../middlewares/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
   addMyCashReturnController,
+  approveAdvanceController,
   approveSettlementController,
   cancelAdvanceController,
   cancelSettlementController,
@@ -12,6 +13,7 @@ import {
   createMySettlementController,
   createSettlementForAdvanceController,
   getAdvanceController,
+  getAdvanceReportController,
   getMyAdvanceController,
   getMySettlementController,
   getSettlementController,
@@ -22,10 +24,13 @@ import {
   listMyAdvancesController,
   listMySettlementsController,
   listSettlementsController,
+  rejectAdvanceController,
   rejectSettlementController,
+  requestChangesAdvanceController,
   requestChangesSettlementController,
   reviewSettlementController,
   settleSettlementController,
+  submitAdvanceController,
   submitMySettlementController,
   submitSettlementController,
   updateAdvanceController,
@@ -36,10 +41,12 @@ import {
   createDriverAdvanceSchema,
   createDriverSettlementSchema,
   driverAdvanceQuerySchema,
+  driverAdvanceReportQuerySchema,
   driverSettlementQuerySchema,
   idParamsSchema,
   issueDriverAdvanceSchema,
   settleDriverSettlementSchema,
+  transitionAdvanceSchema,
   transitionSettlementSchema,
   updateDriverAdvanceSchema,
 } from './driver-advances.validators';
@@ -53,6 +60,13 @@ router.get(
   requireAnyPermission(['driver_advance_view']),
   validateRequest({ query: driverAdvanceQuerySchema }),
   asyncHandler(listAdvancesController),
+);
+
+router.get(
+  '/driver-advances/reports/summary',
+  requireAnyPermission(['driver_advance_report', 'driver_advance_view']),
+  validateRequest({ query: driverAdvanceReportQuerySchema }),
+  asyncHandler(getAdvanceReportController),
 );
 
 router.post(
@@ -74,6 +88,34 @@ router.patch(
   requireAnyPermission(['driver_advance_update']),
   validateRequest({ params: idParamsSchema, body: updateDriverAdvanceSchema }),
   asyncHandler(updateAdvanceController),
+);
+
+router.patch(
+  '/driver-advances/:id/submit',
+  requireAnyPermission(['driver_advance_submit', 'driver_advance_create']),
+  validateRequest({ params: idParamsSchema, body: transitionAdvanceSchema }),
+  asyncHandler(submitAdvanceController),
+);
+
+router.patch(
+  '/driver-advances/:id/approve',
+  requireAnyPermission(['driver_advance_approve']),
+  validateRequest({ params: idParamsSchema, body: transitionAdvanceSchema }),
+  asyncHandler(approveAdvanceController),
+);
+
+router.patch(
+  '/driver-advances/:id/reject',
+  requireAnyPermission(['driver_advance_review', 'driver_advance_approve']),
+  validateRequest({ params: idParamsSchema, body: transitionAdvanceSchema }),
+  asyncHandler(rejectAdvanceController),
+);
+
+router.patch(
+  '/driver-advances/:id/request-changes',
+  requireAnyPermission(['driver_advance_review', 'driver_advance_approve']),
+  validateRequest({ params: idParamsSchema, body: transitionAdvanceSchema }),
+  asyncHandler(requestChangesAdvanceController),
 );
 
 router.patch(
