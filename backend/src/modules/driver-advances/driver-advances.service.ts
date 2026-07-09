@@ -1,13 +1,14 @@
 import { randomUUID } from 'crypto';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { getDriverIdForUser } from '../user-profile-links/user-profile-links.service';
 
-type DbClient = typeof prisma | any;
+type DbClient = typeof prisma | Prisma.TransactionClient;
 
 type ListQuery = {
-  page: number;
-  limit: number;
+  page?: number;
+  limit?: number;
   search?: string;
   status?: string;
   driverId?: string;
@@ -48,6 +49,35 @@ type SettleInput = {
   notes?: string | null;
   userId?: string | null;
 };
+
+type AdvanceRow = Record<string, unknown> & {
+  id: string;
+  advance_number: string;
+  driver_id: string;
+  vehicle_id: string | null;
+  trip_id: string | null;
+  account_id: string | null;
+  amount: unknown;
+  issued_amount: unknown;
+  settled_amount: unknown;
+  returned_amount: unknown;
+  balance_amount: unknown;
+  payment_mode: string;
+  status: string;
+};
+
+type SettlementRow = Record<string, unknown> & {
+  id: string;
+  settlement_number: string;
+  advance_id: string;
+  driver_id: string;
+  vehicle_id: string | null;
+  trip_id: string | null;
+  advance_issued_amount: unknown;
+  status: string;
+};
+
+type SpendRow = { id: string; amount: unknown };
 
 const ADVANCE_SELECT = `
   SELECT da.*,
@@ -90,10 +120,9 @@ function money(value: unknown): number {
   return Number(value);
 }
 
-function normalizeAdvance(row: any) {
-  if (!row) return row;
+function normalizeAdvance(row: Record<string, unknown>) {
   return {
-    id: row.id,
+    id: String(row.id),
     advanceNumber: row.advance_number,
     driverId: row.driver_id,
     driverName: row.driver_name,
@@ -123,10 +152,9 @@ function normalizeAdvance(row: any) {
   };
 }
 
-function normalizeSettlement(row: any) {
-  if (!row) return row;
+function normalizeSettlement(row: Record<string, unknown>) {
   return {
-    id: row.id,
+    id: String(row.id),
     settlementNumber: row.settlement_number,
     advanceId: row.advance_id,
     advanceNumber: row.advance_number,
@@ -162,7 +190,7 @@ function normalizeSettlement(row: any) {
   };
 }
 
-async function queryOne<T = any>(db: DbClient, sql: string, ...params: unknown[]): Promise<T | null> {
+async function queryOne<T>(db: DbClient, sql: string, ...params: unknown[]): Promise<T | null> {
   const rows = await db.$queryRawUnsafe<T[]>(sql, ...params);
   return rows[0] ?? null;
 }
@@ -178,16 +206,16 @@ function addFilter(clauses: string[], params: unknown[], sql: string, value: unk
   clauses.push(sql.replace('?', `$${params.length}`));
 }
 
-async function getAdvanceRow(idValue: string, db: DbClient = prisma) {
-  const row = await queryOne(db, `${ADVANCE_SELECT} WHERE da.id = $1`, idValue);
+async function getAdvanceRow(idValue: string, db: DbClient = prisma): Promise<AdvanceRow> {
+  const row = await queryOne<AdvanceRow>(db, `${ADVANCE_SELECT} WHERE da.id = $1`, idValue);
   if (!row) throw new AppError('Driver advance not found', 404);
-  return row as any;
+  return row;
 }
 
-async function getSettlementRow(idValue: string, db: DbClient = prisma) {
-  const row = await queryOne(db, `${SETTLEMENT_SELECT} WHERE ds.id = $1`, idValue);
+async function getSettlementRow(idValue: string, db: DbClient = prisma): Promise<SettlementRow> {
+  const row = await queryOne<SettlementRow>(db, `${SETTLEMENT_SELECT} WHERE ds.id = $1`, idValue);
   if (!row) throw new AppError('Driver settlement not found', 404);
-  return row as any;
+  return row;
 }
 
 async function assertDriverProfile(userId: string): Promise<string> {
@@ -261,6 +289,7 @@ async function createFinanceTransfer(db: DbClient, input: {
   direction: 'OUT' | 'IN';
 }) {
   if (input.amount <= 0) return null;
+
   const txnId = id();
   await db.$executeRawUnsafe(
     `INSERT INTO finance_transactions
@@ -282,10 +311,13 @@ async function createFinanceTransfer(db: DbClient, input: {
   );
 
   if (input.accountId) {
-    const op = input.direction === 'OUT' ? 'decrement' : 'increment';
     await db.financeAccount.update({
       where: { id: input.accountId },
-      data: { currentBalance: { [op]: input.amount } },
+      data: {
+        currentBalance: input.direction === 'OUT'
+          ? { decrement: input.amount }
+          : { increment: input.amount },
+      },
     });
   }
 
@@ -310,8 +342,8 @@ export async function listDriverAdvances(query: ListQuery, ownDriverId?: string)
   if (query.dateTo) addFilter(clauses, params, 'da.created_at <= ?', new Date(query.dateTo));
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const rows = await prisma.$queryRawUnsafe<any[]>(`${ADVANCE_SELECT} ${where} ORDER BY da.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset);
-  const countRow = await queryOne<any>(prisma, `SELECT COUNT(*)::int AS count FROM driver_advances da JOIN drivers d ON d.id = da.driver_id LEFT JOIN vehicles v ON v.id = da.vehicle_id ${where}`, ...params);
+  const rows = await prisma.$queryRawUnsafe<AdvanceRow[]>(`${ADVANCE_SELECT} ${where} ORDER BY da.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset);
+  const countRow = await queryOne<{ count: number }>(prisma, `SELECT COUNT(*)::int AS count FROM driver_advances da JOIN drivers d ON d.id = da.driver_id LEFT JOIN vehicles v ON v.id = da.vehicle_id ${where}`, ...params);
 
   const total = Number(countRow?.count ?? 0);
   return { items: rows.map(normalizeAdvance), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
@@ -320,14 +352,14 @@ export async function listDriverAdvances(query: ListQuery, ownDriverId?: string)
 export async function getDriverAdvance(idValue: string, ownDriverId?: string) {
   const row = await getAdvanceRow(idValue);
   if (ownDriverId && row.driver_id !== ownDriverId) throw new AppError('Driver advance not found', 404);
-  const settlements = await prisma.$queryRawUnsafe<any[]>(`${SETTLEMENT_SELECT} WHERE ds.advance_id = $1 ORDER BY ds.created_at DESC`, idValue);
+  const settlements = await prisma.$queryRawUnsafe<SettlementRow[]>(`${SETTLEMENT_SELECT} WHERE ds.advance_id = $1 ORDER BY ds.created_at DESC`, idValue);
   return { ...normalizeAdvance(row), settlements: settlements.map(normalizeSettlement) };
 }
 
 export async function createDriverAdvance(input: CreateAdvanceInput) {
   await validateReferences(input.driverId, input.vehicleId, input.tripId, input.accountId);
   const advanceId = id();
-  const rows = await prisma.$queryRawUnsafe<any[]>(
+  const rows = await prisma.$queryRawUnsafe<AdvanceRow[]>(
     `INSERT INTO driver_advances
       (id, advance_number, driver_id, vehicle_id, trip_id, account_id, amount, payment_mode, purpose, notes, status, created_by_id)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DRAFT',$11)
@@ -421,7 +453,7 @@ export async function issueDriverAdvance(idValue: string, input: { accountId?: s
 export async function cancelDriverAdvance(idValue: string, reason: string, userId?: string | null) {
   const existing = await getAdvanceRow(idValue);
   if (['SETTLED', 'CANCELLED'].includes(existing.status)) throw new AppError('Advance cannot be cancelled in current status', 409);
-  const openSettlements = await queryOne<any>(prisma, `SELECT COUNT(*)::int AS count FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('CANCELLED','REJECTED')`, idValue);
+  const openSettlements = await queryOne<{ count: number }>(prisma, `SELECT COUNT(*)::int AS count FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('CANCELLED','REJECTED')`, idValue);
   if (Number(openSettlements?.count ?? 0) > 0) throw new AppError('Cannot cancel advance with active settlements', 409);
   await prisma.$executeRawUnsafe(
     `UPDATE driver_advances SET status='CANCELLED', cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`,
@@ -438,7 +470,7 @@ async function getApprovedFuelRows(db: DbClient, driverId: string, vehicleId?: s
   const params: unknown[] = [driverId];
   if (vehicleId) addFilter(clauses, params, 'fe.vehicle_id = ?', vehicleId);
   if (tripId) addFilter(clauses, params, 'fe.trip_id = ?', tripId);
-  return db.$queryRawUnsafe<any[]>(`SELECT fe.id, fe.total_amount AS amount FROM fuel_entries fe WHERE ${clauses.join(' AND ')} ORDER BY fe.fuel_date ASC`, ...params);
+  return db.$queryRawUnsafe<SpendRow[]>(`SELECT fe.id, fe.total_amount AS amount FROM fuel_entries fe WHERE ${clauses.join(' AND ')} ORDER BY fe.fuel_date ASC`, ...params);
 }
 
 async function getApprovedExpenseRows(db: DbClient, driverId: string, vehicleId?: string | null, tripId?: string | null) {
@@ -446,17 +478,17 @@ async function getApprovedExpenseRows(db: DbClient, driverId: string, vehicleId?
   const params: unknown[] = [driverId];
   if (vehicleId) addFilter(clauses, params, 'e.vehicle_id = ?', vehicleId);
   if (tripId) addFilter(clauses, params, 'e.trip_id = ?', tripId);
-  return db.$queryRawUnsafe<any[]>(`SELECT e.id, e.amount FROM expenses e WHERE ${clauses.join(' AND ')} ORDER BY e.expense_date ASC`, ...params);
+  return db.$queryRawUnsafe<SpendRow[]>(`SELECT e.id, e.amount FROM expenses e WHERE ${clauses.join(' AND ')} ORDER BY e.expense_date ASC`, ...params);
 }
 
 async function recalculateSettlement(idValue: string, db: DbClient = prisma) {
   const settlement = await getSettlementRow(idValue, db);
-  const totals = await db.$queryRawUnsafe<any[]>(
+  const totals = await db.$queryRawUnsafe<Array<{ line_type: string; total: unknown }>>(
     `SELECT line_type, COALESCE(SUM(COALESCE(approved_amount, amount)), 0) AS total
      FROM driver_settlement_lines WHERE settlement_id=$1 GROUP BY line_type`,
     idValue,
   );
-  const byType = new Map<string, number>(totals.map((row: any) => [row.line_type, money(row.total)]));
+  const byType = new Map<string, number>(totals.map((row) => [row.line_type, money(row.total)]));
   const approvedFuelTotal = byType.get('FUEL') ?? 0;
   const approvedExpenseTotal = byType.get('EXPENSE') ?? 0;
   const returnedCashAmount = byType.get('CASH_RETURN') ?? 0;
@@ -500,7 +532,7 @@ export async function createDriverSettlement(advanceId: string, input: CreateSet
   if (!['ISSUED', 'PARTIALLY_SETTLED'].includes(advance.status)) throw new AppError('Advance must be issued before settlement', 409);
   if (input.actorDriverId && input.actorDriverId !== advance.driver_id) throw new AppError('Advance does not belong to your driver profile', 404);
 
-  const activeSettlement = await queryOne<any>(prisma, `SELECT id FROM driver_settlements WHERE advance_id=$1 AND status IN ('DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','NEEDS_CHANGES') LIMIT 1`, advanceId);
+  const activeSettlement = await queryOne<{ id: string }>(prisma, `SELECT id FROM driver_settlements WHERE advance_id=$1 AND status IN ('DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','NEEDS_CHANGES') LIMIT 1`, advanceId);
   if (activeSettlement) throw new AppError('Advance already has an active settlement', 409);
 
   const settlementId = id();
@@ -584,8 +616,8 @@ export async function listDriverSettlements(query: ListQuery, ownDriverId?: stri
   if (query.dateTo) addFilter(clauses, params, 'ds.created_at <= ?', new Date(query.dateTo));
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const rows = await prisma.$queryRawUnsafe<any[]>(`${SETTLEMENT_SELECT} ${where} ORDER BY ds.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset);
-  const countRow = await queryOne<any>(prisma, `SELECT COUNT(*)::int AS count FROM driver_settlements ds JOIN driver_advances da ON da.id=ds.advance_id JOIN drivers d ON d.id=ds.driver_id ${where}`, ...params);
+  const rows = await prisma.$queryRawUnsafe<SettlementRow[]>(`${SETTLEMENT_SELECT} ${where} ORDER BY ds.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset);
+  const countRow = await queryOne<{ count: number }>(prisma, `SELECT COUNT(*)::int AS count FROM driver_settlements ds JOIN driver_advances da ON da.id = ds.advance_id JOIN drivers d ON d.id = ds.driver_id LEFT JOIN vehicles v ON v.id = ds.vehicle_id ${where}`, ...params);
   const total = Number(countRow?.count ?? 0);
   return { items: rows.map(normalizeSettlement), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 }
@@ -593,7 +625,7 @@ export async function listDriverSettlements(query: ListQuery, ownDriverId?: stri
 export async function getDriverSettlement(idValue: string, ownDriverId?: string) {
   const row = await getSettlementRow(idValue);
   if (ownDriverId && row.driver_id !== ownDriverId) throw new AppError('Driver settlement not found', 404);
-  const lines = await prisma.$queryRawUnsafe<any[]>(
+  const lines = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     `SELECT dsl.*, fe.receipt_number AS fuel_receipt_number, e.category AS expense_category
      FROM driver_settlement_lines dsl
      LEFT JOIN fuel_entries fe ON fe.id = dsl.fuel_entry_id
@@ -602,7 +634,7 @@ export async function getDriverSettlement(idValue: string, ownDriverId?: string)
      ORDER BY dsl.created_at ASC`,
     idValue,
   );
-  const history = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM driver_settlement_history WHERE settlement_id=$1 ORDER BY created_at ASC`, idValue);
+  const history = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(`SELECT * FROM driver_settlement_history WHERE settlement_id=$1 ORDER BY created_at ASC`, idValue);
   return {
     ...normalizeSettlement(row),
     lines: lines.map((line) => ({ ...line, amount: money(line.amount), approved_amount: line.approved_amount == null ? null : money(line.approved_amount) })),
@@ -610,7 +642,7 @@ export async function getDriverSettlement(idValue: string, ownDriverId?: string)
   };
 }
 
-async function transitionSettlement(idValue: string, allowedFrom: string[], toStatus: string, action: string, userId?: string | null, remarks?: string | null, extraUpdate = '') {
+async function transitionSettlement(idValue: string, allowedFrom: string[], toStatus: string, action: string, userId?: string | null, remarks?: string | null, extraUpdate = '', extraParams: unknown[] = []) {
   const existing = await getSettlementRow(idValue);
   if (!allowedFrom.includes(existing.status)) throw new AppError(`Cannot move settlement from ${existing.status} to ${toStatus}`, 409);
   await prisma.$executeRawUnsafe(
@@ -618,6 +650,7 @@ async function transitionSettlement(idValue: string, allowedFrom: string[], toSt
     idValue,
     toStatus,
     remarks ?? null,
+    ...extraParams,
   );
   await insertHistory(prisma, { settlementId: idValue, advanceId: existing.advance_id, action, fromStatus: existing.status, toStatus, remarks: remarks ?? null, createdById: userId ?? null });
   return getDriverSettlement(idValue);
@@ -631,20 +664,20 @@ export async function submitDriverSettlement(idValue: string, userId?: string | 
 }
 
 export async function reviewDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) {
-  return transitionSettlement(idValue, ['SUBMITTED'], 'UNDER_REVIEW', 'SETTLEMENT_REVIEW_STARTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=COALESCE(reviewed_by_id, $4)');
+  return transitionSettlement(idValue, ['SUBMITTED'], 'UNDER_REVIEW', 'SETTLEMENT_REVIEW_STARTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=COALESCE(reviewed_by_id, $4)', [userId ?? null]);
 }
 
 export async function approveDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) {
   await recalculateSettlement(idValue);
-  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'APPROVED', 'SETTLEMENT_APPROVED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4');
+  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'APPROVED', 'SETTLEMENT_APPROVED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
 }
 
 export async function rejectDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) {
-  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'], 'REJECTED', 'SETTLEMENT_REJECTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4');
+  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'], 'REJECTED', 'SETTLEMENT_REJECTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
 }
 
 export async function requestSettlementChanges(idValue: string, userId?: string | null, remarks?: string | null) {
-  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'NEEDS_CHANGES', 'SETTLEMENT_NEEDS_CHANGES', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4');
+  return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'NEEDS_CHANGES', 'SETTLEMENT_NEEDS_CHANGES', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
 }
 
 export async function cancelDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) {
@@ -669,11 +702,11 @@ export async function settleDriverSettlement(idValue: string, input: SettleInput
   const existing = await getSettlementRow(idValue);
   if (existing.status !== 'APPROVED') throw new AppError('Only approved settlements can be settled', 409);
   if ((input.returnedCashAmount ?? 0) > 0) {
-    await addCashReturn(idValue, input.returnedCashAmount!, input.userId ?? null, undefined, input.notes ?? null);
+    await addCashReturn(idValue, input.returnedCashAmount, input.userId ?? null, undefined, input.notes ?? null);
   }
 
   const finalRow = await recalculateSettlement(idValue);
-  const accountId = input.accountId === undefined ? null : input.accountId;
+  const accountId = input.accountId ?? null;
   const paymentMode = input.paymentMode ?? 'CASH';
 
   await prisma.$transaction(async (tx) => {
