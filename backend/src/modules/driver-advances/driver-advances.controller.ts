@@ -3,26 +3,29 @@ import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import {
   addCashReturn,
+  approveDriverAdvance,
+  approveDriverSettlement,
   cancelDriverAdvance,
   cancelDriverSettlement,
   createDriverAdvance,
   createDriverSettlement,
   getDriverAdvance,
+  getDriverAdvanceReport,
   getDriverSettlement,
   getOwnDriverId,
   issueDriverAdvance,
   listDriverAdvances,
   listDriverSettlements,
+  rejectDriverAdvance,
+  rejectDriverSettlement,
+  requestDriverAdvanceChanges,
+  requestSettlementChanges,
+  reviewDriverSettlement,
   settleDriverSettlement,
+  submitDriverAdvance,
   submitDriverSettlement,
   updateDriverAdvance,
 } from './driver-advances.service';
-import {
-  approveSettlementSafe,
-  rejectSettlementSafe,
-  requestSettlementChangesSafe,
-  reviewSettlementSafe,
-} from './driver-advances.transitions';
 
 function userId(req: Request): string {
   return req.authUser!.id;
@@ -30,6 +33,11 @@ function userId(req: Request): string {
 
 export async function listAdvancesController(req: Request, res: Response) {
   const result = await listDriverAdvances(req.query as any);
+  return sendSuccess(res, result);
+}
+
+export async function getAdvanceReportController(req: Request, res: Response) {
+  const result = await getDriverAdvanceReport(req.query as any);
   return sendSuccess(res, result);
 }
 
@@ -54,6 +62,30 @@ export async function updateAdvanceController(req: Request, res: Response) {
   const item = await updateDriverAdvance(String(req.params.id), req.body, userId(req));
   await createAuditLog(req, { userId: userId(req), action: 'driver_advance.update', entityType: 'driver_advance', entityId: item.id });
   return sendSuccess(res, item, 'Driver advance updated');
+}
+
+export async function submitAdvanceController(req: Request, res: Response) {
+  const item = await submitDriverAdvance(String(req.params.id), userId(req));
+  await createAuditLog(req, { userId: userId(req), action: 'driver_advance.submit', entityType: 'driver_advance', entityId: item.id });
+  return sendSuccess(res, item, 'Driver advance submitted');
+}
+
+export async function approveAdvanceController(req: Request, res: Response) {
+  const item = await approveDriverAdvance(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  await createAuditLog(req, { userId: userId(req), action: 'driver_advance.approve', entityType: 'driver_advance', entityId: item.id });
+  return sendSuccess(res, item, 'Driver advance approved');
+}
+
+export async function rejectAdvanceController(req: Request, res: Response) {
+  const item = await rejectDriverAdvance(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  await createAuditLog(req, { userId: userId(req), action: 'driver_advance.reject', entityType: 'driver_advance', entityId: item.id });
+  return sendSuccess(res, item, 'Driver advance rejected');
+}
+
+export async function requestChangesAdvanceController(req: Request, res: Response) {
+  const item = await requestDriverAdvanceChanges(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  await createAuditLog(req, { userId: userId(req), action: 'driver_advance.request_changes', entityType: 'driver_advance', entityId: item.id });
+  return sendSuccess(res, item, 'Driver advance returned for changes');
 }
 
 export async function issueAdvanceController(req: Request, res: Response) {
@@ -102,13 +134,13 @@ export async function submitSettlementController(req: Request, res: Response) {
 }
 
 export async function reviewSettlementController(req: Request, res: Response) {
-  const item = await reviewSettlementSafe(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  const item = await reviewDriverSettlement(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.review', entityType: 'driver_settlement', entityId: item.id });
   return sendSuccess(res, item, 'Driver settlement moved to review');
 }
 
 export async function approveSettlementController(req: Request, res: Response) {
-  const item = await approveSettlementSafe(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  const item = await approveDriverSettlement(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.approve', entityType: 'driver_settlement', entityId: item.id });
   return sendSuccess(res, item, 'Driver settlement approved');
 }
@@ -120,13 +152,13 @@ export async function settleSettlementController(req: Request, res: Response) {
 }
 
 export async function rejectSettlementController(req: Request, res: Response) {
-  const item = await rejectSettlementSafe(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  const item = await rejectDriverSettlement(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.reject', entityType: 'driver_settlement', entityId: item.id });
   return sendSuccess(res, item, 'Driver settlement rejected');
 }
 
 export async function requestChangesSettlementController(req: Request, res: Response) {
-  const item = await requestSettlementChangesSafe(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
+  const item = await requestSettlementChanges(String(req.params.id), userId(req), req.body.reason ?? req.body.notes);
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.request_changes', entityType: 'driver_settlement', entityId: item.id });
   return sendSuccess(res, item, 'Driver settlement returned for changes');
 }
