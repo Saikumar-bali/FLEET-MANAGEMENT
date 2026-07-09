@@ -1,13 +1,13 @@
 /**
  * Driver Advance & Settlement Scenario Test
  *
- * Local-only workflow test for:
- * finance/admin advance issue -> approved fuel/expense spend -> driver cash return -> settlement close.
+ * Local/CI workflow test for:
+ * finance/admin creates -> submits -> approves -> issues advance -> approved fuel/expense -> cash return -> settlement close.
  *
  * Required:
- * - local backend running on API_BASE_URL or http://127.0.0.1:4000
- * - DATABASE_URL pointing to the same local database
- * - migrations applied: npm --prefix backend run prisma:migrate:deploy
+ * - backend running on API_BASE_URL or http://127.0.0.1:4000
+ * - DATABASE_URL pointing to the same database
+ * - migrations applied
  * - admin credentials in CI_ADMIN_IDENTIFIER/CI_ADMIN_PASSWORD or ADMIN_USERNAME/ADMIN_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD
  *
  * This script never prints credentials or tokens.
@@ -71,10 +71,12 @@ async function cleanup() {
   const vehicleIds = vehicles.map(v => v.id);
 
   if (driverIds.length > 0) {
-    await prisma.$executeRawUnsafe(`DELETE FROM driver_settlement_history WHERE advance_id IN (SELECT id FROM driver_advances WHERE driver_id = ANY($1))`, driverIds).catch(() => undefined);
-    await prisma.$executeRawUnsafe(`DELETE FROM driver_settlement_lines WHERE settlement_id IN (SELECT id FROM driver_settlements WHERE driver_id = ANY($1))`, driverIds).catch(() => undefined);
-    await prisma.$executeRawUnsafe(`DELETE FROM driver_settlements WHERE driver_id = ANY($1)`, driverIds).catch(() => undefined);
-    await prisma.$executeRawUnsafe(`DELETE FROM driver_advances WHERE driver_id = ANY($1)`, driverIds).catch(() => undefined);
+    for (const driverId of driverIds) {
+      await prisma.$executeRawUnsafe(`DELETE FROM driver_settlement_history WHERE advance_id IN (SELECT id FROM driver_advances WHERE driver_id = $1)`, driverId).catch(() => undefined);
+      await prisma.$executeRawUnsafe(`DELETE FROM driver_settlement_lines WHERE settlement_id IN (SELECT id FROM driver_settlements WHERE driver_id = $1)`, driverId).catch(() => undefined);
+      await prisma.$executeRawUnsafe(`DELETE FROM driver_settlements WHERE driver_id = $1`, driverId).catch(() => undefined);
+      await prisma.$executeRawUnsafe(`DELETE FROM driver_advances WHERE driver_id = $1`, driverId).catch(() => undefined);
+    }
     await prisma.fuelEntry.deleteMany({ where: { driverId: { in: driverIds } } }).catch(() => undefined);
     await prisma.expense.deleteMany({ where: { driverId: { in: driverIds } } }).catch(() => undefined);
     await prisma.userProfileLink.deleteMany({ where: { profileType: 'DRIVER', profileId: { in: driverIds } } }).catch(() => undefined);
@@ -156,15 +158,30 @@ async function main() {
     vehicleId,
     amount: 5000,
     paymentMode: 'CASH',
+    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     purpose: 'Trip diesel/toll/food advance',
   });
   const advance = advanceRes.data?.data;
   if (!advance?.id) throw new Error(`Advance creation failed: ${JSON.stringify(advanceRes.data)}`);
-  pass('Admin created driver advance');
+  pass('Admin created draft driver advance');
+
+  const duplicateRes = await request('POST', '/api/v1/driver-advances', adminToken, {
+    driverId,
+    vehicleId,
+    amount: 1000,
+    paymentMode: 'CASH',
+  });
+  if (duplicateRes.status === 409) pass('Duplicate active advance is blocked'); else fail(`Duplicate active advance should be 409, got ${duplicateRes.status}`);
+
+  const submitAdvanceRes = await request('PATCH', `/api/v1/driver-advances/${advance.id}/submit`, adminToken, {});
+  if (submitAdvanceRes.data?.data?.status === 'SUBMITTED') pass('Advance submitted for approval'); else fail(`Advance submit failed: ${JSON.stringify(submitAdvanceRes.data)}`);
+
+  const approveAdvanceRes = await request('PATCH', `/api/v1/driver-advances/${advance.id}/approve`, adminToken, { reason: 'Trip approved by finance' });
+  if (approveAdvanceRes.data?.data?.status === 'APPROVED') pass('Advance approved before issue'); else fail(`Advance approval failed: ${JSON.stringify(approveAdvanceRes.data)}`);
 
   const issueRes = await request('PATCH', `/api/v1/driver-advances/${advance.id}/issue`, adminToken, { paymentMode: 'CASH' });
   if (issueRes.data?.data?.status !== 'ISSUED') throw new Error(`Advance issue failed: ${JSON.stringify(issueRes.data)}`);
-  pass('Admin issued advance');
+  pass('Admin issued approved advance');
 
   const myAdvance = await request('GET', `/api/v1/me/driver-advances/${advance.id}`, driverToken);
   if (myAdvance.status === 200 && myAdvance.data?.data?.issuedAmount === 5000) pass('Driver can view own issued advance'); else fail('Driver cannot view own issued advance');
@@ -231,6 +248,9 @@ async function main() {
   } else {
     fail(`Advance final state invalid: ${JSON.stringify(finalAdvance.data)}`);
   }
+
+  const report = await request('GET', '/api/v1/driver-advances/reports/summary', adminToken);
+  if (report.status === 200 && report.data?.data?.summary) pass('Advance summary report available'); else fail('Advance summary report failed');
 
   console.log('\nSummary');
   console.log(`PASS: ${passed}`);
