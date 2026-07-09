@@ -12,8 +12,12 @@ const driverAdvanceSettlementPermissionKeys = [
   'driver_advance_view',
   'driver_advance_create',
   'driver_advance_update',
+  'driver_advance_submit',
+  'driver_advance_review',
+  'driver_advance_approve',
   'driver_advance_issue',
   'driver_advance_cancel',
+  'driver_advance_report',
   'driver_settlement_view',
   'driver_settlement_create',
   'driver_settlement_review',
@@ -35,7 +39,7 @@ const driverAdvanceSettlementRolePermissionMap: Record<string, string[]> = {
   manager: driverAdvanceSettlementPermissionKeys,
   finance: driverAdvanceSettlementPermissionKeys,
   driver: driverAdvanceSettlementOwnPermissionKeys,
-  viewer: ['driver_advance_view', 'driver_settlement_view'],
+  viewer: ['driver_advance_view', 'driver_advance_report', 'driver_settlement_view'],
 };
 
 function validateSeedEnvironment() {
