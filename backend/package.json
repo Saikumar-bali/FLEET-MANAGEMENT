@@ -24,6 +24,7 @@
     "test:rbac-mechanic": "ts-node scripts/rbac-mechanic-isolation-test.ts",
     "test:phase-20": "npm run test:rbac-dashboard && npm run test:rbac-mechanic",
     "test:fuel-receipts": "ts-node scripts/fuel-receipt-workflow-test.ts",
+    "test:driver-advance-settlement": "ts-node scripts/driver-advance-settlement-scenario-test.ts",
     "repair:rbac-finance": "ts-node scripts/repair-rbac-finance-permissions.ts",
     "seed:api": "ts-node scripts/api-seed.ts",
     "test:api-docs": "ts-node scripts/api-docs-coverage-test.ts",
