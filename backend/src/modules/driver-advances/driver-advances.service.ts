@@ -1,10 +1,9 @@
 import { randomUUID } from 'crypto';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { getDriverIdForUser } from '../user-profile-links/user-profile-links.service';
 
-type DbClient = typeof prisma | Prisma.TransactionClient;
+type DbClient = any;
 
 type ListQuery = {
   page?: number;
@@ -17,6 +16,7 @@ type ListQuery = {
   advanceId?: string;
   dateFrom?: string;
   dateTo?: string;
+  overdueOnly?: boolean | string;
 };
 
 type CreateAdvanceInput = {
@@ -26,6 +26,7 @@ type CreateAdvanceInput = {
   accountId?: string | null;
   amount: number;
   paymentMode: string;
+  dueDate?: string | Date | null;
   purpose?: string | null;
   notes?: string | null;
   createdById?: string | null;
@@ -50,41 +51,38 @@ type SettleInput = {
   userId?: string | null;
 };
 
-type AdvanceRow = Record<string, unknown> & {
+type AdvanceRow = Record<string, any> & {
   id: string;
   advance_number: string;
   driver_id: string;
   vehicle_id: string | null;
   trip_id: string | null;
   account_id: string | null;
-  amount: unknown;
-  issued_amount: unknown;
-  settled_amount: unknown;
-  returned_amount: unknown;
-  balance_amount: unknown;
   payment_mode: string;
   status: string;
 };
 
-type SettlementRow = Record<string, unknown> & {
+type SettlementRow = Record<string, any> & {
   id: string;
   settlement_number: string;
   advance_id: string;
   driver_id: string;
   vehicle_id: string | null;
   trip_id: string | null;
-  advance_issued_amount: unknown;
   status: string;
 };
 
 type SpendRow = { id: string; amount: unknown };
+
+const ACTIVE_ADVANCE_STATUSES = ['DRAFT', 'SUBMITTED', 'APPROVED', 'ISSUED', 'PARTIALLY_SETTLED', 'NEEDS_CHANGES'];
 
 const ADVANCE_SELECT = `
   SELECT da.*,
     d.name AS driver_name,
     v.vehicle_number,
     t.trip_number,
-    fa.name AS account_name
+    fa.name AS account_name,
+    CASE WHEN da.due_date IS NOT NULL AND da.due_date < NOW() AND da.status IN ('ISSUED','PARTIALLY_SETTLED') AND da.balance_amount > 0 THEN true ELSE false END AS is_overdue
   FROM driver_advances da
   JOIN drivers d ON d.id = da.driver_id
   LEFT JOIN vehicles v ON v.id = da.vehicle_id
@@ -120,7 +118,12 @@ function money(value: unknown): number {
   return Number(value);
 }
 
-function normalizeAdvance(row: Record<string, unknown>) {
+function asDate(value?: string | Date | null): Date | null {
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
+}
+
+function normalizeAdvance(row: Record<string, any>) {
   return {
     id: String(row.id),
     advanceNumber: row.advance_number,
@@ -138,21 +141,29 @@ function normalizeAdvance(row: Record<string, unknown>) {
     returnedAmount: money(row.returned_amount),
     balanceAmount: money(row.balance_amount),
     paymentMode: row.payment_mode,
+    dueDate: row.due_date,
+    isOverdue: Boolean(row.is_overdue),
+    submittedAt: row.submitted_at,
+    approvedAt: row.approved_at,
+    reviewedAt: row.reviewed_at,
     issuedAt: row.issued_at,
     purpose: row.purpose,
     notes: row.notes,
     status: row.status,
+    approvedById: row.approved_by_id,
+    reviewedById: row.reviewed_by_id,
     issuedById: row.issued_by_id,
     createdById: row.created_by_id,
     cancelledById: row.cancelled_by_id,
     cancelledAt: row.cancelled_at,
     cancellationReason: row.cancellation_reason,
+    reviewComments: row.review_comments,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-function normalizeSettlement(row: Record<string, unknown>) {
+function normalizeSettlement(row: Record<string, any>) {
   return {
     id: String(row.id),
     settlementNumber: row.settlement_number,
@@ -247,6 +258,32 @@ async function validateReferences(driverId: string, vehicleId?: string | null, t
   }
 }
 
+async function assertNoActiveAdvance(driverId: string, excludeId?: string) {
+  const params: unknown[] = [driverId, ACTIVE_ADVANCE_STATUSES];
+  let extra = '';
+  if (excludeId) {
+    params.push(excludeId);
+    extra = `AND id <> $${params.length}`;
+  }
+
+  const active = await queryOne<{ id: string; advance_number: string; status: string }>(
+    prisma,
+    `SELECT id, advance_number, status
+     FROM driver_advances
+     WHERE driver_id=$1
+       AND status = ANY($2)
+       AND (balance_amount > 0 OR status IN ('DRAFT','SUBMITTED','APPROVED','NEEDS_CHANGES'))
+       ${extra}
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    ...params,
+  );
+
+  if (active) {
+    throw new AppError(`Driver already has an active advance (${active.advance_number}, ${active.status}). Settle/cancel it before issuing another advance.`, 409);
+  }
+}
+
 async function insertHistory(db: DbClient, input: {
   settlementId?: string | null;
   advanceId?: string | null;
@@ -314,14 +351,26 @@ async function createFinanceTransfer(db: DbClient, input: {
     await db.financeAccount.update({
       where: { id: input.accountId },
       data: {
-        currentBalance: input.direction === 'OUT'
-          ? { decrement: input.amount }
-          : { increment: input.amount },
+        currentBalance: input.direction === 'OUT' ? { decrement: input.amount } : { increment: input.amount },
       },
     });
   }
 
   return txnId;
+}
+
+async function transitionAdvance(idValue: string, allowedFrom: string[], toStatus: string, action: string, userId?: string | null, remarks?: string | null, extraUpdate = '', extraParams: unknown[] = []) {
+  const existing = await getAdvanceRow(idValue);
+  if (!allowedFrom.includes(existing.status)) throw new AppError(`Cannot move advance from ${existing.status} to ${toStatus}`, 409);
+  await prisma.$executeRawUnsafe(
+    `UPDATE driver_advances SET status=$2, review_comments=COALESCE($3, review_comments), updated_at=NOW() ${extraUpdate} WHERE id=$1`,
+    idValue,
+    toStatus,
+    remarks ?? null,
+    ...extraParams,
+  );
+  await insertHistory(prisma, { advanceId: idValue, action, fromStatus: existing.status, toStatus, remarks: remarks ?? null, createdById: userId ?? null });
+  return getDriverAdvance(idValue);
 }
 
 export async function listDriverAdvances(query: ListQuery, ownDriverId?: string) {
@@ -340,6 +389,7 @@ export async function listDriverAdvances(query: ListQuery, ownDriverId?: string)
   }
   if (query.dateFrom) addFilter(clauses, params, 'da.created_at >= ?', new Date(query.dateFrom));
   if (query.dateTo) addFilter(clauses, params, 'da.created_at <= ?', new Date(query.dateTo));
+  if (query.overdueOnly === true || query.overdueOnly === 'true') clauses.push(`da.due_date IS NOT NULL AND da.due_date < NOW() AND da.status IN ('ISSUED','PARTIALLY_SETTLED') AND da.balance_amount > 0`);
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   const rows = await prisma.$queryRawUnsafe<AdvanceRow[]>(`${ADVANCE_SELECT} ${where} ORDER BY da.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset);
@@ -353,16 +403,18 @@ export async function getDriverAdvance(idValue: string, ownDriverId?: string) {
   const row = await getAdvanceRow(idValue);
   if (ownDriverId && row.driver_id !== ownDriverId) throw new AppError('Driver advance not found', 404);
   const settlements = await prisma.$queryRawUnsafe<SettlementRow[]>(`${SETTLEMENT_SELECT} WHERE ds.advance_id = $1 ORDER BY ds.created_at DESC`, idValue);
-  return { ...normalizeAdvance(row), settlements: settlements.map(normalizeSettlement) };
+  const history = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(`SELECT * FROM driver_settlement_history WHERE advance_id=$1 ORDER BY created_at ASC`, idValue);
+  return { ...normalizeAdvance(row), settlements: settlements.map(normalizeSettlement), history };
 }
 
 export async function createDriverAdvance(input: CreateAdvanceInput) {
   await validateReferences(input.driverId, input.vehicleId, input.tripId, input.accountId);
+  await assertNoActiveAdvance(input.driverId);
   const advanceId = id();
   const rows = await prisma.$queryRawUnsafe<AdvanceRow[]>(
     `INSERT INTO driver_advances
-      (id, advance_number, driver_id, vehicle_id, trip_id, account_id, amount, payment_mode, purpose, notes, status, created_by_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'DRAFT',$11)
+      (id, advance_number, driver_id, vehicle_id, trip_id, account_id, amount, payment_mode, due_date, purpose, notes, status, created_by_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'DRAFT',$12)
      RETURNING *`,
     advanceId,
     sequence('ADV'),
@@ -372,6 +424,7 @@ export async function createDriverAdvance(input: CreateAdvanceInput) {
     input.accountId ?? null,
     input.amount,
     input.paymentMode,
+    asDate(input.dueDate),
     input.purpose ?? null,
     input.notes ?? null,
     input.createdById ?? null,
@@ -382,8 +435,10 @@ export async function createDriverAdvance(input: CreateAdvanceInput) {
 
 export async function updateDriverAdvance(idValue: string, input: Partial<CreateAdvanceInput>, userId?: string | null) {
   const existing = await getAdvanceRow(idValue);
-  if (existing.status !== 'DRAFT') throw new AppError('Only draft advances can be edited', 409);
-  await validateReferences(input.driverId ?? existing.driver_id, input.vehicleId === undefined ? existing.vehicle_id : input.vehicleId, input.tripId === undefined ? existing.trip_id : input.tripId, input.accountId === undefined ? existing.account_id : input.accountId);
+  if (!['DRAFT', 'NEEDS_CHANGES'].includes(existing.status)) throw new AppError('Only draft or needs-changes advances can be edited', 409);
+  const nextDriverId = input.driverId ?? existing.driver_id;
+  await validateReferences(nextDriverId, input.vehicleId === undefined ? existing.vehicle_id : input.vehicleId, input.tripId === undefined ? existing.trip_id : input.tripId, input.accountId === undefined ? existing.account_id : input.accountId);
+  await assertNoActiveAdvance(nextDriverId, idValue);
 
   await prisma.$executeRawUnsafe(
     `UPDATE driver_advances SET
@@ -393,8 +448,9 @@ export async function updateDriverAdvance(idValue: string, input: Partial<Create
       account_id = $5,
       amount = COALESCE($6, amount),
       payment_mode = COALESCE($7, payment_mode),
-      purpose = $8,
-      notes = $9,
+      due_date = $8,
+      purpose = $9,
+      notes = $10,
       updated_at = NOW()
      WHERE id = $1`,
     idValue,
@@ -404,6 +460,7 @@ export async function updateDriverAdvance(idValue: string, input: Partial<Create
     input.accountId === undefined ? existing.account_id : input.accountId,
     input.amount ?? null,
     input.paymentMode ?? null,
+    input.dueDate === undefined ? existing.due_date : asDate(input.dueDate),
     input.purpose === undefined ? existing.purpose : input.purpose,
     input.notes === undefined ? existing.notes : input.notes,
   );
@@ -411,14 +468,30 @@ export async function updateDriverAdvance(idValue: string, input: Partial<Create
   return getDriverAdvance(idValue);
 }
 
+export async function submitDriverAdvance(idValue: string, userId?: string | null) {
+  return transitionAdvance(idValue, ['DRAFT', 'NEEDS_CHANGES'], 'SUBMITTED', 'ADVANCE_SUBMITTED', userId, null, ', submitted_at=NOW()');
+}
+
+export async function approveDriverAdvance(idValue: string, userId?: string | null, remarks?: string | null) {
+  return transitionAdvance(idValue, ['SUBMITTED'], 'APPROVED', 'ADVANCE_APPROVED', userId, remarks, ', approved_at=NOW(), approved_by_id=$4, reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
+}
+
+export async function rejectDriverAdvance(idValue: string, userId?: string | null, remarks?: string | null) {
+  return transitionAdvance(idValue, ['SUBMITTED', 'APPROVED'], 'REJECTED', 'ADVANCE_REJECTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
+}
+
+export async function requestDriverAdvanceChanges(idValue: string, userId?: string | null, remarks?: string | null) {
+  return transitionAdvance(idValue, ['SUBMITTED'], 'NEEDS_CHANGES', 'ADVANCE_NEEDS_CHANGES', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]);
+}
+
 export async function issueDriverAdvance(idValue: string, input: { accountId?: string | null; paymentMode?: string; referenceNumber?: string | null; notes?: string | null; userId?: string | null }) {
   const existing = await getAdvanceRow(idValue);
-  if (existing.status !== 'DRAFT') throw new AppError('Only draft advances can be issued', 409);
+  if (existing.status !== 'APPROVED') throw new AppError('Only approved advances can be issued', 409);
   const accountId = input.accountId === undefined ? existing.account_id : input.accountId;
   const paymentMode = input.paymentMode ?? existing.payment_mode;
   await validateReferences(existing.driver_id, existing.vehicle_id, existing.trip_id, accountId);
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: DbClient) => {
     await createFinanceTransfer(tx, {
       sourceId: existing.id,
       vehicleId: existing.vehicle_id,
@@ -455,13 +528,33 @@ export async function cancelDriverAdvance(idValue: string, reason: string, userI
   if (['SETTLED', 'CANCELLED'].includes(existing.status)) throw new AppError('Advance cannot be cancelled in current status', 409);
   const openSettlements = await queryOne<{ count: number }>(prisma, `SELECT COUNT(*)::int AS count FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('CANCELLED','REJECTED')`, idValue);
   if (Number(openSettlements?.count ?? 0) > 0) throw new AppError('Cannot cancel advance with active settlements', 409);
-  await prisma.$executeRawUnsafe(
-    `UPDATE driver_advances SET status='CANCELLED', cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`,
-    idValue,
-    userId ?? null,
-    reason,
-  );
-  await insertHistory(prisma, { advanceId: idValue, action: 'ADVANCE_CANCELLED', fromStatus: existing.status, toStatus: 'CANCELLED', remarks: reason, createdById: userId ?? null });
+
+  await prisma.$transaction(async (tx: DbClient) => {
+    if (['ISSUED', 'PARTIALLY_SETTLED'].includes(existing.status) && money(existing.issued_amount) > 0 && money(existing.balance_amount) > 0) {
+      await createFinanceTransfer(tx, {
+        sourceId: existing.id,
+        vehicleId: existing.vehicle_id,
+        tripId: existing.trip_id,
+        driverId: existing.driver_id,
+        accountId: existing.account_id,
+        amount: money(existing.balance_amount),
+        paymentMode: existing.payment_mode,
+        referenceNumber: null,
+        description: `Driver advance cancellation reversal: ${existing.advance_number}`,
+        createdById: userId ?? null,
+        direction: 'IN',
+      });
+    }
+
+    await tx.$executeRawUnsafe(
+      `UPDATE driver_advances SET status='CANCELLED', balance_amount=0, cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`,
+      idValue,
+      userId ?? null,
+      reason,
+    );
+    await insertHistory(tx, { advanceId: idValue, action: 'ADVANCE_CANCELLED', fromStatus: existing.status, toStatus: 'CANCELLED', remarks: reason, createdById: userId ?? null });
+  });
+
   return getDriverAdvance(idValue);
 }
 
@@ -536,7 +629,7 @@ export async function createDriverSettlement(advanceId: string, input: CreateSet
   if (activeSettlement) throw new AppError('Advance already has an active settlement', 409);
 
   const settlementId = id();
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: DbClient) => {
     await tx.$executeRawUnsafe(
       `INSERT INTO driver_settlements
         (id, settlement_number, advance_id, driver_id, vehicle_id, trip_id, adjustment_amount, notes, status, created_by_id)
@@ -625,7 +718,7 @@ export async function listDriverSettlements(query: ListQuery, ownDriverId?: stri
 export async function getDriverSettlement(idValue: string, ownDriverId?: string) {
   const row = await getSettlementRow(idValue);
   if (ownDriverId && row.driver_id !== ownDriverId) throw new AppError('Driver settlement not found', 404);
-  const lines = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+  const lines = await prisma.$queryRawUnsafe<Array<Record<string, any>>>(
     `SELECT dsl.*, fe.receipt_number AS fuel_receipt_number, e.category AS expense_category
      FROM driver_settlement_lines dsl
      LEFT JOIN fuel_entries fe ON fe.id = dsl.fuel_entry_id
@@ -709,7 +802,7 @@ export async function settleDriverSettlement(idValue: string, input: SettleInput
   const accountId = input.accountId ?? null;
   const paymentMode = input.paymentMode ?? 'CASH';
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: DbClient) => {
     if (money(finalRow.returned_cash_amount) > 0) {
       await createFinanceTransfer(tx, {
         sourceId: finalRow.id,
@@ -773,6 +866,69 @@ export async function settleDriverSettlement(idValue: string, input: SettleInput
   });
 
   return getDriverSettlement(idValue);
+}
+
+export async function getDriverAdvanceReport(query: ListQuery = {}) {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  if (query.driverId) addFilter(clauses, params, 'da.driver_id = ?', query.driverId);
+  if (query.vehicleId) addFilter(clauses, params, 'da.vehicle_id = ?', query.vehicleId);
+  if (query.status) addFilter(clauses, params, 'da.status = ?', query.status);
+  if (query.dateFrom) addFilter(clauses, params, 'da.created_at >= ?', new Date(query.dateFrom));
+  if (query.dateTo) addFilter(clauses, params, 'da.created_at <= ?', new Date(query.dateTo));
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const summary = await queryOne<Record<string, unknown>>(
+    prisma,
+    `SELECT
+      COUNT(*)::int AS total_advances,
+      COALESCE(SUM(amount),0) AS total_requested,
+      COALESCE(SUM(issued_amount),0) AS total_issued,
+      COALESCE(SUM(settled_amount),0) AS total_spent_settled,
+      COALESCE(SUM(returned_amount),0) AS total_returned,
+      COALESCE(SUM(balance_amount),0) AS total_outstanding,
+      COUNT(*) FILTER (WHERE due_date IS NOT NULL AND due_date < NOW() AND status IN ('ISSUED','PARTIALLY_SETTLED') AND balance_amount > 0)::int AS overdue_count
+     FROM driver_advances da ${where}`,
+    ...params,
+  );
+
+  const byDriver = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT d.id AS driver_id, d.name AS driver_name,
+      COUNT(*)::int AS total_advances,
+      COALESCE(SUM(da.issued_amount),0) AS total_issued,
+      COALESCE(SUM(da.settled_amount),0) AS total_spent_settled,
+      COALESCE(SUM(da.returned_amount),0) AS total_returned,
+      COALESCE(SUM(da.balance_amount),0) AS total_outstanding,
+      COUNT(*) FILTER (WHERE da.due_date IS NOT NULL AND da.due_date < NOW() AND da.status IN ('ISSUED','PARTIALLY_SETTLED') AND da.balance_amount > 0)::int AS overdue_count
+     FROM driver_advances da
+     JOIN drivers d ON d.id = da.driver_id
+     ${where}
+     GROUP BY d.id, d.name
+     ORDER BY total_outstanding DESC, d.name ASC`,
+    ...params,
+  );
+
+  return {
+    summary: {
+      totalAdvances: Number(summary?.total_advances ?? 0),
+      totalRequested: money(summary?.total_requested),
+      totalIssued: money(summary?.total_issued),
+      totalSpentSettled: money(summary?.total_spent_settled),
+      totalReturned: money(summary?.total_returned),
+      totalOutstanding: money(summary?.total_outstanding),
+      overdueCount: Number(summary?.overdue_count ?? 0),
+    },
+    byDriver: byDriver.map((row) => ({
+      driverId: row.driver_id,
+      driverName: row.driver_name,
+      totalAdvances: Number(row.total_advances ?? 0),
+      totalIssued: money(row.total_issued),
+      totalSpentSettled: money(row.total_spent_settled),
+      totalReturned: money(row.total_returned),
+      totalOutstanding: money(row.total_outstanding),
+      overdueCount: Number(row.overdue_count ?? 0),
+    })),
+  };
 }
 
 export async function getOwnDriverId(userId: string) {
