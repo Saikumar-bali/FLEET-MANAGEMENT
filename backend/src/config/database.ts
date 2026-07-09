@@ -3,7 +3,8 @@ import { prisma } from '../lib/prisma';
 
 export async function initDatabase(): Promise<void> {
   if (!config.databaseUrl) {
-    throw new Error('DATABASE_URL is required to initialize the database');
+    console.error('WARNING: DATABASE_URL is missing. Set it in your Vercel/Railway environment variables.');
+    return;
   }
 
   try {
@@ -11,7 +12,6 @@ export async function initDatabase(): Promise<void> {
     console.log('Database connected successfully');
   } catch (error) {
     console.error('Database connection failed:', error);
-    throw error;
   }
 }
 

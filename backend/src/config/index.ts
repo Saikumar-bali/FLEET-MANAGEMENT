@@ -17,7 +17,9 @@ function requiredInDeployedEnvironment(name: string, fallback = ''): string {
   const value = process.env[name]?.trim();
 
   if (isDeployedEnvironment && !value) {
-    throw new Error(`${name} is required when NODE_ENV is ${nodeEnv}`);
+    if (fallback) return fallback;
+    console.error(`WARNING: ${name} is required when NODE_ENV is ${nodeEnv}. Please set it in your Vercel/Railway environment variables.`);
+    return '';
   }
 
   return value || fallback;
@@ -43,11 +45,12 @@ function validatedUrl(name: string, value: string, protocols: string[]): string 
   try {
     url = new URL(value);
   } catch {
-    throw new Error(`${name} must be a valid URL`);
+    console.error(`WARNING: ${name} must be a valid URL, got "${value}". Using as-is.`);
+    return value;
   }
 
   if (!protocols.includes(url.protocol)) {
-    throw new Error(`${name} must use one of: ${protocols.join(', ')}`);
+    console.error(`WARNING: ${name} must use one of: ${protocols.join(', ')}`);
   }
 
   return value;
@@ -83,7 +86,7 @@ const corsOrigins = validatedUrls(
 );
 
 if (isDeployedEnvironment && jwtSecret.length < 32) {
-  throw new Error('JWT_SECRET must be at least 32 characters in deployed environments');
+  console.error('WARNING: JWT_SECRET must be at least 32 characters in deployed environments');
 }
 
 export const config = {

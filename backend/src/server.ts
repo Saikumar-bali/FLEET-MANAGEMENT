@@ -16,4 +16,8 @@ async function start() {
   }
 }
 
-start();
+if (process.env.VERCEL) {
+  console.log('Running on Vercel — skipping app.listen()');
+} else {
+  start();
+}
