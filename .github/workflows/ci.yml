@@ -118,6 +118,9 @@ jobs:
         working-directory: backend
       - run: npm run test:driver-submission-review
         working-directory: backend
+      - name: "Driver advance settlement scenario"
+        run: npm run test:driver-advance-settlement
+        working-directory: backend
       - run: npm run test:driver-portal-integration
         working-directory: backend
       - run: npm run test:workspace-engine
