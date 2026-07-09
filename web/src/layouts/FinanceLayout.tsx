@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 
 const financeTabs = [
   { label: 'Dashboard', testId: 'finance-tab-dashboard', path: '/finance', permissionKeys: ['finance_view', 'pnl_view'] },
+  { label: 'Driver Advances', testId: 'finance-tab-driver-advances', path: '/finance/driver-advances', permissionKeys: ['driver_advance_view'] },
+  { label: 'Driver Settlements', testId: 'finance-tab-driver-settlements', path: '/finance/driver-settlements', permissionKeys: ['driver_settlement_view'] },
   { label: 'Transactions', testId: 'finance-tab-transactions', path: '/finance/transactions', permissionKeys: ['finance_transactions_view'] },
   { label: 'Accounts', testId: 'finance-tab-accounts', path: '/finance/accounts', permissionKeys: ['finance_view'] },
   { label: 'Categories', testId: 'finance-tab-categories', path: '/finance/categories', permissionKeys: ['finance_view'] },
