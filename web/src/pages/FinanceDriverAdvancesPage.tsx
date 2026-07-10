@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Modal } from '../components/Modal';
 import { getDrivers, getFinanceAccounts, getVehicles } from '../services/api';
 import {
   approveDriverAdvance,
@@ -52,6 +53,8 @@ export default function FinanceDriverAdvancesPage() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [settlementForm, setSettlementForm] = useState<{ advanceId: string; advanceNumber: string; balance: number; returnedCash: string; notes: string } | null>(null);
 
   const canCreate = auth.hasAnyPermission(['driver_advance_create']);
   const canSubmit = auth.hasAnyPermission(['driver_advance_submit', 'driver_advance_create']);
@@ -69,7 +72,7 @@ export default function FinanceDriverAdvancesPage() {
     setMessage(null);
     try {
       const [advanceRes, reportRes, driversRes, vehiclesRes, accountsRes] = await Promise.all([
-        listDriverAdvances(token, { status: status || undefined, overdueOnly }),
+        listDriverAdvances(token, { status: status || undefined, overdueOnly: overdueOnly || undefined }),
         getDriverAdvanceReport(token, { status: status || undefined, overdueOnly: overdueOnly || undefined }),
         getDrivers(token, { limit: 100 }),
         getVehicles(token, { limit: 100 }),
@@ -104,6 +107,7 @@ export default function FinanceDriverAdvancesPage() {
         notes: form.notes || null,
       });
       setForm(emptyForm);
+      setShowCreateModal(false);
       setMessage('Driver advance created as draft. Submit and approve before issuing cash.');
       await load();
     } catch (error) {
@@ -121,15 +125,25 @@ export default function FinanceDriverAdvancesPage() {
     }
   }
 
-  async function createSettlement(advance: DriverAdvance) {
-    const returned = window.prompt('Returned cash amount?', '0');
-    if (returned === null || !token) return;
-    await act('Settlement draft created from approved fuel/expense and returned cash.', () => createSettlementForAdvance(token, advance.id, {
-      returnedCashAmount: Number(returned || 0),
+  function openSettlement(advance: DriverAdvance) {
+    setSettlementForm({
+      advanceId: advance.id,
+      advanceNumber: advance.advanceNumber,
+      balance: advance.balanceAmount,
+      returnedCash: '0',
+      notes: '',
+    });
+  }
+
+  async function submitSettlement() {
+    if (!settlementForm || !token) return;
+    await act('Settlement draft created from approved fuel/expense and returned cash.', () => createSettlementForAdvance(token, settlementForm.advanceId, {
+      returnedCashAmount: Number(settlementForm.returnedCash || 0),
       includeApprovedFuel: true,
       includeApprovedExpenses: true,
-      notes: 'Created from finance driver advances page',
+      notes: settlementForm.notes || 'Created from finance driver advances page',
     }));
+    setSettlementForm(null);
   }
 
   return (
@@ -155,7 +169,12 @@ export default function FinanceDriverAdvancesPage() {
 
           {report.byDriver.length > 0 && (
             <div className="form-card" style={{ marginBottom: '1rem' }}>
-              <h3>Individual Driver Stats</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0 }}>Individual Driver Stats</h3>
+                {canCreate && (
+                  <button type="button" className="primary-button" onClick={() => setShowCreateModal(true)}>Create Advance</button>
+                )}
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table className="data-table" style={{ width: '100%' }}>
                   <thead><tr><th>Driver</th><th>Advances</th><th>Issued</th><th>Spent/Settled</th><th>Returned</th><th>Outstanding</th><th>Overdue</th></tr></thead>
@@ -179,27 +198,14 @@ export default function FinanceDriverAdvancesPage() {
 
       {message && <div className="state-panel" style={{ marginBottom: '1rem' }}><p>{message}</p></div>}
 
-      {canCreate && (
-        <form className="form-card" onSubmit={createAdvance} style={{ marginBottom: '1rem' }}>
-          <h3>Create advance</h3>
-          <div className="form-grid">
-            <label>Driver<select value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })} required><option value="">Select driver</option>{drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}</select></label>
-            <label>Vehicle<select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}><option value="">Optional</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicleNumber}</option>)}</select></label>
-            <label>Account<select value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Optional / cash counter</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — {money(account.currentBalance)}</option>)}</select></label>
-            <label>Amount<input type="number" min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
-            <label>Payment mode<select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}><option>CASH</option><option>UPI</option><option>BANK_TRANSFER</option><option>CARD</option><option>CHEQUE</option><option>OTHER</option></select></label>
-            <label>Due date<input type="datetime-local" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
-            <label>Purpose<input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} /></label>
-            <label>Notes<input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
-          </div>
-          <button type="submit" className="primary-button">Create Draft Advance</button>
-        </form>
-      )}
-
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
         <select value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option><option>DRAFT</option><option>SUBMITTED</option><option>APPROVED</option><option>ISSUED</option><option>PARTIALLY_SETTLED</option><option>SETTLED</option><option>NEEDS_CHANGES</option><option>REJECTED</option><option>CANCELLED</option></select>
         <label><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} /> Overdue only</label>
         <button type="button" className="secondary-button" onClick={() => void load()}>Refresh</button>
+        <div style={{ flex: 1 }} />
+        {canCreate && !report?.byDriver.length && (
+          <button type="button" className="primary-button" onClick={() => setShowCreateModal(true)}>Create Advance</button>
+        )}
       </div>
 
       {loading ? <div className="state-panel">Loading advances...</div> : (
@@ -223,7 +229,7 @@ export default function FinanceDriverAdvancesPage() {
                   {canApprove && advance.status === 'SUBMITTED' && <button type="button" className="secondary-button" onClick={() => void act('Advance sent back for changes.', () => requestChangesDriverAdvance(token!, advance.id, 'Please correct advance details'))}>Changes</button>}
                   {canApprove && ['SUBMITTED', 'APPROVED'].includes(advance.status) && <button type="button" className="secondary-button" onClick={() => void act('Advance rejected.', () => rejectDriverAdvance(token!, advance.id, 'Rejected from UI'))}>Reject</button>}
                   {canIssue && advance.status === 'APPROVED' && <button type="button" className="primary-button" onClick={() => void act('Advance issued.', () => issueDriverAdvance(token!, advance.id, { accountId: advance.accountId || null, paymentMode: advance.paymentMode }))}>Issue</button>}
-                  {canSettle && ['ISSUED', 'PARTIALLY_SETTLED'].includes(advance.status) && <button type="button" className="secondary-button" onClick={() => void createSettlement(advance)}>Create Settlement</button>}
+                  {canSettle && ['ISSUED', 'PARTIALLY_SETTLED'].includes(advance.status) && <button type="button" className="secondary-button" onClick={() => openSettlement(advance)}>Create Settlement</button>}
                   {canCancel && !['SETTLED', 'CANCELLED'].includes(advance.status) && <button type="button" className="secondary-button" onClick={() => void act('Advance cancelled.', () => cancelDriverAdvance(token!, advance.id, 'Cancelled from UI'))}>Cancel</button>}
                 </div></td>
               </tr>
@@ -231,6 +237,72 @@ export default function FinanceDriverAdvancesPage() {
           </table>
         </div>
       )}
+
+      <Modal
+        isOpen={showCreateModal}
+        title="Create Driver Advance"
+        description="Create a draft advance. Submit and approve before issuing cash."
+        onClose={() => { setShowCreateModal(false); setForm(emptyForm); }}
+        footer={
+          <div className="button-row">
+            <button type="button" className="ghost-button" onClick={() => { setShowCreateModal(false); setForm(emptyForm); }}>Cancel</button>
+            <button type="submit" form="create-advance-form" className="primary-button">Create Draft Advance</button>
+          </div>
+        }
+      >
+        <form id="create-advance-form" className="form-grid" onSubmit={createAdvance}>
+          <label>Driver<select value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })} required><option value="">Select driver</option>{drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}</select></label>
+          <label>Vehicle<select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}><option value="">Optional</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicleNumber}</option>)}</select></label>
+          <label>Account<select value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Optional / cash counter</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — {money(account.currentBalance)}</option>)}</select></label>
+          <label>Amount<input type="number" min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
+          <label>Payment mode<select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}><option>CASH</option><option>UPI</option><option>BANK_TRANSFER</option><option>CARD</option><option>CHEQUE</option><option>OTHER</option></select></label>
+          <label>Due date<input type="datetime-local" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
+          <label>Purpose<input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} /></label>
+          <label>Notes<input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!settlementForm}
+        title="Create Settlement"
+        description="Settlement auto-includes approved fuel and expense spends. Enter any cash the driver is returning."
+        onClose={() => setSettlementForm(null)}
+        footer={
+          <div className="button-row">
+            <button type="button" className="ghost-button" onClick={() => setSettlementForm(null)}>Cancel</button>
+            <button type="button" className="primary-button" onClick={() => void submitSettlement()}>Create Settlement</button>
+          </div>
+        }
+      >
+        {settlementForm && (
+          <div className="form-grid">
+            <div style={{ gridColumn: 'span 2', background: 'var(--color-surface-alt, #f5f5f5)', borderRadius: 8, padding: '1rem' }}>
+              <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Advance</p>
+              <p style={{ margin: 0, fontWeight: 600 }}>{settlementForm.advanceNumber}</p>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Outstanding balance: <strong>{money(settlementForm.balance)}</strong></p>
+            </div>
+            <label>
+              Cash returned by driver
+              <input
+                type="number"
+                min="0"
+                max={settlementForm.balance}
+                value={settlementForm.returnedCash}
+                onChange={(e) => setSettlementForm({ ...settlementForm, returnedCash: e.target.value })}
+                placeholder="0"
+              />
+            </label>
+            <label style={{ gridColumn: 'span 2' }}>
+              Notes (optional)
+              <input
+                value={settlementForm.notes}
+                onChange={(e) => setSettlementForm({ ...settlementForm, notes: e.target.value })}
+                placeholder="Any notes..."
+              />
+            </label>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

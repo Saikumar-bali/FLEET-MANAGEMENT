@@ -2,11 +2,40 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getMyDriverProfile, getMyDriverTrips, getMyDriverVehicles, getMyDriverFuel, getMyDriverExpenses } from '../../services/api';
+import { listMyDriverAdvances } from '../../services/driverAdvances';
 import type { DriverPortalProfile, DriverPortalTrip, DriverPortalVehicle, DriverPortalFuelEntry, DriverPortalExpense } from '../../types/auth';
+import type { DriverAdvance } from '../../types/driver-advances';
 import { PageHeader } from '../../components/PageHeader';
 import { StatusBadge } from '../../components/StatusBadge';
 
 type TripWithStatus = DriverPortalTrip & { statusLabel?: string };
+
+function money(value: number) {
+  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+}
+
+function AdvanceSummaryCard({ advances }: { advances: DriverAdvance[] }) {
+  const active = advances.filter(a => ['ISSUED', 'PARTIALLY_SETTLED'].includes(a.status));
+  const totalIssued = active.reduce((sum, a) => sum + (a.issuedAmount || 0), 0);
+  const totalBalance = active.reduce((sum, a) => sum + (a.balanceAmount || 0), 0);
+  const totalReturned = active.reduce((sum, a) => sum + (a.returnedAmount || 0), 0);
+  if (active.length === 0) return null;
+  return (
+    <article className="card" style={{ gridColumn: 'span 1', border: '2px solid var(--color-info, #1976d2)' }}>
+      <div style={{ padding: '1.25rem' }}>
+        <p className="detail-label" style={{ marginBottom: '0.5rem' }}>Advance Balance</p>
+        <p style={{ fontWeight: 700, fontSize: '1.25rem', margin: '0 0 0.5rem' }}>{money(totalBalance)}</p>
+        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+          <p style={{ margin: '0 0 0.25rem' }}>Issued: {money(totalIssued)} · Returned: {money(totalReturned)}</p>
+          <p style={{ margin: 0 }}>{active.length} active advance{active.length > 1 ? 's' : ''}</p>
+        </div>
+        <Link to="/driver-portal/advances" style={{ display: 'inline-block', marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--color-accent)' }}>
+          View details →
+        </Link>
+      </div>
+    </article>
+  );
+}
 
 function formatDate(d: string | null | undefined): string {
   if (!d) return '—';
@@ -184,6 +213,11 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.77 4 4 0 0 1 0 6.76 4 4 0 0 1-4.78 4.77 4 4 0 0 1-6.74 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>,
     color: 'var(--color-success)',
   },
+  {
+    label: 'My Advances', path: '/driver-portal/advances',
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    color: 'var(--color-accent)',
+  },
 ];
 
 function QuickActionGrid() {
@@ -214,12 +248,13 @@ function QuickActionGrid() {
   );
 }
 
-function RecentActivityTimeline({ trips, fuel, expenses }: { trips: TripWithStatus[]; fuel: DriverPortalFuelEntry[]; expenses: DriverPortalExpense[] }) {
+function RecentActivityTimeline({ trips, fuel, expenses, advances }: { trips: TripWithStatus[]; fuel: DriverPortalFuelEntry[]; expenses: DriverPortalExpense[]; advances: DriverAdvance[] }) {
   type Activity = { date: string; label: string; type: string; status: string; link: string };
   const activities: Activity[] = [
     ...trips.map(t => ({ date: t.createdAt, label: `Trip ${t.tripNumber}: ${t.originName} → ${t.destinationName}`, type: 'Trip', status: t.status, link: '/driver-portal/trips' })),
     ...fuel.map(f => ({ date: f.createdAt, label: `Fuel: ₹${f.totalAmount} — ${f.fuelType}`, type: 'Fuel', status: f.status, link: '/driver-portal/fuel' })),
     ...expenses.map(e => ({ date: e.createdAt, label: `Expense: ₹${e.amount} — ${e.category}`, type: 'Expense', status: e.status, link: '/driver-portal/expenses' })),
+    ...advances.map(a => ({ date: a.createdAt, label: `Advance ${a.advanceNumber}: ₹${a.amount} — ${a.purpose || 'N/A'}`, type: 'Advance', status: a.status, link: '/driver-portal/advances' })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
   if (activities.length === 0) return null;
@@ -265,6 +300,7 @@ export function DriverPortalHome() {
   const [vehicles, setVehicles] = useState<DriverPortalVehicle[]>([]);
   const [fuel, setFuel] = useState<DriverPortalFuelEntry[]>([]);
   const [expenses, setExpenses] = useState<DriverPortalExpense[]>([]);
+  const [advances, setAdvances] = useState<DriverAdvance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -279,8 +315,9 @@ export function DriverPortalHome() {
       getMyDriverVehicles(auth.accessToken),
       getMyDriverFuel(auth.accessToken, { limit: 10 }),
       getMyDriverExpenses(auth.accessToken, { limit: 10 }),
+      listMyDriverAdvances(auth.accessToken, { limit: 10 }),
     ])
-      .then(([profileRes, tripsRes, vehiclesRes, fuelRes, expensesRes]) => {
+      .then(([profileRes, tripsRes, vehiclesRes, fuelRes, expensesRes, advancesRes]) => {
         if (profileRes.status === 'fulfilled') setProfile(profileRes.value.data);
         if (tripsRes.status === 'fulfilled') setTrips(tripsRes.value.data?.items || []);
         if (vehiclesRes.status === 'fulfilled') {
@@ -289,9 +326,10 @@ export function DriverPortalHome() {
         }
         if (fuelRes.status === 'fulfilled') setFuel(fuelRes.value.data?.items || []);
         if (expensesRes.status === 'fulfilled') setExpenses(expensesRes.value.data?.items || []);
+        if (advancesRes.status === 'fulfilled') setAdvances(advancesRes.value.data?.items || []);
 
         const errors: string[] = [];
-        for (const r of [profileRes, tripsRes, vehiclesRes, fuelRes, expensesRes]) {
+        for (const r of [profileRes, tripsRes, vehiclesRes, fuelRes, expensesRes, advancesRes]) {
           if (r.status === 'rejected') {
             const reason = (r as PromiseRejectedResult).reason;
             if (reason?.status === 404 && reason?.response?.data?.message?.toLowerCase().includes('no driver profile')) {
@@ -376,6 +414,7 @@ export function DriverPortalHome() {
         <DriverStatusCard profile={profile} />
         <AssignedVehicleCard vehicles={vehicles} />
         <UpcomingTripCard trips={trips} />
+        {advances.length > 0 && <AdvanceSummaryCard advances={advances} />}
       </div>
 
       {/* Quick actions */}
@@ -385,7 +424,7 @@ export function DriverPortalHome() {
       </div>
 
       {/* Recent activity */}
-      <RecentActivityTimeline trips={trips} fuel={fuel} expenses={expenses} />
+      <RecentActivityTimeline trips={trips} fuel={fuel} expenses={expenses} advances={advances} />
     </section>
   );
 }

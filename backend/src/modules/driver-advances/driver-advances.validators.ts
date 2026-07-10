@@ -8,6 +8,11 @@ const optionalId = z.string().min(1).optional().nullable();
 const positiveMoney = z.coerce.number().finite().gt(0, 'Amount must be greater than 0');
 const nonNegativeMoney = z.coerce.number().finite().min(0, 'Amount cannot be negative');
 const optionalDate = z.string().datetime().optional().nullable().or(z.string().min(1).optional().nullable());
+const queryBoolean = z.union([z.boolean(), z.string()]).optional().transform((val) => {
+  if (val === undefined || val === null) return undefined;
+  if (typeof val === 'boolean') return val;
+  return val.toLowerCase() === 'true' || val === '1';
+});
 
 export const idParamsSchema = z.object({ id: z.string().min(1) });
 
@@ -21,7 +26,7 @@ export const driverAdvanceQuerySchema = z.object({
   tripId: z.string().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
-  overdueOnly: z.coerce.boolean().optional(),
+  overdueOnly: queryBoolean,
 });
 
 export const driverAdvanceReportQuerySchema = z.object({
