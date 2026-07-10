@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import {
   getFinanceTransactions,
   createFinanceTransaction,
+  updateFinanceTransaction,
   deleteFinanceTransaction,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +14,7 @@ import { LoadingState } from '../components/LoadingState';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
+import { Modal } from '../components/Modal';
 
 type TransactionForm = {
   transactionType: 'INCOME' | 'EXPENSE' | 'TRANSFER' | 'ADJUSTMENT';
@@ -48,19 +50,22 @@ export function FinanceTransactionsPage() {
   const auth = useAuth();
   const { showToast } = useToast();
   const [items, setItems] = useState<FinanceTransaction[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [form, setForm] = useState<TransactionForm>(initialForm);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
 
   const [filterType, setFilterType] = useState('');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<FinanceTransaction | null>(null);
+  const [form, setForm] = useState<TransactionForm>(initialForm);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const canCreate = auth.hasPermission('finance_transactions_create');
+  const canUpdate = auth.hasPermission('finance_transactions_update');
   const canDelete = auth.hasPermission('finance_transactions_delete');
 
   useEffect(() => {
@@ -84,63 +89,74 @@ export function FinanceTransactionsPage() {
     void load();
   }, [auth.accessToken, filterType, filterPaymentStatus, filterDateFrom, filterDateTo]);
 
-  useEffect(() => {
-    const selected = items.find((i) => i.id === selectedId);
-    if (selected) {
-      setForm({
-        transactionType: selected.transactionType,
-        sourceModule: selected.sourceModule ?? '',
-        vendorId: selected.vendorId ?? '',
-        customerId: selected.customerId ?? '',
-        accountId: selected.accountId ?? '',
-        categoryId: selected.categoryId ?? '',
-        amount: selected.amount.toString(),
-        taxAmount: selected.taxAmount.toString(),
-        transactionDate: selected.transactionDate.split('T')[0],
-        paymentMode: (selected.paymentMode as TransactionForm['paymentMode']) || 'CASH',
-        referenceNumber: selected.referenceNumber ?? '',
-        description: selected.description ?? '',
-      });
-    }
-  }, [selectedId, items]);
-
-  function startCreateMode() {
-    setSelectedId(null);
+  function openCreateModal() {
+    setEditingItem(null);
     setForm(initialForm);
-    setError(null);
-    setMessage(null);
+    setFormError(null);
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(item: FinanceTransaction) {
+    setEditingItem(item);
+    setForm({
+      transactionType: item.transactionType,
+      sourceModule: item.sourceModule ?? '',
+      vendorId: item.vendorId ?? '',
+      customerId: item.customerId ?? '',
+      accountId: item.accountId ?? '',
+      categoryId: item.categoryId ?? '',
+      amount: item.amount.toString(),
+      taxAmount: item.taxAmount.toString(),
+      transactionDate: item.transactionDate.split('T')[0],
+      paymentMode: (item.paymentMode as TransactionForm['paymentMode']) || 'CASH',
+      referenceNumber: item.referenceNumber ?? '',
+      description: item.description ?? '',
+    });
+    setFormError(null);
+    setIsModalOpen(true);
+  }
+
+  function closeModal() {
+    setIsModalOpen(false);
+    setEditingItem(null);
+    setFormError(null);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!auth.accessToken) return;
     setIsSaving(true);
-    setError(null);
-    setMessage(null);
+    setFormError(null);
+
+    const payload: Record<string, unknown> = {
+      transactionType: form.transactionType,
+      sourceModule: form.sourceModule || undefined,
+      vendorId: form.vendorId || undefined,
+      customerId: form.customerId || undefined,
+      accountId: form.accountId || undefined,
+      categoryId: form.categoryId || undefined,
+      amount: parseFloat(form.amount) || 0,
+      taxAmount: parseFloat(form.taxAmount) || 0,
+      transactionDate: form.transactionDate ? new Date(form.transactionDate).toISOString() : undefined,
+      paymentMode: form.paymentMode,
+      referenceNumber: form.referenceNumber || undefined,
+      description: form.description || undefined,
+    };
 
     try {
-      const payload: Record<string, unknown> = {
-        transactionType: form.transactionType,
-        sourceModule: form.sourceModule || undefined,
-        vendorId: form.vendorId || undefined,
-        customerId: form.customerId || undefined,
-        accountId: form.accountId || undefined,
-        categoryId: form.categoryId || undefined,
-        amount: parseFloat(form.amount) || 0,
-        taxAmount: parseFloat(form.taxAmount) || 0,
-        transactionDate: form.transactionDate ? new Date(form.transactionDate).toISOString() : undefined,
-        paymentMode: form.paymentMode,
-        referenceNumber: form.referenceNumber || undefined,
-        description: form.description || undefined,
-      };
-      const response = await createFinanceTransaction(auth.accessToken, payload);
-      setItems((prev) => [response.data, ...prev]);
-      setSelectedId(response.data.id);
-      setMessage('Transaction created.');
-      showToast('Transaction created.', 'success');
+      if (editingItem) {
+        const response = await updateFinanceTransaction(auth.accessToken, editingItem.id, payload);
+        setItems((prev) => prev.map((i) => (i.id === editingItem.id ? response.data : i)));
+        showToast('Transaction updated.', 'success');
+      } else {
+        const response = await createFinanceTransaction(auth.accessToken, payload);
+        setItems((prev) => [response.data, ...prev]);
+        showToast('Transaction created.', 'success');
+      }
+      closeModal();
     } catch (caughtError) {
       const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to save transaction.';
-      setError(msg);
+      setFormError(msg);
       showToast(msg, 'error');
     } finally {
       setIsSaving(false);
@@ -153,15 +169,9 @@ export function FinanceTransactionsPage() {
     try {
       await deleteFinanceTransaction(auth.accessToken, id);
       setItems((prev) => prev.filter((i) => i.id !== id));
-      if (selectedId === id) {
-        setSelectedId(null);
-        setForm(initialForm);
-      }
-      setMessage('Transaction deleted.');
       showToast('Transaction deleted.', 'success');
     } catch (caughtError) {
       const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete transaction.';
-      setError(msg);
       showToast(msg, 'error');
     }
   }
@@ -188,7 +198,7 @@ export function FinanceTransactionsPage() {
         </div>
         <div className="action-panel">
           {canCreate ? (
-            <button type="button" className="primary-button" onClick={startCreateMode}>
+            <button type="button" className="primary-button" onClick={openCreateModal}>
               Create Transaction
             </button>
           ) : null}
@@ -227,152 +237,153 @@ export function FinanceTransactionsPage() {
         </label>
       </div>
 
-      <div className="list-detail-layout">
-        <article className="card table-card selection-panel">
-          <div className="table-toolbar">
-            <div>
-              <h3 className="table-toolbar-title">Transactions</h3>
-              <p className="table-toolbar-copy">{filteredItems.length} total transactions</p>
-            </div>
+      <article className="card table-card">
+        <div className="table-toolbar">
+          <div>
+            <h3 className="table-toolbar-title">Transactions</h3>
+            <p className="table-toolbar-copy">{filteredItems.length} total transactions</p>
           </div>
+        </div>
 
-          {filteredItems.length === 0 ? (
-            <EmptyState message="No transactions found. Create the first transaction to continue." />
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Transaction#</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                  <th>Payment Mode</th>
-                  <th>Payment Status</th>
-                  <th>Date</th>
-                  <th>Vendor/Customer</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={item.id === selectedId ? 'row-active' : ''}
-                    onClick={() => setSelectedId(item.id)}
-                  >
-                    <td>{item.transactionNumber}</td>
-                    <td>{item.transactionType}</td>
-                    <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
-                    <td>{item.paymentMode}</td>
-                    <td><StatusBadge status={item.paymentStatus} /></td>
-                    <td>{new Date(item.transactionDate).toLocaleDateString('en-IN')}</td>
-                    <td>{item.vendor?.name ?? item.customer?.name ?? '—'}</td>
-                    <td>
+        {filteredItems.length === 0 ? (
+          <EmptyState message="No transactions found. Create the first transaction to continue." />
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Transaction#</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Payment Mode</th>
+                <th>Payment Status</th>
+                <th>Date</th>
+                <th>Vendor/Customer</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.transactionNumber}</td>
+                  <td>{item.transactionType}</td>
+                  <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
+                  <td>{item.paymentMode}</td>
+                  <td><StatusBadge status={item.paymentStatus} /></td>
+                  <td>{new Date(item.transactionDate).toLocaleDateString('en-IN')}</td>
+                  <td>{item.driver?.name ?? item.vendor?.name ?? item.customer?.name ?? '—'}</td>
+                  <td>
+                    <div className="button-row" style={{ gap: 'var(--space-2)' }}>
+                      {canUpdate ? (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </button>
+                      ) : null}
                       {canDelete ? (
                         <button
                           type="button"
                           className="danger-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleDelete(item.id);
-                          }}
+                          onClick={() => void handleDelete(item.id)}
                         >
                           Delete
                         </button>
                       ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </article>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </article>
 
-        <aside className="detail-panel">
-          <article className="card detail-card" data-testid="finance-transaction-form">
-            <div className="table-toolbar">
-              <div>
-                <h3 className="table-toolbar-title">Create Transaction</h3>
-                <p className="table-toolbar-copy">Add a new financial transaction</p>
-              </div>
-            </div>
-
-            <form className="stack-form" onSubmit={handleSubmit}>
-              <label>
-                <span className="field-label">Transaction Type</span>
-                <select value={form.transactionType} onChange={(e) => setForm((f) => ({ ...f, transactionType: e.target.value as TransactionForm['transactionType'] }))}>
-                  <option value="INCOME">Income</option>
-                  <option value="EXPENSE">Expense</option>
-                  <option value="TRANSFER">Transfer</option>
-                  <option value="ADJUSTMENT">Adjustment</option>
-                </select>
-              </label>
-              <label>
-                <span className="field-label">Source Module</span>
-                <input value={form.sourceModule} onChange={(e) => setForm((f) => ({ ...f, sourceModule: e.target.value }))} placeholder="e.g. TRIP, MAINTENANCE" />
-              </label>
-              <label>
-                <span className="field-label">Vendor ID</span>
-                <input value={form.vendorId} onChange={(e) => setForm((f) => ({ ...f, vendorId: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Customer ID</span>
-                <input value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Account ID</span>
-                <input value={form.accountId} onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Category ID</span>
-                <input value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Amount</span>
-                <input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} required />
-              </label>
-              <label>
-                <span className="field-label">Tax Amount</span>
-                <input type="number" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Transaction Date</span>
-                <input type="date" value={form.transactionDate} onChange={(e) => setForm((f) => ({ ...f, transactionDate: e.target.value }))} required />
-              </label>
-              <label>
-                <span className="field-label">Payment Mode</span>
-                <select value={form.paymentMode} onChange={(e) => setForm((f) => ({ ...f, paymentMode: e.target.value as TransactionForm['paymentMode'] }))}>
-                  <option value="CASH">Cash</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CARD">Card</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="CREDIT">Credit</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </label>
-              <label>
-                <span className="field-label">Reference Number</span>
-                <input value={form.referenceNumber} onChange={(e) => setForm((f) => ({ ...f, referenceNumber: e.target.value }))} />
-              </label>
-              <label>
-                <span className="field-label">Description</span>
-                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
-              </label>
-
-              {error ? <div className="error-banner" data-testid="finance-error-message">{error}</div> : null}
-              {message ? <div className="success-banner" data-testid="finance-success-message">{message}</div> : null}
-
-              <div className="button-row">
-                {canCreate ? (
-                  <button type="submit" className="primary-button" data-testid="finance-save-button" disabled={isSaving}>
-                    {isSaving ? 'Saving...' : 'Create Transaction'}
-                  </button>
-                ) : null}
-              </div>
-            </form>
-          </article>
-        </aside>
-      </div>
+      <Modal
+        isOpen={isModalOpen}
+        title={editingItem ? 'Edit Transaction' : 'Create Transaction'}
+        description={editingItem ? 'Update the transaction details below.' : 'Add a new financial transaction.'}
+        onClose={closeModal}
+        size="large"
+        footer={
+          <div className="button-row">
+            <button type="button" className="ghost-button" onClick={closeModal}>
+              Cancel
+            </button>
+            <button type="submit" form="transaction-form" className="primary-button" data-testid="finance-save-button" disabled={isSaving}>
+              {isSaving ? 'Saving...' : editingItem ? 'Update Transaction' : 'Create Transaction'}
+            </button>
+          </div>
+        }
+      >
+        <form id="transaction-form" className="stack-form" onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <label>
+              <span className="field-label">Transaction Type</span>
+              <select value={form.transactionType} onChange={(e) => setForm((f) => ({ ...f, transactionType: e.target.value as TransactionForm['transactionType'] }))}>
+                <option value="INCOME">Income</option>
+                <option value="EXPENSE">Expense</option>
+                <option value="TRANSFER">Transfer</option>
+                <option value="ADJUSTMENT">Adjustment</option>
+              </select>
+            </label>
+            <label>
+              <span className="field-label">Payment Mode</span>
+              <select value={form.paymentMode} onChange={(e) => setForm((f) => ({ ...f, paymentMode: e.target.value as TransactionForm['paymentMode'] }))}>
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="CREDIT">Credit</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+            <label>
+              <span className="field-label">Amount</span>
+              <input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} required />
+            </label>
+            <label>
+              <span className="field-label">Tax Amount</span>
+              <input type="number" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
+            </label>
+            <label>
+              <span className="field-label">Transaction Date</span>
+              <input type="date" value={form.transactionDate} onChange={(e) => setForm((f) => ({ ...f, transactionDate: e.target.value }))} required />
+            </label>
+            <label>
+              <span className="field-label">Source Module</span>
+              <input value={form.sourceModule} onChange={(e) => setForm((f) => ({ ...f, sourceModule: e.target.value }))} placeholder="e.g. TRIP, MAINTENANCE" />
+            </label>
+            <label>
+              <span className="field-label">Vendor ID</span>
+              <input value={form.vendorId} onChange={(e) => setForm((f) => ({ ...f, vendorId: e.target.value }))} />
+            </label>
+            <label>
+              <span className="field-label">Customer ID</span>
+              <input value={form.customerId} onChange={(e) => setForm((f) => ({ ...f, customerId: e.target.value }))} />
+            </label>
+            <label>
+              <span className="field-label">Account ID</span>
+              <input value={form.accountId} onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value }))} />
+            </label>
+            <label>
+              <span className="field-label">Category ID</span>
+              <input value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))} />
+            </label>
+            <label>
+              <span className="field-label">Reference Number</span>
+              <input value={form.referenceNumber} onChange={(e) => setForm((f) => ({ ...f, referenceNumber: e.target.value }))} />
+            </label>
+          </div>
+          <label>
+            <span className="field-label">Description</span>
+            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
+          </label>
+          {formError ? <div className="error-banner" data-testid="finance-error-message">{formError}</div> : null}
+        </form>
+      </Modal>
     </div>
   );
 }

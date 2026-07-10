@@ -131,6 +131,10 @@ export class FinanceController {
     return sendSuccess(res, item, 'Transaction created successfully', 201);
   }
 
+  async updateTransaction(req: Request, res: Response) {
+    return sendSuccess(res, await service.updateTransaction(String(req.params.id), req.body));
+  }
+
   async deleteTransaction(req: Request, res: Response) {
     return sendSuccess(res, await service.deleteTransaction(String(req.params.id)));
   }

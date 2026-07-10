@@ -252,8 +252,8 @@ async function createFinanceTransfer(db: DbClient, input: { sourceId: string; ve
   await db.$executeRawUnsafe(
     `INSERT INTO finance_transactions
       (id, transaction_number, transaction_type, source_module, source_id, vehicle_id, trip_id, driver_id, account_id,
-       amount, tax_amount, total_amount, transaction_date, payment_mode, payment_status, reference_number, description, created_by_id)
-     VALUES ($1,$2,'TRANSFER','DRIVER',$3,$4,$5,$6,$7,$8,0,$8,NOW(),$9,'PAID',$10,$11,$12)`,
+       amount, tax_amount, total_amount, transaction_date, payment_mode, payment_status, reference_number, description, created_by_id, created_at, updated_at)
+     VALUES ($1,$2,'TRANSFER','DRIVER',$3,$4,$5,$6,$7,$8,0,$8,NOW(),$9::"PaymentMode",'PAID',$10,$11,$12,NOW(),NOW())`,
     txnId, sequence('TXN-DRV'), input.sourceId, input.vehicleId ?? null, input.tripId ?? null, input.driverId,
     input.accountId ?? null, input.amount, input.paymentMode, input.referenceNumber ?? null, input.description, input.createdById ?? null,
   );
@@ -360,7 +360,7 @@ export async function cancelDriverAdvance(idValue: string, reason: string, userI
     if (['ISSUED', 'PARTIALLY_SETTLED'].includes(existing.status) && money(existing.balance_amount) > 0) {
       await createFinanceTransfer(tx, { sourceId: existing.id, vehicleId: existing.vehicle_id, tripId: existing.trip_id, driverId: existing.driver_id, accountId: existing.account_id, amount: money(existing.balance_amount), paymentMode: existing.payment_mode, referenceNumber: null, description: `Driver advance cancellation reversal: ${existing.advance_number}`, createdById: userId ?? null, direction: 'IN' });
     }
-    await tx.$executeRawUnsafe(`UPDATE driver_advances SET status='CANCELLED', balance_amount=0, cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`, idValue, userId ?? null, reason);
+    await tx.$executeRawUnsafe(`UPDATE driver_advances SET status='CANCELLED', balance_amount=0, issued_amount=0, settled_amount=0, returned_amount=0, cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`, idValue, userId ?? null, reason);
     await insertHistory(tx, { advanceId: idValue, action: 'ADVANCE_CANCELLED', fromStatus: existing.status, toStatus: 'CANCELLED', remarks: reason, createdById: userId ?? null });
   });
   return getDriverAdvance(idValue);
@@ -474,7 +474,7 @@ export async function addCashReturn(idValue: string, amount: number, userId?: st
 export async function settleDriverSettlement(idValue: string, input: SettleInput) {
   const existing = await getSettlementRow(idValue);
   if (existing.status !== 'APPROVED') throw new AppError('Only approved settlements can be settled', 409);
-  if ((input.returnedCashAmount ?? 0) > 0) await addCashReturn(idValue, input.returnedCashAmount, input.userId ?? null, undefined, input.notes ?? null);
+  if ((input.returnedCashAmount ?? 0) > 0) await addCashReturn(idValue, input.returnedCashAmount!, input.userId ?? null, undefined, input.notes ?? null);
   const finalRow = await recalculateSettlement(idValue);
   const accountId = input.accountId ?? null;
   const paymentMode = input.paymentMode ?? 'CASH';
@@ -496,7 +496,8 @@ export async function getDriverAdvanceReport(query: ListQuery = {}) {
   if (query.status) addFilter(clauses, params, 'da.status = ?', query.status);
   if (query.dateFrom) addFilter(clauses, params, 'da.created_at >= ?', new Date(query.dateFrom));
   if (query.dateTo) addFilter(clauses, params, 'da.created_at <= ?', new Date(query.dateTo));
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const whereClauses = [...clauses, "da.status != 'CANCELLED'"];
+  const where = `WHERE ${whereClauses.join(' AND ')}`;
   const summary = await queryOne<Record<string, unknown>>(prisma, `SELECT COUNT(*)::int AS total_advances, COALESCE(SUM(amount),0) AS total_requested, COALESCE(SUM(issued_amount),0) AS total_issued, COALESCE(SUM(settled_amount),0) AS total_spent_settled, COALESCE(SUM(returned_amount),0) AS total_returned, COALESCE(SUM(balance_amount),0) AS total_outstanding, COUNT(*) FILTER (WHERE due_date IS NOT NULL AND due_date < NOW() AND status IN ('ISSUED','PARTIALLY_SETTLED') AND balance_amount > 0)::int AS overdue_count FROM driver_advances da ${where}`, ...params);
   const byDriver = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(`SELECT d.id AS driver_id, d.name AS driver_name, COUNT(*)::int AS total_advances, COALESCE(SUM(da.issued_amount),0) AS total_issued, COALESCE(SUM(da.settled_amount),0) AS total_spent_settled, COALESCE(SUM(da.returned_amount),0) AS total_returned, COALESCE(SUM(da.balance_amount),0) AS total_outstanding, COUNT(*) FILTER (WHERE da.due_date IS NOT NULL AND da.due_date < NOW() AND da.status IN ('ISSUED','PARTIALLY_SETTLED') AND da.balance_amount > 0)::int AS overdue_count FROM driver_advances da JOIN drivers d ON d.id = da.driver_id ${where} GROUP BY d.id, d.name ORDER BY total_outstanding DESC, d.name ASC`, ...params);
   return {

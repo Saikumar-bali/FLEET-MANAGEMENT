@@ -60,7 +60,7 @@ export async function getActorContext(userId: string, preloadedUser?: PreloadedU
     throw new AppError('User not found', 404);
   }
 
-  const effectivePerms = await getEffectivePermissions(userId);
+  const effectivePerms = await getEffectivePermissions(userId, preloadedUser as any);
   const roleKey = user.role.key;
   const isSuperAdmin = roleKey === 'super_admin';
   const isAdmin = roleKey === 'admin';

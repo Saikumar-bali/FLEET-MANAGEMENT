@@ -14,6 +14,7 @@
  */
 
 import http from 'http';
+import https from 'https';
 import { prisma } from '../src/lib/prisma';
 
 const BASE = process.env.API_BASE_URL || 'http://127.0.0.1:4000';
@@ -38,7 +39,8 @@ async function request(method: string, path: string, token?: string, body?: unkn
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const req = http.request(url, { method, headers }, (res) => {
+    const transport = url.protocol === 'https:' ? https : http;
+    const req = transport.request(url, { method, headers }, (res) => {
       let raw = '';
       res.on('data', (chunk) => { raw += chunk; });
       res.on('end', () => {

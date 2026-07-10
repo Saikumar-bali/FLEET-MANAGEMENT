@@ -149,7 +149,7 @@ export function FinancePage() {
     amount: formatCurrency(tx.totalAmount),
     paymentStatus: tx.paymentStatus,
     date: formatDate(tx.transactionDate),
-    vendor: tx.vendor?.name ?? tx.customer?.name ?? '—',
+    vendor: tx.driver?.name ?? tx.vendor?.name ?? tx.customer?.name ?? '—',
   }));
 
   return (
