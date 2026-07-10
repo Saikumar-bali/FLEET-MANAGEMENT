@@ -182,7 +182,8 @@ export async function getCurrentUser(userId: string, preloadedUser?: any, preloa
     };
 
     return {
-      ...safeUser,
+      user: safeUser,
+      permissions: preloadedPermissions,
       effectivePermissions: preloadedPermissions,
       rolePermissions: permissionKeys,
       userAllowedPermissions: preloadedActorContext?.effectivePermissions ?? [],
