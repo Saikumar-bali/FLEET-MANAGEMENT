@@ -695,6 +695,7 @@ export interface FinanceTransaction {
   updatedAt: string;
   vendor?: Vendor | null;
   customer?: Customer | null;
+  driver?: DriverRecord | null;
 }
 
 export interface PaymentRecord {

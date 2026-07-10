@@ -214,6 +214,26 @@ export const createFinanceTransactionSchema = z.object({
   description: z.string().optional(),
 });
 
+export const updateFinanceTransactionSchema = z.object({
+  transactionType: financeTransactionTypeEnum.optional(),
+  sourceModule: financeSourceModuleEnum.optional(),
+  sourceId: z.string().optional(),
+  vehicleId: z.string().optional(),
+  tripId: z.string().optional(),
+  driverId: z.string().optional(),
+  vendorId: z.string().optional(),
+  customerId: z.string().optional(),
+  accountId: z.string().optional(),
+  categoryId: z.string().optional(),
+  amount: z.number().optional(),
+  taxAmount: z.number().min(0).optional(),
+  transactionDate: z.string().datetime().optional(),
+  paymentMode: paymentModeEnum.optional(),
+  referenceNumber: z.string().optional(),
+  description: z.string().optional(),
+  paymentStatus: financePaymentStatusEnum.optional(),
+});
+
 // ─── Payment Record ───
 export const createPaymentRecordSchema = z.object({
   transactionId: z.string().optional(),

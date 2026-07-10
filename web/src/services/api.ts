@@ -848,6 +848,7 @@ export function deleteTripBilling(token: string, id: string) { return request<nu
 export function getFinanceTransactions(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<FinanceTransaction>>(`/finance/transactions${q ? `?${q}` : ''}`, { token }); }
 export function getFinanceTransaction(token: string, id: string) { return request<FinanceTransaction>(`/finance/transactions/${id}`, { token }); }
 export function createFinanceTransaction(token: string, data: Record<string, unknown>) { return request<FinanceTransaction>('/finance/transactions', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateFinanceTransaction(token: string, id: string, data: Record<string, unknown>) { return request<FinanceTransaction>(`/finance/transactions/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
 export function deleteFinanceTransaction(token: string, id: string) { return request<null>(`/finance/transactions/${id}`, { method: 'DELETE', token }); }
 
 export function getPayments(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<PaymentRecord>>(`/finance/payments${q ? `?${q}` : ''}`, { token }); }

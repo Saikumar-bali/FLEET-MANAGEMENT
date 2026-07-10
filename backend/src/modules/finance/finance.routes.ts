@@ -15,6 +15,7 @@ import {
   createTripBillingSchema,
   updateTripBillingSchema,
   createFinanceTransactionSchema,
+  updateFinanceTransactionSchema,
   createPaymentRecordSchema,
   updatePaymentRecordSchema,
   financeQuerySchema,
@@ -232,6 +233,13 @@ router.post(
   requireAnyPermission(['finance_transactions_create']),
   validateRequest({ body: createFinanceTransactionSchema }),
   asyncHandler(financeController.createTransaction),
+);
+
+router.put(
+  '/transactions/:id',
+  requireAnyPermission(['finance_transactions_update']),
+  validateRequest({ params: idParamsSchema, body: updateFinanceTransactionSchema }),
+  asyncHandler(financeController.updateTransaction),
 );
 
 router.delete(

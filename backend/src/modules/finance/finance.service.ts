@@ -651,6 +651,73 @@ export class FinanceService {
     });
   }
 
+  async updateTransaction(id: string, data: Record<string, unknown>) {
+    await this.getTransaction(id);
+
+    const vendorId = data.vendorId != null ? String(data.vendorId) : undefined;
+    const customerId = data.customerId != null ? String(data.customerId) : undefined;
+    const accountId = data.accountId != null ? String(data.accountId) : undefined;
+    const categoryId = data.categoryId != null ? String(data.categoryId) : undefined;
+    const vehicleId = data.vehicleId != null ? String(data.vehicleId) : undefined;
+    const driverId = data.driverId != null ? String(data.driverId) : undefined;
+    const tripId = data.tripId != null ? String(data.tripId) : undefined;
+
+    if (vendorId) {
+      const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
+      if (!vendor) throw new AppError('Vendor not found', 404);
+    }
+    if (customerId) {
+      const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+      if (!customer) throw new AppError('Customer not found', 404);
+    }
+    if (accountId) {
+      const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
+      if (!account) throw new AppError('Account not found', 404);
+    }
+    if (categoryId) {
+      const category = await this.prisma.financeCategory.findUnique({ where: { id: categoryId } });
+      if (!category) throw new AppError('Category not found', 404);
+    }
+    if (vehicleId) {
+      const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
+      if (!vehicle) throw new AppError('Vehicle not found', 404);
+    }
+    if (driverId) {
+      const driver = await this.prisma.driver.findUnique({ where: { id: driverId } });
+      if (!driver) throw new AppError('Driver not found', 404);
+    }
+
+    const existing = await this.prisma.financeTransaction.findUnique({ where: { id } });
+    const amount = data.amount != null ? new Decimal(data.amount as number) : existing!.amount;
+    const taxAmount = data.taxAmount != null ? new Decimal(data.taxAmount as number) : existing!.taxAmount;
+    const totalAmount = amount.plus(taxAmount);
+
+    return this.prisma.financeTransaction.update({
+      where: { id },
+      data: {
+        ...(data.transactionType != null && { transactionType: data.transactionType as any }),
+        ...(data.sourceModule != null && { sourceModule: data.sourceModule as any }),
+        ...(data.sourceId != null && { sourceId: data.sourceId as string }),
+        ...(data.paymentStatus != null && { paymentStatus: data.paymentStatus as any }),
+        ...(vehicleId != null && { vehicleId }),
+        ...(tripId != null && { tripId }),
+        ...(driverId != null && { driverId }),
+        ...(vendorId != null && { vendorId }),
+        ...(customerId != null && { customerId }),
+        ...(accountId != null && { accountId }),
+        ...(categoryId != null && { categoryId }),
+        ...(data.amount != null && { amount }),
+        ...(data.taxAmount != null && { taxAmount }),
+        ...(data.amount != null || data.taxAmount != null ? { totalAmount } : {}),
+        ...(data.transactionDate != null && { transactionDate: new Date(data.transactionDate as string) }),
+        ...(data.paymentMode != null && { paymentMode: data.paymentMode as any }),
+        ...(data.referenceNumber != null && { referenceNumber: data.referenceNumber as string }),
+        ...(data.description != null && { description: data.description as string }),
+      },
+      include: { vehicle: true, driver: true, vendor: true, customer: true, account: true, category: true },
+    });
+  }
+
   async deleteTransaction(id: string) {
     const txn = await this.getTransaction(id);
     if (txn.payments && txn.payments.length > 0) {
@@ -1085,7 +1152,7 @@ export class FinanceService {
       this.prisma.financeTransaction.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { vendor: true, customer: true, account: true, category: true },
+        include: { vendor: true, customer: true, driver: true, account: true, category: true },
       }),
     ]);
 

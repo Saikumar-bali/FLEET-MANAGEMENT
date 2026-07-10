@@ -70,7 +70,7 @@ export default function FinanceDriverAdvancesPage() {
     try {
       const [advanceRes, reportRes, driversRes, vehiclesRes, accountsRes] = await Promise.all([
         listDriverAdvances(token, { status: status || undefined, overdueOnly }),
-        getDriverAdvanceReport(token),
+        getDriverAdvanceReport(token, { status: status || undefined, overdueOnly: overdueOnly || undefined }),
         getDrivers(token, { limit: 100 }),
         getVehicles(token, { limit: 100 }),
         getFinanceAccounts(token, { limit: 100 }),
@@ -143,12 +143,38 @@ export default function FinanceDriverAdvancesPage() {
       </div>
 
       {report && (
-        <div className="metric-grid" style={{ marginBottom: '1rem' }}>
-          <div className="metric-card"><span>Total Issued</span><strong>{money(report.summary.totalIssued)}</strong></div>
-          <div className="metric-card"><span>Outstanding</span><strong>{money(report.summary.totalOutstanding)}</strong></div>
-          <div className="metric-card"><span>Returned</span><strong>{money(report.summary.totalReturned)}</strong></div>
-          <div className="metric-card"><span>Overdue</span><strong>{report.summary.overdueCount}</strong></div>
-        </div>
+        <>
+          <div className="metric-grid" style={{ marginBottom: '1rem' }}>
+            <div className="metric-card"><span>Total Issued</span><strong>{money(report.summary.totalIssued)}</strong></div>
+            <div className="metric-card"><span>Outstanding</span><strong>{money(report.summary.totalOutstanding)}</strong></div>
+            <div className="metric-card"><span>Returned</span><strong>{money(report.summary.totalReturned)}</strong></div>
+            <div className="metric-card"><span>Settled/Spent</span><strong>{money(report.summary.totalSpentSettled)}</strong></div>
+            <div className="metric-card"><span>Overdue</span><strong>{report.summary.overdueCount}</strong></div>
+            <div className="metric-card"><span>Total Advances</span><strong>{report.summary.totalAdvances}</strong></div>
+          </div>
+
+          {report.byDriver.length > 0 && (
+            <div className="form-card" style={{ marginBottom: '1rem' }}>
+              <h3>Individual Driver Stats</h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table" style={{ width: '100%' }}>
+                  <thead><tr><th>Driver</th><th>Advances</th><th>Issued</th><th>Spent/Settled</th><th>Returned</th><th>Outstanding</th><th>Overdue</th></tr></thead>
+                  <tbody>{report.byDriver.map((d) => (
+                    <tr key={d.driverId}>
+                      <td>{d.driverName}</td>
+                      <td>{d.totalAdvances}</td>
+                      <td>{money(d.totalIssued)}</td>
+                      <td>{money(d.totalSpentSettled)}</td>
+                      <td>{money(d.totalReturned)}</td>
+                      <td>{money(d.totalOutstanding)}</td>
+                      <td>{d.overdueCount > 0 ? <span className="status-pill status-pill-danger">{d.overdueCount}</span> : '0'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {message && <div className="state-panel" style={{ marginBottom: '1rem' }}><p>{message}</p></div>}
@@ -179,7 +205,7 @@ export default function FinanceDriverAdvancesPage() {
       {loading ? <div className="state-panel">Loading advances...</div> : (
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ width: '100%' }}>
-            <thead><tr><th>Advance</th><th>Driver</th><th>Vehicle</th><th>Amount</th><th>Issued</th><th>Outstanding</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Advance</th><th>Driver</th><th>Vehicle</th><th>Amount</th><th>Issued</th><th>Outstanding</th><th>Payment</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>{items.map((advance) => (
               <tr key={advance.id}>
                 <td>{advance.advanceNumber}<br /><small>{advance.purpose || '—'}</small></td>
@@ -188,6 +214,7 @@ export default function FinanceDriverAdvancesPage() {
                 <td>{money(advance.amount)}</td>
                 <td>{money(advance.issuedAmount)}</td>
                 <td>{money(advance.balanceAmount)}</td>
+                <td>{advance.paymentMode}</td>
                 <td>{advance.dueDate ? new Date(advance.dueDate).toLocaleString() : '—'} {advance.isOverdue ? '⚠️' : ''}</td>
                 <td><span className={statusClass(advance.status)}>{advance.status.replace(/_/g, ' ')}</span></td>
                 <td><div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
