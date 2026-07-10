@@ -52,6 +52,7 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'my-documents': { any: ['driver_my_documents_view', 'driver_document_upload'] },
   'my-issues': { any: ['driver_vehicle_issue_report'] },
   'my-inspections': { any: ['driver_vehicle_inspection_create'] },
+  'my-advances': { any: ['driver_advance_view_own', 'driver_settlement_view_own'] },
   'manage-trips': { all: ['trip_view'] },
   'dispatch-board': { all: ['trip_view', 'vehicle_view', 'driver_view'] },
   'vehicles': { all: ['vehicle_view'] },
@@ -79,6 +80,7 @@ const NAV_ITEM_PROFILE_TYPE_REQUIREMENTS: Record<string, string[]> = {
   'my-documents': ['DRIVER'],
   'my-issues': ['DRIVER'],
   'my-inspections': ['DRIVER'],
+  'my-advances': ['DRIVER'],
 };
 
 const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
@@ -116,6 +118,7 @@ const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
   'my-documents': ['super_admin', 'admin'],
   'my-issues': ['super_admin', 'admin'],
   'my-inspections': ['super_admin', 'admin'],
+  'my-advances': ['super_admin', 'admin'],
 };
 
 const QUICK_ACTIONS: QuickActionDef[] = [

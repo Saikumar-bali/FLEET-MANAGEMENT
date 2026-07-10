@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { prisma } from '../../lib/prisma';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import {
@@ -26,6 +27,7 @@ import {
   submitDriverSettlement,
   updateDriverAdvance,
 } from './driver-advances.service';
+import { createNotification } from '../notifications/notifications.service';
 
 function userId(req: Request): string {
   return req.authUser!.id;
@@ -97,6 +99,23 @@ export async function issueAdvanceController(req: Request, res: Response) {
     entityId: item.id,
     metadata: { driverId: item.driverId, issuedAmount: item.issuedAmount },
   });
+  try {
+    const driverUser = await prisma.$queryRawUnsafe<Array<{ user_id: string }>>(
+      'SELECT user_id FROM user_profile_links WHERE driver_id = $1 AND user_id IS NOT NULL LIMIT 1',
+      item.driverId,
+    );
+    if (driverUser.length > 0) {
+      await createNotification({
+        title: 'Advance Issued',
+        message: `Your advance ${item.advanceNumber} of ₹${item.amount} has been issued. Balance: ₹${item.balanceAmount}.`,
+        category: 'DRIVER_ADVANCE',
+        severity: 'INFO',
+        actionUrl: '/driver-portal/advances',
+        recipientPolicy: { type: 'USER', userIds: [driverUser[0].user_id] },
+        createdById: userId(req),
+      });
+    }
+  } catch { /* notification failure should not block */ }
   return sendSuccess(res, item, 'Driver advance issued');
 }
 
@@ -221,6 +240,18 @@ export async function submitMySettlementController(req: Request, res: Response) 
   const driverId = await getOwnDriverId(userId(req));
   const item = await submitDriverSettlement(String(req.params.id), userId(req), driverId);
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.submit_own', entityType: 'driver_settlement', entityId: item.id, metadata: { driverId } });
+  try {
+    const driverName = await prisma.$queryRawUnsafe<Array<{ name: string }>>('SELECT name FROM drivers WHERE id=$1', driverId);
+    await createNotification({
+      title: 'Settlement Submitted',
+      message: `${driverName[0]?.name || 'Driver'} submitted settlement ${item.settlementNumber} for advance ${item.advanceNumber || item.advanceId}.`,
+      category: 'DRIVER_SETTLEMENT',
+      severity: 'INFO',
+      actionUrl: '/finance/driver-advances',
+      recipientPolicy: { type: 'ROLE', roleKeys: ['super_admin', 'admin', 'finance'] },
+      createdById: userId(req),
+    });
+  } catch { /* notification failure should not block */ }
   return sendSuccess(res, item, 'Driver settlement submitted');
 }
 
