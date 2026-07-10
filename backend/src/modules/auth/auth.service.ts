@@ -159,7 +159,45 @@ export async function login(req: Request, identifier: string, password: string) 
   };
 }
 
-export async function getCurrentUser(userId: string) {
+export async function getCurrentUser(userId: string, preloadedUser?: any, preloadedPermissions?: string[], preloadedActorContext?: any) {
+  // If preloaded data is available from auth middleware, use it directly (zero DB queries)
+  if (preloadedUser && preloadedPermissions && preloadedActorContext) {
+    const permissionKeys = preloadedUser.role.rolePermissions?.map(
+      (rp: any) => rp.permission.key,
+    ) ?? [];
+
+    const safeUser: RequestUser = {
+      id: preloadedUser.id,
+      name: preloadedUser.name,
+      username: preloadedUser.username,
+      email: preloadedUser.email,
+      mobile: preloadedUser.mobile,
+      status: preloadedUser.status,
+      role: {
+        id: preloadedUser.role.id,
+        name: preloadedUser.role.name,
+        key: preloadedUser.role.key,
+        status: preloadedUser.role.status,
+      },
+    };
+
+    return {
+      ...safeUser,
+      effectivePermissions: preloadedPermissions,
+      rolePermissions: permissionKeys,
+      userAllowedPermissions: preloadedActorContext?.effectivePermissions ?? [],
+      userDeniedPermissions: [],
+      dataScopes: (preloadedActorContext?.dataScopes ?? []).map((ds: any) => ({
+        id: ds.id,
+        scopeType: ds.scopeType,
+        scopeId: ds.scopeId,
+        accessLevel: ds.accessLevel,
+        expiresAt: ds.expiresAt,
+      })),
+    };
+  }
+
+  // Fallback: full DB query path (for non-middleware contexts)
   const user = await getUserById(userId);
 
   if (!user) {

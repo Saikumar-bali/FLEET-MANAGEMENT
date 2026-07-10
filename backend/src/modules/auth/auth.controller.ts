@@ -13,7 +13,7 @@ export async function logoutController(req: Request, res: Response) {
 }
 
 export async function meController(req: Request, res: Response) {
-  const result = await getCurrentUser(req.authUser!.id);
+  const result = await getCurrentUser(req.authUser!.id, req.authPreloadedUser as any, req.authPermissions, req.authActorContext as any);
   return sendSuccess(res, result);
 }
 
