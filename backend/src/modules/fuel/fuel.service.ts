@@ -2,6 +2,7 @@ import { Prisma, WorkflowRecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { assertEditable, assertTransition, dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
+import { createNotification } from '../notifications/notifications.service';
 
 type FuelInput = {
   vehicleId: string;
@@ -158,9 +159,21 @@ export async function updateFuel(id: string, input: Partial<FuelInput>, canAppro
 export async function transitionFuel(id: string, status: WorkflowRecordStatus, userId?: string | null, notes?: string | null) {
   const existing = await getFuel(id);
   assertTransition(existing.status, status);
-  return prisma.fuelEntry.update({
+  const item = await prisma.fuelEntry.update({
     where: { id },
     data: { status, notes: notes === undefined ? existing.notes : notes, approvedById: status === 'APPROVED' ? userId ?? null : undefined, approvedAt: status === 'APPROVED' ? new Date() : undefined },
     include: workflowInclude,
   });
+
+  try {
+    if (status === 'SUBMITTED') {
+      await createNotification({ title: 'Fuel Entry Submitted', message: `Fuel entry for ${existing.vehicleId ? 'vehicle' : 'trip'} needs review — ₹${existing.totalAmount}`, category: 'FUEL', severity: 'INFO', actionUrl: `/fuel`, recipientPolicy: { type: 'ROLE', roleKeys: ['admin', 'manager', 'finance'] }, createdById: userId ?? null });
+    } else if (status === 'APPROVED' && existing.driverId) {
+      await createNotification({ title: 'Fuel Entry Approved', message: `Your fuel entry ₹${existing.totalAmount} has been approved`, category: 'FUEL', severity: 'SUCCESS', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+    } else if (status === 'REJECTED' && existing.driverId) {
+      await createNotification({ title: 'Fuel Entry Rejected', message: `Your fuel entry ₹${existing.totalAmount} was rejected${notes ? ': ' + notes : ''}`, category: 'FUEL', severity: 'WARNING', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+    }
+  } catch {}
+
+  return item;
 }
