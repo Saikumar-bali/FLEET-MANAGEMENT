@@ -8,10 +8,6 @@ import { StatusBadge } from '../../components/StatusBadge';
 
 type TripWithStatus = DriverPortalTrip & { statusLabel?: string };
 
-function money(value: number) {
-  return value.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-}
-
 function formatDate(d: string | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
