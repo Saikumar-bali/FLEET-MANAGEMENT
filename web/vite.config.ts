@@ -18,10 +18,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'router-vendor': ['react-router', 'react-router-dom'],
-          'charts-vendor': ['recharts'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react-vendor';
+          if (id.includes('node_modules/react-router')) return 'router-vendor';
+          if (id.includes('node_modules/recharts')) return 'charts-vendor';
         },
       },
     },
