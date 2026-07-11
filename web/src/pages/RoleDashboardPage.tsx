@@ -12,6 +12,7 @@ import {
   getMyDriverVehicles,
   getRepairs,
 } from '../services/api';
+import { listMyDriverAdvances } from '../services/driverAdvances';
 import { PageHeader } from '../components/PageHeader';
 import { ActionButton, ActionToolbar } from '../components/ui/ActionToolbar';
 import { PageShell } from '../components/ui/PageShell';
@@ -20,8 +21,8 @@ import { KpiGrid } from '../components/ui/KpiGrid';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { AlertIcon, MapPinIcon, ReceiptIcon, TruckIcon, UsersIcon, WrenchIcon } from '../components/ui/icons';
 
-type Metrics = { vehicles: number; drivers: number; trips: number; fuel: number; expenses: number; maintenance: number; repairs: number; risk: number };
-const empty: Metrics = { vehicles: 0, drivers: 0, trips: 0, fuel: 0, expenses: 0, maintenance: 0, repairs: 0, risk: 0 };
+type Metrics = { vehicles: number; drivers: number; trips: number; fuel: number; expenses: number; maintenance: number; repairs: number; risk: number; advances: number };
+const empty: Metrics = { vehicles: 0, drivers: 0, trips: 0, fuel: 0, expenses: 0, maintenance: 0, repairs: 0, risk: 0, advances: 0 };
 const money = (n: number) => n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const compact = (n: number) => n.toLocaleString('en-IN');
 const num = (x: unknown) => Number(x ?? 0);
@@ -78,12 +79,13 @@ export function RoleDashboardPage() {
           }
         }
         if (role === 'driver') {
-          const [vehicles, trips, fuel, expenses, docs] = await Promise.all([
+          const [vehicles, trips, fuel, expenses, docs, advancesRes] = await Promise.all([
             safe(() => getMyDriverVehicles(token)),
             safe(() => getMyDriverTrips(token, { page: 1, limit: 100 })),
             safe(() => getMyDriverFuel(token, { page: 1, limit: 100 })),
             safe(() => getMyDriverExpenses(token, { page: 1, limit: 100 })),
             safe(() => getMyDriverDocuments(token, { page: 1, limit: 100 })),
+            safe(() => listMyDriverAdvances(token, { limit: 50 })),
           ]);
           next.vehicles = vehicles?.vehicles?.length ?? 0;
           next.trips = total(trips);
@@ -91,6 +93,8 @@ export function RoleDashboardPage() {
           next.expenses = rows(expenses).reduce((sum, entry) => sum + num(entry.amount), 0);
           next.risk = total(docs);
           next.drivers = 1;
+          const advanceItems = (advancesRes as any)?.items ?? [];
+          next.advances = advanceItems.filter((a: any) => ['ISSUED', 'PARTIALLY_SETTLED'].includes(a.status)).reduce((sum: number, a: any) => sum + num(a.balanceAmount), 0);
         }
         if (role === 'mechanic') {
           const [r, m] = await Promise.all([safe(() => getRepairs(token, { page: 1, limit: 100 })), safe(() => getMaintenanceRecords(token, { page: 1, limit: 100 }))]);
@@ -122,7 +126,7 @@ export function RoleDashboardPage() {
         <StatCard label="My Attention" value={compact(metrics.risk)} subtext="Documents, overdue, or risk items visible to me" variant={metrics.risk ? 'danger' : 'muted'} icon={<AlertIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/documents' : '/compliance')} />
       </KpiGrid>
       <KpiGrid columns={4}>
-        <StatCard label="My Money Signal" value={money(metrics.fuel)} subtext="Fuel or income visible to me" icon={<ReceiptIcon />} />
+        <StatCard label={role === 'driver' ? 'Advance Balance' : 'My Money Signal'} value={role === 'driver' ? money(metrics.advances) : money(metrics.fuel)} subtext={role === 'driver' ? 'Outstanding advance to settle' : 'Fuel or income visible to me'} icon={<ReceiptIcon />} onClick={role === 'driver' ? () => navigate('/driver-portal/advances') : undefined} />
         <StatCard label="My Expenses" value={money(metrics.expenses)} subtext="Expense records visible to me" variant="warning" icon={<ReceiptIcon />} onClick={() => navigate(role === 'driver' ? '/driver-portal/expenses' : '/expenses')} />
         <StatCard label="My Maintenance" value={compact(metrics.maintenance)} subtext="Maintenance jobs visible to me" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/maintenance')} />
         <StatCard label="My Repairs" value={compact(metrics.repairs)} subtext="Repair jobs visible to me" variant="warning" icon={<WrenchIcon />} onClick={() => navigate('/repairs')} />
