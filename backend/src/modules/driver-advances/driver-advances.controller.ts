@@ -101,11 +101,11 @@ export async function issueAdvanceController(req: Request, res: Response) {
   });
   try {
     const driverUser = await prisma.$queryRawUnsafe<Array<{ user_id: string }>>(
-      'SELECT user_id FROM user_profile_links WHERE driver_id = $1 AND user_id IS NOT NULL LIMIT 1',
-      item.driverId,
+      "SELECT user_id FROM user_profile_links WHERE profile_type = $1::\"ProfileType\" AND profile_id = $2 AND status = $3::\"UserProfileLinkStatus\" AND user_id IS NOT NULL LIMIT 1",
+      'DRIVER', item.driverId, 'ACTIVE',
     );
     if (driverUser.length > 0) {
-      await createNotification({
+      createNotification({
         title: 'Advance Issued',
         message: `Your advance ${item.advanceNumber} of ₹${item.amount} has been issued. Balance: ₹${item.balanceAmount}.`,
         category: 'DRIVER_ADVANCE',
@@ -113,7 +113,7 @@ export async function issueAdvanceController(req: Request, res: Response) {
         actionUrl: '/driver-portal/advances',
         recipientPolicy: { type: 'USER', userIds: [driverUser[0].user_id] },
         createdById: userId(req),
-      });
+      }).catch(() => {});
     }
   } catch { /* notification failure should not block */ }
   return sendSuccess(res, item, 'Driver advance issued');
@@ -242,7 +242,7 @@ export async function submitMySettlementController(req: Request, res: Response) 
   await createAuditLog(req, { userId: userId(req), action: 'driver_settlement.submit_own', entityType: 'driver_settlement', entityId: item.id, metadata: { driverId } });
   try {
     const driverName = await prisma.$queryRawUnsafe<Array<{ name: string }>>('SELECT name FROM drivers WHERE id=$1', driverId);
-    await createNotification({
+    createNotification({
       title: 'Settlement Submitted',
       message: `${driverName[0]?.name || 'Driver'} submitted settlement ${item.settlementNumber} for advance ${item.advanceNumber || item.advanceId}.`,
       category: 'DRIVER_SETTLEMENT',
@@ -250,7 +250,7 @@ export async function submitMySettlementController(req: Request, res: Response) 
       actionUrl: '/finance/driver-advances',
       recipientPolicy: { type: 'ROLE', roleKeys: ['super_admin', 'admin', 'finance'] },
       createdById: userId(req),
-    });
+    }).catch(() => {});
   } catch { /* notification failure should not block */ }
   return sendSuccess(res, item, 'Driver settlement submitted');
 }

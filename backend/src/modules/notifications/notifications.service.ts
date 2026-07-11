@@ -62,13 +62,11 @@ export async function resolveRecipients(policy: RecipientPolicy) {
 export async function createNotification(input: CreateNotificationInput) {
   const id = randomUUID();
   const recipients = await resolveRecipients(input.recipientPolicy);
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(insertNotificationSql, id, input.title, input.message, input.category ?? 'SYSTEM', input.severity ?? 'INFO', input.actionUrl ?? null, input.createdById ?? null);
-    for (const recipient of recipients) {
-      await tx.$executeRawUnsafe(insertRecipientSql, randomUUID(), id, recipient.userId, input.recipientPolicy.type, recipient.roleKey);
-      await tx.$executeRawUnsafe(insertDeliverySql, randomUUID(), id, recipient.userId);
-    }
-  });
+  await prisma.$executeRawUnsafe(insertNotificationSql, id, input.title, input.message, input.category ?? 'SYSTEM', input.severity ?? 'INFO', input.actionUrl ?? null, input.createdById ?? null);
+  for (const recipient of recipients) {
+    await prisma.$executeRawUnsafe(insertRecipientSql, randomUUID(), id, recipient.userId, input.recipientPolicy.type, recipient.roleKey);
+    await prisma.$executeRawUnsafe(insertDeliverySql, randomUUID(), id, recipient.userId);
+  }
   return { id, recipientCount: recipients.length };
 }
 
