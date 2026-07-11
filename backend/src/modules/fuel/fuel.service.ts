@@ -167,11 +167,17 @@ export async function transitionFuel(id: string, status: WorkflowRecordStatus, u
 
   try {
     if (status === 'SUBMITTED') {
-      await createNotification({ title: 'Fuel Entry Submitted', message: `Fuel entry for ${existing.vehicleId ? 'vehicle' : 'trip'} needs review — ₹${existing.totalAmount}`, category: 'FUEL', severity: 'INFO', actionUrl: `/fuel`, recipientPolicy: { type: 'ROLE', roleKeys: ['admin', 'manager', 'finance'] }, createdById: userId ?? null });
+      createNotification({ title: 'Fuel Entry Submitted', message: `Fuel entry for ${existing.vehicleId ? 'vehicle' : 'trip'} needs review — ₹${existing.totalAmount}`, category: 'FUEL', severity: 'INFO', actionUrl: `/fuel`, recipientPolicy: { type: 'ROLE', roleKeys: ['super_admin', 'admin', 'manager', 'finance'] }, createdById: userId ?? null }).catch(() => {});
     } else if (status === 'APPROVED' && existing.driverId) {
-      await createNotification({ title: 'Fuel Entry Approved', message: `Your fuel entry ₹${existing.totalAmount} has been approved`, category: 'FUEL', severity: 'SUCCESS', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+      const driverUser = await prisma.$queryRawUnsafe<Array<{ userId: string }>>("SELECT user_id AS \"userId\" FROM user_profile_links WHERE profile_type = $1::\"ProfileType\" AND profile_id = $2 AND status = $3::\"UserProfileLinkStatus\" AND user_id IS NOT NULL LIMIT 1", 'DRIVER', existing.driverId, 'ACTIVE');
+      if (driverUser.length > 0) {
+        createNotification({ title: 'Fuel Entry Approved', message: `Your fuel entry ₹${existing.totalAmount} has been approved`, category: 'FUEL', severity: 'SUCCESS', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [driverUser[0].userId] }, createdById: userId ?? null }).catch(() => {});
+      }
     } else if (status === 'REJECTED' && existing.driverId) {
-      await createNotification({ title: 'Fuel Entry Rejected', message: `Your fuel entry ₹${existing.totalAmount} was rejected${notes ? ': ' + notes : ''}`, category: 'FUEL', severity: 'WARNING', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+      const driverUser = await prisma.$queryRawUnsafe<Array<{ userId: string }>>("SELECT user_id AS \"userId\" FROM user_profile_links WHERE profile_type = $1::\"ProfileType\" AND profile_id = $2 AND status = $3::\"UserProfileLinkStatus\" AND user_id IS NOT NULL LIMIT 1", 'DRIVER', existing.driverId, 'ACTIVE');
+      if (driverUser.length > 0) {
+        createNotification({ title: 'Fuel Entry Rejected', message: `Your fuel entry ₹${existing.totalAmount} was rejected${notes ? ': ' + notes : ''}`, category: 'FUEL', severity: 'WARNING', actionUrl: `/driver-portal/fuel`, recipientPolicy: { type: 'USER', userIds: [driverUser[0].userId] }, createdById: userId ?? null }).catch(() => {});
+      }
     }
   } catch {}
 

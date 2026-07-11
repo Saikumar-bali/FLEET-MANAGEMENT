@@ -79,11 +79,17 @@ export async function transitionExpense(id: string, status: WorkflowRecordStatus
 
   try {
     if (status === 'SUBMITTED') {
-      await createNotification({ title: 'Expense Submitted', message: `Expense ₹${existing.amount} (${existing.category}) needs review`, category: 'EXPENSE', severity: 'INFO', actionUrl: `/expenses`, recipientPolicy: { type: 'ROLE', roleKeys: ['admin', 'manager', 'finance'] }, createdById: userId ?? null });
+      createNotification({ title: 'Expense Submitted', message: `Expense ₹${existing.amount} (${existing.category}) needs review`, category: 'EXPENSE', severity: 'INFO', actionUrl: `/expenses`, recipientPolicy: { type: 'ROLE', roleKeys: ['super_admin', 'admin', 'manager', 'finance'] }, createdById: userId ?? null }).catch(() => {});
     } else if (status === 'APPROVED' && existing.driverId) {
-      await createNotification({ title: 'Expense Approved', message: `Your expense ₹${existing.amount} (${existing.category}) has been approved`, category: 'EXPENSE', severity: 'SUCCESS', actionUrl: `/driver-portal/expenses`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+      const driverUser = await prisma.$queryRawUnsafe<Array<{ userId: string }>>("SELECT user_id AS \"userId\" FROM user_profile_links WHERE profile_type = $1::\"ProfileType\" AND profile_id = $2 AND status = $3::\"UserProfileLinkStatus\" AND user_id IS NOT NULL LIMIT 1", 'DRIVER', existing.driverId, 'ACTIVE');
+      if (driverUser.length > 0) {
+        createNotification({ title: 'Expense Approved', message: `Your expense ₹${existing.amount} (${existing.category}) has been approved`, category: 'EXPENSE', severity: 'SUCCESS', actionUrl: `/driver-portal/expenses`, recipientPolicy: { type: 'USER', userIds: [driverUser[0].userId] }, createdById: userId ?? null }).catch(() => {});
+      }
     } else if (status === 'REJECTED' && existing.driverId) {
-      await createNotification({ title: 'Expense Rejected', message: `Your expense ₹${existing.amount} (${existing.category}) was rejected${notes ? ': ' + notes : ''}`, category: 'EXPENSE', severity: 'WARNING', actionUrl: `/driver-portal/expenses`, recipientPolicy: { type: 'USER', userIds: [existing.driverId] }, createdById: userId ?? null });
+      const driverUser = await prisma.$queryRawUnsafe<Array<{ userId: string }>>("SELECT user_id AS \"userId\" FROM user_profile_links WHERE profile_type = $1::\"ProfileType\" AND profile_id = $2 AND status = $3::\"UserProfileLinkStatus\" AND user_id IS NOT NULL LIMIT 1", 'DRIVER', existing.driverId, 'ACTIVE');
+      if (driverUser.length > 0) {
+        createNotification({ title: 'Expense Rejected', message: `Your expense ₹${existing.amount} (${existing.category}) was rejected${notes ? ': ' + notes : ''}`, category: 'EXPENSE', severity: 'WARNING', actionUrl: `/driver-portal/expenses`, recipientPolicy: { type: 'USER', userIds: [driverUser[0].userId] }, createdById: userId ?? null }).catch(() => {});
+      }
     }
   } catch {}
 

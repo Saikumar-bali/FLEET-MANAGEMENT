@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
+import { AppError } from '../../utils/appError';
 import { createAuditLog } from '../audit/audit.service';
 import { getActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
+import { getResourceMapping } from '../access/resource-scope-map';
 import type { ResourceType } from '../access/resource-scope-map';
 import { createFuel, getFuel, listFuel, transitionFuel, updateFuel } from './fuel.service';
 import { extractFromReceipt } from './fuel-receipt-extraction.service';
@@ -52,7 +54,18 @@ export async function updateFuelController(req: Request, res: Response) {
 async function action(req: Request, res: Response, status: any, actionName: string) {
   const actor = await getActorContext(req.authUser!.id);
   const existing = await getFuel(String(req.params.id));
-  assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  if (actor.isSuperAdmin || actor.isAdmin || actor.isGlobalUser) {
+    assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
+  } else {
+    const mapping = getResourceMapping(RESOURCE);
+    if (!actor.effectivePermissions.includes(mapping.permissions.update)) {
+      throw new AppError('You do not have permission to perform this action', 403);
+    }
+    const fuelRecord = existing as unknown as Record<string, unknown>;
+    if (fuelRecord.createdById && fuelRecord.createdById !== actor.user.id) {
+      throw new AppError('Access denied: you can only modify your own fuel entries', 403);
+    }
+  }
 
   const item = await transitionFuel(String(req.params.id), status, req.authUser?.id, req.body.notes);
   await createAuditLog(req, { userId: req.authUser?.id, action: `fuel.${actionName}`, entityType: 'fuel', entityId: item.id });
