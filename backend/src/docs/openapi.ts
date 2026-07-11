@@ -61,6 +61,8 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Profile Links' },
     { name: 'Driver Portal' },
     { name: 'Driver Submissions' },
+    { name: 'Driver Advances' },
+    { name: 'Driver Settlements' },
     { name: 'Dispatch' },
     { name: 'Dashboard' },
     { name: 'Workspace' },
@@ -2004,6 +2006,98 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     },
     '/driver-submissions/inspections/{id}/request-changes': {
       patch: { tags: ['Driver Submissions'], summary: 'Request changes on inspection (requires driver_submission_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { reason: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+
+    // ── Driver Advances & Settlements ──────────────────────────────
+    '/driver-advances': {
+      get: { tags: ['Driver Advances'], summary: 'List all driver advances (requires driver_advance_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated driver advances' } } },
+      post: { tags: ['Driver Advances'], summary: 'Create a driver advance (requires driver_advance_create)', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['driverId', 'vehicleId', 'amount'], properties: { driverId: { type: 'string' }, vehicleId: { type: 'string' }, tripId: { type: 'string', nullable: true }, amount: { type: 'number', exclusiveMinimum: 0 }, purpose: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Advance created' } } },
+    },
+    '/driver-advances/reports/summary': {
+      get: { tags: ['Driver Advances'], summary: 'Get advance reports summary (requires driver_advance_report)', security: [{ bearerAuth: [] }], parameters: [{ name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'vehicleId', in: 'query', schema: { type: 'string' } }, { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' } }, { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' } }], responses: { '200': { description: 'Advance report summary' } } },
+    },
+    '/driver-advances/{id}': {
+      get: { tags: ['Driver Advances'], summary: 'Get a driver advance (requires driver_advance_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Driver advance' } } },
+      patch: { tags: ['Driver Advances'], summary: 'Update a driver advance (requires driver_advance_update)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { amount: { type: 'number' }, purpose: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Advance updated' } } },
+    },
+    '/driver-advances/{id}/submit': {
+      patch: { tags: ['Driver Advances'], summary: 'Submit advance for approval (requires driver_advance_submit)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Advance submitted' } } },
+    },
+    '/driver-advances/{id}/approve': {
+      patch: { tags: ['Driver Advances'], summary: 'Approve a submitted advance (requires driver_advance_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Advance approved' } } },
+    },
+    '/driver-advances/{id}/reject': {
+      patch: { tags: ['Driver Advances'], summary: 'Reject a submitted advance (requires driver_advance_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Advance rejected' } } },
+    },
+    '/driver-advances/{id}/request-changes': {
+      patch: { tags: ['Driver Advances'], summary: 'Request changes on advance (requires driver_advance_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-advances/{id}/issue': {
+      patch: { tags: ['Driver Advances'], summary: 'Issue funds for an approved advance (requires driver_advance_issue)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['issuedAmount'], properties: { issuedAmount: { type: 'number', exclusiveMinimum: 0 }, paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'OTHER'] }, referenceNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Funds issued' } } },
+    },
+    '/driver-advances/{id}/cancel': {
+      patch: { tags: ['Driver Advances'], summary: 'Cancel an advance (requires driver_advance_cancel)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Advance cancelled' } } },
+    },
+    '/driver-advances/{id}/settlements': {
+      get: { tags: ['Driver Advances'], summary: 'List settlements for an advance (requires driver_settlement_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated settlements for advance' } } },
+      post: { tags: ['Driver Advances'], summary: 'Create settlement for an advance (requires driver_settlement_create)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { includeApprovedFuel: { type: 'boolean', default: true }, includeApprovedExpenses: { type: 'boolean', default: true }, cashReturned: { type: 'number' }, adjustmentAmount: { type: 'number' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Settlement created' } } },
+    },
+    // ── Driver Settlements ─────────────────────────────────────────
+    '/driver-settlements': {
+      get: { tags: ['Driver Settlements'], summary: 'List all settlements (requires driver_settlement_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string' } }, { name: 'driverId', in: 'query', schema: { type: 'string' } }, { name: 'advanceId', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'Paginated settlements' } } },
+    },
+    '/driver-settlements/{id}': {
+      get: { tags: ['Driver Settlements'], summary: 'Get a settlement (requires driver_settlement_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Settlement details' } } },
+    },
+    '/driver-settlements/{id}/summary': {
+      get: { tags: ['Driver Settlements'], summary: 'Get settlement summary (requires driver_settlement_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Settlement summary with line items' } } },
+    },
+    '/driver-settlements/{id}/submit': {
+      patch: { tags: ['Driver Settlements'], summary: 'Submit settlement for review (requires driver_settlement_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement submitted' } } },
+    },
+    '/driver-settlements/{id}/review': {
+      patch: { tags: ['Driver Settlements'], summary: 'Start reviewing a settlement (requires driver_settlement_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement under review' } } },
+    },
+    '/driver-settlements/{id}/approve': {
+      patch: { tags: ['Driver Settlements'], summary: 'Approve a settlement (requires driver_settlement_approve)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement approved' } } },
+    },
+    '/driver-settlements/{id}/settle': {
+      patch: { tags: ['Driver Settlements'], summary: 'Mark settlement as financially settled (requires driver_settlement_settle)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'OTHER'] }, referenceNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement settled' } } },
+    },
+    '/driver-settlements/{id}/reject': {
+      patch: { tags: ['Driver Settlements'], summary: 'Reject a settlement (requires driver_settlement_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement rejected' } } },
+    },
+    '/driver-settlements/{id}/request-changes': {
+      patch: { tags: ['Driver Settlements'], summary: 'Request changes on settlement (requires driver_settlement_review)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Changes requested' } } },
+    },
+    '/driver-settlements/{id}/cancel': {
+      patch: { tags: ['Driver Settlements'], summary: 'Cancel a settlement (requires driver_settlement_cancel)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'Settlement cancelled' } } },
+    },
+    // ── Driver Self-Service Advances & Settlements ─────────────────
+    '/me/driver-advances': {
+      get: { tags: ['Driver Portal'], summary: 'List my advances (requires driver_advance_view_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'My advances' } } },
+    },
+    '/me/driver-advances/{id}': {
+      get: { tags: ['Driver Portal'], summary: 'Get my advance details (requires driver_advance_view_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'My advance details' } } },
+    },
+    '/me/driver-advances/{id}/settlements': {
+      post: { tags: ['Driver Portal'], summary: 'Create settlement for my advance (requires driver_settlement_submit_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { cashReturned: { type: 'number' }, adjustmentAmount: { type: 'number' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Settlement created' } } },
+    },
+    '/me/driver-settlements': {
+      get: { tags: ['Driver Portal'], summary: 'List my settlements (requires driver_settlement_view_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }, { name: 'status', in: 'query', schema: { type: 'string' } }], responses: { '200': { description: 'My settlements' } } },
+    },
+    '/me/driver-settlements/{id}': {
+      get: { tags: ['Driver Portal'], summary: 'Get my settlement details (requires driver_settlement_view_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'My settlement details' } } },
+    },
+    '/me/driver-settlements/{id}/submit': {
+      patch: { tags: ['Driver Portal'], summary: 'Submit my settlement (requires driver_settlement_submit_own)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { notes: { type: 'string' } } } } } }, responses: { '200': { description: 'My settlement submitted' } } },
+    },
+    '/me/driver-settlements/{id}/cash-return': {
+      post: { tags: ['Driver Portal'], summary: 'Record cash return on my settlement (requires driver_cash_return_submit)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['amount'], properties: { amount: { type: 'number', exclusiveMinimum: 0 }, paymentMode: { type: 'string', enum: ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE', 'OTHER'] }, referenceNumber: { type: 'string' }, notes: { type: 'string' } } } } } }, responses: { '201': { description: 'Cash return recorded' } } },
+    },
+    // ── Profile Links ──────────────────────────────────────────────
+    '/user-profile-links/available-drivers': {
+      get: { tags: ['Profile Links'], summary: 'List available drivers for linking (requires profile_link_view)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Available drivers' } } },
     },
   },
 };
