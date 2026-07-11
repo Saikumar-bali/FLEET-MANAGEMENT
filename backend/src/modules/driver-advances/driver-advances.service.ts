@@ -399,6 +399,10 @@ async function recalculateSettlement(idValue: string, db: DbClient = prisma) {
   return getSettlementRow(idValue, db);
 }
 
+async function updateAdvanceBalance(advanceId: string, db: DbClient = prisma) {
+  await db.$executeRawUnsafe(`WITH active_settlements AS (SELECT advance_id, COALESCE(SUM(total_approved_spend),0) AS spend, COALESCE(SUM(returned_cash_amount),0) AS returned, COALESCE(SUM(settlement_total),0) AS settled_total FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('DRAFT','CANCELLED','REJECTED') GROUP BY advance_id) UPDATE driver_advances da SET settled_amount=active_settlements.spend, returned_amount=active_settlements.returned, balance_amount=GREATEST(da.issued_amount - active_settlements.settled_total, 0), status=CASE WHEN da.status IN ('ISSUED','PARTIALLY_SETTLED') THEN CASE WHEN GREATEST(da.issued_amount - active_settlements.settled_total, 0) = 0 THEN 'SETTLED' ELSE 'PARTIALLY_SETTLED' END ELSE da.status END, updated_at=NOW() FROM active_settlements WHERE da.id=active_settlements.advance_id AND da.id=$1`, advanceId);
+}
+
 export async function createDriverSettlement(advanceId: string, input: CreateSettlementInput) {
   const advance = await getAdvanceRow(advanceId);
   if (!['ISSUED', 'PARTIALLY_SETTLED'].includes(advance.status)) throw new AppError('Advance must be issued before settlement', 409);
@@ -454,12 +458,12 @@ async function transitionSettlement(idValue: string, allowedFrom: string[], toSt
   return getDriverSettlement(idValue);
 }
 
-export async function submitDriverSettlement(idValue: string, userId?: string | null, ownDriverId?: string) { const existing = await getSettlementRow(idValue); if (ownDriverId && existing.driver_id !== ownDriverId) throw new AppError('Driver settlement not found', 404); await recalculateSettlement(idValue); return transitionSettlement(idValue, ['DRAFT', 'NEEDS_CHANGES'], 'SUBMITTED', 'SETTLEMENT_SUBMITTED', userId, null, ', submitted_at=NOW()'); }
+export async function submitDriverSettlement(idValue: string, userId?: string | null, ownDriverId?: string) { const existing = await getSettlementRow(idValue); if (ownDriverId && existing.driver_id !== ownDriverId) throw new AppError('Driver settlement not found', 404); await recalculateSettlement(idValue); const result = await transitionSettlement(idValue, ['DRAFT', 'NEEDS_CHANGES'], 'SUBMITTED', 'SETTLEMENT_SUBMITTED', userId, null, ', submitted_at=NOW()'); await updateAdvanceBalance(existing.advance_id); return result; }
 export async function reviewDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { return transitionSettlement(idValue, ['SUBMITTED'], 'UNDER_REVIEW', 'SETTLEMENT_REVIEW_STARTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=COALESCE(reviewed_by_id, $4)', [userId ?? null]); }
-export async function approveDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { await recalculateSettlement(idValue); return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'APPROVED', 'SETTLEMENT_APPROVED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); }
-export async function rejectDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'], 'REJECTED', 'SETTLEMENT_REJECTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); }
-export async function requestSettlementChanges(idValue: string, userId?: string | null, remarks?: string | null) { return transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'NEEDS_CHANGES', 'SETTLEMENT_NEEDS_CHANGES', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); }
-export async function cancelDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { return transitionSettlement(idValue, ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'NEEDS_CHANGES'], 'CANCELLED', 'SETTLEMENT_CANCELLED', userId, remarks); }
+export async function approveDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { const existing = await getSettlementRow(idValue); await recalculateSettlement(idValue); const result = await transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'APPROVED', 'SETTLEMENT_APPROVED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); await updateAdvanceBalance(existing.advance_id); return result; }
+export async function rejectDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { const existing = await getSettlementRow(idValue); const result = await transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED'], 'REJECTED', 'SETTLEMENT_REJECTED', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); await updateAdvanceBalance(existing.advance_id); return result; }
+export async function requestSettlementChanges(idValue: string, userId?: string | null, remarks?: string | null) { const existing = await getSettlementRow(idValue); const result = await transitionSettlement(idValue, ['SUBMITTED', 'UNDER_REVIEW'], 'NEEDS_CHANGES', 'SETTLEMENT_NEEDS_CHANGES', userId, remarks, ', reviewed_at=NOW(), reviewed_by_id=$4', [userId ?? null]); await updateAdvanceBalance(existing.advance_id); return result; }
+export async function cancelDriverSettlement(idValue: string, userId?: string | null, remarks?: string | null) { const existing = await getSettlementRow(idValue); const result = await transitionSettlement(idValue, ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'NEEDS_CHANGES'], 'CANCELLED', 'SETTLEMENT_CANCELLED', userId, remarks); await updateAdvanceBalance(existing.advance_id); return result; }
 
 export async function addCashReturn(idValue: string, amount: number, userId?: string | null, ownDriverId?: string, notes?: string | null) {
   const existing = await getSettlementRow(idValue);
@@ -468,6 +472,7 @@ export async function addCashReturn(idValue: string, amount: number, userId?: st
   await prisma.$executeRawUnsafe(`INSERT INTO driver_settlement_lines (id, settlement_id, line_type, amount, approved_amount, description) VALUES ($1,$2,'CASH_RETURN',$3,$3,$4)`, id(), idValue, amount, notes ?? 'Cash returned by driver');
   await recalculateSettlement(idValue);
   await insertHistory(prisma, { settlementId: idValue, advanceId: existing.advance_id, action: 'CASH_RETURN_ADDED', fromStatus: existing.status, toStatus: existing.status, remarks: notes ?? null, createdById: userId ?? null, newValues: { amount } });
+  await updateAdvanceBalance(existing.advance_id);
   return getDriverSettlement(idValue, ownDriverId);
 }
 
@@ -482,7 +487,7 @@ export async function settleDriverSettlement(idValue: string, input: SettleInput
     if (money(finalRow.returned_cash_amount) > 0) await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.returned_cash_amount), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver advance cash returned: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'IN' });
     if (money(finalRow.reimbursement_due_to_driver) > 0) await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.reimbursement_due_to_driver), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver reimbursement from settlement: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'OUT' });
     await tx.$executeRawUnsafe(`UPDATE driver_settlements SET status='SETTLED', settled_at=NOW(), settled_by_id=$2, notes=COALESCE($3, notes), updated_at=NOW() WHERE id=$1`, idValue, input.userId ?? null, input.notes ?? null);
-    await tx.$executeRawUnsafe(`WITH totals AS (SELECT advance_id, COALESCE(SUM(total_approved_spend),0) AS spend, COALESCE(SUM(returned_cash_amount),0) AS returned, COALESCE(SUM(settlement_total),0) AS settled_total FROM driver_settlements WHERE advance_id=$1 AND status='SETTLED' GROUP BY advance_id) UPDATE driver_advances da SET settled_amount=totals.spend, returned_amount=totals.returned, balance_amount=GREATEST(da.issued_amount - totals.settled_total, 0), status=CASE WHEN GREATEST(da.issued_amount - totals.settled_total, 0) = 0 THEN 'SETTLED' ELSE 'PARTIALLY_SETTLED' END, updated_at=NOW() FROM totals WHERE da.id=totals.advance_id AND da.id=$1`, finalRow.advance_id);
+    await updateAdvanceBalance(finalRow.advance_id, tx);
     await insertHistory(tx, { settlementId: idValue, advanceId: finalRow.advance_id, action: 'SETTLEMENT_SETTLED', fromStatus: existing.status, toStatus: 'SETTLED', remarks: input.notes ?? null, createdById: input.userId ?? null, newValues: normalizeSettlement(finalRow) });
   });
   return getDriverSettlement(idValue);
