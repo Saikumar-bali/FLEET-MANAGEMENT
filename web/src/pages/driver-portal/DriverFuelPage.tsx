@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getMyDriverFuel } from '../../services/api';
+import { getMyDriverFuel, fuelAction } from '../../services/api';
 import type { DriverPortalFuelEntry } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { LoadingState } from '../../components/LoadingState';
@@ -34,6 +34,7 @@ export function DriverFuelPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!auth.accessToken) return;
@@ -55,6 +56,21 @@ export function DriverFuelPage() {
   useEffect(() => { loadData(page); }, [auth.accessToken, page]);
 
   const canCreate = permissions.includes('driver_quick_fuel_create');
+  const canSubmit = permissions.includes('fuel_submit');
+
+  const handleSubmit = async (id: string) => {
+    if (!auth.accessToken) return;
+    setSubmitting(id);
+    try {
+      await fuelAction(auth.accessToken, id, 'submit');
+      loadData(page);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Submit failed';
+      setError(msg);
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
   if (loading && entries.length === 0) return <LoadingState message="Loading fuel entries..." />;
   if (error && entries.length === 0) return <ErrorState message={error} onRetry={() => loadData(page)} />;
@@ -88,6 +104,7 @@ export function DriverFuelPage() {
                   <th>Amount</th>
                   <th>Status</th>
                   <th>Reviewer Notes</th>
+                  {canSubmit && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -100,6 +117,20 @@ export function DriverFuelPage() {
                     <td>{formatCurrency(entry.totalAmount)}</td>
                     <td><span className={statusClass(entry.status)}>{statusLabel(entry.status)}</span></td>
                     <td>{(entry as Record<string, unknown>).reviewComments ? String((entry as Record<string, unknown>).reviewComments) : '—'}</td>
+                    {canSubmit && (
+                      <td>
+                        {entry.status === 'DRAFT' && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={submitting === entry.id}
+                            onClick={() => handleSubmit(entry.id)}
+                          >
+                            {submitting === entry.id ? 'Submitting...' : 'Submit'}
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
