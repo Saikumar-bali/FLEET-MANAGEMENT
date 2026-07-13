@@ -100,8 +100,10 @@ async function main() {
   if (health.status !== 200) throw new Error('Backend health check failed. Start local backend first.');
   pass('Backend health check');
 
-  const adminIdentifier = process.env.CI_ADMIN_IDENTIFIER || process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.CI_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  // Prefer the configured super-admin username. In CI the admin email is also
+  // used as the demo admin's username, so an OR-based login lookup is ambiguous.
+  const adminIdentifier = process.env.ADMIN_USERNAME || process.env.ADMIN_EMAIL || process.env.CI_ADMIN_IDENTIFIER;
+  const adminPassword = process.env.ADMIN_PASSWORD || process.env.CI_ADMIN_PASSWORD;
   if (!adminIdentifier || !adminPassword) throw new Error('Missing admin credentials in environment');
 
   await cleanup();
