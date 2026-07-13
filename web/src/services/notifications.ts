@@ -12,10 +12,8 @@ export type NotificationItem = {
   readAt?: string | null;
 };
 
-async function request<T>(endpoint: string, token: string): Promise<ApiResponse<T>> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+async function request<T>(endpoint: string, _token: string): Promise<ApiResponse<T>> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { credentials: 'include' });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.message || 'Notification request failed');
   return data;

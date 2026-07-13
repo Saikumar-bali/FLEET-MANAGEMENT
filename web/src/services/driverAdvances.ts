@@ -20,9 +20,7 @@ type ListParams = {
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
   if (!(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
-  if (options.token) headers.set('Authorization', `Bearer ${options.token}`);
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers, credentials: 'include' });
   const responseText = await response.text();
   let data: ApiResponse<T> | null = null;
   if (responseText) {

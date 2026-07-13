@@ -27,16 +27,16 @@ function severityClass(severity?: string) {
   return 'alert-tone-info';
 }
 
-async function ackOne(token: string, id: string) {
+async function ackOne(_token: string, id: string) {
   const endpoint = ['/me/notifications/', id, '/ack'].join('');
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { credentials: 'include' });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.message || 'Failed to mark alert as read');
 }
 
-async function ackAll(token: string) {
+async function ackAll(_token: string) {
   const endpoint = ['/me/notifications-', 'ack-all'].join('');
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { credentials: 'include' });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.message || 'Failed to mark alerts as read');
 }

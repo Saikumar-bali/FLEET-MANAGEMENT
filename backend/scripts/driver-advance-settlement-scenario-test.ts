@@ -84,8 +84,8 @@ async function cleanup() {
     await prisma.userProfileLink.deleteMany({ where: { profileType: 'DRIVER', profileId: { in: driverIds } } }).catch(() => undefined);
   }
   if (userIds.length > 0) {
-    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallet_transactions WHERE wallet_id IN (SELECT id FROM staff_wallets WHERE user_id = ANY($1))`, userIds).catch(() => undefined);
-    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallets WHERE user_id = ANY($1)`, userIds).catch(() => undefined);
+    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallet_transactions WHERE wallet_id IN (SELECT id FROM staff_wallets WHERE user_id = ANY($1::text[]))`, userIds).catch(() => undefined);
+    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallets WHERE user_id = ANY($1::text[])`, userIds).catch(() => undefined);
     await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => undefined);
   }
   if (vehicleIds.length > 0) await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } }).catch(() => undefined);

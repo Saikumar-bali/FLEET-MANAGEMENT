@@ -124,6 +124,7 @@ export function UsersPage() {
   function getSummary(userId: string) { return summaries.find(s => s.userId === userId); }
 
   function openView(user: UserRecord) {
+    setSelectedUserId(user.id);
     setViewUser(user); setViewTab('overview'); setLinkError(null); setLinkDriverId('');
     setProfileLinks([]);
     if (auth.accessToken) {

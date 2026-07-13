@@ -77,10 +77,11 @@ export type RouteEstimate = {
 
 type ApiResponse<T> = { success: boolean; message?: string; data: T };
 
-async function api<T>(endpoint: string, token: string, options?: RequestInit): Promise<ApiResponse<T>> {
+async function api<T>(endpoint: string, _token: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: { ...options?.headers, 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    headers: { ...options?.headers, 'Content-Type': 'application/json' },
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.message ?? 'Request failed');

@@ -70,13 +70,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers.set('Content-Type', 'application/json');
   }
 
-  if (options.token) {
-    headers.set('Authorization', `Bearer ${options.token}`);
-  }
-
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   const responseText = await response.text();
@@ -125,17 +122,17 @@ export function login(identifier: string, password: string) {
   });
 }
 
-export function logout(refreshToken: string) {
+export function logout() {
   return request<null>('/auth/logout', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({}),
   });
 }
 
-export function refresh(refreshToken: string) {
+export function refresh() {
   return request<AuthPayload>('/auth/refresh', {
     method: 'POST',
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({}),
   });
 }
 
@@ -551,14 +548,11 @@ export function getDocument(token: string, documentId: string) {
 }
 
 export function uploadDocument(
-  token: string,
+  _token: string,
   formData: FormData,
 ) {
-  const headers = new Headers();
-  headers.set('Authorization', `Bearer ${token}`);
   return request<DocumentRecord>('/documents/upload', {
     method: 'POST',
-    headers,
     body: formData,
   });
 }

@@ -2,10 +2,11 @@ import { API_BASE_URL } from '../config/api';
 import type { ApiResponse } from '../types/api';
 import type { DriverPortalTrip } from '../types/auth';
 
-async function request(endpoint: string, token: string, method = 'POST', payload: Record<string, unknown> = {}) {
+async function request(endpoint: string, _token: string, method = 'POST', payload: Record<string, unknown> = {}) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => null) as ApiResponse<DriverPortalTrip> | null;

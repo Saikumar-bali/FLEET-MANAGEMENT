@@ -4,15 +4,15 @@ import { AppError } from '../utils/appError';
 import { verifyAccessToken } from '../utils/auth';
 import { getEffectivePermissions } from '../modules/access/effective-permissions.service';
 import { getActorContext } from '../modules/access/actor-context.service';
+import { ACCESS_TOKEN_COOKIE, readAuthCookie } from '../modules/auth/auth.cookies';
 
 function extractToken(req: Request): string | null {
   const authorizationHeader = req.headers.authorization;
 
-  if (!authorizationHeader?.startsWith('Bearer ')) {
-    return null;
+  if (authorizationHeader?.startsWith('Bearer ')) {
+    return authorizationHeader.slice('Bearer '.length);
   }
-
-  return authorizationHeader.slice('Bearer '.length);
+  return readAuthCookie(req, ACCESS_TOKEN_COOKIE);
 }
 
 // Short-lived in-memory cache to avoid re-querying the same user on every request

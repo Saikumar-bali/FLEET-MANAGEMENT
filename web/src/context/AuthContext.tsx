@@ -7,9 +7,10 @@ import {
   type PropsWithChildren,
 } from 'react';
 import * as api from '../services/api';
-import { clearStoredSession, readStoredSession, writeStoredSession } from '../services/authStorage';
 import type { AuthPayload, AuthState } from '../types/auth';
 import { ApiError } from '../types/api';
+
+const COOKIE_SESSION = 'cookie-session';
 
 type AuthContextValue = AuthState & {
   isBootstrapping: boolean;
@@ -25,8 +26,8 @@ function applyAuthPayload(payload: AuthPayload): AuthState {
   return {
     user: payload.user,
     permissions: payload.permissions,
-    accessToken: payload.accessToken,
-    refreshToken: payload.refreshToken,
+    accessToken: COOKIE_SESSION,
+    refreshToken: null,
   };
 }
 
@@ -41,33 +42,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const bootstrap = async () => {
-      const storedSession = readStoredSession();
-
-      if (!storedSession) {
-        setIsBootstrapping(false);
-        return;
-      }
-
       try {
-        const meResponse = await api.getCurrentUser(storedSession.accessToken);
+        const meResponse = await api.getCurrentUser(COOKIE_SESSION);
         setState({
           user: meResponse.data.user,
           permissions: meResponse.data.permissions,
-          accessToken: storedSession.accessToken,
-          refreshToken: storedSession.refreshToken,
+          accessToken: COOKIE_SESSION,
+          refreshToken: null,
         });
       } catch (error) {
         if (error instanceof ApiError && error.statusCode === 401) {
           try {
-            const refreshResponse = await api.refresh(storedSession.refreshToken);
+            const refreshResponse = await api.refresh();
             const nextState = applyAuthPayload(refreshResponse.data);
-            writeStoredSession({
-              accessToken: nextState.accessToken!,
-              refreshToken: nextState.refreshToken!,
-            });
             setState(nextState);
           } catch {
-            clearStoredSession();
             setState({
               user: null,
               permissions: [],
@@ -90,22 +79,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async login(identifier: string, password: string) {
       const response = await api.login(identifier, password);
       const nextState = applyAuthPayload(response.data);
-      writeStoredSession({
-        accessToken: nextState.accessToken!,
-        refreshToken: nextState.refreshToken!,
-      });
       setState(nextState);
     },
     async logout() {
-      if (state.refreshToken) {
-        try {
-          await api.logout(state.refreshToken);
-        } catch {
-          // Intentionally ignore logout failures to guarantee local sign-out.
-        }
+      try {
+        await api.logout();
+      } catch {
+        // Intentionally ignore logout failures to guarantee local sign-out.
       }
-
-      clearStoredSession();
       setState({
         user: null,
         permissions: [],
