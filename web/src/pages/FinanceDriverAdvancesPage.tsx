@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
-import { getDrivers, getFinanceAccounts, getVehicles } from '../services/api';
+import { getDrivers, getFinanceAccounts, getTrips, getVehicles } from '../services/api';
 import {
   approveDriverAdvance,
   cancelDriverAdvance,
@@ -14,7 +14,7 @@ import {
   requestChangesDriverAdvance,
   submitDriverAdvance,
 } from '../services/driverAdvances';
-import type { DriverRecord, FinanceAccount, VehicleRecord } from '../types/auth';
+import type { DriverRecord, FinanceAccount, TripRecord, VehicleRecord } from '../types/auth';
 import type { DriverAdvance, DriverAdvanceReport } from '../types/driver-advances';
 
 function money(value: number) {
@@ -32,8 +32,10 @@ function statusClass(status: string) {
 const emptyForm = {
   driverId: '',
   vehicleId: '',
+  tripId: '',
   accountId: '',
   amount: '',
+  includeExistingBalance: true,
   paymentMode: 'CASH',
   dueDate: '',
   purpose: '',
@@ -47,6 +49,7 @@ export default function FinanceDriverAdvancesPage() {
   const [report, setReport] = useState<DriverAdvanceReport | null>(null);
   const [drivers, setDrivers] = useState<DriverRecord[]>([]);
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
+  const [trips, setTrips] = useState<TripRecord[]>([]);
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [status, setStatus] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -71,17 +74,19 @@ export default function FinanceDriverAdvancesPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [advanceRes, reportRes, driversRes, vehiclesRes, accountsRes] = await Promise.all([
+      const [advanceRes, reportRes, driversRes, vehiclesRes, tripsRes, accountsRes] = await Promise.all([
         listDriverAdvances(token, { status: status || undefined, overdueOnly: overdueOnly || undefined }),
         getDriverAdvanceReport(token, { status: status || undefined, overdueOnly: overdueOnly || undefined }),
         getDrivers(token, { limit: 100 }),
         getVehicles(token, { limit: 100 }),
+        getTrips(token, { limit: 100 }),
         getFinanceAccounts(token, { limit: 100 }),
       ]);
       setItems(advanceRes.data.items || []);
       setReport(reportRes.data);
       setDrivers(driversRes.data.items || []);
       setVehicles(vehiclesRes.data.items || []);
+      setTrips(tripsRes.data.items || []);
       setAccounts(accountsRes.data.items || []);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to load driver advances');
@@ -99,8 +104,10 @@ export default function FinanceDriverAdvancesPage() {
       await createDriverAdvance(token, {
         driverId: form.driverId,
         vehicleId: form.vehicleId || null,
+        tripId: form.tripId || null,
         accountId: form.accountId || null,
         amount: Number(form.amount),
+        includeExistingBalance: form.includeExistingBalance,
         paymentMode: form.paymentMode,
         dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
         purpose: form.purpose || null,
@@ -211,14 +218,15 @@ export default function FinanceDriverAdvancesPage() {
       {loading ? <div className="state-panel">Loading advances...</div> : (
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ width: '100%' }}>
-            <thead><tr><th>Advance</th><th>Driver</th><th>Vehicle</th><th>Amount</th><th>Issued</th><th>Outstanding</th><th>Payment</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Advance</th><th>Driver</th><th>Vehicle</th><th>Allowance</th><th>Cash issued</th><th>Wallet</th><th>Outstanding</th><th>Payment</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>{items.map((advance) => (
               <tr key={advance.id}>
                 <td>{advance.advanceNumber}<br /><small>{advance.purpose || '—'}</small></td>
                 <td>{advance.driverName || driverMap.get(advance.driverId) || advance.driverId}</td>
                 <td>{advance.vehicleNumber || (advance.vehicleId ? vehicleMap.get(advance.vehicleId) : '—') || '—'}</td>
                 <td>{money(advance.amount)}</td>
-                <td>{money(advance.issuedAmount)}</td>
+                <td>{money(advance.cashIssuedAmount ?? advance.issuedAmount)}{advance.existingBalanceApplied ? <><br/><small>{money(advance.existingBalanceApplied)} existing used</small></> : null}</td>
+                <td>{money(advance.walletBalance ?? 0)}</td>
                 <td>{money(advance.balanceAmount)}</td>
                 <td>{advance.paymentMode}</td>
                 <td>{advance.dueDate ? new Date(advance.dueDate).toLocaleString() : '—'} {advance.isOverdue ? '⚠️' : ''}</td>
@@ -253,8 +261,10 @@ export default function FinanceDriverAdvancesPage() {
         <form id="create-advance-form" className="form-grid" onSubmit={createAdvance}>
           <label>Driver<select value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })} required><option value="">Select driver</option>{drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}</select></label>
           <label>Vehicle<select value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}><option value="">Optional</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.vehicleNumber}</option>)}</select></label>
+          <label>Trip<select value={form.tripId} onChange={(e) => { const trip=trips.find(t=>t.id===e.target.value); setForm({ ...form, tripId:e.target.value, driverId:trip?.driverId || form.driverId, vehicleId:trip?.vehicleId || form.vehicleId }); }}><option value="">General / future allowance</option>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.tripNumber} — {trip.originName} to {trip.destinationName}</option>)}</select></label>
           <label>Account<select value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Optional / cash counter</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name} — {money(account.currentBalance)}</option>)}</select></label>
           <label>Amount<input type="number" min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
+          <label style={{ gridColumn: 'span 2' }}><input type="checkbox" checked={form.includeExistingBalance} onChange={(e) => setForm({ ...form, includeExistingBalance: e.target.checked })} /> Use the driver's current wallet balance toward this allowance (₹5,000 existing + ₹10,000 cash = ₹15,000 allowance). Uncheck to issue the full allowance as new cash.</label>
           <label>Payment mode<select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}><option>CASH</option><option>UPI</option><option>BANK_TRANSFER</option><option>CARD</option><option>CHEQUE</option><option>OTHER</option></select></label>
           <label>Due date<input type="datetime-local" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
           <label>Purpose<input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} /></label>

@@ -56,6 +56,7 @@ export const createDriverAdvanceSchema = z.object({
   tripId: optionalId,
   accountId: optionalId,
   amount: positiveMoney,
+  includeExistingBalance: z.boolean().default(false),
   paymentMode: paymentModeEnum.default('CASH'),
   dueDate: optionalDate,
   purpose: z.string().max(500).optional().nullable(),
@@ -68,6 +69,7 @@ export const updateDriverAdvanceSchema = z.object({
   tripId: optionalId,
   accountId: optionalId,
   amount: positiveMoney.optional(),
+  includeExistingBalance: z.boolean().optional(),
   paymentMode: paymentModeEnum.optional(),
   dueDate: optionalDate,
   purpose: z.string().max(500).optional().nullable(),
@@ -96,6 +98,7 @@ export const createDriverSettlementSchema = z.object({
   notes: z.string().max(2000).optional().nullable(),
   includeApprovedFuel: z.boolean().default(true),
   includeApprovedExpenses: z.boolean().default(true),
+  balanceDisposition: z.enum(['RETURN', 'CARRY_FORWARD']).default('RETURN'),
 });
 
 export const transitionSettlementSchema = z.object({
@@ -109,6 +112,7 @@ export const settleDriverSettlementSchema = z.object({
   paymentMode: paymentModeEnum.default('CASH'),
   referenceNumber: z.string().max(100).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  balanceDisposition: z.enum(['RETURN', 'CARRY_FORWARD']).optional(),
 });
 
 export const cashReturnSchema = z.object({

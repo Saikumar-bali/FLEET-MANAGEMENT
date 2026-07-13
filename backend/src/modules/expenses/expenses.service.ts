@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { assertEditable, assertTransition, dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
 import { createNotification } from '../notifications/notifications.service';
+import { debitDriverSpend } from '../staff-wallets/staff-wallets.service';
 
 type ExpenseInput = {
   vehicleId: string;
@@ -71,10 +72,9 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>, ca
 export async function transitionExpense(id: string, status: WorkflowRecordStatus, userId?: string | null, notes?: string | null) {
   const existing = await getExpense(id);
   assertTransition(existing.status, status);
-  const item = await prisma.expense.update({
-    where: { id },
-    data: { status, notes: notes === undefined ? existing.notes : notes, approvedById: status === 'APPROVED' ? userId ?? null : undefined, approvedAt: status === 'APPROVED' ? new Date() : undefined },
-    include: workflowInclude,
+  const item = await prisma.$transaction(async (tx) => {
+    if (status === 'APPROVED' && existing.driverId) await debitDriverSpend(tx as any, { driverId:existing.driverId, tripId:existing.tripId, amount:Number(existing.amount), sourceType:'EXPENSE', sourceId:existing.id, createdById:userId, description:`Approved ${existing.category} expense` });
+    return tx.expense.update({ where: { id }, data: { status, notes: notes === undefined ? existing.notes : notes, approvedById: status === 'APPROVED' ? userId ?? null : undefined, approvedAt: status === 'APPROVED' ? new Date() : undefined }, include: workflowInclude });
   });
 
   try {

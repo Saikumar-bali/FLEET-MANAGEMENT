@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { getDriverIdForUser } from '../user-profile-links/user-profile-links.service';
+import { getWallet, postWalletTransaction, userIdForDriver } from '../staff-wallets/staff-wallets.service';
 
 type DbClient = {
   $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
@@ -29,6 +30,7 @@ type CreateAdvanceInput = {
   tripId?: string | null;
   accountId?: string | null;
   amount: number;
+  includeExistingBalance?: boolean;
   paymentMode: string;
   dueDate?: string | Date | null;
   purpose?: string | null;
@@ -44,6 +46,7 @@ type CreateSettlementInput = {
   includeApprovedExpenses?: boolean;
   createdById?: string | null;
   actorDriverId?: string | null;
+  balanceDisposition?: 'RETURN' | 'CARRY_FORWARD';
 };
 
 type SettleInput = {
@@ -53,6 +56,7 @@ type SettleInput = {
   referenceNumber?: string | null;
   notes?: string | null;
   userId?: string | null;
+  balanceDisposition?: 'RETURN' | 'CARRY_FORWARD';
 };
 
 type AnyRow = Record<string, any>;
@@ -68,6 +72,7 @@ const ADVANCE_SELECT = `
     v.vehicle_number,
     t.trip_number,
     fa.name AS account_name,
+    COALESCE((SELECT sw.current_balance FROM staff_wallets sw JOIN user_profile_links upl ON upl.user_id=sw.user_id AND upl.profile_type='DRIVER' AND upl.profile_id=da.driver_id AND upl.status='ACTIVE' ORDER BY upl.is_primary DESC LIMIT 1),0) AS wallet_balance,
     CASE WHEN da.due_date IS NOT NULL AND da.due_date < NOW() AND da.status IN ('ISSUED','PARTIALLY_SETTLED') AND da.balance_amount > 0 THEN true ELSE false END AS is_overdue
   FROM driver_advances da
   JOIN drivers d ON d.id = da.driver_id
@@ -109,6 +114,10 @@ function normalizeAdvance(row: AnyRow) {
     accountId: row.account_id,
     accountName: row.account_name,
     amount: money(row.amount),
+    includeExistingBalance: Boolean(row.include_existing_balance),
+    existingBalanceApplied: money(row.existing_balance_applied),
+    cashIssuedAmount: money(row.cash_issued_amount),
+    walletBalance: money(row.wallet_balance),
     issuedAmount: money(row.issued_amount),
     settledAmount: money(row.settled_amount),
     returnedAmount: money(row.returned_amount),
@@ -160,6 +169,7 @@ function normalizeSettlement(row: AnyRow) {
     settlementTotal: money(row.settlement_total),
     balanceDueFromDriver: money(row.balance_due_from_driver),
     reimbursementDueToDriver: money(row.reimbursement_due_to_driver),
+    balanceDisposition: row.balance_disposition ?? 'RETURN',
     status: row.status,
     submittedAt: row.submitted_at,
     reviewedAt: row.reviewed_at,
@@ -307,10 +317,10 @@ export async function createDriverAdvance(input: CreateAdvanceInput) {
   await assertNoActiveAdvance(input.driverId);
   const advanceId = id();
   const rows = await prisma.$queryRawUnsafe<AdvanceRow[]>(
-    `INSERT INTO driver_advances (id, advance_number, driver_id, vehicle_id, trip_id, account_id, amount, payment_mode, due_date, purpose, notes, status, created_by_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'DRAFT',$12) RETURNING *`,
+    `INSERT INTO driver_advances (id, advance_number, driver_id, vehicle_id, trip_id, account_id, amount, include_existing_balance, payment_mode, due_date, purpose, notes, status, created_by_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'DRAFT',$13) RETURNING *`,
     advanceId, sequence('ADV'), input.driverId, input.vehicleId ?? null, input.tripId ?? null, input.accountId ?? null,
-    input.amount, input.paymentMode, asDate(input.dueDate), input.purpose ?? null, input.notes ?? null, input.createdById ?? null,
+    input.amount, input.includeExistingBalance ?? false, input.paymentMode, asDate(input.dueDate), input.purpose ?? null, input.notes ?? null, input.createdById ?? null,
   );
   await insertHistory(prisma, { advanceId, action: 'ADVANCE_CREATED', toStatus: 'DRAFT', createdById: input.createdById ?? null, newValues: rows[0] });
   return getDriverAdvance(advanceId);
@@ -323,10 +333,10 @@ export async function updateDriverAdvance(idValue: string, input: Partial<Create
   await validateReferences(nextDriverId, input.vehicleId === undefined ? existing.vehicle_id : input.vehicleId, input.tripId === undefined ? existing.trip_id : input.tripId, input.accountId === undefined ? existing.account_id : input.accountId);
   await assertNoActiveAdvance(nextDriverId, idValue);
   await prisma.$executeRawUnsafe(
-    `UPDATE driver_advances SET driver_id=COALESCE($2, driver_id), vehicle_id=$3, trip_id=$4, account_id=$5, amount=COALESCE($6, amount), payment_mode=COALESCE($7, payment_mode), due_date=$8, purpose=$9, notes=$10, updated_at=NOW() WHERE id=$1`,
+    `UPDATE driver_advances SET driver_id=COALESCE($2, driver_id), vehicle_id=$3, trip_id=$4, account_id=$5, amount=COALESCE($6, amount), payment_mode=COALESCE($7, payment_mode), due_date=$8, purpose=$9, notes=$10, include_existing_balance=COALESCE($11,include_existing_balance), updated_at=NOW() WHERE id=$1`,
     idValue, input.driverId ?? null, input.vehicleId === undefined ? existing.vehicle_id : input.vehicleId, input.tripId === undefined ? existing.trip_id : input.tripId,
     input.accountId === undefined ? existing.account_id : input.accountId, input.amount ?? null, input.paymentMode ?? null,
-    input.dueDate === undefined ? existing.due_date : asDate(input.dueDate), input.purpose === undefined ? existing.purpose : input.purpose, input.notes === undefined ? existing.notes : input.notes,
+    input.dueDate === undefined ? existing.due_date : asDate(input.dueDate), input.purpose === undefined ? existing.purpose : input.purpose, input.notes === undefined ? existing.notes : input.notes, input.includeExistingBalance ?? null,
   );
   await insertHistory(prisma, { advanceId: idValue, action: 'ADVANCE_UPDATED', fromStatus: existing.status, toStatus: existing.status, createdById: userId ?? null, oldValues: existing, newValues: input });
   return getDriverAdvance(idValue);
@@ -344,9 +354,16 @@ export async function issueDriverAdvance(idValue: string, input: { accountId?: s
   const paymentMode = input.paymentMode ?? existing.payment_mode;
   await validateReferences(existing.driver_id, existing.vehicle_id, existing.trip_id, accountId);
   await prisma.$transaction(async (tx: any) => {
-    await createFinanceTransfer(tx, { sourceId: existing.id, vehicleId: existing.vehicle_id, tripId: existing.trip_id, driverId: existing.driver_id, accountId, amount: money(existing.amount), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver advance issued: ${existing.advance_number}`, createdById: input.userId ?? null, direction: 'OUT' });
-    await tx.$executeRawUnsafe(`UPDATE driver_advances SET account_id=$2, payment_mode=$3, issued_amount=amount, balance_amount=amount, issued_at=NOW(), issued_by_id=$4, status='ISSUED', notes=COALESCE($5, notes), updated_at=NOW() WHERE id=$1`, idValue, accountId ?? null, paymentMode, input.userId ?? null, input.notes ?? null);
-    await insertHistory(tx, { advanceId: idValue, action: 'ADVANCE_ISSUED', fromStatus: existing.status, toStatus: 'ISSUED', createdById: input.userId ?? null, newValues: { accountId, paymentMode } });
+    const staffUserId = await userIdForDriver(existing.driver_id, tx);
+    if (!staffUserId) throw new AppError('Driver must be linked to an active user before an advance can be issued', 409);
+    const wallet = await getWallet(staffUserId, tx);
+    const available = money(wallet.current_balance);
+    const applied = existing.include_existing_balance ? Math.min(available, money(existing.amount)) : 0;
+    const cashToIssue = money(existing.amount) - applied;
+    await createFinanceTransfer(tx, { sourceId: existing.id, vehicleId: existing.vehicle_id, tripId: existing.trip_id, driverId: existing.driver_id, accountId, amount: cashToIssue, paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Staff wallet advance issued: ${existing.advance_number}`, createdById: input.userId ?? null, direction: 'OUT' });
+    if (cashToIssue > 0) await postWalletTransaction(tx, { userId: staffUserId, direction:'CREDIT', transactionType:'ADVANCE', amount:cashToIssue, sourceType:'DRIVER_ADVANCE', sourceId:existing.id, idempotencyKey:`driver-advance:${existing.id}:issue`, tripId:existing.trip_id, driverId:existing.driver_id, description:`Advance ${existing.advance_number}`, createdById:input.userId });
+    await tx.$executeRawUnsafe(`UPDATE driver_advances SET account_id=$2, payment_mode=$3, issued_amount=amount, cash_issued_amount=$4, existing_balance_applied=$5, balance_amount=amount, issued_at=NOW(), issued_by_id=$6, status='ISSUED', notes=COALESCE($7, notes), updated_at=NOW() WHERE id=$1`, idValue, accountId ?? null, paymentMode, cashToIssue, applied, input.userId ?? null, input.notes ?? null);
+    await insertHistory(tx, { advanceId: idValue, action: 'ADVANCE_ISSUED', fromStatus: existing.status, toStatus: 'ISSUED', createdById: input.userId ?? null, newValues: { accountId, paymentMode, allowanceAmount: money(existing.amount), existingBalanceApplied: applied, cashIssuedAmount: cashToIssue } });
   });
   return getDriverAdvance(idValue);
 }
@@ -358,6 +375,9 @@ export async function cancelDriverAdvance(idValue: string, reason: string, userI
   if (Number(openSettlements?.count ?? 0) > 0) throw new AppError('Cannot cancel advance with active settlements', 409);
   await prisma.$transaction(async (tx: any) => {
     if (['ISSUED', 'PARTIALLY_SETTLED'].includes(existing.status) && money(existing.balance_amount) > 0) {
+      const staffUserId = await userIdForDriver(existing.driver_id, tx);
+      if (!staffUserId) throw new AppError('Driver is not linked to an active staff wallet', 409);
+      await postWalletTransaction(tx, { userId:staffUserId, direction:'DEBIT', transactionType:'REVERSAL', amount:money(existing.balance_amount), sourceType:'DRIVER_ADVANCE', sourceId:existing.id, idempotencyKey:`driver-advance:${existing.id}:cancel`, tripId:existing.trip_id, driverId:existing.driver_id, description:`Cancelled advance ${existing.advance_number}`, createdById:userId });
       await createFinanceTransfer(tx, { sourceId: existing.id, vehicleId: existing.vehicle_id, tripId: existing.trip_id, driverId: existing.driver_id, accountId: existing.account_id, amount: money(existing.balance_amount), paymentMode: existing.payment_mode, referenceNumber: null, description: `Driver advance cancellation reversal: ${existing.advance_number}`, createdById: userId ?? null, direction: 'IN' });
     }
     await tx.$executeRawUnsafe(`UPDATE driver_advances SET status='CANCELLED', balance_amount=0, issued_amount=0, settled_amount=0, returned_amount=0, cancelled_by_id=$2, cancelled_at=NOW(), cancellation_reason=$3, updated_at=NOW() WHERE id=$1`, idValue, userId ?? null, reason);
@@ -400,7 +420,7 @@ async function recalculateSettlement(idValue: string, db: DbClient = prisma) {
 }
 
 async function updateAdvanceBalance(advanceId: string, db: DbClient = prisma) {
-  await db.$executeRawUnsafe(`WITH active_settlements AS (SELECT advance_id, COALESCE(SUM(total_approved_spend),0) AS spend, COALESCE(SUM(returned_cash_amount),0) AS returned, COALESCE(SUM(settlement_total),0) AS settled_total FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('DRAFT','CANCELLED','REJECTED') GROUP BY advance_id) UPDATE driver_advances da SET settled_amount=active_settlements.spend, returned_amount=active_settlements.returned, balance_amount=GREATEST(da.issued_amount - active_settlements.settled_total, 0), status=CASE WHEN da.status IN ('ISSUED','PARTIALLY_SETTLED') THEN CASE WHEN GREATEST(da.issued_amount - active_settlements.settled_total, 0) = 0 THEN 'SETTLED' ELSE 'PARTIALLY_SETTLED' END ELSE da.status END, updated_at=NOW() FROM active_settlements WHERE da.id=active_settlements.advance_id AND da.id=$1`, advanceId);
+  await db.$executeRawUnsafe(`WITH active_settlements AS (SELECT advance_id, COALESCE(SUM(total_approved_spend),0) AS spend, COALESCE(SUM(returned_cash_amount),0) AS returned, COALESCE(SUM(settlement_total),0) AS settled_total FROM driver_settlements WHERE advance_id=$1 AND status NOT IN ('DRAFT','CANCELLED','REJECTED') GROUP BY advance_id) UPDATE driver_advances da SET settled_amount=active_settlements.spend, returned_amount=active_settlements.returned, balance_amount=GREATEST(da.issued_amount - active_settlements.settled_total, 0), status=CASE WHEN da.status IN ('ISSUED','PARTIALLY_SETTLED') THEN 'PARTIALLY_SETTLED' ELSE da.status END, updated_at=NOW() FROM active_settlements WHERE da.id=active_settlements.advance_id AND da.id=$1`, advanceId);
 }
 
 export async function createDriverSettlement(advanceId: string, input: CreateSettlementInput) {
@@ -411,7 +431,7 @@ export async function createDriverSettlement(advanceId: string, input: CreateSet
   if (activeSettlement) throw new AppError('Advance already has an active settlement', 409);
   const settlementId = id();
   await prisma.$transaction(async (tx: any) => {
-    await tx.$executeRawUnsafe(`INSERT INTO driver_settlements (id, settlement_number, advance_id, driver_id, vehicle_id, trip_id, adjustment_amount, notes, status, created_by_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9)`, settlementId, sequence('SET'), advanceId, advance.driver_id, advance.vehicle_id, advance.trip_id, input.adjustmentAmount ?? 0, input.notes ?? null, input.createdById ?? null);
+    await tx.$executeRawUnsafe(`INSERT INTO driver_settlements (id, settlement_number, advance_id, driver_id, vehicle_id, trip_id, adjustment_amount, balance_disposition, notes, status, created_by_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'DRAFT',$10)`, settlementId, sequence('SET'), advanceId, advance.driver_id, advance.vehicle_id, advance.trip_id, input.adjustmentAmount ?? 0, input.balanceDisposition ?? 'RETURN', input.notes ?? null, input.createdById ?? null);
     if (input.includeApprovedFuel !== false) for (const row of await getApprovedFuelRows(tx, advance.driver_id, advance.vehicle_id, advance.trip_id)) await tx.$executeRawUnsafe(`INSERT INTO driver_settlement_lines (id, settlement_id, line_type, fuel_entry_id, amount, approved_amount, description) VALUES ($1,$2,'FUEL',$3,$4,$4,'Approved fuel spend')`, id(), settlementId, row.id, money(row.amount));
     if (input.includeApprovedExpenses !== false) for (const row of await getApprovedExpenseRows(tx, advance.driver_id, advance.vehicle_id, advance.trip_id)) await tx.$executeRawUnsafe(`INSERT INTO driver_settlement_lines (id, settlement_id, line_type, expense_id, amount, approved_amount, description) VALUES ($1,$2,'EXPENSE',$3,$4,$4,'Approved expense spend')`, id(), settlementId, row.id, money(row.amount));
     if ((input.returnedCashAmount ?? 0) > 0) await tx.$executeRawUnsafe(`INSERT INTO driver_settlement_lines (id, settlement_id, line_type, amount, approved_amount, description) VALUES ($1,$2,'CASH_RETURN',$3,$3,'Cash returned by driver')`, id(), settlementId, input.returnedCashAmount);
@@ -483,11 +503,21 @@ export async function settleDriverSettlement(idValue: string, input: SettleInput
   const finalRow = await recalculateSettlement(idValue);
   const accountId = input.accountId ?? null;
   const paymentMode = input.paymentMode ?? 'CASH';
+  const disposition = input.balanceDisposition ?? finalRow.balance_disposition ?? 'RETURN';
+  if (disposition === 'RETURN' && money(finalRow.balance_due_from_driver) > 0) throw new AppError('Full remaining balance must be returned before closing, or choose CARRY_FORWARD', 409);
   await prisma.$transaction(async (tx: any) => {
-    if (money(finalRow.returned_cash_amount) > 0) await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.returned_cash_amount), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver advance cash returned: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'IN' });
-    if (money(finalRow.reimbursement_due_to_driver) > 0) await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.reimbursement_due_to_driver), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver reimbursement from settlement: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'OUT' });
-    await tx.$executeRawUnsafe(`UPDATE driver_settlements SET status='SETTLED', settled_at=NOW(), settled_by_id=$2, notes=COALESCE($3, notes), updated_at=NOW() WHERE id=$1`, idValue, input.userId ?? null, input.notes ?? null);
-    await updateAdvanceBalance(finalRow.advance_id, tx);
+    const staffUserId = await userIdForDriver(finalRow.driver_id, tx);
+    if (!staffUserId) throw new AppError('Driver is not linked to an active staff wallet', 409);
+    if (disposition === 'RETURN' && money(finalRow.returned_cash_amount) > 0) {
+      await postWalletTransaction(tx, { userId:staffUserId, direction:'DEBIT', transactionType:'RETURN', amount:money(finalRow.returned_cash_amount), sourceType:'DRIVER_SETTLEMENT', sourceId:finalRow.id, idempotencyKey:`driver-settlement:${finalRow.id}:return`, tripId:finalRow.trip_id, driverId:finalRow.driver_id, description:`Cash returned for ${finalRow.settlement_number}`, createdById:input.userId });
+      await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.returned_cash_amount), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver advance cash returned: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'IN' });
+    }
+    if (money(finalRow.reimbursement_due_to_driver) > 0) {
+      await createFinanceTransfer(tx, { sourceId: finalRow.id, vehicleId: finalRow.vehicle_id, tripId: finalRow.trip_id, driverId: finalRow.driver_id, accountId, amount: money(finalRow.reimbursement_due_to_driver), paymentMode, referenceNumber: input.referenceNumber ?? null, description: `Driver reimbursement from settlement: ${finalRow.settlement_number}`, createdById: input.userId ?? null, direction: 'OUT' });
+      await postWalletTransaction(tx, { userId:staffUserId, direction:'CREDIT', transactionType:'REIMBURSEMENT', amount:money(finalRow.reimbursement_due_to_driver), sourceType:'DRIVER_SETTLEMENT', sourceId:finalRow.id, idempotencyKey:`driver-settlement:${finalRow.id}:reimbursement`, tripId:finalRow.trip_id, driverId:finalRow.driver_id, description:`Reimbursement for ${finalRow.settlement_number}`, createdById:input.userId });
+    }
+    await tx.$executeRawUnsafe(`UPDATE driver_settlements SET status='SETTLED', balance_disposition=$4, settled_at=NOW(), settled_by_id=$2, notes=COALESCE($3, notes), updated_at=NOW() WHERE id=$1`, idValue, input.userId ?? null, input.notes ?? null, disposition);
+    await tx.$executeRawUnsafe(`UPDATE driver_advances SET status='SETTLED', balance_amount=0, returned_amount=$2, settled_amount=$3, updated_at=NOW() WHERE id=$1`, finalRow.advance_id, disposition === 'RETURN' ? money(finalRow.returned_cash_amount) : 0, money(finalRow.total_approved_spend));
     await insertHistory(tx, { settlementId: idValue, advanceId: finalRow.advance_id, action: 'SETTLEMENT_SETTLED', fromStatus: existing.status, toStatus: 'SETTLED', remarks: input.notes ?? null, createdById: input.userId ?? null, newValues: normalizeSettlement(finalRow) });
   });
   return getDriverSettlement(idValue);

@@ -13,6 +13,10 @@ export type DriverAdvance = {
   accountId?: string | null;
   accountName?: string | null;
   amount: number;
+  includeExistingBalance?: boolean;
+  existingBalanceApplied?: number;
+  cashIssuedAmount?: number;
+  walletBalance?: number;
   issuedAmount: number;
   settledAmount: number;
   returnedAmount: number;
@@ -82,6 +86,7 @@ export type DriverSettlement = {
   settlementTotal: number;
   balanceDueFromDriver: number;
   reimbursementDueToDriver: number;
+  balanceDisposition?: 'RETURN' | 'CARRY_FORWARD';
   status: DriverSettlementStatus;
   reviewComments?: string | null;
   notes?: string | null;

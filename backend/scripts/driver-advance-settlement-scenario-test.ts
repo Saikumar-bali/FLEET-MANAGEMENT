@@ -83,7 +83,11 @@ async function cleanup() {
     await prisma.expense.deleteMany({ where: { driverId: { in: driverIds } } }).catch(() => undefined);
     await prisma.userProfileLink.deleteMany({ where: { profileType: 'DRIVER', profileId: { in: driverIds } } }).catch(() => undefined);
   }
-  if (userIds.length > 0) await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => undefined);
+  if (userIds.length > 0) {
+    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallet_transactions WHERE wallet_id IN (SELECT id FROM staff_wallets WHERE user_id = ANY($1))`, userIds).catch(() => undefined);
+    await prisma.$executeRawUnsafe(`DELETE FROM staff_wallets WHERE user_id = ANY($1)`, userIds).catch(() => undefined);
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => undefined);
+  }
   if (vehicleIds.length > 0) await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } }).catch(() => undefined);
   if (driverIds.length > 0) await prisma.driver.deleteMany({ where: { id: { in: driverIds } } }).catch(() => undefined);
 }
@@ -185,6 +189,9 @@ async function main() {
   if (issueRes.data?.data?.status !== 'ISSUED') throw new Error(`Advance issue failed: ${JSON.stringify(issueRes.data)}`);
   pass('Admin issued approved advance');
 
+  const walletAfterIssue = await request('GET', '/api/v1/me/staff-wallet', driverToken);
+  if (walletAfterIssue.data?.data?.currentBalance === 5000) pass('Advance auto-credited driver staff wallet'); else fail(`Expected wallet 5000 after issue: ${JSON.stringify(walletAfterIssue.data)}`);
+
   const myAdvance = await request('GET', `/api/v1/me/driver-advances/${advance.id}`, driverToken);
   if (myAdvance.status === 200 && myAdvance.data?.data?.issuedAmount === 5000) pass('Driver can view own issued advance'); else fail('Driver cannot view own issued advance');
 
@@ -195,10 +202,8 @@ async function main() {
       fuelDate: new Date(),
       fuelType: 'DIESEL',
       totalAmount: 2500,
-      status: 'APPROVED',
+      status: 'SUBMITTED',
       createdById: driverUserId,
-      approvedById: driverUserId,
-      approvedAt: new Date(),
     },
   });
   await prisma.expense.create({
@@ -208,13 +213,17 @@ async function main() {
       category: 'TOLL',
       expenseDate: new Date(),
       amount: 500,
-      status: 'APPROVED',
+      status: 'SUBMITTED',
       createdById: driverUserId,
-      approvedById: driverUserId,
-      approvedAt: new Date(),
     },
   });
-  pass('Seeded approved fuel and expense spends');
+  const fuel = await prisma.fuelEntry.findFirst({ where: { driverId, status:'SUBMITTED' }, orderBy:{createdAt:'desc'} });
+  const expense = await prisma.expense.findFirst({ where: { driverId, status:'SUBMITTED' }, orderBy:{createdAt:'desc'} });
+  const fuelApproval = await request('POST', `/api/v1/fuel/${fuel!.id}/approve`, adminToken, { notes:'verified' });
+  const expenseApproval = await request('POST', `/api/v1/expenses/${expense!.id}/approve`, adminToken, { notes:'verified' });
+  if (fuelApproval.status === 200 && expenseApproval.status === 200) pass('Approved fuel and expense through real workflow'); else fail('Fuel/expense approval failed');
+  const walletAfterSpend = await request('GET', '/api/v1/me/staff-wallet', driverToken);
+  if (walletAfterSpend.data?.data?.currentBalance === 2000) pass('Fuel and expense auto-debited wallet exactly once'); else fail(`Expected live wallet balance 2000: ${JSON.stringify(walletAfterSpend.data)}`);
 
   const settlementRes = await request('POST', `/api/v1/driver-advances/${advance.id}/settlements`, adminToken, {
     returnedCashAmount: 2000,
@@ -250,6 +259,29 @@ async function main() {
   } else {
     fail(`Advance final state invalid: ${JSON.stringify(finalAdvance.data)}`);
   }
+
+  const walletAfterReturn = await request('GET', '/api/v1/me/staff-wallet', driverToken);
+  if (walletAfterReturn.data?.data?.currentBalance === 0) pass('Returned cash debited wallet and closed accountability'); else fail(`Expected zero wallet after return: ${JSON.stringify(walletAfterReturn.data)}`);
+
+  const adjustmentRef = `opening-carry-${ts}`;
+  const adjustment = await request('POST', `/api/v1/staff-wallets/${driverUserId}/transactions`, adminToken, { direction:'CREDIT', amount:5000, reason:'Existing carried staff cash for allowance scenario', reference:adjustmentRef });
+  if (adjustment.status === 201) pass('Role-neutral staff wallet adjustment works'); else fail(`Wallet adjustment failed: ${JSON.stringify(adjustment.data)}`);
+
+  const allowanceRes = await request('POST', '/api/v1/driver-advances', adminToken, { driverId, vehicleId, amount:15000, includeExistingBalance:true, paymentMode:'CASH', purpose:'₹15,000 trip allowance using ₹5,000 existing cash' });
+  const allowance = allowanceRes.data?.data;
+  await request('PATCH', `/api/v1/driver-advances/${allowance.id}/submit`, adminToken, {});
+  await request('PATCH', `/api/v1/driver-advances/${allowance.id}/approve`, adminToken, { reason:'Allowance approved' });
+  const allowanceIssue = await request('PATCH', `/api/v1/driver-advances/${allowance.id}/issue`, adminToken, { paymentMode:'CASH' });
+  const issuedAllowance = allowanceIssue.data?.data;
+  if (issuedAllowance?.existingBalanceApplied === 5000 && issuedAllowance?.cashIssuedAmount === 10000 && issuedAllowance?.walletBalance === 15000) pass('₹5,000 existing + ₹10,000 issued = ₹15,000 allowance'); else fail(`Existing-balance allowance failed: ${JSON.stringify(allowanceIssue.data)}`);
+
+  const carryDraft = await request('POST', `/api/v1/driver-advances/${allowance.id}/settlements`, adminToken, { returnedCashAmount:0, includeApprovedFuel:true, includeApprovedExpenses:true, balanceDisposition:'CARRY_FORWARD', notes:'Keep for next allowance' });
+  const carryId = carryDraft.data?.data?.id;
+  await request('PATCH', `/api/v1/driver-settlements/${carryId}/submit`, adminToken, {});
+  await request('PATCH', `/api/v1/driver-settlements/${carryId}/approve`, adminToken, { reason:'Carry approved' });
+  const carryClose = await request('PATCH', `/api/v1/driver-settlements/${carryId}/settle`, adminToken, { paymentMode:'CASH', balanceDisposition:'CARRY_FORWARD' });
+  const walletAfterCarry = await request('GET', '/api/v1/me/staff-wallet', driverToken);
+  if (carryClose.data?.data?.status === 'SETTLED' && walletAfterCarry.data?.data?.currentBalance === 15000) pass('Settlement can close while retaining wallet cash for future allowances'); else fail('Carry-forward settlement failed');
 
   const report = await request('GET', '/api/v1/driver-advances/reports/summary', adminToken);
   if (report.status === 200 && report.data?.data?.summary) pass('Advance summary report available'); else fail('Advance summary report failed');
