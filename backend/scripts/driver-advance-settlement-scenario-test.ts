@@ -221,7 +221,8 @@ async function main() {
   const expense = await prisma.expense.findFirst({ where: { driverId, status:'SUBMITTED' }, orderBy:{createdAt:'desc'} });
   const fuelApproval = await request('POST', `/api/v1/fuel/${fuel!.id}/approve`, adminToken, { notes:'verified' });
   const expenseApproval = await request('POST', `/api/v1/expenses/${expense!.id}/approve`, adminToken, { notes:'verified' });
-  if (fuelApproval.status === 200 && expenseApproval.status === 200) pass('Approved fuel and expense through real workflow'); else fail('Fuel/expense approval failed');
+  if (fuelApproval.status === 200 && expenseApproval.status === 200) pass('Approved fuel and expense through real workflow');
+  else fail(`Fuel/expense approval failed: fuel=${JSON.stringify(fuelApproval.data)} expense=${JSON.stringify(expenseApproval.data)}`);
   const walletAfterSpend = await request('GET', '/api/v1/me/staff-wallet', driverToken);
   if (walletAfterSpend.data?.data?.currentBalance === 2000) pass('Fuel and expense auto-debited wallet exactly once'); else fail(`Expected live wallet balance 2000: ${JSON.stringify(walletAfterSpend.data)}`);
 

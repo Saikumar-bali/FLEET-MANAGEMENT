@@ -25,6 +25,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'driver_document_upload',
       'driver_vehicle_issue_report',
       'driver_vehicle_inspection_create',
+      'staff_wallet_view_own',
     ],
   },
   {
@@ -50,6 +51,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'driver_vehicle_self_checkout',
       'driver_vehicle_return',
       'driver_vehicle_checkout_view_own',
+      'staff_wallet_view_own',
     ],
   },
   {
@@ -80,6 +82,9 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'driver_inspection_review',
       'maintenance_view',
       'repair_view',
+      'staff_wallet_view',
+      'staff_wallet_adjust',
+      'staff_wallet_view_own',
     ],
   },
   {
@@ -110,6 +115,9 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'vendors_update',
       'report_view',
       'report_export',
+      'staff_wallet_view',
+      'staff_wallet_adjust',
+      'staff_wallet_view_own',
     ],
   },
   {
@@ -132,6 +140,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'documents_view',
       'documents_upload',
       'documents_download',
+      'staff_wallet_view_own',
     ],
   },
   {
@@ -157,6 +166,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       'user_view',
       'permission_view',
       'profile_link_view',
+      'staff_wallet_view_own',
     ],
   },
 ];

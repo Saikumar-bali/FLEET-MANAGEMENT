@@ -122,6 +122,9 @@ export const permissionDefinitions: PermissionDefinition[] = [
   { key: 'customers_delete', module: 'customers', action: 'delete', description: 'Delete customers' },
   { key: 'pnl_view', module: 'pnl', action: 'view', description: 'View P&L reports' },
   { key: 'finance_history_view', module: 'finance_history', action: 'view', description: 'View finance history' },
+  { key: 'staff_wallet_view', module: 'staff_wallets', action: 'view', description: 'View staff wallets and ledger' },
+  { key: 'staff_wallet_adjust', module: 'staff_wallets', action: 'adjust', description: 'Post controlled staff wallet adjustments' },
+  { key: 'staff_wallet_view_own', module: 'staff_wallets', action: 'view_own', description: 'View own wallet and ledger' },
   { key: 'profile_link_view', module: 'profile_link', action: 'view', description: 'View profile links' },
   { key: 'profile_link_create', module: 'profile_link', action: 'create', description: 'Create profile links' },
   { key: 'profile_link_update', module: 'profile_link', action: 'update', description: 'Update profile links' },
@@ -273,6 +276,9 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'driver_document_verify',
     'driver_issue_review',
     'driver_inspection_review',
+    'staff_wallet_view',
+    'staff_wallet_adjust',
+    'staff_wallet_view_own',
   ],
   supervisor: [
     'dashboard_view',
@@ -327,6 +333,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'driver_document_verify',
     'driver_issue_review',
     'driver_inspection_review',
+    'staff_wallet_view_own',
   ],
   driver: [
     'driver_portal_view',
@@ -351,8 +358,9 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'driver_challan_upload',
     'driver_vehicle_issue_report',
     'driver_vehicle_inspection_create',
+    'staff_wallet_view_own',
   ],
-  assistant_driver: ['trip_view'],
+  assistant_driver: ['trip_view', 'staff_wallet_view_own'],
   collector: [
     'payments_view',
     'payments_create',
@@ -360,8 +368,9 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'customers_view',
     'finance_view',
     'report_view',
+    'staff_wallet_view_own',
   ],
-  mechanic: ['repair_view', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_update', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'document_metadata_view', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view'],
+  mechanic: ['repair_view', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_update', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'document_metadata_view', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view', 'staff_wallet_view_own'],
   finance: [
     'finance_view',
     'finance_create',
@@ -402,6 +411,9 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'expense_approve',
     'report_view',
     'report_export',
+    'staff_wallet_view',
+    'staff_wallet_adjust',
+    'staff_wallet_view_own',
   ],
   viewer: [
     'dashboard_view',
@@ -423,5 +435,6 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'user_view',
     'permission_view',
     'profile_link_view',
+    'staff_wallet_view_own',
   ],
 };

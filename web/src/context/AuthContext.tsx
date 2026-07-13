@@ -41,6 +41,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
   useEffect(() => {
+    // Remove sessions written by versions that predate HttpOnly cookie auth.
+    window.localStorage.removeItem('fleet-auth-session');
     const bootstrap = async () => {
       try {
         const meResponse = await api.getCurrentUser(COOKIE_SESSION);
