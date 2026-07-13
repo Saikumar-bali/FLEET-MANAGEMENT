@@ -3,19 +3,20 @@ import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
 import { AppError } from '../../utils/appError';
 import { prisma } from '../../lib/prisma';
-import { getActorContext } from '../access/actor-context.service';
+
+import type { ActorContext } from '../access/actor-context.service';
 import { can } from '../access/access-policy.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import { getBoardData, checkConflicts, assignTrip, getRouteEstimate, getDispatchTargets } from './dispatch.service';
 
-function assertPermission(actor: Awaited<ReturnType<typeof getActorContext>>, permission: string) {
+function assertPermission(actor: ActorContext, permission: string) {
   if (!can(actor, permission)) {
     throw new AppError(`Access denied: missing permission ${permission}`, 403);
   }
 }
 
 export async function getBoardController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertPermission(actor, 'trip_view');
   assertPermission(actor, 'vehicle_view');
   assertPermission(actor, 'driver_view');
@@ -29,7 +30,7 @@ export async function getBoardController(req: Request, res: Response) {
 }
 
 export async function checkConflictsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertPermission(actor, 'trip_view');
 
   const { tripId, driverId, vehicleId } = req.body;
@@ -54,7 +55,7 @@ export async function checkConflictsController(req: Request, res: Response) {
 }
 
 export async function assignTripController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const { tripId, driverId, vehicleId } = req.body;
 
   if (!tripId || !driverId || !vehicleId) {
@@ -81,7 +82,7 @@ export async function assignTripController(req: Request, res: Response) {
 }
 
 export async function getRouteEstimateController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertPermission(actor, 'trip_view');
 
   const { origin, destination } = req.query as Record<string, string>;

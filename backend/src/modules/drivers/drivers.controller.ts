@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import {
@@ -15,7 +14,7 @@ import {
 const RESOURCE: ResourceType = 'DRIVER';
 
 export async function listDriversController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
 
   const result = await listDrivers({
@@ -29,14 +28,14 @@ export async function listDriversController(req: Request, res: Response) {
 }
 
 export async function getDriverController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const driver = await getDriverById(String(req.params.id));
   assertCanReadResource(actor, RESOURCE, driver as unknown as Record<string, unknown>);
   return sendSuccess(res, driver);
 }
 
 export async function createDriverController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertCanCreateResource(actor, RESOURCE, req.body);
 
   const driver = await createDriver(req.body);
@@ -53,7 +52,7 @@ export async function createDriverController(req: Request, res: Response) {
 }
 
 export async function updateDriverController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getDriverById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
@@ -72,7 +71,7 @@ export async function updateDriverController(req: Request, res: Response) {
 }
 
 export async function updateDriverStatusController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getDriverById(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
 

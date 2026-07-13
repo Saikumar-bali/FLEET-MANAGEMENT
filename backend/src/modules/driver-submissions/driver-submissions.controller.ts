@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getActorContext, type ActorContext } from '../access/actor-context.service';
+import type { ActorContext } from '../access/actor-context.service';
 import { getScopedWhereForResource, assertCanReadResource, assertCanUpdateResource } from '../access/scoped-enforcement.service';
 import { isGlobalUser } from '../access/access-policy.service';
 import type { ResourceType } from '../access/resource-scope-map';
@@ -127,7 +127,7 @@ function listOpts(req: Request) {
 }
 
 export async function listAllSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const opts = listOpts(req);
 
   const childScopedWhere = getVehicleScopedWhereForChildRecord(actor);
@@ -143,35 +143,35 @@ export async function listAllSubmissionsController(req: Request, res: Response) 
 }
 
 export async function listFuelSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, 'FUEL_ENTRY' as ResourceType);
   const result = await listFuelSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
 
 export async function listExpenseSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, 'EXPENSE' as ResourceType);
   const result = await listExpenseSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
 
 export async function listDocumentSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, 'DOCUMENT' as ResourceType);
   const result = await listDocumentSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
 
 export async function listIssueSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getVehicleScopedWhereForChildRecord(actor);
   const result = await listIssueSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
 }
 
 export async function listInspectionSubmissionsController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getVehicleScopedWhereForChildRecord(actor);
   const result = await listInspectionSubmissions({ ...listOpts(req), extraWhere: scopedWhere as Record<string, unknown> });
   return sendSuccess(res, result);
@@ -191,7 +191,7 @@ function auditMeta(req: Request, oldStatus: string, newStatus: string, entityId:
 }
 
 export async function approveFuelController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -218,7 +218,7 @@ export async function approveFuelController(req: Request, res: Response) {
 }
 
 export async function rejectFuelController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -240,7 +240,7 @@ export async function rejectFuelController(req: Request, res: Response) {
 }
 
 export async function requestChangesFuelController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getFuelSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -264,7 +264,7 @@ export async function requestChangesFuelController(req: Request, res: Response) 
 // ─── Expense review actions ────────────────────────────────────
 
 export async function approveExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -291,7 +291,7 @@ export async function approveExpenseController(req: Request, res: Response) {
 }
 
 export async function rejectExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -313,7 +313,7 @@ export async function rejectExpenseController(req: Request, res: Response) {
 }
 
 export async function requestChangesExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getExpenseSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -337,7 +337,7 @@ export async function requestChangesExpenseController(req: Request, res: Respons
 // ─── Document review actions ───────────────────────────────────
 
 export async function verifyDocumentController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -364,7 +364,7 @@ export async function verifyDocumentController(req: Request, res: Response) {
 }
 
 export async function rejectDocumentController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -386,7 +386,7 @@ export async function rejectDocumentController(req: Request, res: Response) {
 }
 
 export async function requestChangesDocumentController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getDocumentSubmission(String(req.params.id));
   assertCanUpdateResource(actor, 'DOCUMENT' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -410,7 +410,7 @@ export async function requestChangesDocumentController(req: Request, res: Respon
 // ─── Vehicle issue review actions ──────────────────────────────
 
 export async function acknowledgeIssueController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -437,7 +437,7 @@ export async function acknowledgeIssueController(req: Request, res: Response) {
 }
 
 export async function resolveIssueController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -465,7 +465,7 @@ export async function resolveIssueController(req: Request, res: Response) {
 }
 
 export async function rejectIssueController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getIssueSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -494,7 +494,7 @@ export async function rejectIssueController(req: Request, res: Response) {
 // ─── Inspection review actions ─────────────────────────────────
 
 export async function reviewInspectionController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -521,7 +521,7 @@ export async function reviewInspectionController(req: Request, res: Response) {
 }
 
 export async function rejectInspectionController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
@@ -548,7 +548,7 @@ export async function rejectInspectionController(req: Request, res: Response) {
 }
 
 export async function requestChangesInspectionController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getInspectionSubmission(String(req.params.id));
   await assertCanUpdateByVehicleId(existing as any, actor, 'UPDATE');
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);

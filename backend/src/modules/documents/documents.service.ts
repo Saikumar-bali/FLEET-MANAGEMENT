@@ -250,8 +250,8 @@ export async function uploadDocument(
   return doc;
 }
 
-export async function updateDocument(documentId: string, input: DocumentUpdateInput) {
-  const existing = await prisma.document.findUnique({ where: { id: documentId } });
+export async function updateDocument(documentId: string, input: DocumentUpdateInput, existingDoc?: { documentStatus: string } | null) {
+  const existing = existingDoc ?? await prisma.document.findUnique({ where: { id: documentId } });
   if (!existing || existing.documentStatus === 'DELETED') {
     throw new AppError('Document not found', 404);
   }
@@ -304,8 +304,8 @@ export async function updateDocument(documentId: string, input: DocumentUpdateIn
   return doc;
 }
 
-export async function verifyDocument(documentId: string, verificationStatus: string, verifiedById: string, notes?: string) {
-  const existing = await prisma.document.findUnique({ where: { id: documentId } });
+export async function verifyDocument(documentId: string, verificationStatus: string, verifiedById: string, notes?: string, existingDoc?: { documentStatus: string } | null) {
+  const existing = existingDoc ?? await prisma.document.findUnique({ where: { id: documentId } });
   if (!existing || existing.documentStatus === 'DELETED') {
     throw new AppError('Document not found', 404);
   }
@@ -327,8 +327,8 @@ export async function verifyDocument(documentId: string, verificationStatus: str
   return doc;
 }
 
-export async function archiveDocument(documentId: string) {
-  const existing = await prisma.document.findUnique({ where: { id: documentId } });
+export async function archiveDocument(documentId: string, existingDoc?: { documentStatus: string } | null) {
+  const existing = existingDoc ?? await prisma.document.findUnique({ where: { id: documentId } });
   if (!existing || existing.documentStatus === 'DELETED') {
     throw new AppError('Document not found', 404);
   }
@@ -344,8 +344,8 @@ export async function archiveDocument(documentId: string) {
   return doc;
 }
 
-export async function deleteDocument(documentId: string) {
-  const existing = await prisma.document.findUnique({ where: { id: documentId } });
+export async function deleteDocument(documentId: string, existingDoc?: { documentStatus: string } | null) {
+  const existing = existingDoc ?? await prisma.document.findUnique({ where: { id: documentId } });
   if (!existing || existing.documentStatus === 'DELETED') {
     throw new AppError('Document not found', 404);
   }

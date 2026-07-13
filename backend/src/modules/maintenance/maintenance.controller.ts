@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getActorContext } from '../access/actor-context.service';
+
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import { createNotification } from '../notifications/notifications.service';
@@ -35,7 +35,7 @@ async function notifyOps(title: string, message: string, item: any, actorId?: st
 }
 
 export async function listMaintenanceController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
 
   const result = await listMaintenance(
@@ -50,14 +50,14 @@ export async function listMaintenanceController(req: Request, res: Response) {
 }
 
 export async function getMaintenanceController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const item = await getMaintenance(String(req.params.id));
   assertCanReadResource(actor, RESOURCE, item as unknown as Record<string, unknown>);
   return sendSuccess(res, item);
 }
 
 export async function createMaintenanceController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertCanCreateResource(actor, RESOURCE, req.body);
 
   const item = await createMaintenance({ ...req.body, createdById: req.authUser?.id });
@@ -67,7 +67,7 @@ export async function createMaintenanceController(req: Request, res: Response) {
 }
 
 export async function updateMaintenanceController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getMaintenance(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
@@ -81,7 +81,7 @@ export async function updateMaintenanceController(req: Request, res: Response) {
 }
 
 async function action(req: Request, res: Response, status: any, actionName: string) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getMaintenance(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
 

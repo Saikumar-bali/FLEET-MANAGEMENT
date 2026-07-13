@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { createAuditLog } from '../audit/audit.service';
-import { getActorContext } from '../access/actor-context.service';
+
 import { getScopedWhereForResource, assertCanReadResource, assertCanCreateResource, assertCanUpdateResource, assertCanChangeResourceScope } from '../access/scoped-enforcement.service';
 import type { ResourceType } from '../access/resource-scope-map';
 import { createExpense, getExpense, listExpenses, transitionExpense, updateExpense } from './expenses.service';
@@ -9,7 +9,7 @@ import { createExpense, getExpense, listExpenses, transitionExpense, updateExpen
 const RESOURCE: ResourceType = 'EXPENSE';
 
 export async function listExpensesController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const scopedWhere = getScopedWhereForResource(actor, RESOURCE);
 
   const result = await listExpenses({
@@ -22,14 +22,14 @@ export async function listExpensesController(req: Request, res: Response) {
 }
 
 export async function getExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const item = await getExpense(String(req.params.id));
   assertCanReadResource(actor, RESOURCE, item as unknown as Record<string, unknown>);
   return sendSuccess(res, item);
 }
 
 export async function createExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   assertCanCreateResource(actor, RESOURCE, req.body);
 
   const item = await createExpense({ ...req.body, createdById: req.authUser?.id });
@@ -38,7 +38,7 @@ export async function createExpenseController(req: Request, res: Response) {
 }
 
 export async function updateExpenseController(req: Request, res: Response) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getExpense(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
   await assertCanChangeResourceScope(actor, RESOURCE, existing as unknown as Record<string, unknown>, req.body);
@@ -49,7 +49,7 @@ export async function updateExpenseController(req: Request, res: Response) {
 }
 
 async function action(req: Request, res: Response, status: any, actionName: string) {
-  const actor = await getActorContext(req.authUser!.id);
+  const actor = req.authActorContext!;
   const existing = await getExpense(String(req.params.id));
   assertCanUpdateResource(actor, RESOURCE, existing as unknown as Record<string, unknown>);
 

@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '../../lib/prisma';
 
+const UNREAD_COUNT_CACHE_TTL_MS = 5_000;
+const unreadCountCache = new Map<string, { expiresAt: number; count: number }>();
+
 export type RecipientPolicy =
   | { type: 'USER'; userIds: string[] }
   | { type: 'ROLE'; roleKeys: string[] }
@@ -79,20 +82,29 @@ export async function listNotifications(userId: string) {
 }
 
 export async function unreadCount(userId: string) {
+  const cached = unreadCountCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { unreadCount: cached.count };
+  }
+
   const rows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
     'SELECT COUNT(*)::bigint AS count FROM notification_recipients WHERE user_id=$1 AND read_at IS NULL AND archived_at IS NULL',
     userId,
   );
-  return { unreadCount: Number(rows[0]?.count ?? 0) };
+  const count = Number(rows[0]?.count ?? 0);
+  unreadCountCache.set(userId, { expiresAt: Date.now() + UNREAD_COUNT_CACHE_TTL_MS, count });
+  return { unreadCount: count };
 }
 
 export async function markRead(userId: string, id: string) {
   const updated = await prisma.$executeRawUnsafe(ackOneSql, userId, id);
+  unreadCountCache.delete(userId);
   return { id, read: true, updated };
 }
 
 export async function markAllRead(userId: string) {
   const updated = await prisma.$executeRawUnsafe(ackAllSql, userId);
+  unreadCountCache.delete(userId);
   return { updated };
 }
 
