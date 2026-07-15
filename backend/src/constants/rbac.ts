@@ -246,6 +246,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'report_export',
     'settings_view',
     'user_deactivate',
+    'profile_link_view',
     'vehicle_compliance_view',
     'vehicle_compliance_create',
     'vehicle_compliance_update',

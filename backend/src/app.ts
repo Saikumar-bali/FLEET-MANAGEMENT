@@ -34,6 +34,7 @@ import driverPortalRoutes from './modules/user-profile-links/driver-portal.route
 import driverSubmissionRoutes from './modules/driver-submissions/driver-submissions.routes';
 import workspaceRoutes from './modules/workspace/workspace.routes';
 import dispatchRoutes from './modules/dispatch/dispatch.routes';
+import staffProfileRoutes from './modules/staff-profiles/staff-profiles.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -87,6 +88,7 @@ app.use('/api/v1', driverPortalRoutes);
 app.use('/api/v1', driverSubmissionRoutes);
 app.use('/api/v1', workspaceRoutes);
 app.use('/api/v1/dispatch', dispatchRoutes);
+app.use('/api/v1/staff-profiles', staffProfileRoutes);
 
 if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging') {
   const webDistPath = path.resolve(__dirname, '../../../web/dist');

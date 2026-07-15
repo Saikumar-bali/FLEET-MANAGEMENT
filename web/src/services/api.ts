@@ -1312,6 +1312,77 @@ export function getAvailableCustomers(token: string, search?: string) {
   return request<AvailableCustomer[]>(`/user-profile-links/available-customers${qs ? `?${qs}` : ''}`, { token });
 }
 
+// ─── Staff Profiles API ───
+
+export type StaffProfileRecord = {
+  id: string;
+  profileType: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AvailableStaffProfile = {
+  profileId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  profileType: string;
+  status: string;
+  linkedUserId: string | null;
+  linkedUsername: string | null;
+  isLinked: boolean;
+};
+
+export type StaffProfileListResponse = {
+  items: StaffProfileRecord[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export function createStaffProfile(token: string, payload: {
+  profileType: string; name: string; email?: string; phone?: string; status?: string; metadata?: Record<string, unknown>;
+}) {
+  return request<StaffProfileRecord>('/staff-profiles', { method: 'POST', body: JSON.stringify(payload), token });
+}
+
+export function getStaffProfile(token: string, id: string) {
+  return request<StaffProfileRecord>(`/staff-profiles/${id}`, { token });
+}
+
+export function listStaffProfiles(token: string, params?: { profileType?: string; search?: string; status?: string; page?: number; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.profileType) query.set('profileType', params.profileType);
+  if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  return request<StaffProfileListResponse>(`/staff-profiles${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function updateStaffProfile(token: string, id: string, payload: {
+  name?: string; email?: string; phone?: string; status?: string; metadata?: Record<string, unknown>;
+}) {
+  return request<StaffProfileRecord>(`/staff-profiles/${id}`, { method: 'PATCH', body: JSON.stringify(payload), token });
+}
+
+export function deleteStaffProfile(token: string, id: string) {
+  return request<{ deleted: boolean }>(`/staff-profiles/${id}`, { token, method: 'DELETE' });
+}
+
+export function getAvailableStaffProfiles(token: string, profileType: string, search?: string) {
+  const query = new URLSearchParams({ profileType });
+  if (search) query.set('search', search);
+  return request<AvailableStaffProfile[]>(`/staff-profiles/available?${query.toString()}`, { token });
+}
+
 export function deleteUser(token: string, userId: string) {
   return request<{ deleted: boolean }>(`/users/${userId}`, { token, method: 'DELETE' });
 }

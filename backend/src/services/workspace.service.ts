@@ -38,6 +38,7 @@ const PERM_CAPABILITY_MAP: Record<string, CapabilityName[]> = {
   driver_document_verify: ['canReviewDocuments'],
   driver_issue_review: ['canReviewIssues'],
   driver_inspection_review: ['canReviewInspections'],
+  profile_link_view: ['canUseAdmin'],
 };
 
 const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: string[] }> = {
@@ -68,6 +69,7 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'driver-submissions': { any: ['driver_submission_view', 'driver_submission_review'] },
   'users': { all: ['user_view'] },
   'roles': { all: ['role_view'] },
+  'staff-profiles': { all: ['profile_link_view'] },
   'my-access': {},
 };
 
@@ -110,6 +112,7 @@ const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
   'driver-submissions': ['driver', 'assistant_driver'],
   'users': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
   'roles': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
+  'staff-profiles': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
   'driver-portal': ['super_admin', 'admin'],
   'my-trips': ['super_admin', 'admin'],
   'my-vehicle': ['super_admin', 'admin'],
@@ -468,19 +471,19 @@ export async function getWorkspace(userId: string, preloadedUser?: PreloadedUser
     primaryProfiles.driver = driver;
   }
 
-  // Resolve primary user-based profiles (mechanic, finance, collector)
-  const userBasedProfileTypes = ['MECHANIC', 'FINANCE', 'COLLECTOR'] as const;
-  for (const pt of userBasedProfileTypes) {
+  // Resolve primary staff profiles (mechanic, finance, collector)
+  const staffProfileTypes = ['MECHANIC', 'FINANCE', 'COLLECTOR'] as const;
+  for (const pt of staffProfileTypes) {
     const link = user.profileLinks.find(l => l.profileType === pt && l.isPrimary)
       ?? user.profileLinks.find(l => l.profileType === pt);
     if (link) {
-      const linkedUser = await prisma.user.findUnique({
+      const staffProfile = await prisma.staffProfile.findUnique({
         where: { id: link.profileId },
         select: { id: true, name: true },
       });
-      if (linkedUser) {
+      if (staffProfile) {
         const key = pt.toLowerCase() as 'mechanic' | 'finance' | 'collector';
-        primaryProfiles[key] = linkedUser;
+        primaryProfiles[key] = staffProfile;
       }
     }
   }

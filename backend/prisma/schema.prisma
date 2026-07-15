@@ -344,6 +344,7 @@ enum LinkedEntityType {
   MAINTENANCE_REQUEST
   REPAIR
   FUEL_ENTRY
+  STAFF_PROFILE
   GENERAL
 }
 
@@ -732,6 +733,7 @@ model Document {
   maintenanceRequestId    String?                  @map("maintenance_request_id")
   repairId                String?                  @map("repair_id")
   fuelEntryId             String?                  @map("fuel_entry_id")
+  staffProfileId          String?                  @map("staff_profile_id")
 
   issueDate               DateTime?                @map("issue_date")
   expiryDate              DateTime?                @map("expiry_date")
@@ -761,6 +763,7 @@ model Document {
   maintenanceRequest      MaintenanceRequest?      @relation(fields: [maintenanceRequestId], references: [id])
   repair                  Repair?                  @relation(fields: [repairId], references: [id])
   fuelEntry               FuelEntry?               @relation("FuelLinkedDocuments", fields: [fuelEntryId], references: [id], onDelete: SetNull)
+  staffProfile            StaffProfile?            @relation(fields: [staffProfileId], references: [id], onDelete: SetNull)
 
   @@index([documentNumber])
   @@index([documentType])
@@ -1632,6 +1635,31 @@ model UserProfileLink {
   @@index([userId, profileType])
   @@index([profileType, profileId])
   @@map("user_profile_links")
+}
+
+// ─── Phase 17: Generic Staff Profiles (Mechanic, Finance, Collector, Custom Roles) ───
+
+enum StaffProfileStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model StaffProfile {
+  id          String             @id @default(cuid())
+  profileType String             @map("profile_type")
+  name        String
+  email       String?
+  phone       String?
+  status      StaffProfileStatus @default(ACTIVE)
+  metadata    Json?
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  documents   Document[]
+
+  @@index([profileType, status])
+  @@map("staff_profiles")
 }
 
 model AuditLog {
