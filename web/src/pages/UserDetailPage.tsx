@@ -29,13 +29,16 @@ import {
   createUserProfileLink,
   revokeUserProfileLink,
   getAvailableDrivers,
+  getAvailableUsers,
+  getAvailableVendors,
+  getAvailableCustomers,
   getVehicles,
 } from '../services/api';
 import type {
   UserRecord, RoleRecord, PermissionRecord, ProfileLinkRecord,
   EffectivePermissionsResponse, UserPermissionOverrideRecord, UserDataScopeRecord, UserActivityRecord,
 } from '../types/auth';
-import type { AvailableDriver } from '../services/api';
+import type { AvailableDriver, AvailableUser, AvailableVendor, AvailableCustomer } from '../services/api';
 
 type TabId = 'overview' | 'account' | 'access' | 'profile-links' | 'activity';
 
@@ -98,10 +101,14 @@ export function UserDetailPage() {
   const [allDrivers, setAllDrivers] = useState<AvailableDriver[]>([]);
   const [driverSearch, setDriverSearch] = useState('');
   const [driverLoadError, setDriverLoadError] = useState<string | null>(null);
-  const [linkDriverId, setLinkDriverId] = useState('');
+  const [linkProfileType, setLinkProfileType] = useState<string>('DRIVER');
+  const [linkEntityId, setLinkEntityId] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [showAllDrivers, setShowAllDrivers] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const [availableVendors, setAvailableVendors] = useState<AvailableVendor[]>([]);
+  const [availableCustomers, setAvailableCustomers] = useState<AvailableCustomer[]>([]);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
 
@@ -138,6 +145,18 @@ export function UserDetailPage() {
         setAllDrivers([]);
         setDriverLoadError(e instanceof ApiError ? e.message : 'Unable to load drivers.');
       }
+      try {
+        const uRes = await getAvailableUsers(auth.accessToken, 'MECHANIC');
+        setAvailableUsers(Array.isArray(uRes.data) ? uRes.data : []);
+      } catch { setAvailableUsers([]); }
+      try {
+        const vRes = await getAvailableVendors(auth.accessToken);
+        setAvailableVendors(Array.isArray(vRes.data) ? vRes.data : []);
+      } catch { setAvailableVendors([]); }
+      try {
+        const cRes = await getAvailableCustomers(auth.accessToken);
+        setAvailableCustomers(Array.isArray(cRes.data) ? cRes.data : []);
+      } catch { setAvailableCustomers([]); }
       try {
         const vRes = await getVehicles(auth.accessToken, { limit: 100 });
         setAllVehicles(vRes.data?.items ?? []);
@@ -214,13 +233,13 @@ export function UserDetailPage() {
     catch (e) { setError(e instanceof ApiError ? e.message : 'Failed to remove scope.'); }
   }
 
-  async function handleLinkDriver() {
-    if (!auth.accessToken || !id || !linkDriverId) return;
+  async function handleLinkProfile() {
+    if (!auth.accessToken || !id || !linkEntityId) return;
     setIsLinking(true); setLinkError(null);
     try {
-      await createUserProfileLink(auth.accessToken, id, { profileType: 'DRIVER', profileId: linkDriverId, isPrimary: true });
+      await createUserProfileLink(auth.accessToken, id, { profileType: linkProfileType, profileId: linkEntityId, isPrimary: true });
       showToast('Profile linked successfully.', 'success');
-      const plRes = await getUserProfileLinks(auth.accessToken, id); setProfileLinks(plRes.data); setLinkDriverId(''); setDriverSearch('');
+      const plRes = await getUserProfileLinks(auth.accessToken, id); setProfileLinks(plRes.data); setLinkEntityId(''); setDriverSearch('');
       const dRes = await getAvailableDrivers(auth.accessToken, { showAll: showAllDrivers });
       setAllDrivers(Array.isArray(dRes.data) ? dRes.data : []);
     } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to link profile.'); } finally { setIsLinking(false); }
@@ -233,8 +252,42 @@ export function UserDetailPage() {
       await revokeUserProfileLink(auth.accessToken, linkId); setProfileLinks(prev => prev.filter(pl => pl.id !== linkId)); setRevokeTarget(null); showToast('Profile link revoked.', 'success');
       const dRes = await getAvailableDrivers(auth.accessToken, { showAll: showAllDrivers });
       setAllDrivers(Array.isArray(dRes.data) ? dRes.data : []);
+      try {
+        const uRes = await getAvailableUsers(auth.accessToken, 'MECHANIC');
+        setAvailableUsers(Array.isArray(uRes.data) ? uRes.data : []);
+      } catch { setAvailableUsers([]); }
+      try {
+        const vRes = await getAvailableVendors(auth.accessToken);
+        setAvailableVendors(Array.isArray(vRes.data) ? vRes.data : []);
+      } catch { setAvailableVendors([]); }
+      try {
+        const cRes = await getAvailableCustomers(auth.accessToken);
+        setAvailableCustomers(Array.isArray(cRes.data) ? cRes.data : []);
+      } catch { setAvailableCustomers([]); }
     }
     catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to revoke.'); } finally { setIsRevoking(false); }
+  }
+
+  async function loadEntitiesForType(profileType: string) {
+    if (!auth.accessToken) return;
+    setLinkEntityId('');
+    switch (profileType) {
+      case 'DRIVER':
+        try { const r = await getAvailableDrivers(auth.accessToken, { showAll: true }); setAllDrivers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'MECHANIC':
+      case 'EMPLOYEE':
+      case 'FINANCE':
+      case 'COLLECTOR':
+        try { const r = await getAvailableUsers(auth.accessToken, profileType); setAvailableUsers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'VENDOR_CONTACT':
+        try { const r = await getAvailableVendors(auth.accessToken); setAvailableVendors(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'CUSTOMER_CONTACT':
+        try { const r = await getAvailableCustomers(auth.accessToken); setAvailableCustomers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+    }
   }
 
   async function refreshDrivers() {
@@ -294,16 +347,20 @@ export function UserDetailPage() {
 
           {/* Linked Profile Card */}
           <article className="card" style={{ padding: '1.25rem' }}>
-            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profile</h4>
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profiles</h4>
             {profileLinks.length > 0 ? (
               profileLinks.map(pl => {
                 const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
+                const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
+                const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                 return (
                   <div key={pl.id} style={{ padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{displayName}</p>
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                        Driver — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
+                        {pl.profileType} — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
                       </p>
                     </div>
                     <button type="button" className="secondary-button" style={{ fontSize: '0.8rem' }} onClick={() => setActiveTab('profile-links')}>Manage</button>
@@ -314,9 +371,9 @@ export function UserDetailPage() {
               <div>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No profile linked.</p>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-                  User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+                  User is the login account. Profiles represent operational roles (driver, mechanic, finance, etc.). Linking them lets the user access role-specific data.
                 </p>
-                <button type="button" className="primary-button" style={{ marginTop: '0.75rem', fontSize: '0.85rem' }} onClick={() => setActiveTab('profile-links')}>Link Driver</button>
+                <button type="button" className="primary-button" style={{ marginTop: '0.75rem', fontSize: '0.85rem' }} onClick={() => setActiveTab('profile-links')}>Link Profile</button>
               </div>
             )}
           </article>
@@ -528,17 +585,21 @@ export function UserDetailPage() {
             {linkError ? <div className="error-banner">{linkError}</div> : null}
             <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Current Linked Profiles</h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
-              User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+              User is the login account. Profiles represent operational roles (driver, mechanic, finance, etc.). Linking them lets the user access role-specific data.
             </p>
             {profileLinks.length === 0 ? (
               <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No profile linked.</p>
             ) : (
               profileLinks.map(pl => {
                 const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
+                const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
+                const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                 return (
                   <div key={pl.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{displayName}</p>
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
                         {pl.profileType} — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
                       </p>
@@ -552,70 +613,121 @@ export function UserDetailPage() {
 
           {auth.hasPermission('profile_link_create') && (
             <article className="card" style={{ padding: '1.25rem' }}>
-              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Driver</h4>
-              {driverLoadError ? (
-                <div>
-                  <p className="error-banner">{driverLoadError}</p>
-                  <button type="button" className="secondary-button" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }} onClick={() => void refreshDrivers()}>Retry</button>
-                </div>
-              ) : (
-                <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <input type="checkbox" checked={showAllDrivers} onChange={e => { setShowAllDrivers(e.target.checked); void refreshDrivers(); }} />
-                    <span style={{ fontSize: '0.85rem' }}>Show all drivers</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={driverSearch}
-                    onChange={e => setDriverSearch(e.target.value)}
-                    placeholder="Search by name, mobile, or license number..."
-                    style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
-                  />
-                  {allDrivers.length === 0 ? (
-                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No drivers available.</p>
-                  ) : (
-                    <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
-                      {allDrivers
-                        .filter(d => {
-                          if (!showAllDrivers && d.status === 'INACTIVE') return false;
-                          if (!driverSearch) return true;
-                          const q = driverSearch.toLowerCase();
-                          return d.name.toLowerCase().includes(q) || d.mobile.toLowerCase().includes(q) || d.licenseNumber.toLowerCase().includes(q);
-                        })
-                        .map(d => (
-                          <div
-                            key={d.driverId}
-                            onClick={() => !d.isLinked && setLinkDriverId(d.driverId)}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              cursor: d.isLinked ? 'default' : 'pointer',
-                              backgroundColor: linkDriverId === d.driverId ? 'var(--color-accent-light)' : d.isLinked ? 'var(--color-bg-muted)' : 'transparent',
-                              borderBottom: '1px solid var(--color-border)',
-                              opacity: d.isLinked ? 0.6 : 1,
-                              fontSize: '0.85rem',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 600 }}>{d.name}</span>
-                              {d.isLinked ? (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-bg-muted)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>Linked</span>
-                              ) : (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{d.status}</span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.15rem' }}>
-                              {d.mobile} | {d.licenseNumber}
-                              {d.isLinked && d.linkedUsername ? ` | linked to @${d.linkedUsername}` : ''}
-                            </div>
+              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Profile</h4>
+              <div className="form-grid">
+                <label>
+                  <span>Profile type</span>
+                  <select value={linkProfileType} onChange={e => { setLinkProfileType(e.target.value); loadEntitiesForType(e.target.value); }}>
+                    <option value="DRIVER">Driver</option>
+                    <option value="MECHANIC">Mechanic</option>
+                    <option value="EMPLOYEE">Employee</option>
+                    <option value="FINANCE">Finance</option>
+                    <option value="COLLECTOR">Collector</option>
+                    <option value="VENDOR_CONTACT">Vendor Contact</option>
+                    <option value="CUSTOMER_CONTACT">Customer Contact</option>
+                  </select>
+                </label>
+                {linkProfileType === 'DRIVER' && (
+                  <div>
+                    {driverLoadError ? (
+                      <div>
+                        <p className="error-banner">{driverLoadError}</p>
+                        <button type="button" className="secondary-button" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }} onClick={() => void refreshDrivers()}>Retry</button>
+                      </div>
+                    ) : (
+                      <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <input type="checkbox" checked={showAllDrivers} onChange={e => { setShowAllDrivers(e.target.checked); void refreshDrivers(); }} />
+                          <span style={{ fontSize: '0.85rem' }}>Show all drivers</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={driverSearch}
+                          onChange={e => setDriverSearch(e.target.value)}
+                          placeholder="Search by name, mobile, or license number..."
+                          style={{ width: '100%', marginBottom: '0.5rem', padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--color-border)', borderRadius: '4px' }}
+                        />
+                        {allDrivers.length === 0 ? (
+                          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No drivers available.</p>
+                        ) : (
+                          <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
+                            {allDrivers
+                              .filter(d => {
+                                if (!showAllDrivers && d.status === 'INACTIVE') return false;
+                                if (!driverSearch) return true;
+                                const q = driverSearch.toLowerCase();
+                                return d.name.toLowerCase().includes(q) || d.mobile.toLowerCase().includes(q) || d.licenseNumber.toLowerCase().includes(q);
+                              })
+                              .map(d => (
+                                <div
+                                  key={d.driverId}
+                                  onClick={() => !d.isLinked && setLinkEntityId(d.driverId)}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    cursor: d.isLinked ? 'default' : 'pointer',
+                                    backgroundColor: linkEntityId === d.driverId ? 'var(--color-accent-light)' : d.isLinked ? 'var(--color-bg-muted)' : 'transparent',
+                                    borderBottom: '1px solid var(--color-border)',
+                                    opacity: d.isLinked ? 0.6 : 1,
+                                    fontSize: '0.85rem',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontWeight: 600 }}>{d.name}</span>
+                                    {d.isLinked ? (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-bg-muted)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>Linked</span>
+                                    ) : (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{d.status}</span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.15rem' }}>
+                                    {d.mobile} | {d.licenseNumber}
+                                    {d.isLinked && d.linkedUsername ? ` | linked to @${d.linkedUsername}` : ''}
+                                  </div>
+                                </div>
+                              ))}
                           </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(linkProfileType === 'MECHANIC' || linkProfileType === 'EMPLOYEE' || linkProfileType === 'FINANCE' || linkProfileType === 'COLLECTOR') && (
+                  <label>
+                    <span>Select {linkProfileType.toLowerCase()}</span>
+                    <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                      <option value="">Choose a {linkProfileType.toLowerCase()}...</option>
+                      {availableUsers.filter(u => !u.isLinked).map(u => (
+                        <option key={u.userId} value={u.userId}>{u.name} ({u.email}) — {u.roleKey}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {linkProfileType === 'VENDOR_CONTACT' && (
+                  <label>
+                    <span>Select vendor</span>
+                    <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                      <option value="">Choose a vendor...</option>
+                      {availableVendors.filter(v => !v.isLinked).map(v => (
+                        <option key={v.vendorId} value={v.vendorId}>{v.name}{v.contactPerson ? ` (${v.contactPerson})` : ''}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {linkProfileType === 'CUSTOMER_CONTACT' && (
+                  <label>
+                    <span>Select customer</span>
+                    <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                      <option value="">Choose a customer...</option>
+                      {availableCustomers.filter(c => !c.isLinked).map(c => (
+                        <option key={c.customerId} value={c.customerId}>{c.name}{c.contactPerson ? ` (${c.contactPerson})` : ''}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
               <div className="button-row" style={{ marginTop: '0.75rem' }}>
-                <button type="button" className="primary-button" disabled={!linkDriverId || isLinking} onClick={handleLinkDriver}>
-                  {isLinking ? 'Linking...' : 'Link Driver'}
+                <button type="button" className="primary-button" disabled={!linkEntityId || isLinking} onClick={handleLinkProfile}>
+                  {isLinking ? 'Linking...' : `Link ${linkProfileType.toLowerCase().replace(/_/g, ' ')}`}
                 </button>
               </div>
             </article>
@@ -656,7 +768,7 @@ export function UserDetailPage() {
         isConfirming={isSaving} onCancel={() => setStatusTarget(null)} onConfirm={handleStatusUpdate} />
 
       <ConfirmDialog isOpen={!!revokeTarget} title="Revoke profile link"
-        description="Remove the driver profile link from this user? Driver portal access will be removed."
+        description="Remove this profile link from the user? Role-specific access will be removed."
         confirmLabel="Revoke" tone="danger" isConfirming={isRevoking}
         onCancel={() => setRevokeTarget(null)} onConfirm={() => revokeTarget ? handleRevokeLink(revokeTarget) : Promise.resolve()} />
     </section>

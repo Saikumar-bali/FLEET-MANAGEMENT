@@ -15,6 +15,9 @@ import {
   createUser as createUserRequest,
   deleteUser as deleteUserRequest,
   getAvailableDrivers,
+  getAvailableUsers,
+  getAvailableVendors,
+  getAvailableCustomers,
   getRoles,
   getUsers,
   updateUser as updateUserRequest,
@@ -25,7 +28,7 @@ import {
   createUserProfileLink,
   revokeUserProfileLink,
 } from '../services/api';
-import type { AvailableDriver } from '../services/api';
+import type { AvailableDriver, AvailableUser, AvailableVendor, AvailableCustomer } from '../services/api';
 import type { RoleRecord, UserAccessSummaryRecord, UserRecord, ProfileLinkRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
@@ -63,10 +66,14 @@ export function UsersPage() {
   const [viewTab, setViewTab] = useState('overview');
   const [profileLinks, setProfileLinks] = useState<ProfileLinkRecord[]>([]);
   const [isLinking, setIsLinking] = useState(false);
-  const [linkDriverId, setLinkDriverId] = useState('');
+  const [linkProfileType, setLinkProfileType] = useState<string>('DRIVER');
+  const [linkEntityId, setLinkEntityId] = useState('');
   const [showAllDrivers, setShowAllDrivers] = useState(false);
   const [allDrivers, setAllDrivers] = useState<AvailableDriver[]>([]);
-  const [linkDriverIdOnCreate, setLinkDriverIdOnCreate] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const [availableVendors, setAvailableVendors] = useState<AvailableVendor[]>([]);
+  const [availableCustomers, setAvailableCustomers] = useState<AvailableCustomer[]>([]);
+  const [linkEntityIdOnCreate, setLinkEntityIdOnCreate] = useState('');
   const [linkErrorOnCreate, setLinkErrorOnCreate] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
@@ -101,6 +108,28 @@ export function UsersPage() {
     try { const r = await getAvailableDrivers(auth.accessToken, { showAll: true }); setAllDrivers(Array.isArray(r.data) ? r.data : []); } catch {}
   }
 
+  async function loadEntitiesForType(profileType: string) {
+    if (!auth.accessToken) return;
+    setLinkEntityId('');
+    switch (profileType) {
+      case 'DRIVER':
+        try { const r = await getAvailableDrivers(auth.accessToken, { showAll: true }); setAllDrivers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'MECHANIC':
+      case 'EMPLOYEE':
+      case 'FINANCE':
+      case 'COLLECTOR':
+        try { const r = await getAvailableUsers(auth.accessToken, profileType); setAvailableUsers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'VENDOR_CONTACT':
+        try { const r = await getAvailableVendors(auth.accessToken); setAvailableVendors(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+      case 'CUSTOMER_CONTACT':
+        try { const r = await getAvailableCustomers(auth.accessToken); setAvailableCustomers(Array.isArray(r.data) ? r.data : []); } catch {}
+        break;
+    }
+  }
+
   useEffect(() => {
     const go = async () => {
       if (!auth.accessToken) return;
@@ -124,7 +153,7 @@ export function UsersPage() {
   function getSummary(userId: string) { return summaries.find(s => s.userId === userId); }
 
   function openView(user: UserRecord) {
-    setViewUser(user); setViewTab('overview'); setLinkError(null); setLinkDriverId('');
+    setViewUser(user); setViewTab('overview'); setLinkError(null); setLinkEntityId(''); setLinkProfileType('DRIVER');
     setProfileLinks([]);
     if (auth.accessToken) {
       getUserProfileLinks(auth.accessToken, user.id).then(r => setProfileLinks(r.data)).catch(() => {});
@@ -137,18 +166,18 @@ export function UsersPage() {
     try {
       const r = await createUserRequest(auth.accessToken, createForm);
       const selectedRole = roles.find(rl => rl.id === createForm.roleId);
-      if (selectedRole?.key === 'driver' && linkDriverIdOnCreate) {
+      if (selectedRole?.key === 'driver' && linkEntityIdOnCreate) {
         try {
-          await createUserProfileLink(auth.accessToken, r.data.id, { profileType: 'DRIVER', profileId: linkDriverIdOnCreate, isPrimary: true });
+          await createUserProfileLink(auth.accessToken, r.data.id, { profileType: 'DRIVER', profileId: linkEntityIdOnCreate, isPrimary: true });
         } catch (linkErr) {
           setLinkErrorOnCreate(linkErr instanceof ApiError ? linkErr.message : 'User created but driver profile link failed. Link manually from user details.');
         }
       }
       await loadUsers();
       setSelectedUserId(r.data.id);
-      setPageMessage(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.');
-      showToast(selectedRole?.key === 'driver' && linkDriverIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.', 'success');
-      setLinkDriverIdOnCreate('');
+      setPageMessage(selectedRole?.key === 'driver' && linkEntityIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.');
+      showToast(selectedRole?.key === 'driver' && linkEntityIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.', 'success');
+      setLinkEntityIdOnCreate('');
       setIsCreateOpen(false);
     } catch (e) { setCreateError(e instanceof ApiError ? e.message : 'Failed to create.'); }
     finally { setIsSavingCreate(false); }
@@ -208,17 +237,17 @@ export function UsersPage() {
     finally { setIsDeleting(false); }
   }
 
-  async function handleLinkDriver() {
-    if (!auth.accessToken || !viewUser || !linkDriverId) return;
+  async function handleLinkProfile() {
+    if (!auth.accessToken || !viewUser || !linkEntityId) return;
     setIsLinking(true); setLinkError(null);
     try {
       await createUserProfileLink(auth.accessToken, viewUser.id, {
-        profileType: 'DRIVER', profileId: linkDriverId, isPrimary: true,
+        profileType: linkProfileType, profileId: linkEntityId, isPrimary: true,
       });
       setPageMessage('Profile linked successfully.');
       showToast('Profile linked successfully.', 'success');
       const r = await getUserProfileLinks(auth.accessToken, viewUser.id);
-      setProfileLinks(r.data); setLinkDriverId('');
+      setProfileLinks(r.data); setLinkEntityId('');
     } catch (e) { setLinkError(e instanceof ApiError ? e.message : 'Failed to link.'); }
     finally { setIsLinking(false); }
   }
@@ -308,7 +337,7 @@ export function UsersPage() {
           <FormSection title="Access">
             <div className="form-grid">
               <label><span>Role</span>
-                <select value={createForm.roleId} onChange={e => { setCreateForm(f => ({ ...f, roleId: e.target.value })); setLinkDriverIdOnCreate(''); }} disabled={roles.length === 0}>
+                <select value={createForm.roleId} onChange={e => { setCreateForm(f => ({ ...f, roleId: e.target.value })); setLinkEntityIdOnCreate(''); }} disabled={roles.length === 0}>
                   {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </label>
@@ -321,7 +350,7 @@ export function UsersPage() {
             {roles.find(rl => rl.id === createForm.roleId)?.key === 'driver' && (
               <div style={{ marginTop: '0.75rem' }}>
                 <label><span>Link Driver Profile (required for Driver role)</span>
-                  <select value={linkDriverIdOnCreate} onChange={e => setLinkDriverIdOnCreate(e.target.value)}>
+                  <select value={linkEntityIdOnCreate} onChange={e => setLinkEntityIdOnCreate(e.target.value)}>
                     <option value="">Choose a driver...</option>
                     {allDrivers.filter(d => d.status !== 'INACTIVE').map(d => (
                       <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
@@ -347,7 +376,7 @@ export function UsersPage() {
 
       {/* Revoke Link Confirmation */}
       <ConfirmDialog isOpen={!!revokeTarget} title="Revoke profile link"
-        description="Remove the driver profile link from this user? Driver portal access will be removed."
+        description="Remove this profile link from the user? Role-specific access will be removed."
         confirmLabel="Revoke" tone="danger" isConfirming={isRevoking}
         onCancel={() => setRevokeTarget(null)} onConfirm={() => revokeTarget ? handleRevoke(revokeTarget) : Promise.resolve()} />
 
@@ -393,16 +422,20 @@ export function UsersPage() {
 
                 {/* Linked Profile Card */}
                 <article className="card" style={{ padding: '1.25rem' }}>
-                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profile</h4>
+                  <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profiles</h4>
                   {profileLinks.length > 0 ? (
                     profileLinks.map(pl => {
                       const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                      const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                      const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
+                      const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
+                      const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                       return (
-                        <div key={pl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={pl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
                           <div>
-                            <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{displayName}</p>
                             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                              Driver — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
+                              {pl.profileType} — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
                             </p>
                           </div>
                           <button type="button" className="secondary-button" style={{ fontSize: '0.8rem' }} onClick={() => setViewTab('profile links')}>Manage</button>
@@ -413,9 +446,9 @@ export function UsersPage() {
                     <div>
                       <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>No profile linked.</p>
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-                        User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+                        User is the login account. Profiles represent operational roles (driver, mechanic, finance, etc.). Linking them lets the user access role-specific data.
                       </p>
-                      <button type="button" className="primary-button" style={{ marginTop: '0.75rem', fontSize: '0.85rem' }} onClick={() => setViewTab('profile links')}>Link Driver</button>
+                      <button type="button" className="primary-button" style={{ marginTop: '0.75rem', fontSize: '0.85rem' }} onClick={() => setViewTab('profile links')}>Link Profile</button>
                     </div>
                   )}
                 </article>
@@ -541,7 +574,7 @@ export function UsersPage() {
                 <article className="card" style={{ padding: '1.25rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Current Linked Profiles</h4>
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: '0.75rem' }}>
-                    User is the login account. Driver is the operational profile. Linking them lets the driver see only their own trips, fuel, expenses, documents, and vehicle data.
+                    User is the login account. Profiles represent operational roles (driver, mechanic, finance, etc.). Linking them lets the user access role-specific data.
                   </p>
                   {linkError && <div className="error-banner">{linkError}</div>}
                   {profileLinks.length === 0 ? (
@@ -549,10 +582,14 @@ export function UsersPage() {
                   ) : (
                     profileLinks.map(pl => {
                       const driver = allDrivers.find(d => d.driverId === pl.profileId);
+                      const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                      const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
+                      const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
+                      const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                       return (
                         <div key={pl.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <p style={{ margin: 0, fontWeight: 600 }}>{driver?.name || pl.profileId}</p>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{displayName}</p>
                             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
                               {pl.profileType} — <StatusBadge status={pl.status as 'ACTIVE' | 'INACTIVE' | 'REVOKED'} /> {pl.isPrimary ? '(primary)' : ''}
                             </p>
@@ -566,28 +603,74 @@ export function UsersPage() {
 
                 {auth.hasPermission('profile_link_create') && (
                   <article className="card" style={{ padding: '1.25rem' }}>
-                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Driver</h4>
+                    <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Profile</h4>
                     <div className="form-grid">
                       <label>
-                        <span>Select driver</span>
-                        <select value={linkDriverId} onChange={e => setLinkDriverId(e.target.value)}>
-                          <option value="">Choose a driver...</option>
-                          {allDrivers.filter(d => showAllDrivers || d.status !== 'INACTIVE').map(d => (
-                            <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
-                          ))}
+                        <span>Profile type</span>
+                        <select value={linkProfileType} onChange={e => { setLinkProfileType(e.target.value); loadEntitiesForType(e.target.value); }}>
+                          <option value="DRIVER">Driver</option>
+                          <option value="MECHANIC">Mechanic</option>
+                          <option value="EMPLOYEE">Employee</option>
+                          <option value="FINANCE">Finance</option>
+                          <option value="COLLECTOR">Collector</option>
+                          <option value="VENDOR_CONTACT">Vendor Contact</option>
+                          <option value="CUSTOMER_CONTACT">Customer Contact</option>
                         </select>
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.5rem' }}>
-                        <input type="checkbox" checked={showAllDrivers} onChange={e => setShowAllDrivers(e.target.checked)} />
-                        <span style={{ fontSize: '0.85rem' }}>Show all drivers</span>
-                      </label>
+                      {linkProfileType === 'DRIVER' && (
+                        <label>
+                          <span>Select driver</span>
+                          <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                            <option value="">Choose a driver...</option>
+                            {allDrivers.filter(d => showAllDrivers || d.status !== 'INACTIVE').map(d => (
+                              <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {(linkProfileType === 'MECHANIC' || linkProfileType === 'EMPLOYEE' || linkProfileType === 'FINANCE' || linkProfileType === 'COLLECTOR') && (
+                        <label>
+                          <span>Select {linkProfileType.toLowerCase()}</span>
+                          <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                            <option value="">Choose a {linkProfileType.toLowerCase()}...</option>
+                            {availableUsers.filter(u => !u.isLinked).map(u => (
+                              <option key={u.userId} value={u.userId}>{u.name} ({u.email}) — {u.roleKey}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {linkProfileType === 'VENDOR_CONTACT' && (
+                        <label>
+                          <span>Select vendor</span>
+                          <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                            <option value="">Choose a vendor...</option>
+                            {availableVendors.filter(v => !v.isLinked).map(v => (
+                              <option key={v.vendorId} value={v.vendorId}>{v.name}{v.contactPerson ? ` (${v.contactPerson})` : ''}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {linkProfileType === 'CUSTOMER_CONTACT' && (
+                        <label>
+                          <span>Select customer</span>
+                          <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
+                            <option value="">Choose a customer...</option>
+                            {availableCustomers.filter(c => !c.isLinked).map(c => (
+                              <option key={c.customerId} value={c.customerId}>{c.name}{c.contactPerson ? ` (${c.contactPerson})` : ''}</option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {linkProfileType === 'DRIVER' && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingTop: '1.5rem' }}>
+                          <input type="checkbox" checked={showAllDrivers} onChange={e => setShowAllDrivers(e.target.checked)} />
+                          <span style={{ fontSize: '0.85rem' }}>Show all drivers</span>
+                        </label>
+                      )}
                     </div>
-                    {allDrivers.filter(d => d.status !== 'INACTIVE').length === 0 && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>No drivers available.</p>
-                    )}
                     <div className="button-row">
-                      <button type="button" className="primary-button" disabled={!linkDriverId || isLinking} onClick={handleLinkDriver}>
-                        {isLinking ? 'Linking...' : 'Link Driver'}
+                      <button type="button" className="primary-button" disabled={!linkEntityId || isLinking} onClick={handleLinkProfile}>
+                        {isLinking ? 'Linking...' : `Link ${linkProfileType.toLowerCase().replace(/_/g, ' ')}`}
                       </button>
                     </div>
                   </article>

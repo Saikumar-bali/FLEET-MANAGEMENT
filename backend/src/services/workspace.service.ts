@@ -468,6 +468,23 @@ export async function getWorkspace(userId: string, preloadedUser?: PreloadedUser
     primaryProfiles.driver = driver;
   }
 
+  // Resolve primary user-based profiles (mechanic, finance, collector)
+  const userBasedProfileTypes = ['MECHANIC', 'FINANCE', 'COLLECTOR'] as const;
+  for (const pt of userBasedProfileTypes) {
+    const link = user.profileLinks.find(l => l.profileType === pt && l.isPrimary)
+      ?? user.profileLinks.find(l => l.profileType === pt);
+    if (link) {
+      const linkedUser = await prisma.user.findUnique({
+        where: { id: link.profileId },
+        select: { id: true, name: true },
+      });
+      if (linkedUser) {
+        const key = pt.toLowerCase() as 'mechanic' | 'finance' | 'collector';
+        primaryProfiles[key] = linkedUser;
+      }
+    }
+  }
+
   const result: WorkspaceResponse = {
     user: {
       id: user.id,

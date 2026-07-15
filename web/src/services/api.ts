@@ -1260,6 +1260,58 @@ export function getAvailableDrivers(token: string, params?: { search?: string; s
   return request<AvailableDriver[]>(`/user-profile-links/available-drivers${qs ? `?${qs}` : ''}`, { token });
 }
 
+export type AvailableUser = {
+  userId: string;
+  name: string;
+  email: string;
+  username: string | null;
+  roleKey: string;
+  status: string;
+  linkedUserId: string | null;
+  linkedUsername: string | null;
+  isLinked: boolean;
+};
+
+export function getAvailableUsers(token: string, profileType: string, search?: string) {
+  const query = new URLSearchParams({ profileType });
+  if (search) query.set('search', search);
+  return request<AvailableUser[]>(`/user-profile-links/available-users?${query.toString()}`, { token });
+}
+
+export type AvailableVendor = {
+  vendorId: string;
+  name: string;
+  contactPerson: string | null;
+  email: string | null;
+  mobile: string | null;
+  linkedUserId: string | null;
+  isLinked: boolean;
+};
+
+export function getAvailableVendors(token: string, search?: string) {
+  const query = new URLSearchParams();
+  if (search) query.set('search', search);
+  const qs = query.toString();
+  return request<AvailableVendor[]>(`/user-profile-links/available-vendors${qs ? `?${qs}` : ''}`, { token });
+}
+
+export type AvailableCustomer = {
+  customerId: string;
+  name: string;
+  contactPerson: string | null;
+  email: string | null;
+  mobile: string | null;
+  linkedUserId: string | null;
+  isLinked: boolean;
+};
+
+export function getAvailableCustomers(token: string, search?: string) {
+  const query = new URLSearchParams();
+  if (search) query.set('search', search);
+  const qs = query.toString();
+  return request<AvailableCustomer[]>(`/user-profile-links/available-customers${qs ? `?${qs}` : ''}`, { token });
+}
+
 export function deleteUser(token: string, userId: string) {
   return request<{ deleted: boolean }>(`/users/${userId}`, { token, method: 'DELETE' });
 }
