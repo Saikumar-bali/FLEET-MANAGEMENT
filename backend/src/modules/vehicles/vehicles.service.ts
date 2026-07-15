@@ -268,7 +268,7 @@ export async function deleteVehicle(vehicleId: string) {
     await tx.vehicleComplianceHistory.deleteMany({ where: { vehicleId } });
 
     await tx.vehicle.delete({ where: { id: vehicleId } });
-  });
+  }, { timeout: 30000 });
 
   return { deleted: true };
 }
