@@ -167,6 +167,9 @@ function App() {
                       <Route path="/users" element={<Suspense fallback={<Loading />}><UsersPage /></Suspense>} />
                       <Route path="/users/:id" element={<Suspense fallback={<Loading />}><UserDetailPage /></Suspense>} />
                     </Route>
+                    <Route element={<ProtectedRoute requiredPermissions={['profile_link_view']} />}>
+                      <Route path="/staff-profiles" element={<Suspense fallback={<Loading />}><UsersPage defaultMode="staff" /></Suspense>} />
+                    </Route>
                     <Route path="/my-access" element={<Suspense fallback={<Loading />}><MyAccessPage /></Suspense>} />
                     <Route element={<DriverPortalLayout />}>
                       <Route path="/driver-portal" element={<Suspense fallback={<Loading />}><DriverPortalHome /></Suspense>} />

@@ -44,7 +44,7 @@ type UserFormState = {
 
 const initialForm: UserFormState = { name: '', username: '', email: '', mobile: '', password: '', roleId: '', status: 'ACTIVE' };
 
-export function UsersPage() {
+export function UsersPage({ defaultMode }: { defaultMode?: 'users' | 'staff' }) {
   const auth = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -89,7 +89,7 @@ export function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
 
   // Staff profile section state
-  const [viewMode, setViewMode] = useState<'users' | 'staff'>('users');
+  const [viewMode, setViewMode] = useState<'users' | 'staff'>(defaultMode || 'users');
   const [staffProfiles, setStaffProfiles] = useState<StaffProfileRecord[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);

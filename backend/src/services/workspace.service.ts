@@ -68,6 +68,7 @@ const NAV_ITEM_PERMISSION_REQUIREMENTS: Record<string, { all?: string[]; any?: s
   'documents': { all: ['documents_view'] },
   'driver-submissions': { any: ['driver_submission_view', 'driver_submission_review'] },
   'users': { all: ['user_view'] },
+  'staff-profiles': { all: ['profile_link_view'] },
   'roles': { all: ['role_view'] },
   'my-access': {},
 };
@@ -111,6 +112,7 @@ const NAV_ITEM_HIDDEN_ROLES: Record<string, string[]> = {
   'driver-submissions': ['driver', 'assistant_driver'],
   'users': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
   'roles': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
+  'staff-profiles': ['driver', 'assistant_driver', 'viewer', 'mechanic', 'finance', 'supervisor', 'collector'],
   'driver-portal': ['super_admin', 'admin'],
   'my-trips': ['super_admin', 'admin'],
   'my-vehicle': ['super_admin', 'admin'],
