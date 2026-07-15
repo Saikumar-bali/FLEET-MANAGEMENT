@@ -16,6 +16,10 @@ declare global {
         isGlobalUser: boolean;
         effectivePermissions: string[];
         dataScopes: DataScopeEntry[];
+        ownProfileIds: {
+          driverIds: string[];
+          staffProfileIds: string[];
+        };
       };
     }
   }
