@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
   createUser as createUserRequest,
+  createStaffProfile as createStaffProfileRequest,
   deleteUser as deleteUserRequest,
   getAvailableDrivers,
   getAvailableStaffProfiles,
@@ -75,6 +76,10 @@ export function UsersPage() {
   const [availableCustomers, setAvailableCustomers] = useState<AvailableCustomer[]>([]);
   const [linkEntityIdOnCreate, setLinkEntityIdOnCreate] = useState('');
   const [linkErrorOnCreate, setLinkErrorOnCreate] = useState<string | null>(null);
+  const [staffCreateName, setStaffCreateName] = useState('');
+  const [staffCreateEmail, setStaffCreateEmail] = useState('');
+  const [staffCreatePhone, setStaffCreatePhone] = useState('');
+  const [staffCreateError, setStaffCreateError] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
@@ -162,10 +167,20 @@ export function UsersPage() {
 
   async function handleCreate() {
     if (!auth.accessToken) return;
-    setIsSavingCreate(true); setCreateError(null); setPageMessage(null); setLinkErrorOnCreate(null);
+    setIsSavingCreate(true); setCreateError(null); setPageMessage(null); setLinkErrorOnCreate(null); setStaffCreateError(null);
+    const selectedRole = roles.find(rl => rl.id === createForm.roleId);
+    let profileId: string | null = null;
+    let profileType: string | null = null;
     try {
+      if (selectedRole && ['mechanic', 'finance', 'collector', 'employee'].includes(selectedRole.key) && staffCreateName) {
+        const pt = selectedRole.key.toUpperCase();
+        const spRes = await createStaffProfileRequest(auth.accessToken, {
+          profileType: pt, name: staffCreateName, email: staffCreateEmail || undefined, phone: staffCreatePhone || undefined,
+        });
+        profileId = spRes.data.id;
+        profileType = pt;
+      }
       const r = await createUserRequest(auth.accessToken, createForm);
-      const selectedRole = roles.find(rl => rl.id === createForm.roleId);
       if (selectedRole?.key === 'driver' && linkEntityIdOnCreate) {
         try {
           await createUserProfileLink(auth.accessToken, r.data.id, { profileType: 'DRIVER', profileId: linkEntityIdOnCreate, isPrimary: true });
@@ -173,11 +188,18 @@ export function UsersPage() {
           setLinkErrorOnCreate(linkErr instanceof ApiError ? linkErr.message : 'User created but driver profile link failed. Link manually from user details.');
         }
       }
+      if (profileId && profileType) {
+        try {
+          await createUserProfileLink(auth.accessToken, r.data.id, { profileType, profileId, isPrimary: true });
+        } catch (linkErr) {
+          setLinkErrorOnCreate(linkErr instanceof ApiError ? linkErr.message : 'Staff profile created but link failed. Link manually from user details.');
+        }
+      }
       await loadUsers();
       setSelectedUserId(r.data.id);
-      setPageMessage(selectedRole?.key === 'driver' && linkEntityIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.');
-      showToast(selectedRole?.key === 'driver' && linkEntityIdOnCreate && !linkErrorOnCreate ? 'User created and driver profile linked.' : 'User created successfully.', 'success');
-      setLinkEntityIdOnCreate('');
+      setPageMessage('User created successfully.');
+      showToast('User created successfully.', 'success');
+      setLinkEntityIdOnCreate(''); setStaffCreateName(''); setStaffCreateEmail(''); setStaffCreatePhone('');
       setIsCreateOpen(false);
     } catch (e) { setCreateError(e instanceof ApiError ? e.message : 'Failed to create.'); }
     finally { setIsSavingCreate(false); }
@@ -274,7 +296,7 @@ export function UsersPage() {
           <PageHeader eyebrow="Admin" title="Users" description="User directory — manage accounts, roles, and profile links." />
         </div>
         <div className="action-panel">
-          {canCreate ? <button type="button" className="primary-button" onClick={() => { setCreateForm({ ...initialForm, roleId: roles[0]?.id || '' }); setCreateError(null); setPageMessage(null); setIsCreateOpen(true); }}>Create user</button> : null}
+          {canCreate ? <button type="button" className="primary-button" onClick={() => { setCreateForm({ ...initialForm, roleId: roles[0]?.id || '' }); setCreateError(null); setPageMessage(null); setStaffCreateName(''); setStaffCreateEmail(''); setStaffCreatePhone(''); setStaffCreateError(null); setIsCreateOpen(true); }}>Create user</button> : null}
         </div>
       </div>
 
@@ -347,22 +369,44 @@ export function UsersPage() {
                 </select>
               </label>
             </div>
-            {roles.find(rl => rl.id === createForm.roleId)?.key === 'driver' && (
-              <div style={{ marginTop: '0.75rem' }}>
-                <label><span>Link Driver Profile (required for Driver role)</span>
-                  <select value={linkEntityIdOnCreate} onChange={e => setLinkEntityIdOnCreate(e.target.value)}>
-                    <option value="">Choose a driver...</option>
-                    {allDrivers.filter(d => d.status !== 'INACTIVE').map(d => (
-                      <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
-                    ))}
-                  </select>
-                </label>
-                {allDrivers.filter(d => d.status !== 'INACTIVE' && !d.isLinked).length === 0 && (
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>No unlinked drivers available. Create the driver first.</p>
-                )}
-                {linkErrorOnCreate && <div className="error-banner" style={{ marginTop: '0.5rem' }}>{linkErrorOnCreate}</div>}
-              </div>
-            )}
+            {(() => {
+              const roleKey = roles.find(rl => rl.id === createForm.roleId)?.key;
+              if (roleKey === 'driver') {
+                return (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <label><span>Link Driver Profile (required for Driver role)</span>
+                      <select value={linkEntityIdOnCreate} onChange={e => setLinkEntityIdOnCreate(e.target.value)}>
+                        <option value="">Choose a driver...</option>
+                        {allDrivers.filter(d => d.status !== 'INACTIVE').map(d => (
+                          <option key={d.driverId} value={d.driverId} disabled={d.isLinked}>{d.name} ({d.mobile}) - {d.status}{d.isLinked ? ' (Linked)' : ''}</option>
+                        ))}
+                      </select>
+                    </label>
+                    {allDrivers.filter(d => d.status !== 'INACTIVE' && !d.isLinked).length === 0 && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginTop: '0.25rem' }}>No unlinked drivers available. Create the driver first.</p>
+                    )}
+                    {linkErrorOnCreate && <div className="error-banner" style={{ marginTop: '0.5rem' }}>{linkErrorOnCreate}</div>}
+                  </div>
+                );
+              }
+              if (roleKey && ['mechanic', 'finance', 'collector', 'employee'].includes(roleKey)) {
+                return (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', margin: '0 0 0.5rem' }}>Create {roleKey} Profile</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: '0.5rem' }}>
+                      Fill in the profile details. A staff profile will be created and auto-linked to this user.
+                    </p>
+                    <div className="form-grid" style={{ marginBottom: '0.5rem' }}>
+                      <label><span>Profile name *</span><input value={staffCreateName} onChange={e => setStaffCreateName(e.target.value)} placeholder="e.g. John Mechanic" /></label>
+                      <label><span>Email</span><input type="email" value={staffCreateEmail} onChange={e => setStaffCreateEmail(e.target.value)} placeholder="email@example.com" /></label>
+                      <label><span>Phone</span><input value={staffCreatePhone} onChange={e => setStaffCreatePhone(e.target.value)} placeholder="Phone number" /></label>
+                    </div>
+                    {staffCreateError && <div className="error-banner" style={{ marginTop: '0.25rem' }}>{staffCreateError}</div>}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </FormSection>
           {createError ? <div className="error-banner">{createError}</div> : null}
         </div>
