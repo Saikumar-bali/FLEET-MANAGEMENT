@@ -15,6 +15,9 @@ import {
   selfProfileLinksController,
   createProfileLinkForUserController,
   listAvailableDriversController,
+  listAvailableUsersController,
+  listAvailableVendorsController,
+  listAvailableCustomersController,
 } from './user-profile-links.controller';
 
 const router = Router();
@@ -32,11 +35,29 @@ router.get(
 // We need separate routes under /users/:userId path — these are handled via a separate router mounted at /api/v1/users
 // See user-profile-links-user-aliases.ts for that
 
-// ─── Available drivers for linking ───
+// ─── Available entities for linking ───
 router.get(
   '/available-drivers',
   requirePermission('profile_link_view'),
   asyncHandler(listAvailableDriversController),
+);
+
+router.get(
+  '/available-users',
+  requirePermission('profile_link_view'),
+  asyncHandler(listAvailableUsersController),
+);
+
+router.get(
+  '/available-vendors',
+  requirePermission('profile_link_view'),
+  asyncHandler(listAvailableVendorsController),
+);
+
+router.get(
+  '/available-customers',
+  requirePermission('profile_link_view'),
+  asyncHandler(listAvailableCustomersController),
 );
 
 // ─── Admin endpoints ───

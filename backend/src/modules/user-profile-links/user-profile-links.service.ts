@@ -252,6 +252,145 @@ export async function getProfileTypesForUser(userId: string): Promise<ProfileTyp
   return links.map(l => l.profileType);
 }
 
+export async function listAvailableUsers(profileType: ProfileType, search?: string) {
+  const roleKeyMap: Partial<Record<ProfileType, string>> = {
+    MECHANIC: 'mechanic',
+    FINANCE: 'finance',
+    COLLECTOR: 'collector',
+  };
+
+  const roleKey = roleKeyMap[profileType];
+  const where: Prisma.UserWhereInput = { status: 'ACTIVE' };
+
+  if (roleKey) {
+    where.role = { key: roleKey };
+  }
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    take: 100,
+    select: { id: true, name: true, email: true, username: true, status: true, role: { select: { key: true } } },
+  });
+
+  const userIds = users.map(u => u.id);
+  const activeLinks = await prisma.userProfileLink.findMany({
+    where: {
+      profileType,
+      profileId: { in: userIds },
+      status: 'ACTIVE',
+    },
+    select: { profileId: true, userId: true },
+  });
+
+  const linkMap = new Map(activeLinks.map(l => [l.profileId, l.userId]));
+  const linkedUserIds = [...new Set(activeLinks.map(l => l.userId))];
+  const linkedUsers = linkedUserIds.length > 0
+    ? await prisma.user.findMany({
+        where: { id: { in: linkedUserIds } },
+        select: { id: true, username: true },
+      })
+    : [];
+  const userMap = new Map(linkedUsers.map(u => [u.id, u.username]));
+
+  return users.map(u => ({
+    userId: u.id,
+    name: u.name,
+    email: u.email,
+    username: u.username,
+    roleKey: u.role.key,
+    status: u.status,
+    linkedUserId: linkMap.get(u.id) ?? null,
+    linkedUsername: linkMap.get(u.id) ? (userMap.get(linkMap.get(u.id)!) ?? null) : null,
+    isLinked: linkMap.has(u.id),
+  }));
+}
+
+export async function listAvailableVendors(search?: string) {
+  const where: Prisma.VendorWhereInput = { isActive: true };
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { contactPersonName: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const vendors = await prisma.vendor.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    take: 100,
+    select: { id: true, name: true, contactPersonName: true, email: true, phone: true },
+  });
+
+  const vendorIds = vendors.map(v => v.id);
+  const activeLinks = await prisma.userProfileLink.findMany({
+    where: {
+      profileType: 'VENDOR_CONTACT',
+      profileId: { in: vendorIds },
+      status: 'ACTIVE',
+    },
+    select: { profileId: true, userId: true },
+  });
+
+  const linkMap = new Map(activeLinks.map(l => [l.profileId, l.userId]));
+
+  return vendors.map(v => ({
+    vendorId: v.id,
+    name: v.name,
+    contactPerson: v.contactPersonName,
+    email: v.email,
+    phone: v.phone,
+    linkedUserId: linkMap.get(v.id) ?? null,
+    isLinked: linkMap.has(v.id),
+  }));
+}
+
+export async function listAvailableCustomers(search?: string) {
+  const where: Prisma.CustomerWhereInput = { isActive: true };
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { contactPersonName: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  const customers = await prisma.customer.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    take: 100,
+    select: { id: true, name: true, contactPersonName: true, email: true, phone: true },
+  });
+
+  const customerIds = customers.map(c => c.id);
+  const activeLinks = await prisma.userProfileLink.findMany({
+    where: {
+      profileType: 'CUSTOMER_CONTACT',
+      profileId: { in: customerIds },
+      status: 'ACTIVE',
+    },
+    select: { profileId: true, userId: true },
+  });
+
+  const linkMap = new Map(activeLinks.map(l => [l.profileId, l.userId]));
+
+  return customers.map(c => ({
+    customerId: c.id,
+    name: c.name,
+    contactPerson: c.contactPersonName,
+    email: c.email,
+    phone: c.phone,
+    linkedUserId: linkMap.get(c.id) ?? null,
+    isLinked: linkMap.has(c.id),
+  }));
+}
+
 export async function listAvailableDrivers(search?: string, showAll = false) {
   const where: Prisma.DriverWhereInput = {};
   if (search) {

@@ -10,6 +10,9 @@ import {
   revokeProfileLink,
   deleteProfileLink,
   listAvailableDrivers,
+  listAvailableUsers,
+  listAvailableVendors,
+  listAvailableCustomers,
 } from './user-profile-links.service';
 import { validateProfileLinkCreate } from './user-profile-links.scope-validation';
 import type { ProfileType } from '@prisma/client';
@@ -106,13 +109,32 @@ export async function deleteProfileLinkController(req: Request, res: Response) {
   return sendSuccess(res, null, 'Profile link deleted');
 }
 
-// ─── Available drivers for linking ───
+// ─── Available entities for linking ───
 
 export async function listAvailableDriversController(req: Request, res: Response) {
   const search = req.query.search as string | undefined;
   const showAll = req.query.showAll === 'true';
   const drivers = await listAvailableDrivers(search, showAll);
   return sendSuccess(res, drivers);
+}
+
+export async function listAvailableUsersController(req: Request, res: Response) {
+  const profileType = String(req.query.profileType).toUpperCase() as ProfileType;
+  const search = req.query.search as string | undefined;
+  const users = await listAvailableUsers(profileType, search);
+  return sendSuccess(res, users);
+}
+
+export async function listAvailableVendorsController(req: Request, res: Response) {
+  const search = req.query.search as string | undefined;
+  const vendors = await listAvailableVendors(search);
+  return sendSuccess(res, vendors);
+}
+
+export async function listAvailableCustomersController(req: Request, res: Response) {
+  const search = req.query.search as string | undefined;
+  const customers = await listAvailableCustomers(search);
+  return sendSuccess(res, customers);
 }
 
 export async function selfProfileLinksController(req: Request, res: Response) {
