@@ -69,12 +69,15 @@ function checkScopeForRecord(
   if (resourceType === 'VEHICLE') {
     const recordId = record.id as string;
     if (recordId && hasScopeAtLevel(actor, 'VEHICLE', recordId, requiredLevel)) return;
+    // Permission alone is sufficient for VIEW if no scope exists
+    if (requiredLevel === 'VIEW' && actor.effectivePermissions.includes(mapping.permissions.view)) return;
     deny(`Access denied: insufficient data scope (need ${requiredLevel} on VEHICLE ${recordId})`);
   }
 
   if (resourceType === 'DRIVER') {
     const recordId = record.id as string;
     if (recordId && hasScopeAtLevel(actor, 'DRIVER', recordId, requiredLevel)) return;
+    if (requiredLevel === 'VIEW' && actor.effectivePermissions.includes(mapping.permissions.view)) return;
     deny(`Access denied: insufficient data scope (need ${requiredLevel} on DRIVER ${recordId})`);
   }
 
@@ -97,6 +100,7 @@ function checkScopeForRecord(
   if (resourceType === 'TRIP') {
     const recordId = record.id as string;
     if (recordId && hasScopeAtLevel(actor, 'TRIP', recordId, requiredLevel)) return;
+    if (requiredLevel === 'VIEW' && actor.effectivePermissions.includes(mapping.permissions.view)) return;
   }
 
   deny(`Access denied: insufficient data scope (need ${requiredLevel} scope for this record)`);
@@ -338,7 +342,13 @@ export function getScopedWhereForResource(
     }
   }
 
-  if (conditions.length === 0) return { id: '__NO_ACCESS__' };
+  if (conditions.length === 0) {
+    // If the user has the view permission for this resource, don't scope-restrict.
+    // Data scopes are an additional filter, not a gate — permission alone is sufficient.
+    const viewPerm = mapping.permissions.view;
+    if (viewPerm && actor.effectivePermissions.includes(viewPerm)) return undefined;
+    return { id: '__NO_ACCESS__' };
+  }
   if (conditions.length === 1) return conditions[0];
   return { OR: conditions };
 }
