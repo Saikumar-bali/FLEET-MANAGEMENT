@@ -19,6 +19,10 @@ export type ActorContext = {
   isGlobalUser: boolean;
   effectivePermissions: string[];
   dataScopes: DataScopeEntry[];
+  ownProfileIds: {
+    driverIds: string[];
+    staffProfileIds: string[];
+  };
 };
 
 type PreloadedUser = {
@@ -79,6 +83,15 @@ export async function getActorContext(userId: string, preloadedUser?: PreloadedU
 
   const isGlobalUser = isSuperAdmin || hasGlobalManageScope;
 
+  const profileLinks = await prisma.userProfileLink.findMany({
+    where: { userId: user.id, status: 'ACTIVE' },
+    select: { profileType: true, profileId: true },
+  });
+  const ownProfileIds = {
+    driverIds: profileLinks.filter(pl => pl.profileType === 'DRIVER').map(pl => pl.profileId),
+    staffProfileIds: profileLinks.filter(pl => ['MECHANIC', 'EMPLOYEE', 'FINANCE', 'COLLECTOR'].includes(pl.profileType)).map(pl => pl.profileId),
+  };
+
   return {
     user: {
       id: user.id,
@@ -100,6 +113,7 @@ export async function getActorContext(userId: string, preloadedUser?: PreloadedU
     isGlobalUser,
     effectivePermissions: effectivePerms.effectivePermissions,
     dataScopes,
+    ownProfileIds,
   };
 }
 

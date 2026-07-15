@@ -86,6 +86,14 @@ function checkScopeForRecord(
   if (driverId && hasScopeAtLevel(actor, 'DRIVER', driverId, requiredLevel)) return;
   if (tripId && hasScopeAtLevel(actor, 'TRIP', tripId, requiredLevel)) return;
 
+  // Profile-based access: users can view/update documents linked to their own profiles
+  if (resourceType === 'DOCUMENT' && requiredLevel !== 'DELETE') {
+    const staffProfileId = record.staffProfileId as string | null | undefined;
+    if (staffProfileId && actor.ownProfileIds.staffProfileIds.includes(staffProfileId)) return;
+    const recDriverId = record.driverId as string | null | undefined;
+    if (recDriverId && actor.ownProfileIds.driverIds.includes(recDriverId)) return;
+  }
+
   if (resourceType === 'TRIP') {
     const recordId = record.id as string;
     if (recordId && hasScopeAtLevel(actor, 'TRIP', recordId, requiredLevel)) return;
@@ -317,6 +325,16 @@ export function getScopedWhereForResource(
       .map(ds => ds.scopeId!);
     if (tripScopeIds.length > 0) {
       conditions.push({ [tripField]: { in: tripScopeIds } });
+    }
+  }
+
+  // Profile-based access: users see documents linked to their own profiles
+  if (resourceType === 'DOCUMENT') {
+    if (actor.ownProfileIds.staffProfileIds.length > 0) {
+      conditions.push({ staffProfileId: { in: actor.ownProfileIds.staffProfileIds } });
+    }
+    if (actor.ownProfileIds.driverIds.length > 0) {
+      conditions.push({ driverId: { in: actor.ownProfileIds.driverIds } });
     }
   }
 

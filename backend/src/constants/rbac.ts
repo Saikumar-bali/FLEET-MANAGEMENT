@@ -362,7 +362,7 @@ export const defaultRolePermissionMap: Record<string, string[]> = {
     'finance_view',
     'report_view',
   ],
-  mechanic: ['repair_view', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_update', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'document_metadata_view', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view'],
+  mechanic: ['dashboard_view', 'vehicle_view', 'trip_view', 'repair_view', 'repair_create', 'repair_update', 'repair_close', 'maintenance_view', 'maintenance_create', 'maintenance_update', 'maintenance_submit', 'vehicle_compliance_view', 'vehicle_compliance_create', 'vehicle_compliance_update', 'vehicle_compliance_verify', 'documents_view', 'documents_upload', 'documents_download', 'compliance_history_view', 'document_metadata_view'],
   finance: [
     'finance_view',
     'finance_create',
