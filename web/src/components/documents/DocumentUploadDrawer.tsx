@@ -15,6 +15,7 @@ type Props = {
   defaultVehicleId?: string;
   defaultDriverId?: string;
   defaultTripId?: string;
+  defaultStaffProfileId?: string;
 };
 
 const DOC_TYPES = [
@@ -50,6 +51,7 @@ export function DocumentUploadDrawer({
   defaultVehicleId,
   defaultDriverId,
   defaultTripId,
+  defaultStaffProfileId,
 }: Props) {
   const auth = useAuth();
   const { showToast } = useToast();
@@ -126,6 +128,7 @@ export function DocumentUploadDrawer({
       if (defaultVehicleId) formData.append('vehicleId', defaultVehicleId);
       if (defaultDriverId) formData.append('driverId', defaultDriverId);
       if (defaultTripId) formData.append('tripId', defaultTripId);
+      if (defaultStaffProfileId) formData.append('staffProfileId', defaultStaffProfileId);
 
       await uploadDocument(auth.accessToken, formData);
       showToast('Document uploaded successfully', 'success');

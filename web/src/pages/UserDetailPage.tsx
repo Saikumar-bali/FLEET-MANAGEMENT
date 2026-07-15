@@ -390,6 +390,7 @@ export function UserDetailPage() {
       return {
         linkedEntityType: 'STAFF_PROFILE' as const,
         linkedEntityId: staffProfile.id,
+        staffProfileId: staffProfile.id,
         title: `${staffProfile.profileType} Profile Documents`,
         allowedDocumentTypes: ['DOCUMENT', 'GENERAL'],
       };
@@ -643,6 +644,7 @@ export function UserDetailPage() {
               title={docContext.title}
               linkedEntityType={docContext.linkedEntityType}
               linkedEntityId={docContext.linkedEntityId}
+              staffProfileId={docContext.staffProfileId}
               allowedDocumentTypes={docContext.allowedDocumentTypes}
               canUpload={auth.hasPermission('documents_upload')}
               canDownload={auth.hasPermission('documents_download')}

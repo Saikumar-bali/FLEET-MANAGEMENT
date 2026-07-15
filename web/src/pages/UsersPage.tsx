@@ -587,6 +587,7 @@ export function UsersPage() {
             <div className="form-grid">
               <label><span>Profile type</span>
                 <select value={createStaffType} onChange={e => setCreateStaffType(e.target.value)}>
+                  <option value="DRIVER">Driver</option>
                   <option value="MECHANIC">Mechanic</option>
                   <option value="FINANCE">Finance</option>
                   <option value="COLLECTOR">Collector</option>
@@ -648,6 +649,7 @@ export function UsersPage() {
                     title={`${staffDetail.profileType} Documents`}
                     linkedEntityType="STAFF_PROFILE"
                     linkedEntityId={staffDetail.id}
+                    staffProfileId={staffDetail.id}
                     allowedDocumentTypes={['DOCUMENT', 'GENERAL']}
                     canUpload={auth.hasPermission('documents_upload')}
                     canDownload={auth.hasPermission('documents_download')}

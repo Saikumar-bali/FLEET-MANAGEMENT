@@ -69,6 +69,7 @@ export async function listDocuments(query: DocumentListQuery) {
   if (query.customerId) where.customerId = query.customerId;
   if (query.vendorId) where.vendorId = query.vendorId;
   if (query.fuelEntryId) where.fuelEntryId = query.fuelEntryId;
+  if (query.staffProfileId) where.staffProfileId = query.staffProfileId;
   if (query.status) where.documentStatus = query.status as any;
   if (query.verificationStatus) where.verificationStatus = query.verificationStatus as any;
   if (query.uploadedById) where.uploadedById = query.uploadedById;
@@ -100,6 +101,7 @@ export async function listDocuments(query: DocumentListQuery) {
         vehicle: { select: { id: true, vehicleNumber: true } },
         driver: { select: { id: true, name: true } },
         trip: { select: { id: true, tripNumber: true } },
+        staffProfile: true,
       },
     }),
     prisma.document.count({ where }),
@@ -127,6 +129,7 @@ export async function getDocumentById(id: string) {
       trip: { select: { id: true, tripNumber: true } },
       customer: { select: { id: true, name: true } },
       vendor: { select: { id: true, name: true } },
+      staffProfile: true,
     },
   });
 
@@ -176,6 +179,10 @@ export async function uploadDocument(
   if (input.fuelEntryId) {
     const exists = await prisma.fuelEntry.findUnique({ where: { id: input.fuelEntryId } });
     if (!exists) throw new AppError('Fuel entry not found', 400);
+  }
+  if (input.staffProfileId) {
+    const exists = await prisma.staffProfile.findUnique({ where: { id: input.staffProfileId } });
+    if (!exists) throw new AppError('Staff profile not found', 400);
   }
 
   const storage = getStorageProvider();
@@ -233,6 +240,7 @@ export async function uploadDocument(
       maintenanceRequestId: input.maintenanceRequestId || null,
       repairId: input.repairId || null,
       fuelEntryId: input.fuelEntryId || null,
+      staffProfileId: input.staffProfileId || null,
       issueDate: input.issueDate ? new Date(input.issueDate) : null,
       expiryDate: input.expiryDate ? new Date(input.expiryDate) : null,
       tags,
@@ -244,6 +252,7 @@ export async function uploadDocument(
       vehicle: { select: { id: true, vehicleNumber: true } },
       driver: { select: { id: true, name: true } },
       trip: { select: { id: true, tripNumber: true } },
+      staffProfile: true,
     },
   });
 
@@ -288,6 +297,8 @@ export async function updateDocument(documentId: string, input: DocumentUpdateIn
       tripId: input.tripId,
       customerId: input.customerId,
       vendorId: input.vendorId,
+      fuelEntryId: input.fuelEntryId,
+      staffProfileId: input.staffProfileId,
       issueDate: input.issueDate ? new Date(input.issueDate) : undefined,
       expiryDate: input.expiryDate ? new Date(input.expiryDate) : undefined,
       tags,
@@ -298,6 +309,7 @@ export async function updateDocument(documentId: string, input: DocumentUpdateIn
       vehicle: { select: { id: true, vehicleNumber: true } },
       driver: { select: { id: true, name: true } },
       trip: { select: { id: true, tripNumber: true } },
+      staffProfile: true,
     },
   });
 
