@@ -15,6 +15,7 @@ export type DocumentUploadInput = {
   maintenanceRequestId?: string;
   repairId?: string;
   fuelEntryId?: string;
+  staffProfileId?: string;
   issueDate?: string;
   expiryDate?: string;
   tags?: string;
@@ -33,6 +34,8 @@ export type DocumentUpdateInput = {
   tripId?: string;
   customerId?: string;
   vendorId?: string;
+  fuelEntryId?: string;
+  staffProfileId?: string;
   issueDate?: string;
   expiryDate?: string;
   tags?: string;
@@ -51,6 +54,7 @@ export type DocumentListQuery = {
   customerId?: string;
   vendorId?: string;
   fuelEntryId?: string;
+  staffProfileId?: string;
   status?: string;
   verificationStatus?: string;
   expiringBefore?: string;

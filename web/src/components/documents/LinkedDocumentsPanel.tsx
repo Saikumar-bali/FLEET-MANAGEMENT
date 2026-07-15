@@ -15,6 +15,7 @@ type Props = {
   tripId?: string;
   customerId?: string;
   vendorId?: string;
+  staffProfileId?: string;
   defaultDocumentCategory?: string;
   allowedDocumentTypes?: string[];
   title: string;
@@ -42,6 +43,7 @@ export function LinkedDocumentsPanel({
   tripId,
   customerId: _customerId,
   vendorId: _vendorId,
+  staffProfileId,
   defaultDocumentCategory,
   allowedDocumentTypes,
   title,
@@ -64,8 +66,14 @@ export function LinkedDocumentsPanel({
     if (!auth.accessToken) return;
     setIsLoading(true);
     try {
-      const params: Record<string, string> = {};
-      params[`${linkedEntityType.toLowerCase()}Id`] = linkedEntityId;
+      const params: Record<string, string> = {
+        linkedEntityType,
+        linkedEntityId,
+      };
+      if (vehicleId) params.vehicleId = vehicleId;
+      if (driverId) params.driverId = driverId;
+      if (tripId) params.tripId = tripId;
+      if (staffProfileId) params.staffProfileId = staffProfileId;
       const result = await getDocuments(auth.accessToken, params);
       setDocuments(result.data?.items || []);
     } catch {
@@ -73,7 +81,7 @@ export function LinkedDocumentsPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [auth.accessToken, linkedEntityType, linkedEntityId, showToast]);
+  }, [auth.accessToken, linkedEntityType, linkedEntityId, vehicleId, driverId, tripId, staffProfileId, showToast]);
 
   useEffect(() => {
     loadDocuments();
@@ -231,6 +239,7 @@ export function LinkedDocumentsPanel({
         defaultVehicleId={vehicleId}
         defaultDriverId={driverId}
         defaultTripId={tripId}
+        defaultStaffProfileId={staffProfileId}
       />
 
       <DocumentPreviewDrawer
