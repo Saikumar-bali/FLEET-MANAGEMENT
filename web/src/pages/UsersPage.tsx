@@ -5,6 +5,7 @@ import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { FormSection } from '../components/FormSection';
+import { LinkedDocumentsPanel } from '../components/documents/LinkedDocumentsPanel';
 import { LoadingState } from '../components/LoadingState';
 import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
@@ -21,6 +22,9 @@ import {
   getAvailableCustomers,
   getRoles,
   getUsers,
+  listStaffProfiles,
+  getStaffProfile,
+  updateStaffProfile,
   updateUser as updateUserRequest,
   updateUserPassword as updateUserPasswordRequest,
   updateUserStatus as updateUserStatusRequest,
@@ -29,7 +33,7 @@ import {
   createUserProfileLink,
   revokeUserProfileLink,
 } from '../services/api';
-import type { AvailableDriver, AvailableStaffProfile, AvailableVendor, AvailableCustomer } from '../services/api';
+import type { AvailableDriver, AvailableStaffProfile, AvailableVendor, AvailableCustomer, StaffProfileRecord } from '../services/api';
 import type { RoleRecord, UserAccessSummaryRecord, UserRecord, ProfileLinkRecord } from '../types/auth';
 import { ApiError } from '../types/api';
 
@@ -84,9 +88,35 @@ export function UsersPage() {
   const [isRevoking, setIsRevoking] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
 
+  // Staff profile section state
+  const [viewMode, setViewMode] = useState<'users' | 'staff'>('users');
+  const [staffProfiles, setStaffProfiles] = useState<StaffProfileRecord[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+  const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);
+  const [createStaffType, setCreateStaffType] = useState('MECHANIC');
+  const [createStaffName, setCreateStaffName] = useState('');
+  const [createStaffEmail, setCreateStaffEmail] = useState('');
+  const [createStaffPhone, setCreateStaffPhone] = useState('');
+  const [isSavingStaffCreate, setIsSavingStaffCreate] = useState(false);
+  const [staffCreateModalError, setStaffCreateModalError] = useState<string | null>(null);
+  const [viewStaffProfile, setViewStaffProfile] = useState<StaffProfileRecord | null>(null);
+  const [staffViewTab, setStaffViewTab] = useState<'profile' | 'documents' | 'create-login'>('profile');
+  const [staffDetail, setStaffDetail] = useState<StaffProfileRecord | null>(null);
+  const [editStaffName, setEditStaffName] = useState('');
+  const [editStaffEmail, setEditStaffEmail] = useState('');
+  const [editStaffPhone, setEditStaffPhone] = useState('');
+  const [isSavingStaffDetail, setIsSavingStaffDetail] = useState(false);
+  const [staffDetailError, setStaffDetailError] = useState<string | null>(null);
+  const [loginFormUsername, setLoginFormUsername] = useState('');
+  const [loginFormPassword, setLoginFormPassword] = useState('');
+  const [loginFormRoleId, setLoginFormRoleId] = useState('');
+  const [isCreatingLogin, setIsCreatingLogin] = useState(false);
+  const [loginCreateError, setLoginCreateError] = useState<string | null>(null);
+
   const canCreate = auth.hasPermission('user_create');
   const canUpdate = auth.hasPermission('user_update');
   const canDelete = auth.hasPermission('user_delete');
+  const canLink = auth.hasPermission('profile_link_create');
 
   const selectedUser = useMemo(() => users.find(u => u.id === selectedUserId) ?? null, [selectedUserId, users]);
 
@@ -101,6 +131,7 @@ export function UsersPage() {
     const r = await getRoles(auth.accessToken);
     setRoles(r.data);
     setCreateForm(f => ({ ...f, roleId: f.roleId || r.data[0]?.id || '' }));
+    setLoginFormRoleId(r.data[0]?.id || '');
   }
 
   async function loadSummaries() {
@@ -111,6 +142,16 @@ export function UsersPage() {
   async function loadDrivers() {
     if (!auth.accessToken) return;
     try { const r = await getAvailableDrivers(auth.accessToken, { showAll: true }); setAllDrivers(Array.isArray(r.data) ? r.data : []); } catch {}
+  }
+
+  async function loadStaffProfilesList() {
+    if (!auth.accessToken) return;
+    setIsLoadingStaff(true);
+    try {
+      const r = await listStaffProfiles(auth.accessToken, { limit: 100 });
+      setStaffProfiles(r.data?.items ?? []);
+    } catch { setStaffProfiles([]); }
+    finally { setIsLoadingStaff(false); }
   }
 
   async function loadEntitiesForType(profileType: string) {
@@ -147,6 +188,10 @@ export function UsersPage() {
   }, [auth.accessToken]);
 
   useEffect(() => {
+    if (viewMode === 'staff') { void loadStaffProfilesList(); }
+  }, [viewMode, auth.accessToken]);
+
+  useEffect(() => {
     if (!selectedUser) { setEditForm(initialForm); return; }
     setEditForm({
       name: selectedUser.name, username: selectedUser.username ?? '', email: selectedUser.email,
@@ -163,6 +208,22 @@ export function UsersPage() {
     if (auth.accessToken) {
       getUserProfileLinks(auth.accessToken, user.id).then(r => setProfileLinks(r.data)).catch(() => {});
     }
+  }
+
+  async function openStaffView(sp: StaffProfileRecord) {
+    setViewStaffProfile(sp); setStaffViewTab('profile'); setStaffDetailError(null); setLoginCreateError(null);
+    if (!auth.accessToken) return;
+    try {
+      const r = await getStaffProfile(auth.accessToken, sp.id);
+      setStaffDetail(r.data);
+      setEditStaffName(r.data.name);
+      setEditStaffEmail(r.data.email ?? '');
+      setEditStaffPhone(r.data.phone ?? '');
+    } catch { setStaffDetail(null); }
+    const matchingRole = roles.find(r => r.key === sp.profileType.toLowerCase());
+    setLoginFormRoleId(matchingRole?.id || roles[0]?.id || '');
+    setLoginFormUsername(sp.name.toLowerCase().replace(/\s+/g, '.'));
+    setLoginFormPassword('');
   }
 
   async function handleCreate() {
@@ -286,6 +347,55 @@ export function UsersPage() {
     finally { setIsRevoking(false); }
   }
 
+  async function handleCreateStaffProfile() {
+    if (!auth.accessToken || !createStaffName) return;
+    setIsSavingStaffCreate(true); setStaffCreateModalError(null);
+    try {
+      await createStaffProfileRequest(auth.accessToken, {
+        profileType: createStaffType, name: createStaffName, email: createStaffEmail || undefined, phone: createStaffPhone || undefined,
+      });
+      showToast('Staff profile created.', 'success');
+      setCreateStaffName(''); setCreateStaffEmail(''); setCreateStaffPhone('');
+      setIsCreateStaffOpen(false);
+      void loadStaffProfilesList();
+    } catch (e) { setStaffCreateModalError(e instanceof ApiError ? e.message : 'Failed to create staff profile.'); }
+    finally { setIsSavingStaffCreate(false); }
+  }
+
+  async function handleSaveStaffDetail() {
+    if (!auth.accessToken || !staffDetail) return;
+    setIsSavingStaffDetail(true); setStaffDetailError(null);
+    try {
+      const r = await updateStaffProfile(auth.accessToken, staffDetail.id, {
+        name: editStaffName, email: editStaffEmail || undefined, phone: editStaffPhone || undefined,
+      });
+      setStaffDetail(r.data);
+      setViewStaffProfile(r.data);
+      showToast('Profile updated.', 'success');
+      void loadStaffProfilesList();
+    } catch (e) { setStaffDetailError(e instanceof ApiError ? e.message : 'Failed to update.'); }
+    finally { setIsSavingStaffDetail(false); }
+  }
+
+  async function handleCreateLogin() {
+    if (!auth.accessToken || !staffDetail || !loginFormUsername || !loginFormPassword || !loginFormRoleId) return;
+    setIsCreatingLogin(true); setLoginCreateError(null);
+    try {
+      const userRes = await createUserRequest(auth.accessToken, {
+        name: editStaffName, username: loginFormUsername, email: staffDetail.email ?? `${loginFormUsername}@temp.local`,
+        mobile: staffDetail.phone ?? '', password: loginFormPassword, roleId: loginFormRoleId, status: 'ACTIVE',
+      });
+      await createUserProfileLink(auth.accessToken, userRes.data.id, {
+        profileType: staffDetail.profileType, profileId: staffDetail.id, isPrimary: true,
+      });
+      showToast('Login created and profile linked.', 'success');
+      setViewStaffProfile(null); setStaffDetail(null);
+      void loadUsers();
+      void loadStaffProfilesList();
+    } catch (e) { setLoginCreateError(e instanceof ApiError ? e.message : 'Failed to create login.'); }
+    finally { setIsCreatingLogin(false); }
+  }
+
   if (isLoading) return <LoadingState message="Loading users..." />;
   if (pageError) return <ErrorState message={pageError} onRetry={() => window.location.reload()} />;
 
@@ -293,49 +403,98 @@ export function UsersPage() {
     <section className="page-content">
       <div className="section-header">
         <div>
-          <PageHeader eyebrow="Admin" title="Users" description="User directory — manage accounts, roles, and profile links." />
+          <PageHeader eyebrow="Admin" title={viewMode === 'users' ? 'Users' : 'Staff Profiles'} description={viewMode === 'users' ? 'User directory — manage accounts, roles, and profile links.' : 'Staff profiles — personal data and documents before creating login accounts.'} />
         </div>
         <div className="action-panel">
-          {canCreate ? <button type="button" className="primary-button" onClick={() => { setCreateForm({ ...initialForm, roleId: roles[0]?.id || '' }); setCreateError(null); setPageMessage(null); setStaffCreateName(''); setStaffCreateEmail(''); setStaffCreatePhone(''); setStaffCreateError(null); setIsCreateOpen(true); }}>Create user</button> : null}
+          {viewMode === 'users' && canCreate ? (
+            <button type="button" className="primary-button" onClick={() => { setCreateForm({ ...initialForm, roleId: roles[0]?.id || '' }); setCreateError(null); setPageMessage(null); setStaffCreateName(''); setStaffCreateEmail(''); setStaffCreatePhone(''); setStaffCreateError(null); setIsCreateOpen(true); }}>Create user</button>
+          ) : viewMode === 'staff' && canCreate ? (
+            <button type="button" className="primary-button" onClick={() => { setCreateStaffType('MECHANIC'); setCreateStaffName(''); setCreateStaffEmail(''); setCreateStaffPhone(''); setStaffCreateModalError(null); setIsCreateStaffOpen(true); }}>Create Staff Profile</button>
+          ) : null}
         </div>
+      </div>
+
+      {/* Mode Switcher */}
+      <div className="section-tabs" style={{ marginBottom: '1rem' }}>
+        <button type="button" className={`tab-button ${viewMode === 'users' ? 'active-tab' : ''}`} onClick={() => setViewMode('users')}>Users</button>
+        <button type="button" className={`tab-button ${viewMode === 'staff' ? 'active-tab' : ''}`} onClick={() => setViewMode('staff')}>Staff Profiles</button>
       </div>
 
       {pageMessage ? <div className="success-banner">{pageMessage}</div> : null}
 
-      <article className="card">
-        <div className="table-toolbar">
-          <h3 className="table-toolbar-title">User Directory</h3>
-          <p className="table-toolbar-copy">{users.length} total users</p>
-        </div>
-        {users.length === 0 ? (
-          <EmptyState title="No users yet" message="Create the first team user." action={canCreate ? <button type="button" className="primary-button" onClick={() => setIsCreateOpen(true)}>Create user</button> : null} />
-        ) : (
-          <DataTable
-            columns={[
-              { key: 'name', header: 'Name', render: (u: UserRecord) => <span style={{ fontWeight: 500 }}>{u.name}</span> },
-              { key: 'username', header: 'Username', render: (u: UserRecord) => u.username ? `@${u.username}` : <span className="table-secondary">Not set</span> },
-              { key: 'email', header: 'Email', render: (u: UserRecord) => u.email },
-              { key: 'role', header: 'Role', render: (u: UserRecord) => u.role.name },
-              { key: 'status', header: 'Status', render: (u: UserRecord) => <StatusBadge status={u.status} />, width: '100px' },
-              { key: 'lastLoginAt', header: 'Last Login', render: (u: UserRecord) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : <span className="table-secondary">Never</span> },
-              {
-                key: 'actions', header: '', width: '200px',
-                render: (u: UserRecord) => (
-                  <div className="action-panel" style={{ gap: '0.25rem' }}>
-                    <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); openView(u); }}>View</button>
-                    <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); navigate(`/users/${u.id}`); }}>Manage Access</button>
-                  </div>
-                ),
-              },
-            ]}
-            data={users}
-            keyExtractor={(u: UserRecord) => u.id}
-            onRowClick={(user) => openView(user)}
-          />
-        )}
-      </article>
+      {/* ═══════════ Users Mode ═══════════ */}
+      {viewMode === 'users' && (
+        <article className="card">
+          <div className="table-toolbar">
+            <h3 className="table-toolbar-title">User Directory</h3>
+            <p className="table-toolbar-copy">{users.length} total users</p>
+          </div>
+          {users.length === 0 ? (
+            <EmptyState title="No users yet" message="Create the first team user." action={canCreate ? <button type="button" className="primary-button" onClick={() => setIsCreateOpen(true)}>Create user</button> : null} />
+          ) : (
+            <DataTable
+              columns={[
+                { key: 'name', header: 'Name', render: (u: UserRecord) => <span style={{ fontWeight: 500 }}>{u.name}</span> },
+                { key: 'username', header: 'Username', render: (u: UserRecord) => u.username ? `@${u.username}` : <span className="table-secondary">Not set</span> },
+                { key: 'email', header: 'Email', render: (u: UserRecord) => u.email },
+                { key: 'role', header: 'Role', render: (u: UserRecord) => u.role.name },
+                { key: 'status', header: 'Status', render: (u: UserRecord) => <StatusBadge status={u.status} />, width: '100px' },
+                { key: 'lastLoginAt', header: 'Last Login', render: (u: UserRecord) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : <span className="table-secondary">Never</span> },
+                {
+                  key: 'actions', header: '', width: '200px',
+                  render: (u: UserRecord) => (
+                    <div className="action-panel" style={{ gap: '0.25rem' }}>
+                      <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); openView(u); }}>View</button>
+                      <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); navigate(`/users/${u.id}`); }}>Manage Access</button>
+                    </div>
+                  ),
+                },
+              ]}
+              data={users}
+              keyExtractor={(u: UserRecord) => u.id}
+              onRowClick={(user) => openView(user)}
+            />
+          )}
+        </article>
+      )}
 
-      {/* Create User Modal */}
+      {/* ═══════════ Staff Profiles Mode ═══════════ */}
+      {viewMode === 'staff' && (
+        <article className="card">
+          <div className="table-toolbar">
+            <h3 className="table-toolbar-title">Staff Profiles</h3>
+            <p className="table-toolbar-copy">{staffProfiles.length} total profiles</p>
+          </div>
+          {isLoadingStaff ? (
+            <LoadingState message="Loading staff profiles..." />
+          ) : staffProfiles.length === 0 ? (
+            <EmptyState title="No staff profiles yet" message="Create a staff profile to collect personal data and documents before creating a login account." action={canCreate ? <button type="button" className="primary-button" onClick={() => { setCreateStaffType('MECHANIC'); setCreateStaffName(''); setCreateStaffEmail(''); setCreateStaffPhone(''); setStaffCreateModalError(null); setIsCreateStaffOpen(true); }}>Create Staff Profile</button> : null} />
+          ) : (
+            <DataTable
+              columns={[
+                { key: 'name', header: 'Name', render: (s: StaffProfileRecord) => <span style={{ fontWeight: 500 }}>{s.name}</span> },
+                { key: 'profileType', header: 'Type', render: (s: StaffProfileRecord) => s.profileType },
+                { key: 'email', header: 'Email', render: (s: StaffProfileRecord) => s.email || <span className="table-secondary">—</span> },
+                { key: 'phone', header: 'Phone', render: (s: StaffProfileRecord) => s.phone || <span className="table-secondary">—</span> },
+                { key: 'status', header: 'Status', render: (s: StaffProfileRecord) => <StatusBadge status={s.status as 'ACTIVE' | 'INACTIVE'} />, width: '100px' },
+                {
+                  key: 'actions', header: '', width: '160px',
+                  render: (s: StaffProfileRecord) => (
+                    <div className="action-panel" style={{ gap: '0.25rem' }}>
+                      <button type="button" className="secondary-button" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={e => { e.stopPropagation(); openStaffView(s); }}>View</button>
+                    </div>
+                  ),
+                },
+              ]}
+              data={staffProfiles}
+              keyExtractor={(s: StaffProfileRecord) => s.id}
+              onRowClick={(s) => openStaffView(s)}
+            />
+          )}
+        </article>
+      )}
+
+      {/* ═══════════ Create User Modal ═══════════ */}
       <Modal isOpen={isCreateOpen} title="Create user" description="Add a new team member." onClose={() => { setIsCreateOpen(false); setCreateError(null); }}
         footer={
           <div className="button-row">
@@ -412,19 +571,131 @@ export function UsersPage() {
         </div>
       </Modal>
 
-      {/* Confirm Status Dialog */}
-      <ConfirmDialog isOpen={!!statusTarget} title="Confirm status change"
-        description={`Update ${selectedUser?.name ?? 'this user'} to ${statusTarget?.toLowerCase() ?? 'selected'} status?`}
-        confirmLabel="Update status" tone={statusTarget === 'SUSPENDED' ? 'danger' : 'default'}
-        isConfirming={isSavingEdit} onCancel={() => setStatusTarget(null)} onConfirm={handleStatus} />
+      {/* ═══════════ Create Staff Profile Modal ═══════════ */}
+      <Modal isOpen={isCreateStaffOpen} title="Create Staff Profile" description="Enter personal data first. Login account can be created later after document verification." onClose={() => { setIsCreateStaffOpen(false); setStaffCreateModalError(null); }}
+        footer={
+          <div className="button-row">
+            <button type="button" className="ghost-button" onClick={() => { setIsCreateStaffOpen(false); setStaffCreateModalError(null); }}>Cancel</button>
+            <button type="button" className="primary-button" onClick={handleCreateStaffProfile} disabled={isSavingStaffCreate || !createStaffName}>
+              {isSavingStaffCreate ? 'Creating...' : 'Create profile'}
+            </button>
+          </div>
+        }
+      >
+        <div className="stack-form">
+          <FormSection title="Profile Information">
+            <div className="form-grid">
+              <label><span>Profile type</span>
+                <select value={createStaffType} onChange={e => setCreateStaffType(e.target.value)}>
+                  <option value="MECHANIC">Mechanic</option>
+                  <option value="FINANCE">Finance</option>
+                  <option value="COLLECTOR">Collector</option>
+                  <option value="EMPLOYEE">Employee</option>
+                </select>
+              </label>
+              <label><span>Full name *</span><input value={createStaffName} onChange={e => setCreateStaffName(e.target.value)} placeholder="e.g. John Mechanic" required /></label>
+              <label><span>Email</span><input type="email" value={createStaffEmail} onChange={e => setCreateStaffEmail(e.target.value)} placeholder="email@example.com" /></label>
+              <label><span>Phone</span><input value={createStaffPhone} onChange={e => setCreateStaffPhone(e.target.value)} placeholder="Phone number" /></label>
+            </div>
+          </FormSection>
+          {staffCreateModalError ? <div className="error-banner">{staffCreateModalError}</div> : null}
+        </div>
+      </Modal>
 
-      {/* Revoke Link Confirmation */}
-      <ConfirmDialog isOpen={!!revokeTarget} title="Revoke profile link"
-        description="Remove this profile link from the user? Role-specific access will be removed."
-        confirmLabel="Revoke" tone="danger" isConfirming={isRevoking}
-        onCancel={() => setRevokeTarget(null)} onConfirm={() => revokeTarget ? handleRevoke(revokeTarget) : Promise.resolve()} />
+      {/* ═══════════ View Staff Profile Modal ═══════════ */}
+      <Modal isOpen={!!viewStaffProfile} title={viewStaffProfile?.name ?? 'Staff Profile'}
+        description={viewStaffProfile ? `${viewStaffProfile.profileType} — ${viewStaffProfile.status.toLowerCase()}` : ''}
+        onClose={() => { setViewStaffProfile(null); setStaffDetail(null); }}
+        size="large"
+      >
+        {viewStaffProfile && (
+          <div>
+            <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '2px solid var(--color-border)', marginBottom: '1rem', overflowX: 'auto' }}>
+              {['Profile', 'Documents', 'Create Login'].map(tab => (
+                <button key={tab} type="button" className={`tab-button ${staffViewTab === tab.toLowerCase().replace(/\s+/g, '-') ? 'active-tab' : ''}`} onClick={() => setStaffViewTab(tab.toLowerCase().replace(/\s+/g, '-') as 'profile' | 'documents' | 'create-login')} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{tab}</button>
+              ))}
+            </div>
 
-      {/* View User Modal */}
+            {/* Profile Tab */}
+            {staffViewTab === 'profile' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  {staffDetailError ? <div className="error-banner">{staffDetailError}</div> : null}
+                  <FormSection title="Profile Details" description="Edit personal information.">
+                    <div className="form-grid">
+                      <label><span>Profile Type</span><p className="detail-value">{staffDetail?.profileType ?? viewStaffProfile.profileType}</p></label>
+                      <label><span>Name</span><input value={editStaffName} onChange={e => setEditStaffName(e.target.value)} /></label>
+                      <label><span>Email</span><input value={editStaffEmail} onChange={e => setEditStaffEmail(e.target.value)} placeholder="email@example.com" /></label>
+                      <label><span>Phone</span><input value={editStaffPhone} onChange={e => setEditStaffPhone(e.target.value)} placeholder="Phone number" /></label>
+                      <label><span>Status</span><StatusBadge status={(staffDetail?.status ?? viewStaffProfile.status) as 'ACTIVE' | 'INACTIVE'} /></label>
+                      <label><span>Created</span><p className="detail-value">{new Date(viewStaffProfile.createdAt).toLocaleDateString()}</p></label>
+                    </div>
+                    <div className="button-row">
+                      <button type="button" className="primary-button" onClick={handleSaveStaffDetail} disabled={isSavingStaffDetail}>
+                        {isSavingStaffDetail ? 'Saving...' : 'Save changes'}
+                      </button>
+                    </div>
+                  </FormSection>
+                </article>
+              </div>
+            )}
+
+            {/* Documents Tab */}
+            {staffViewTab === 'documents' && (
+              <div>
+                {staffDetail ? (
+                  <LinkedDocumentsPanel
+                    title={`${staffDetail.profileType} Documents`}
+                    linkedEntityType="STAFF_PROFILE"
+                    linkedEntityId={staffDetail.id}
+                    allowedDocumentTypes={['DOCUMENT', 'GENERAL']}
+                    canUpload={auth.hasPermission('documents_upload')}
+                    canDownload={auth.hasPermission('documents_download')}
+                    canArchive={auth.hasPermission('documents_archive')}
+                    canDelete={auth.hasPermission('documents_delete')}
+                    canVerify={auth.hasPermission('documents_verify')}
+                  />
+                ) : (
+                  <article className="card" style={{ padding: '1.25rem' }}>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>Loading profile...</p>
+                  </article>
+                )}
+              </div>
+            )}
+
+            {/* Create Login Tab */}
+            {staffViewTab === 'create-login' && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {loginCreateError ? <div className="error-banner">{loginCreateError}</div> : null}
+                <article className="card" style={{ padding: '1.25rem' }}>
+                  <FormSection title="Create Login Account" description="Once documents are verified, create a username and password to grant system access.">
+                    <div className="form-grid">
+                      <label><span>Username</span><input value={loginFormUsername} onChange={e => setLoginFormUsername(e.target.value)} placeholder="username" required /></label>
+                      <label><span>Password</span><input type="password" value={loginFormPassword} onChange={e => setLoginFormPassword(e.target.value)} placeholder="Min 8 characters" required /></label>
+                      <label><span>Role</span>
+                        <select value={loginFormRoleId} onChange={e => setLoginFormRoleId(e.target.value)}>
+                          {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </label>
+                      <label><span>Email (auto-filled)</span><p className="detail-value">{staffDetail?.email || `${loginFormUsername}@temp.local`}</p></label>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: '0.5rem 0' }}>
+                      This will create a user account and link the {viewStaffProfile.profileType.toLowerCase()} profile to it.
+                    </p>
+                    <div className="button-row">
+                      <button type="button" className="primary-button" onClick={handleCreateLogin} disabled={isCreatingLogin || !loginFormUsername || !loginFormPassword || loginFormPassword.length < 8}>
+                        {isCreatingLogin ? 'Creating...' : 'Create login'}
+                      </button>
+                    </div>
+                  </FormSection>
+                </article>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* ═══════════ User View Modal ═══════════ */}
       <Modal isOpen={!!viewUser} title={viewUser?.name ?? ''}
         description={viewUser ? `${viewUser.email} — ${viewUser.role.name}` : ''}
         onClose={() => { setViewUser(null); setViewTab('overview'); }}
@@ -442,7 +713,6 @@ export function UsersPage() {
       >
         {viewUser && (
           <div>
-            {/* Tabs */}
             <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '2px solid var(--color-border)', marginBottom: '1rem', overflowX: 'auto' }}>
               {['Overview', 'Account', 'Access', 'Profile Links', 'Activity'].map(tab => (
                 <button key={tab} type="button" className={`tab-button ${viewTab === tab.toLowerCase() ? 'active-tab' : ''}`} onClick={() => setViewTab(tab.toLowerCase())} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{tab}</button>
@@ -464,7 +734,6 @@ export function UsersPage() {
                   </div>
                 </article>
 
-                {/* Linked Profile Card */}
                 <article className="card" style={{ padding: '1.25rem' }}>
                   <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Linked Profiles</h4>
                   {profileLinks.length > 0 ? (
@@ -497,7 +766,6 @@ export function UsersPage() {
                   )}
                 </article>
 
-                {/* Stats */}
                 {(() => { const s = getSummary(viewUser.id); return s ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                     <article className="card" style={{ padding: '1rem', textAlign: 'center' }}>
@@ -645,7 +913,7 @@ export function UsersPage() {
                   )}
                 </article>
 
-                {auth.hasPermission('profile_link_create') && (
+                {canLink && (
                   <article className="card" style={{ padding: '1.25rem' }}>
                     <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem' }}>Link Profile</h4>
                     <div className="form-grid">
@@ -736,7 +1004,17 @@ export function UsersPage() {
         )}
       </Modal>
 
-      {/* Delete Confirmation (after view modal so it renders on top) */}
+      {/* Confirmations */}
+      <ConfirmDialog isOpen={!!statusTarget} title="Confirm status change"
+        description={`Update ${selectedUser?.name ?? 'this user'} to ${statusTarget?.toLowerCase() ?? 'selected'} status?`}
+        confirmLabel="Update status" tone={statusTarget === 'SUSPENDED' ? 'danger' : 'default'}
+        isConfirming={isSavingEdit} onCancel={() => setStatusTarget(null)} onConfirm={handleStatus} />
+
+      <ConfirmDialog isOpen={!!revokeTarget} title="Revoke profile link"
+        description="Remove this profile link from the user? Role-specific access will be removed."
+        confirmLabel="Revoke" tone="danger" isConfirming={isRevoking}
+        onCancel={() => setRevokeTarget(null)} onConfirm={() => revokeTarget ? handleRevoke(revokeTarget) : Promise.resolve()} />
+
       <ConfirmDialog isOpen={!!deleteTarget} title="Delete user"
         description={`Permanently delete "${deleteTarget?.name}" (${deleteTarget?.email})? This action cannot be undone.`}
         confirmLabel="Delete" tone="danger" isConfirming={isDeleting}
