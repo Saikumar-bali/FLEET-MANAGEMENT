@@ -146,5 +146,4 @@ export const NAV_ITEMS: NavItemDef[] = [
   { id: 'driver-submissions', label: 'Driver Submissions', path: '/driver-submissions/fuel', icon: 'Submissions', section: 'DOCUMENTS', priority: 510 },
   { id: 'users', label: 'Users', path: '/users', icon: 'Users', section: 'ADMIN', priority: 600 },
   { id: 'roles', label: 'Roles & Permissions', path: '/roles', icon: 'Roles', section: 'ADMIN', priority: 610 },
-  { id: 'staff-profiles', label: 'Staff Profiles', path: '/staff-profiles', icon: 'Users', section: 'ADMIN', priority: 605 },
 ];
