@@ -37,11 +37,16 @@ async function validateProfileExists(profileType: ProfileType, profileId: string
     return;
   }
 
-  // For MECHANIC, EMPLOYEE, FINANCE, COLLECTOR - these are just user-based profiles
-  // The profileId is another user's ID representing that business role
-  const user = await prisma.user.findUnique({ where: { id: profileId } });
-  if (!user) throw new AppError('Profile user not found', 404);
-  if (user.status !== 'ACTIVE') throw new AppError('Cannot link inactive user profile', 400);
+  // For MECHANIC, EMPLOYEE, FINANCE, COLLECTOR - these are staff profiles
+  // The profileId references a record in the staff_profiles table
+  const staffProfile = await prisma.staffProfile.findUnique({ where: { id: profileId } });
+  if (!staffProfile) throw new AppError('Staff profile not found', 404);
+  if (staffProfile.status !== 'ACTIVE') throw new AppError('Cannot link inactive staff profile', 400);
+
+  // Validate the profile type matches
+  if (staffProfile.profileType !== profileType) {
+    throw new AppError(`Profile type mismatch: expected ${profileType}, got ${staffProfile.profileType}`, 400);
+  }
 }
 
 async function assertNoDuplicateActiveLink(userId: string, profileType: ProfileType, profileId: string, excludeId?: string): Promise<void> {

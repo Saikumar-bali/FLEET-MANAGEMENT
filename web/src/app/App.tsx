@@ -29,6 +29,8 @@ const AssetCategoriesPage = lazy(() => import('../pages/AssetCategoriesPage').th
 const TripsPage = lazy(() => import('../pages/TripsPage').then(m => ({ default: m.TripsPage })));
 const TripDetailPage = lazy(() => import('../pages/TripDetailPage').then(m => ({ default: m.TripDetailPage })));
 const DispatchBoardPage = lazy(() => import('../pages/DispatchBoardPage'));
+const StaffProfilesPage = lazy(() => import('../pages/StaffProfilesPage').then(m => ({ default: m.StaffProfilesPage })));
+const StaffProfileDetailPage = lazy(() => import('../pages/StaffProfileDetailPage').then(m => ({ default: m.StaffProfileDetailPage })));
 const WorkflowListPage = lazy(() => import('../pages/WorkflowListPage').then(m => ({ default: m.WorkflowListPage })));
 const WorkflowDetailPage = lazy(() => import('../pages/WorkflowDetailPage').then(m => ({ default: m.WorkflowDetailPage })));
 const FuelEntryPage = lazy(() => import('../pages/FuelEntryPage').then(m => ({ default: m.FuelEntryPage })));
@@ -166,6 +168,11 @@ function App() {
                     <Route element={<ProtectedRoute requiredPermissions={['user_view']} />}>
                       <Route path="/users" element={<Suspense fallback={<Loading />}><UsersPage /></Suspense>} />
                       <Route path="/users/:id" element={<Suspense fallback={<Loading />}><UserDetailPage /></Suspense>} />
+                    </Route>
+                    <Route element={<ProtectedRoute requiredPermissions={['profile_link_view']} />}>
+                      <Route path="/staff-profiles" element={<Suspense fallback={<Loading />}><StaffProfilesPage /></Suspense>} />
+                      <Route path="/staff-profiles/new" element={<Suspense fallback={<Loading />}><StaffProfileDetailPage /></Suspense>} />
+                      <Route path="/staff-profiles/:id" element={<Suspense fallback={<Loading />}><StaffProfileDetailPage /></Suspense>} />
                     </Route>
                     <Route path="/my-access" element={<Suspense fallback={<Loading />}><MyAccessPage /></Suspense>} />
                     <Route element={<DriverPortalLayout />}>

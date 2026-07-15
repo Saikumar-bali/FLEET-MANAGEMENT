@@ -29,7 +29,7 @@ import {
   createUserProfileLink,
   revokeUserProfileLink,
   getAvailableDrivers,
-  getAvailableUsers,
+  getAvailableStaffProfiles,
   getAvailableVendors,
   getAvailableCustomers,
   getVehicles,
@@ -38,7 +38,7 @@ import type {
   UserRecord, RoleRecord, PermissionRecord, ProfileLinkRecord,
   EffectivePermissionsResponse, UserPermissionOverrideRecord, UserDataScopeRecord, UserActivityRecord,
 } from '../types/auth';
-import type { AvailableDriver, AvailableUser, AvailableVendor, AvailableCustomer } from '../services/api';
+import type { AvailableDriver, AvailableStaffProfile, AvailableVendor, AvailableCustomer } from '../services/api';
 
 type TabId = 'overview' | 'account' | 'access' | 'profile-links' | 'activity';
 
@@ -106,7 +106,7 @@ export function UserDetailPage() {
   const [isLinking, setIsLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [showAllDrivers, setShowAllDrivers] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
+  const [availableStaffProfiles, setAvailableStaffProfiles] = useState<AvailableStaffProfile[]>([]);
   const [availableVendors, setAvailableVendors] = useState<AvailableVendor[]>([]);
   const [availableCustomers, setAvailableCustomers] = useState<AvailableCustomer[]>([]);
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null);
@@ -146,9 +146,9 @@ export function UserDetailPage() {
         setDriverLoadError(e instanceof ApiError ? e.message : 'Unable to load drivers.');
       }
       try {
-        const uRes = await getAvailableUsers(auth.accessToken, 'MECHANIC');
-        setAvailableUsers(Array.isArray(uRes.data) ? uRes.data : []);
-      } catch { setAvailableUsers([]); }
+        const uRes = await getAvailableStaffProfiles(auth.accessToken, 'MECHANIC');
+        setAvailableStaffProfiles(Array.isArray(uRes.data) ? uRes.data : []);
+      } catch { setAvailableStaffProfiles([]); }
       try {
         const vRes = await getAvailableVendors(auth.accessToken);
         setAvailableVendors(Array.isArray(vRes.data) ? vRes.data : []);
@@ -253,9 +253,9 @@ export function UserDetailPage() {
       const dRes = await getAvailableDrivers(auth.accessToken, { showAll: showAllDrivers });
       setAllDrivers(Array.isArray(dRes.data) ? dRes.data : []);
       try {
-        const uRes = await getAvailableUsers(auth.accessToken, 'MECHANIC');
-        setAvailableUsers(Array.isArray(uRes.data) ? uRes.data : []);
-      } catch { setAvailableUsers([]); }
+        const spRes = await getAvailableStaffProfiles(auth.accessToken, 'MECHANIC');
+        setAvailableStaffProfiles(Array.isArray(spRes.data) ? spRes.data : []);
+      } catch { setAvailableStaffProfiles([]); }
       try {
         const vRes = await getAvailableVendors(auth.accessToken);
         setAvailableVendors(Array.isArray(vRes.data) ? vRes.data : []);
@@ -279,7 +279,7 @@ export function UserDetailPage() {
       case 'EMPLOYEE':
       case 'FINANCE':
       case 'COLLECTOR':
-        try { const r = await getAvailableUsers(auth.accessToken, profileType); setAvailableUsers(Array.isArray(r.data) ? r.data : []); } catch {}
+        try { const r = await getAvailableStaffProfiles(auth.accessToken, profileType); setAvailableStaffProfiles(Array.isArray(r.data) ? r.data : []); } catch { setAvailableStaffProfiles([]); }
         break;
       case 'VENDOR_CONTACT':
         try { const r = await getAvailableVendors(auth.accessToken); setAvailableVendors(Array.isArray(r.data) ? r.data : []); } catch {}
@@ -351,10 +351,10 @@ export function UserDetailPage() {
             {profileLinks.length > 0 ? (
               profileLinks.map(pl => {
                 const driver = allDrivers.find(d => d.driverId === pl.profileId);
-                const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                const linkedStaff = availableStaffProfiles.find(s => s.profileId === pl.profileId);
                 const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
                 const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
-                const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
+                const displayName = driver?.name || linkedStaff?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                 return (
                   <div key={pl.id} style={{ padding: '0.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -592,10 +592,10 @@ export function UserDetailPage() {
             ) : (
               profileLinks.map(pl => {
                 const driver = allDrivers.find(d => d.driverId === pl.profileId);
-                const linkedUser = availableUsers.find(u => u.userId === pl.profileId);
+                const linkedStaff = availableStaffProfiles.find(s => s.profileId === pl.profileId);
                 const linkedVendor = availableVendors.find(v => v.vendorId === pl.profileId);
                 const linkedCustomer = availableCustomers.find(c => c.customerId === pl.profileId);
-                const displayName = driver?.name || linkedUser?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
+                const displayName = driver?.name || linkedStaff?.name || linkedVendor?.name || linkedCustomer?.name || pl.profileId;
                 return (
                   <div key={pl.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -696,8 +696,8 @@ export function UserDetailPage() {
                     <span>Select {linkProfileType.toLowerCase()}</span>
                     <select value={linkEntityId} onChange={e => setLinkEntityId(e.target.value)}>
                       <option value="">Choose a {linkProfileType.toLowerCase()}...</option>
-                      {availableUsers.filter(u => !u.isLinked).map(u => (
-                        <option key={u.userId} value={u.userId}>{u.name} ({u.email}) — {u.roleKey}</option>
+                      {availableStaffProfiles.filter(s => !s.isLinked).map(s => (
+                        <option key={s.profileId} value={s.profileId}>{s.name}{s.email ? ` (${s.email})` : ''}</option>
                       ))}
                     </select>
                   </label>
