@@ -67,6 +67,7 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     { name: 'Dashboard' },
     { name: 'Workspace' },
     { name: 'POD Billing' },
+    { name: 'Staff Profiles' },
   ],
   components: {
     securitySchemes: {
@@ -2098,6 +2099,19 @@ Query parameters: \`?page=1&limit=20&search=&status=\`
     // ── Profile Links ──────────────────────────────────────────────
     '/user-profile-links/available-drivers': {
       get: { tags: ['Profile Links'], summary: 'List available drivers for linking (requires profile_link_view)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Available drivers' } } },
+    },
+    // ── Staff Profiles ──────────────────────────────────────────────
+    '/staff-profiles': {
+      get: { tags: ['Staff Profiles'], summary: 'List staff profiles (requires profile_link_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'profileType', in: 'query', schema: { type: 'string' } }, { name: 'search', in: 'query', schema: { type: 'string' } }, { name: 'status', in: 'query', schema: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] } }, { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } }, { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } }], responses: { '200': { description: 'Paginated staff profiles' } } },
+      post: { tags: ['Staff Profiles'], summary: 'Create a staff profile (requires profile_link_create)', security: [{ bearerAuth: [] }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['profileType', 'name'], properties: { profileType: { type: 'string', example: 'MECHANIC' }, name: { type: 'string', example: 'John Doe' }, email: { type: 'string', format: 'email' }, phone: { type: 'string' }, status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] }, metadata: { type: 'object' } } } } } }, responses: { '201': { description: 'Staff profile created' } } },
+    },
+    '/staff-profiles/available': {
+      get: { tags: ['Staff Profiles'], summary: 'List available staff profiles for linking (requires profile_link_view)', security: [{ bearerAuth: [] }], responses: { '200': { description: 'Available staff profiles' } } },
+    },
+    '/staff-profiles/{id}': {
+      get: { tags: ['Staff Profiles'], summary: 'Get a staff profile by ID (requires profile_link_view)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Staff profile details' } } },
+      patch: { tags: ['Staff Profiles'], summary: 'Update a staff profile (requires profile_link_update)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, email: { type: 'string', format: 'email' }, phone: { type: 'string' }, status: { type: 'string', enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'] }, metadata: { type: 'object' } } } } } }, responses: { '200': { description: 'Staff profile updated' } } },
+      delete: { tags: ['Staff Profiles'], summary: 'Delete a staff profile (requires profile_link_delete)', security: [{ bearerAuth: [] }], parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'Staff profile deleted' } } },
     },
   },
 };
