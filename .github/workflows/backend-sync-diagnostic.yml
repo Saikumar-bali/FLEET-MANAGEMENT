@@ -1,0 +1,50 @@
+name: Backend Sync Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-target-access:
+    name: Diagnose target repository access
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'test/backend-sync-diagnostic'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_REPO: ${{ secrets.TARGET_REPO }}
+      TARGET_BRANCH: ${{ secrets.TARGET_BACKEND_BRANCH }}
+    steps:
+      - name: Validate synchronization secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TARGET_REPO" || { echo "TARGET_REPO is missing."; exit 1; }
+          test -n "$TARGET_BRANCH" || { echo "TARGET_BACKEND_BRANCH is missing."; exit 1; }
+          test -n "${{ secrets.TARGET_REPO_PAT }}" || { echo "TARGET_REPO_PAT is missing."; exit 1; }
+          echo "Target repository and branch secrets are present."
+
+      - name: Check out target branch using PAT
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ secrets.TARGET_REPO }}
+          ref: ${{ secrets.TARGET_BACKEND_BRANCH }}
+          token: ${{ secrets.TARGET_REPO_PAT }}
+          path: target
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify target branch and PAT write access without changing repository
+        working-directory: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Target HEAD: $(git rev-parse HEAD)"
+          git config user.name "fleet-backend-sync-diagnostic[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "diagnostic: verify backend sync write access" >/dev/null
+          git push --dry-run origin "HEAD:${TARGET_BRANCH}"
+          echo "PAT can read the repository, resolve the branch, and perform a dry-run push."
