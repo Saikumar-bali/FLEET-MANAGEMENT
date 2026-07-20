@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   diagnose-target-access:
-    name: Diagnose target repository access
+    name: Diagnose exact backend synchronization
     if: github.event_name == 'workflow_dispatch' || github.head_ref == 'test/backend-sync-diagnostic'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -27,6 +27,13 @@ jobs:
           test -n "${{ secrets.TARGET_REPO_PAT }}" || { echo "TARGET_REPO_PAT is missing."; exit 1; }
           echo "Target repository and branch secrets are present."
 
+      - name: Check out source branch
+        uses: actions/checkout@v6
+        with:
+          path: source
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Check out target branch using PAT
         uses: actions/checkout@v6
         with:
@@ -37,14 +44,78 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Verify target branch and PAT write access without changing repository
+      - name: Prepare the same sanitized backend snapshot used by production
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d source/backend || { echo "source/backend was not found."; exit 1; }
+          rm -rf backend-snapshot
+          mkdir -p backend-snapshot
+          rsync -a --delete \
+            --include='.env.example' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='dist/' \
+            --exclude='build/' \
+            --exclude='coverage/' \
+            --exclude='.cache/' \
+            --exclude='.turbo/' \
+            --exclude='.storage/' \
+            --exclude='uploads/' \
+            --exclude='test-results/' \
+            --exclude='playwright-report/' \
+            --exclude='*.log' \
+            source/backend/ backend-snapshot/
+          test -f backend-snapshot/package.json || { echo "Snapshot package.json missing."; exit 1; }
+
+      - name: Simulate exact target replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          find target \
+            -mindepth 1 \
+            -maxdepth 1 \
+            ! -name '.git' \
+            -exec rm -rf {} +
+          mkdir -p target/backend
+          rsync -a --delete backend-snapshot/ target/backend/
+          cat > target/.gitignore <<'EOF'
+          backend/node_modules/
+          backend/dist/
+          backend/build/
+          backend/coverage/
+          backend/.env
+          backend/.env.*
+          !backend/.env.example
+          backend/.storage/
+          backend/uploads/
+          backend/test-results/
+          backend/playwright-report/
+          *.log
+          EOF
+          diff -qr backend-snapshot target/backend
+          test -f target/backend/docs/BACKEND_SYNC_PROOF.md || {
+            echo "Expected synchronization proof file was not copied."
+            exit 1
+          }
+
+      - name: Verify exact sync would create and push a commit
         working-directory: target
         shell: bash
         run: |
           set -euo pipefail
-          echo "Target HEAD: $(git rev-parse HEAD)"
+          echo "Target HEAD before simulated sync: $(git rev-parse HEAD)"
           git config user.name "fleet-backend-sync-diagnostic[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit --allow-empty -m "diagnostic: verify backend sync write access" >/dev/null
+          git add --all
+          if git diff --cached --quiet; then
+            echo "Unexpected: target backend is already identical to source."
+            exit 1
+          fi
+          echo "Changed paths detected:"
+          git diff --cached --name-status | sed -n '1,80p'
+          git commit -m "diagnostic: simulate backend synchronization" >/dev/null
           git push --dry-run origin "HEAD:${TARGET_BRANCH}"
-          echo "PAT can read the repository, resolve the branch, and perform a dry-run push."
+          echo "Exact synchronization logic produced changes and the PAT can push them."
