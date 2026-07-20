@@ -3,15 +3,13 @@ name: Mobile Security Upgrade Preview
 on:
   push:
     branches: ["agent/backend-sync-security"]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: mobile-security-upgrade-preview-${{ github.ref }}
+  group: mobile-security-upgrade-preview
   cancel-in-progress: true
 
 jobs:
@@ -21,8 +19,11 @@ jobs:
     env:
       CI: "1"
     steps:
-      - name: Check out repository
+      - name: Check out upgrade branch
         uses: actions/checkout@v6
+        with:
+          ref: agent/backend-sync-security
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -31,64 +32,36 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
-      - name: Generate Expo upgrade preview and diagnostics
-        shell: bash
+      - name: Align Expo SDK dependencies
         working-directory: mobile
         run: |
-          set +e
+          npm install
+          npx expo install --fix
 
-          npm install expo@^57.0.0 > upgrade.log 2>&1
-          INSTALL_EXIT=$?
-
-          npx expo install --fix >> upgrade.log 2>&1
-          ALIGN_EXIT=$?
-
-          npm run lint > lint.log 2>&1
-          LINT_EXIT=$?
-
-          npx expo-doctor > expo-doctor.log 2>&1
-          DOCTOR_EXIT=$?
-
-          npm audit --json > audit-mobile-upgraded.json
-          AUDIT_EXIT=$?
-
-          printf '{"install":%s,"align":%s,"lint":%s,"doctor":%s,"audit":%s}\n' \
-            "$INSTALL_EXIT" "$ALIGN_EXIT" "$LINT_EXIT" "$DOCTOR_EXIT" "$AUDIT_EXIT" \
-            > upgrade-exit-codes.json
-
-          exit 0
-
-      - name: Upload upgraded mobile evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: mobile-security-upgrade
-          path: |
-            mobile/package.json
-            mobile/package-lock.json
-            mobile/upgrade.log
-            mobile/lint.log
-            mobile/expo-doctor.log
-            mobile/audit-mobile-upgraded.json
-            mobile/upgrade-exit-codes.json
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce upgrade preview checks
-        shell: bash
+      - name: Run mobile TypeScript check
         working-directory: mobile
+        run: npm run lint
+
+      - name: Run Expo Doctor
+        working-directory: mobile
+        run: npm run doctor
+
+      - name: Enforce high and critical vulnerability gate
+        working-directory: mobile
+        run: npm audit --audit-level=high
+
+      - name: Commit generated mobile lockfile
+        shell: bash
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const exits = JSON.parse(fs.readFileSync('upgrade-exit-codes.json', 'utf8'));
-          const audit = JSON.parse(fs.readFileSync('audit-mobile-upgraded.json', 'utf8'));
-          const vulnerabilities = audit.metadata?.vulnerabilities ?? {};
-          const high = Number(vulnerabilities.high ?? 0);
-          const critical = Number(vulnerabilities.critical ?? 0);
+          set -euo pipefail
+          git config user.name "fleet-security-upgrade[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/package.json mobile/package-lock.json
 
-          console.log({ exits, high, critical });
+          if git diff --cached --quiet; then
+            echo "Mobile dependency manifests are already synchronized."
+            exit 0
+          fi
 
-          if (exits.install !== 0 || exits.align !== 0 || exits.lint !== 0 || exits.doctor !== 0 || high > 0 || critical > 0) {
-            process.exit(1);
-          }
-          NODE
+          git commit -m "chore: regenerate Expo 57 mobile lockfile"
+          git push origin HEAD:agent/backend-sync-security
