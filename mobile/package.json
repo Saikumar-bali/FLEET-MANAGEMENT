@@ -12,7 +12,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "tsc --noEmit",
-    "doctor": "expo-doctor"
+    "doctor": "npx expo-doctor"
   },
   "dependencies": {
     "@react-navigation/native": "^7.0.0",
