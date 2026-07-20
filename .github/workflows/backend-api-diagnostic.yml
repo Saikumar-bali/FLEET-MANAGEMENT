@@ -1,0 +1,100 @@
+name: Backend API Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-api-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fleet_api_diagnostic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_api_diagnostic
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_api_diagnostic
+      NODE_ENV: development
+      JWT_SECRET: diagnostic-secret-not-for-production
+      JWT_REFRESH_SECRET: diagnostic-refresh-not-for-production
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: .storage/uploads
+      RECEIPT_EXTRACTION_PROVIDER: mock
+      ADMIN_EMAIL: admin@fleet-ci.test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      ENABLE_DEMO_USERS: "true"
+      API_BASE_URL: http://localhost:4000
+      PORT: 4000
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - name: Prepare database
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          npx prisma db seed
+          npm run seed:vehicle-checkout-permissions
+          npm run seed:role-templates
+      - name: Start backend
+        shell: bash
+        working-directory: backend
+        run: |
+          npm run dev > backend-api.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://localhost:4000/api/v1/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat backend-api.log
+          exit 1
+      - name: Capture module-scope API output
+        shell: bash
+        working-directory: backend
+        run: |
+          set +e
+          npm run test:module-scope-api > module-scope-api.log 2>&1
+          echo $? > module-scope-api-exit.txt
+          exit 0
+      - name: Upload API diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-api-diagnostic
+          path: |
+            backend/module-scope-api.log
+            backend/module-scope-api-exit.txt
+            backend/backend-api.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce API result
+        working-directory: backend
+        run: |
+          cat module-scope-api.log
+          test "$(cat module-scope-api-exit.txt)" = "0"
