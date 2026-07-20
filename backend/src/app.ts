@@ -79,7 +79,7 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many login attempts, please try again later.' },
 });
 
-app.use('/api/v1', globalLimiter);
+app.use(globalLimiter);
 
 app.use('/api/v1/health', healthRoutes);
 app.use('/docs', docsRoutes);
