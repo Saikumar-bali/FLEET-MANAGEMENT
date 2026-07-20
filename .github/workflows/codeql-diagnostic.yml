@@ -1,0 +1,41 @@
+name: CodeQL Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Analyze without Security-tab upload
+        uses: github/codeql-action/analyze@v4
+        with:
+          upload: false
+          output: codeql-results
+
+      - name: Upload CodeQL diagnostic result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-diagnostic-results
+          path: codeql-results
+          if-no-files-found: warn
+          retention-days: 7
