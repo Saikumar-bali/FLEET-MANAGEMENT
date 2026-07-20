@@ -1,6 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
+import { getAdminCredential } from './helpers/credentials';
 
 const BASE_URL = 'http://localhost:5173';
+const adminCred = getAdminCredential();
 
 async function login(page: Page, identifier: string, password: string) {
   await page.goto(`${BASE_URL}/login`);

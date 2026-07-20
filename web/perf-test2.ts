@@ -69,8 +69,8 @@ const BACKEND_URL = 'https://backend-alpha-ten-24.vercel.app';
   console.log(`[+${Date.now() - t0}ms] Login form ready`);
 
   // Step 3: Login
-  await page.fill('input[type="text"], input[name="username"]', 'admin');
-  await page.fill('input[type="password"]', 'admin@123');
+  await page.fill('input[type="text"], input[name="username"]', process.env.E2E_ADMIN_IDENTIFIER || process.env.ADMIN_USERNAME || 'admin');
+  await page.fill('input[type="password"]', process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '');
   await page.click('button[type="submit"]');
   console.log(`[+${Date.now() - t0}ms] Login submitted`);
 

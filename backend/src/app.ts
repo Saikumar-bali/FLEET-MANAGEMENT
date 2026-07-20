@@ -3,6 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import { config } from './config';
 import { errorHandler } from './middlewares/errorHandler';
 import healthRoutes from './modules/health/health.routes';
@@ -59,9 +60,30 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting — prevents abuse across all API routes.
+// The global limiter applies a generous ceiling; tighter per-route limits
+// are applied to authentication endpoints below.
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts, please try again later.' },
+});
+
+app.use('/api/v1', globalLimiter);
+
 app.use('/api/v1/health', healthRoutes);
 app.use('/docs', docsRoutes);
-app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/users', userRoutes);

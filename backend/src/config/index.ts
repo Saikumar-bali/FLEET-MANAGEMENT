@@ -77,7 +77,7 @@ const directUrl = validatedUrl(
   requiredInDeployedEnvironment('DIRECT_URL'),
   ['postgres:', 'postgresql:'],
 );
-const jwtSecret = requiredInDeployedEnvironment('JWT_SECRET', 'development-only-secret');
+const jwtSecret = requiredInDeployedEnvironment('JWT_SECRET');
 const corsOrigins = validatedUrls(
   'CORS_ORIGIN',
   requiredInDeployedEnvironment('CORS_ORIGIN', 'http://localhost:5173,http://localhost:5174'),

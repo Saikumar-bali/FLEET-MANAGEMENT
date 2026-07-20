@@ -1,0 +1,25 @@
+# Gitleaks configuration for FLEET-MANAGEMENT
+# Extends the default gitleaks rules and adds allow-list entries for files that
+# intentionally contain non-secret placeholder values (examples, CI test secrets,
+# local backups created during remediation).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-specific allow-lists for non-secret placeholder values and backups"
+paths = [
+  '''.*\.env\.example$''',
+  '''.*\.bak$''',
+  '''docs/.*''',
+  '''\.github/gitleaks\.toml''',
+  '''web/src/components/ui/SvgIcon\.tsx''',
+  '''backend/src/lib/sql\.ts''',
+]
+regexes = [
+  # CI test secrets defined in ci.yml env (not real credentials)
+  '''ci-test-secret-not-for-production''',
+  '''ci-test-refresh-secret-not-for-production''',
+  # Vercel OIDC tokens committed by the Vercel CLI in local env backups (short-lived, expired)
+  '''VERCEL_OIDC_TOKEN=''',
+]
