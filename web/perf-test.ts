@@ -66,8 +66,8 @@ const DEPLOYED_URL = 'https://web-virid-ten-53.vercel.app';
   const passwordInput = await page.$('input[type="password"]');
 
   if (usernameInput && passwordInput) {
-    await usernameInput.fill('admin');
-    await passwordInput.fill('admin@123');
+    await usernameInput.fill(process.env.E2E_ADMIN_IDENTIFIER || process.env.ADMIN_USERNAME || 'admin');
+    await passwordInput.fill(process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '');
     console.log(`[T+${Date.now() - t0}ms] Credentials filled`);
 
     // Find and click submit button

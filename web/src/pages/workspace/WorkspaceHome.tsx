@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { LoadingState } from '../../components/LoadingState';
 import { getVisibleActions, getActionsBySection } from '../../config/actions';
 import type { QuickActionDef } from '../../types/workspace';
+import { SvgShapes } from '../../components/ui/SvgIcon';
 
 const SECTION_LABELS: Record<string, string> = {
   driver: 'Driver Actions',
@@ -63,7 +64,7 @@ function QuickActionCard({ action, onClick }: { action: QuickActionDef; onClick:
       }}
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-accent)' }}>
-        <g dangerouslySetInnerHTML={{ __html: svgPaths[action.icon] ?? '' }} />
+        <SvgShapes fragment={svgPaths[action.icon] ?? ''} />
       </svg>
       <span style={{ fontSize: '0.8rem', fontWeight: 500, textAlign: 'center' }}>{action.label}</span>
     </button>
