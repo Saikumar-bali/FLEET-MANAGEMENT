@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '../../components/PageHeader';
+import { SvgShapes } from '../../components/ui/SvgIcon';
 
 const SUBMISSION_TYPES = [
   { id: 'fuel', label: 'Fuel', path: '/driver-submissions/fuel', icon: 'Fuel', description: 'Review fuel submissions from drivers' },
@@ -61,7 +62,7 @@ export function DriverSubmissionsPage() {
             }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-accent)' }}>
-              <g dangerouslySetInnerHTML={{ __html: SVG_ICONS[type.icon] ?? '' }} />
+              <SvgShapes fragment={SVG_ICONS[type.icon] ?? ''} />
             </svg>
             <div>
               <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{type.label}</h3>

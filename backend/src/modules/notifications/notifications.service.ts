@@ -18,13 +18,13 @@ export type CreateNotificationInput = {
 
 type RecipientRow = { userId: string; roleKey: string | null };
 
-const ackOneSql = ['UP', 'DATE notification_recipients SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND notification_id=$2'].join('');
-const ackAllSql = ['UP', 'DATE notification_recipients SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND read_at IS NULL'].join('');
-const doneReminderSql = ['UP', "DATE scheduled_reminders SET status='COMPLETED',last_run_at=NOW(),updated_at=NOW() WHERE id=$1"].join('');
-const insertNotificationSql = ['IN', 'SERT INTO notifications (id,title,message,category,severity,action_url,created_by_id) VALUES ($1,$2,$3,$4,$5,$6,$7)'].join('');
-const insertRecipientSql = ['IN', 'SERT INTO notification_recipients (id,notification_id,user_id,recipient_kind,role_key) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (notification_id,user_id) DO NOTHING'].join('');
-const insertDeliverySql = ['IN', "SERT INTO notification_delivery_logs (id,notification_id,user_id,channel,status,provider,delivered_at) VALUES ($1,$2,$3,'IN_APP','DELIVERED','in_app',NOW())"].join('');
-const insertReminderSql = ['IN', 'SERT INTO scheduled_reminders (id,key,title,category,entity_type,entity_id,due_at,remind_at,recipient_policy) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)'].join('');
+const ackOneSql = 'UPDATE notification_recipients SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND notification_id=$2';
+const ackAllSql = 'UPDATE notification_recipients SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1 AND read_at IS NULL';
+const doneReminderSql = "UPDATE scheduled_reminders SET status='COMPLETED',last_run_at=NOW(),updated_at=NOW() WHERE id=$1";
+const insertNotificationSql = 'INSERT INTO notifications (id,title,message,category,severity,action_url,created_by_id) VALUES ($1,$2,$3,$4,$5,$6,$7)';
+const insertRecipientSql = 'INSERT INTO notification_recipients (id,notification_id,user_id,recipient_kind,role_key) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (notification_id,user_id) DO NOTHING';
+const insertDeliverySql = "INSERT INTO notification_delivery_logs (id,notification_id,user_id,channel,status,provider,delivered_at) VALUES ($1,$2,$3,'IN_APP','DELIVERED','in_app',NOW())";
+const insertReminderSql = 'INSERT INTO scheduled_reminders (id,key,title,category,entity_type,entity_id,due_at,remind_at,recipient_policy) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)';
 
 function uniqueRecipients(rows: RecipientRow[]) {
   return Array.from(new Map(rows.map((row) => [row.userId, row])).values());

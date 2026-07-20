@@ -13,12 +13,32 @@ export class LocalStorageProvider implements StorageProvider {
     }
   }
 
+  /**
+   * Resolve a storage key to an absolute path and guarantee it stays inside
+   * `basePath`. Rejects absolute paths and any `..` traversal so a malicious key
+   * like `../../etc/passwd` cannot escape the storage root.
+   */
+  private resolveKey(key: string): string {
+    if (typeof key !== 'string' || key.length === 0) {
+      throw new Error('Invalid storage key');
+    }
+    const normalized = path.normalize(key).replace(/^(\.\.(\/|\\|$))+/, '');
+    if (path.isAbsolute(normalized) || normalized.split(/[/\\]/).includes('..')) {
+      throw new Error('Invalid storage key');
+    }
+    const resolved = path.resolve(this.basePath, normalized);
+    if (resolved !== this.basePath && !resolved.startsWith(this.basePath + path.sep)) {
+      throw new Error('Invalid storage key');
+    }
+    return resolved;
+  }
+
   async uploadFile(
     buffer: Buffer,
     key: string,
     contentType: string,
   ): Promise<StorageUploadResult> {
-    const filePath = path.join(this.basePath, key);
+    const filePath = this.resolveKey(key);
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -38,7 +58,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async getSignedViewUrl(key: string, _contentType: string): Promise<string> {
-    const filePath = path.join(this.basePath, key);
+    const filePath = this.resolveKey(key);
     if (!fs.existsSync(filePath)) {
       throw new Error('File not found');
     }
@@ -46,7 +66,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async getDownloadUrl(key: string, _contentType: string, _fileName?: string): Promise<string> {
-    const filePath = path.join(this.basePath, key);
+    const filePath = this.resolveKey(key);
     if (!fs.existsSync(filePath)) {
       throw new Error('File not found');
     }
@@ -54,14 +74,14 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async deleteFile(key: string): Promise<void> {
-    const filePath = path.join(this.basePath, key);
+    const filePath = this.resolveKey(key);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
   }
 
   async fileExists(key: string): Promise<boolean> {
-    const filePath = path.join(this.basePath, key);
+    const filePath = this.resolveKey(key);
     return fs.existsSync(filePath);
   }
 
