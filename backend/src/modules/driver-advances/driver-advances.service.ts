@@ -185,6 +185,11 @@ function pagination(query: ListQuery) {
   return { page, limit, offset: (page - 1) * limit };
 }
 
+// Adds a WHERE clause fragment with a bound parameter. `sql` is a fragment with a
+// single `?` placeholder (e.g. 'da.driver_id = ?'); the value is pushed into `params`
+// and bound positionally ($n) so it is sent as a prepared-statement argument — never
+// interpolated into the SQL string. Column names in fragments come from a fixed
+// allow-list, never from request data.
 function addFilter(clauses: string[], params: unknown[], sql: string, value: unknown) {
   params.push(value);
   clauses.push(sql.replace('?', `$${params.length}`));

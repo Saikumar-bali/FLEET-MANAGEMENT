@@ -63,10 +63,13 @@ export class S3StorageProvider implements StorageProvider {
   }
 
   async getDownloadUrl(key: string, _contentType: string, fileName?: string): Promise<string> {
+    const safeFileName = fileName
+      ? fileName.replace(/[\r\n"]/g, '').slice(0, 255)
+      : undefined;
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
-      ...(fileName ? { ResponseContentDisposition: `attachment; filename="${fileName}"` } : {}),
+      ...(safeFileName ? { ResponseContentDisposition: `attachment; filename="${safeFileName}"` } : {}),
     });
     return getSignedUrl(this.client, command, { expiresIn: this.expiresInSeconds });
   }

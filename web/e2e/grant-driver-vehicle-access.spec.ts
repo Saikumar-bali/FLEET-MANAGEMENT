@@ -21,7 +21,7 @@ test.describe('Grant vehicle access to driver', () => {
 
     // ── Step 1: Login as admin ──
     console.log('Step 1: Logging in as admin...');
-    await login(page, ADMIN_USER, ADMIN_PASS);
+    await login(page, adminCred.identifier, adminCred.password);
     await page.waitForLoadState('networkidle');
     console.log('  Admin logged in');
 

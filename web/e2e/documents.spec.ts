@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsRole } from './helpers/credentials';
+import { loginAsRole, getAdminCredential, getApiBase } from './helpers/credentials';
 
 test.describe('Phase 8 Documents navigation and upload', () => {
   test('admin sees Documents sidebar item', async ({ page }) => {
@@ -73,8 +73,9 @@ test.describe('Phase 8 Documents navigation and upload', () => {
 
 test.describe('Documents API upload and manage', () => {
   test('admin can upload and list documents via API', async ({ page }) => {
-    const loginRes = await page.request.post('http://localhost:4000/api/v1/auth/login', {
-      data: { identifier: 'admin', password: 'admin@123' },
+    const adminCred = getAdminCredential();
+    const loginRes = await page.request.post(`${getApiBase()}/api/v1/auth/login`, {
+      data: { identifier: adminCred.identifier, password: adminCred.password },
     });
     const loginJson = await loginRes.json();
     const token = loginJson.data?.accessToken;

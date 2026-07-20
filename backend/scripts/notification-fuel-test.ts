@@ -35,8 +35,8 @@ async function main() {
 
   // Step 1: Login
   console.log('1. Logging in...');
-  const adminToken = await apiLogin('admin', 'admin@123');
-  const driverToken = await apiLogin('aanand', 'aanand@123');
+  const adminToken = await apiLogin(process.env.E2E_ADMIN_IDENTIFIER || process.env.ADMIN_USERNAME || 'admin', process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '');
+  const driverToken = await apiLogin(process.env.E2E_DRIVER_IDENTIFIER || process.env.DRIVER_USERNAME || 'aanand', process.env.E2E_DRIVER_PASSWORD || process.env.DRIVER_PASSWORD || '');
   console.log('   Admin and driver logged in');
 
   // Step 2: Check existing fuel entries for driver
