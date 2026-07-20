@@ -5,9 +5,17 @@ on:
     branches: ["phase-21-driver-assignment-workflow"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: phase-21-driver-assignment-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   driver-assignment:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -37,19 +45,40 @@ jobs:
       ENABLE_DEMO_USERS: "true"
       API_BASE_URL: http://localhost:4000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
         working-directory: backend
-      - run: npx prisma generate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
         working-directory: backend
-      - run: npx prisma migrate deploy
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
         working-directory: backend
-      - run: npx prisma db seed
+
+      - name: Seed CI database
+        run: npx prisma db seed
         working-directory: backend
-      - run: npm run lint
+
+      - name: Backend lint
+        run: npm run lint
         working-directory: backend
-      - run: npm run test:driver-assignment
+
+      - name: Backend build
+        run: npm run build
+        working-directory: backend
+
+      - name: Driver assignment workflow test
+        run: npm run test:driver-assignment
         working-directory: backend

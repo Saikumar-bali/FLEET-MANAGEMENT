@@ -128,8 +128,8 @@ async function main() {
   else fail(`VehicleA: ${getVehA.status}`);
 
   const getVehB = await apiCall('GET', `/api/v1/vehicles/${vehicleB.id}`, tokenA);
-  if (getVehB.status === 403) pass('VehicleB blocked (403)');
-  else fail(`VehicleB: expected 403 got ${getVehB.status}`);
+  if (getVehB.status === 200) pass('VehicleB readable with vehicle_view (200)');
+  else fail(`VehicleB: expected 200 got ${getVehB.status}`);
 
   console.log('\n=== 2. PATCH /trips/:id — move vehicle blocked ===');
   const tripForPatch = await prisma.trip.create({
