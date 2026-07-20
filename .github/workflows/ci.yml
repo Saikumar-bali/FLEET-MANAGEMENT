@@ -70,7 +70,7 @@ jobs:
       CI_FINANCE_PASSWORD: Finance123!
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -217,7 +217,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -244,7 +244,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -271,7 +271,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -349,7 +349,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Review dependency changes
         uses: actions/dependency-review-action@v5
@@ -363,7 +363,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -462,7 +462,7 @@ jobs:
           esac
 
       - name: Check out successful source commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: source
@@ -470,7 +470,7 @@ jobs:
           persist-credentials: false
 
       - name: Check out destination backend branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ secrets.TARGET_REPO }}
           ref: ${{ secrets.TARGET_BACKEND_BRANCH }}
