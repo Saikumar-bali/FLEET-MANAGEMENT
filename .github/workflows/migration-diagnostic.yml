@@ -1,4 +1,4 @@
-name: Prisma Migration Diagnostic
+name: Backend Diagnostic
 
 on:
   pull_request:
@@ -8,20 +8,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: prisma-migration-diagnostic-${{ github.ref }}
+  group: backend-diagnostic-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: fleet_migration_diagnostic
+          POSTGRES_DB: fleet_backend_diagnostic
         ports:
           - 5432:5432
         options: >-
@@ -30,8 +30,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_migration_diagnostic
-      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_migration_diagnostic
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fleet_backend_diagnostic
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/fleet_backend_diagnostic
+      NODE_ENV: development
+      JWT_SECRET: diagnostic-secret-not-for-production
+      JWT_REFRESH_SECRET: diagnostic-refresh-not-for-production
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: .storage/uploads
+      RECEIPT_EXTRACTION_PROVIDER: mock
+      ADMIN_EMAIL: admin@fleet-ci.test
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: Admin123!
+      ENABLE_DEMO_USERS: "true"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -43,26 +53,33 @@ jobs:
         working-directory: backend
       - run: npx prisma generate
         working-directory: backend
-      - name: Capture migration deploy output
+      - name: Prepare diagnostic database
+        working-directory: backend
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+          npm run seed:vehicle-checkout-permissions
+          npm run seed:role-templates
+      - name: Capture module scope output
         shell: bash
         working-directory: backend
         run: |
           set +e
-          npx prisma migrate deploy > migration-deploy.log 2>&1
-          echo $? > migration-exit.txt
+          npm run test:module-scope > module-scope.log 2>&1
+          echo $? > module-scope-exit.txt
           exit 0
-      - name: Upload migration evidence
+      - name: Upload backend diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: prisma-migration-diagnostic
+          name: backend-diagnostic
           path: |
-            backend/migration-deploy.log
-            backend/migration-exit.txt
+            backend/module-scope.log
+            backend/module-scope-exit.txt
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce migration result
+      - name: Enforce module scope result
         working-directory: backend
         run: |
-          cat migration-deploy.log
-          test "$(cat migration-exit.txt)" = "0"
+          cat module-scope.log
+          test "$(cat module-scope-exit.txt)" = "0"
