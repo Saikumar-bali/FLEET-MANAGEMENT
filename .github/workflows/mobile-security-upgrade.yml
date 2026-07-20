@@ -31,25 +31,34 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
-      - name: Upgrade Expo SDK and align dependencies
+      - name: Generate Expo upgrade preview and diagnostics
+        shell: bash
         working-directory: mobile
         run: |
-          npm install expo@^57.0.0
-          npx expo install --fix
+          set +e
 
-      - name: Run mobile TypeScript check
-        working-directory: mobile
-        run: npm run lint
+          npm install expo@^57.0.0 > upgrade.log 2>&1
+          INSTALL_EXIT=$?
 
-      - name: Run Expo Doctor
-        working-directory: mobile
-        run: npx expo-doctor
+          npx expo install --fix >> upgrade.log 2>&1
+          ALIGN_EXIT=$?
 
-      - name: Verify dependency audit
-        working-directory: mobile
-        run: npm audit --audit-level=high
+          npm run lint > lint.log 2>&1
+          LINT_EXIT=$?
 
-      - name: Upload upgraded mobile manifests
+          npx expo-doctor > expo-doctor.log 2>&1
+          DOCTOR_EXIT=$?
+
+          npm audit --json > audit-mobile-upgraded.json
+          AUDIT_EXIT=$?
+
+          printf '{"install":%s,"align":%s,"lint":%s,"doctor":%s,"audit":%s}\n' \
+            "$INSTALL_EXIT" "$ALIGN_EXIT" "$LINT_EXIT" "$DOCTOR_EXIT" "$AUDIT_EXIT" \
+            > upgrade-exit-codes.json
+
+          exit 0
+
+      - name: Upload upgraded mobile evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -57,5 +66,29 @@ jobs:
           path: |
             mobile/package.json
             mobile/package-lock.json
+            mobile/upgrade.log
+            mobile/lint.log
+            mobile/expo-doctor.log
+            mobile/audit-mobile-upgraded.json
+            mobile/upgrade-exit-codes.json
           if-no-files-found: error
           retention-days: 7
+
+      - name: Enforce upgrade preview checks
+        shell: bash
+        working-directory: mobile
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const exits = JSON.parse(fs.readFileSync('upgrade-exit-codes.json', 'utf8'));
+          const audit = JSON.parse(fs.readFileSync('audit-mobile-upgraded.json', 'utf8'));
+          const vulnerabilities = audit.metadata?.vulnerabilities ?? {};
+          const high = Number(vulnerabilities.high ?? 0);
+          const critical = Number(vulnerabilities.critical ?? 0);
+
+          console.log({ exits, high, critical });
+
+          if (exits.install !== 0 || exits.align !== 0 || exits.lint !== 0 || exits.doctor !== 0 || high > 0 || critical > 0) {
+            process.exit(1);
+          }
+          NODE
