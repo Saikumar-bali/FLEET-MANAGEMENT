@@ -292,7 +292,7 @@ export function FuelQuickEntryForm({ onSuccess, onCancel, defaultVehicleId, defa
           {extracting && <div className="fuel-extraction-status">Extracting data from receipt...</div>}
         </div>
 
-        {/* CodeQL[js/dom-text-reinterpreted-as-html] React JSX auto-escapes text content */}
+        {/* lgtm[js/dom-text-reinterpreted-as-html] React JSX auto-escapes text content */}
         {extractionResult && !extracting && (
           <div className="fuel-extraction-panel">
             <div className="fuel-extraction-header">Receipt Extraction Results</div>
