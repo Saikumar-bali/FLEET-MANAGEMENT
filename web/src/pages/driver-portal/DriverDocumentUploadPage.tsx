@@ -129,7 +129,7 @@ export function DriverDocumentUploadPage() {
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ marginBottom: '0.75rem' }} />
           {file && (
             <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-              {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              {/* CodeQL[js/dom-text-reinterpreted-as-html] React JSX auto-escapes text content */ file.name} ({(file.size / 1024).toFixed(1)} KB)
             </div>
           )}
           {filePreview && (

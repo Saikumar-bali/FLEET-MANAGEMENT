@@ -236,6 +236,7 @@ export function DriverFuelCreatePage() {
           {extraction && (
             <div className="fuel-extraction-panel">
               <div className="fuel-extraction-header">Receipt Extraction Results</div>
+              {/* CodeQL[js/dom-text-reinterpreted-as-html] React JSX auto-escapes text content; String() wrapping adds defense-in-depth */}
               <div className="fuel-extraction-fields">
                 {extraction.extractedFields.totalAmount.value && (
                   <span className="fuel-extraction-field">Amount: ₹{String(extraction.extractedFields.totalAmount.value)}</span>
