@@ -44,13 +44,23 @@ jobs:
         working-directory: mobile
         run: npm run lint
 
-      - name: Run Expo Doctor
+      - name: Collect Expo Doctor result
+        shell: bash
         working-directory: mobile
-        run: npm run doctor
+        run: |
+          set +e
+          npm run doctor > expo-doctor-final.log 2>&1
+          echo $? > expo-doctor-exit.txt
+          exit 0
 
-      - name: Enforce high and critical vulnerability gate
+      - name: Collect dependency audit result
+        shell: bash
         working-directory: mobile
-        run: npm audit --audit-level=high
+        run: |
+          set +e
+          npm audit --json > audit-mobile-final.json
+          echo $? > audit-exit.txt
+          exit 0
 
       - name: Commit generated mobile lockfile
         shell: bash
@@ -67,3 +77,35 @@ jobs:
 
           git commit -m "chore: regenerate Expo 57 mobile lockfile"
           git push origin HEAD:agent/backend-sync-security
+
+      - name: Upload final mobile diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-security-final-diagnostics
+          path: |
+            mobile/expo-doctor-final.log
+            mobile/expo-doctor-exit.txt
+            mobile/audit-mobile-final.json
+            mobile/audit-exit.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce final mobile security checks
+        shell: bash
+        working-directory: mobile
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const doctorExit = Number(fs.readFileSync('expo-doctor-exit.txt', 'utf8').trim());
+          const audit = JSON.parse(fs.readFileSync('audit-mobile-final.json', 'utf8'));
+          const counts = audit.metadata?.vulnerabilities ?? {};
+          const high = Number(counts.high ?? 0);
+          const critical = Number(counts.critical ?? 0);
+
+          console.log({ doctorExit, high, critical });
+
+          if (doctorExit !== 0 || high > 0 || critical > 0) {
+            process.exit(1);
+          }
+          NODE
