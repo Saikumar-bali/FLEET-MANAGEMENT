@@ -2,14 +2,27 @@ name: CI
 
 on:
   push:
-    branches: [main, "phase-*"]
+    branches: [main, "phase-*", "agent/**"]
   pull_request:
     branches: [main, "phase-*"]
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+  packages: read
+  pull-requests: read
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
+    name: Backend build and integration tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -38,10 +51,8 @@ jobs:
       ADMIN_PASSWORD: Admin123!
       ENABLE_DEMO_USERS: "true"
       API_BASE_URL: http://localhost:4000
-      # Admin / super-admin
       CI_ADMIN_IDENTIFIER: admin@fleet-ci.test
       CI_ADMIN_PASSWORD: Admin123!
-      # Per-role CI credentials (used by rbac tests)
       CI_VIEWER_IDENTIFIER: viewer@fleet-ci.test
       CI_VIEWER_PASSWORD: Viewer123!
       CI_MANAGER_IDENTIFIER: manager@fleet-ci.test
@@ -59,89 +70,214 @@ jobs:
       CI_FINANCE_IDENTIFIER: finance@fleet-ci.test
       CI_FINANCE_PASSWORD: Finance123!
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-      # Setup
-      - run: npm install
-        working-directory: backend
-      - run: npx prisma generate
-        working-directory: backend
-      - run: npx prisma migrate deploy
-        working-directory: backend
-      - run: npx prisma db seed
+      - name: Install backend dependencies
+        run: npm ci
         working-directory: backend
 
-      # Seeds — must run before tests that depend on them
-      - run: npm run seed:vehicle-checkout-permissions
-        working-directory: backend
-      - run: npm run seed:role-templates
+      - name: Generate Prisma client
+        run: npx prisma generate
         working-directory: backend
 
-      # Build & lint
-      - run: npm run lint
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
         working-directory: backend
 
-      # Tests that do not require a running server
-      - run: npm run test:api-docs
-        working-directory: backend
-      - run: npm run test:account-scope
-        working-directory: backend
-      - run: npm run access:smoke
-        working-directory: backend
-      - run: npm run access:diagnose
-        working-directory: backend
-      - run: npm run test:module-scope
+      - name: Seed CI database
+        run: npx prisma db seed
         working-directory: backend
 
-      # Start backend server for API-dependent tests
+      - name: Seed vehicle checkout permissions
+        run: npm run seed:vehicle-checkout-permissions
+        working-directory: backend
+
+      - name: Seed role templates
+        run: npm run seed:role-templates
+        working-directory: backend
+
+      - name: Backend lint
+        run: npm run lint
+        working-directory: backend
+
+      - name: Backend build
+        run: npm run build
+        working-directory: backend
+
+      - name: API documentation coverage
+        run: npm run test:api-docs
+        working-directory: backend
+
+      - name: Account scope tests
+        run: npm run test:account-scope
+        working-directory: backend
+
+      - name: Access service smoke test
+        run: npm run access:smoke
+        working-directory: backend
+
+      - name: Access diagnostics
+        run: npm run access:diagnose
+        working-directory: backend
+
+      - name: Module scope tests
+        run: npm run test:module-scope
+        working-directory: backend
+
       - name: Start backend server
+        shell: bash
+        working-directory: backend
         run: |
-          npm run dev &
-          for i in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health && break || sleep 2; done
+          set -euo pipefail
+          npm run dev > /tmp/fleet-backend.log 2>&1 &
+          echo $! > /tmp/fleet-backend.pid
+
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error http://localhost:4000/api/v1/health > /dev/null; then
+              echo "Backend is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend failed to become healthy."
+          cat /tmp/fleet-backend.log
+          exit 1
+
+      - name: Module scope API tests
+        run: npm run test:module-scope-api
         working-directory: backend
 
-      # API-dependent tests
-      - run: npm run test:module-scope-api
+      - name: User profile link tests
+        run: npm run test:user-profile-link
         working-directory: backend
-      - run: npm run test:user-profile-link
+
+      - name: User profile link API tests
+        run: npm run test:user-profile-link-api
         working-directory: backend
-      - run: npm run test:user-profile-link-api
+
+      - name: Profile link diagnostics
+        run: npm run profile-link:diagnose
         working-directory: backend
-      - run: npm run profile-link:diagnose
+
+      - name: Driver portal security tests
+        run: npm run test:driver-portal-security
         working-directory: backend
-      - run: npm run test:driver-portal-security
+
+      - name: Driver portal action tests
+        run: npm run test:driver-portal-actions
         working-directory: backend
-      - run: npm run test:driver-portal-actions
+
+      - name: Driver submission review tests
+        run: npm run test:driver-submission-review
         working-directory: backend
-      - run: npm run test:driver-submission-review
-        working-directory: backend
-      - name: "Driver advance settlement scenario"
+
+      - name: Driver advance settlement scenario
         run: npm run test:driver-advance-settlement
         working-directory: backend
-      - run: npm run test:driver-portal-integration
-        working-directory: backend
-      - run: npm run test:workspace-engine
+
+      - name: Driver portal integration tests
+        run: npm run test:driver-portal-integration
         working-directory: backend
 
-      # Phase 20 — dashboard gate + mechanic isolation (NEW)
-      - name: "Phase 20: Dashboard permission gate"
+      - name: Workspace engine tests
+        run: npm run test:workspace-engine
+        working-directory: backend
+
+      - name: Dashboard permission gate
         run: npm run test:rbac-dashboard
         working-directory: backend
-      - name: "Phase 20: Mechanic assignment isolation"
+
+      - name: Mechanic assignment isolation
         run: npm run test:rbac-mechanic
         working-directory: backend
 
+      - name: Show backend log on failure
+        if: failure()
+        run: cat /tmp/fleet-backend.log || true
+
   frontend:
+    name: Web lint and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
         working-directory: web
-      - run: npm run build
+
+      - name: Web lint
+        run: npm run lint
         working-directory: web
+
+      - name: Web build
+        run: npm run build
+        working-directory: web
+
+  dependency-audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Audit backend and web workspace dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit mobile dependencies
+        run: npm audit --audit-level=high
+        working-directory: mobile
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime
+
+  codeql:
+    name: CodeQL security analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Analyze source code
+        uses: github/codeql-action/analyze@v4
