@@ -8,7 +8,9 @@ const { chromium } = require('playwright');
   const apiCalls = [];
   page.on('response', async (response) => {
     const url = response.url();
-    if (url.includes('/api/') || url.includes('.r2.cloudflarestorage.com')) {
+    let isApi = false;
+    try { isApi = new URL(url).pathname.startsWith('/api/'); } catch {}
+    if (isApi || url.includes('.r2.cloudflarestorage.com')) {
       let body = '';
       try { body = (await response.text()).substring(0, 2000); } catch {}
       apiCalls.push({ 
@@ -22,7 +24,9 @@ const { chromium } = require('playwright');
   });
   page.on('request', (request) => {
     const url = request.url();
-    if (url.includes('/api/') || url.includes('.r2.cloudflarestorage.com')) {
+    let isApi = false;
+    try { isApi = new URL(url).pathname.startsWith('/api/'); } catch {}
+    if (isApi || url.includes('.r2.cloudflarestorage.com')) {
       console.log(`\n>>> ${request.method()} ${url}`);
       console.log('Headers:', JSON.stringify(request.headers(), null, 2));
     }

@@ -14,7 +14,8 @@ async function api(method: string, path: string, body?: Record<string, unknown>)
 
 async function login() {
   const admin = process.env.ADMIN_USERNAME || 'admin';
-  const pass = process.env.ADMIN_PASSWORD || 'admin123';
+  const pass = process.env.ADMIN_PASSWORD || '';
+  if (!pass) throw new Error('ADMIN_PASSWORD environment variable is required');
   const data = await api('POST', '/api/v1/auth/login', { identifier: admin, password: pass });
   TOKEN = data.accessToken;
   console.log(`  ✓ Logged in as ${admin}`);

@@ -729,6 +729,7 @@ export class FinanceService {
 
   // ─── Payments ───
 
+  // CodeQL[js/sensitive-data-in-get-request] Query parameters are filter criteria only (vendorId, dateFrom, etc.), not sensitive data. The actual payment records are returned in the response body.
   async listPayments(query: FinanceQuery) {
     const { page = 1, limit = 20, sort, order, vendorId, customerId, tripBillingId, dateFrom, dateTo, paymentMode } = query;
     const skip = (page - 1) * limit;

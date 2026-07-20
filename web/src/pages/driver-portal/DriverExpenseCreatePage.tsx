@@ -152,7 +152,7 @@ export function DriverExpenseCreatePage() {
               <p className="helper-text" style={{ marginTop: 0 }}>Upload image, AVIF, PDF, document, or sheet receipt. Scripts/executables are blocked.</p>
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ marginBottom: '0.75rem' }} />
               {receiptPreview ? <img src={receiptPreview} alt="Receipt preview" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 12, background: 'var(--color-bg-surface-subtle)' }} /> : null}
-              {receiptFile && !receiptPreview ? <div className="card" style={{ padding: '0.85rem', marginBottom: '0.75rem' }}>{receiptFile.name}</div> : null}
+              {receiptFile && !receiptPreview ? <div className="card" style={{ padding: '0.85rem', marginBottom: '0.75rem' }}>{/* CodeQL[js/dom-text-reinterpreted-as-html] React JSX auto-escapes text content */ receiptFile.name}</div> : null}
               {receiptFile && <button type="button" className="secondary-button" onClick={handleUploadReceipt} disabled={isUploadingReceipt || !form.vehicleId}>{isUploadingReceipt ? 'Uploading...' : 'Upload Receipt'}</button>}
             </div>
           </div>

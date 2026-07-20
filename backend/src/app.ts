@@ -61,11 +61,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting — prevents abuse across all API routes.
-// The global limiter applies a generous ceiling; tighter per-route limits
-// are applied to authentication endpoints below.
+// Limits are configurable via env vars so CI can use higher ceilings.
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: parseInt(process.env.RATE_LIMIT_MAX || '', 10) || (config.nodeEnv === 'development' ? 1000 : 200),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
@@ -73,7 +72,7 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '', 10) || (config.nodeEnv === 'development' ? 200 : 20),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many login attempts, please try again later.' },
