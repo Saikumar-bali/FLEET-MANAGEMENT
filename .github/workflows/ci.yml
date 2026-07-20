@@ -244,12 +244,72 @@ jobs:
         with:
           node-version: 20
 
-      - name: Audit backend and web workspace dependencies
-        run: npm audit --audit-level=high
+      - name: Generate npm audit reports
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > audit-root.json
+          ROOT_EXIT=$?
 
-      - name: Audit mobile dependencies
-        run: npm audit --audit-level=high
-        working-directory: mobile
+          cd mobile
+          npm audit --json > ../audit-mobile.json
+          MOBILE_EXIT=$?
+          cd ..
+
+          printf '{"root":%s,"mobile":%s}\n' "$ROOT_EXIT" "$MOBILE_EXIT" > audit-exit-codes.json
+          exit 0
+
+      - name: Upload npm audit evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-audit-reports
+          path: |
+            audit-root.json
+            audit-mobile.json
+            audit-exit-codes.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce high and critical vulnerability gate
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const reportFiles = [
+            ['backend/web workspace', 'audit-root.json'],
+            ['mobile', 'audit-mobile.json'],
+          ];
+
+          let shouldFail = false;
+
+          for (const [label, file] of reportFiles) {
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const counts = report.metadata?.vulnerabilities ?? {};
+            const high = Number(counts.high ?? 0);
+            const critical = Number(counts.critical ?? 0);
+
+            console.log(`\n${label}: ${high} high, ${critical} critical`);
+
+            for (const [name, vulnerability] of Object.entries(report.vulnerabilities ?? {})) {
+              if (!['high', 'critical'].includes(vulnerability.severity)) continue;
+
+              const via = (vulnerability.via ?? [])
+                .map((entry) => typeof entry === 'string' ? entry : `${entry.title ?? entry.name ?? 'advisory'} (${entry.url ?? 'no URL'})`)
+                .join('; ');
+
+              console.log(`- ${name}: ${vulnerability.severity}; fixAvailable=${JSON.stringify(vulnerability.fixAvailable)}; via=${via}`);
+            }
+
+            if (high > 0 || critical > 0) shouldFail = true;
+          }
+
+          if (shouldFail) {
+            console.error('\nHigh or critical dependency vulnerabilities remain.');
+            process.exit(1);
+          }
+          NODE
 
   dependency-review:
     name: Dependency review
