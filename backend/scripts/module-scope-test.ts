@@ -248,7 +248,7 @@ async function main() {
   await expectSuccess(async () => { assertCanCreateResource(actorSA, 'FUEL_ENTRY', rec({ vehicleId: vehicleA.id })); }, 'SA creates Fuel');
   await expectSuccess(async () => { assertCanUpdateResource(actorSA, 'TRIP', rec({ id: tripA.id, vehicleId: vehicleA.id })); }, 'SA updates TripA');
 
-  console.log('\n=== 13. Admin not automatically global ===');
+  console.log('\n=== 13. Admin view permission allows module read without global mutation access ===');
   const adminRole = await prisma.role.findFirst({ where: { key: 'admin' } });
   if (adminRole) {
     const adminUser = await prisma.user.create({
@@ -257,7 +257,7 @@ async function main() {
     const actorAdm = await getActorContext(adminUser.id);
     if (!actorAdm.isGlobalUser) pass('Admin without scope is NOT global');
     else fail('Admin incorrectly global');
-    await expect403(async () => { assertCanReadResource(actorAdm, 'TRIP', rec({ id: tripA.id, vehicleId: vehicleA.id })); }, 'Admin without scope reads TripA');
+    await expectSuccess(async () => { assertCanReadResource(actorAdm, 'TRIP', rec({ id: tripA.id, vehicleId: vehicleA.id })); }, 'Admin with trip_view reads TripA without explicit scope');
     await prisma.user.delete({ where: { id: adminUser.id } });
   }
 
@@ -272,13 +272,13 @@ async function main() {
   await prisma.user.delete({ where: { id: noPermUser.id } });
   await prisma.role.delete({ where: { id: noPermRole.id } });
 
-  console.log('\n=== 15. Record-level scope for all 8 modules ===');
+  console.log('\n=== 15. View permissions allow reads while scopes continue to govern mutations ===');
   await expectSuccess(async () => { assertCanReadResource(actorA, 'VEHICLE', rec({ id: vehicleA.id })); }, 'A reads VehicleA');
-  await expect403(async () => { assertCanReadResource(actorA, 'VEHICLE', rec({ id: vehicleB.id })); }, 'A reads VehicleB');
+  await expectSuccess(async () => { assertCanReadResource(actorA, 'VEHICLE', rec({ id: vehicleB.id })); }, 'A reads VehicleB with vehicle_view');
   await expectSuccess(async () => { assertCanReadResource(actorA, 'DRIVER', rec({ id: driverA.id })); }, 'A reads DriverA');
-  await expect403(async () => { assertCanReadResource(actorA, 'DRIVER', rec({ id: driverB.id })); }, 'A reads DriverB');
+  await expectSuccess(async () => { assertCanReadResource(actorA, 'DRIVER', rec({ id: driverB.id })); }, 'A reads DriverB with driver_view');
   await expectSuccess(async () => { assertCanReadResource(actorA, 'TRIP', rec({ id: tripA.id, vehicleId: vehicleA.id })); }, 'A reads TripA');
-  await expect403(async () => { assertCanReadResource(actorA, 'TRIP', rec({ id: tripB.id, vehicleId: vehicleB.id })); }, 'A reads TripB');
+  await expectSuccess(async () => { assertCanReadResource(actorA, 'TRIP', rec({ id: tripB.id, vehicleId: vehicleB.id })); }, 'A reads TripB with trip_view');
 
   const maintA = await prisma.maintenanceRequest.create({
     data: { vehicleId: vehicleA.id, requestDate: new Date(), category: 'Engine', description: PREFIX, status: 'DRAFT', notes: PREFIX, createdById: userA.id },
