@@ -3,13 +3,15 @@ name: Mobile Security Upgrade Preview
 on:
   push:
     branches: ["agent/backend-sync-security"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: mobile-security-upgrade-preview
+  group: mobile-security-upgrade-preview-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
