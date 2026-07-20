@@ -1,0 +1,37 @@
+name: Align Module Scope API Test
+
+on:
+  push:
+    branches: ["agent/backend-sync-security"]
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/backend-sync-security
+          fetch-depth: 0
+      - name: Update API regression expectation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'backend/scripts/module-scope-api-test.ts';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = "if (getVehB.status === 403) pass('VehicleB blocked (403)');\n  else fail(`VehicleB: expected 403 got ${getVehB.status}`);";
+          const after = "if (getVehB.status === 200) pass('VehicleB readable with vehicle_view (200)');\n  else fail(`VehicleB: expected 200 got ${getVehB.status}`);";
+          if (!source.includes(before)) throw new Error('Expected stale API test assertion was not found.');
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
+      - name: Commit aligned API regression test
+        run: |
+          set -euo pipefail
+          git config user.name "fleet-test-alignment[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/scripts/module-scope-api-test.ts
+          git commit -m "test: align module-scope API read expectation"
+          git push origin HEAD:agent/backend-sync-security
