@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: mobile-security-upgrade-preview
+  group: mobile-security-upgrade-preview-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -63,6 +63,7 @@ jobs:
           exit 0
 
       - name: Commit generated mobile lockfile
+        if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
@@ -82,7 +83,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: mobile-security-final-diagnostics
+          name: mobile-security-final-diagnostics-${{ github.event_name }}
           path: |
             mobile/expo-doctor-final.log
             mobile/expo-doctor-exit.txt
