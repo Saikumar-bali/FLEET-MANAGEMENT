@@ -229,7 +229,7 @@ async function main() {
   expect(policy.status === 201, 'Allowance policy creation failed');
   const policyTrip = await prisma.trip.create({ data: { tripNumber: `${PREFIX}-POLICY-TRIP`, tripType: 'DELIVERY', status: 'DRAFT', vehicleId: vehicle.id, driverId: driver.id, originName: 'Pune', destinationName: 'Mumbai', createdById: driverFixture.user.id } });
   const scheduled = await api('POST', `/trips/${policyTrip.id}/schedule`, adminToken, { driverId: driver.id });
-  expect(scheduled.status === 200 && scheduled.data.status === 'SCHEDULED', 'Trip scheduling failed');
+  expect(scheduled.status === 200 && scheduled.data.trip?.status === 'SCHEDULED', `Trip scheduling failed: ${JSON.stringify(scheduled.body)}`);
   const automaticAdvance = await prisma.staffAdvance.findUnique({ where: { beneficiaryUserId_contextType_contextId: { beneficiaryUserId: driverFixture.user.id, contextType: 'TRIP', contextId: policyTrip.id } } });
   expect(automaticAdvance?.status === 'APPROVED' && Number(automaticAdvance.targetAllowance) === 800, 'Trip policy must create and auto-approve its allowance');
   await api('PATCH', `/finance/staff-advances/${automaticAdvance.id}/cancel`, adminToken, { reason: 'E2E policy cleanup' });
