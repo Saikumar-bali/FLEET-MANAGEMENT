@@ -675,7 +675,7 @@ export async function driverCreateFuelController(req: Request, res: Response) {
 
   await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
   if (tripId) await assertDriverOwnsTrip(driver.id, tripId);
-  const source = paymentSource ?? 'STAFF_WALLET';
+  const source = paymentSource ?? 'COMPANY_ACCOUNT';
   if (source === 'STAFF_WALLET' && !tripId) throw new AppError('Select the trip when paying from your staff wallet', 400);
 
   let pricePerLiter: number | null = null;
@@ -803,7 +803,7 @@ export async function driverCreateExpenseController(req: Request, res: Response)
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
   }
-  const source = paymentSource ?? 'STAFF_WALLET';
+  const source = paymentSource ?? 'COMPANY_ACCOUNT';
   if (source === 'STAFF_WALLET' && !tripId) throw new AppError('Select the trip when paying from your staff wallet', 400);
 
   const entry = await prisma.expense.create({
