@@ -40,6 +40,12 @@ async function login(identifier: string | undefined, password: string | undefine
   return response.data.accessToken as string;
 }
 
+function tokenSubject(token: string): string {
+  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8')) as { sub?: string };
+  expect(payload.sub, 'Authenticated token has no user subject');
+  return payload.sub;
+}
+
 async function createFixtureUser(roleKey: string, suffix: string, password = 'Fixture123!') {
   const role = await prisma.role.findUnique({ where: { key: roleKey } });
   expect(role, `Missing ${roleKey} role`);
@@ -161,10 +167,7 @@ async function main() {
 
   const driver = await prisma.driver.create({ data: { name: `${PREFIX} Driver`, mobile: `91${String(Date.now()).slice(-10)}`, licenseNumber: `${PREFIX}-LIC`, status: 'ON_TRIP' } });
   const vehicle = await prisma.vehicle.create({ data: { vehicleNumber: `${PREFIX}-VEH`, vehicleType: 'TRUCK', fuelType: 'DIESEL', currentDriverId: driver.id, status: 'ON_TRIP' } });
-  const adminIdentifier = process.env.CI_ADMIN_IDENTIFIER || process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME;
-  const adminUser = await prisma.user.findFirst({
-    where: { OR: [{ email: adminIdentifier }, { username: adminIdentifier }] },
-  });
+  const adminUser = await prisma.user.findUnique({ where: { id: tokenSubject(adminToken) } });
   expect(adminUser, 'Admin fixture user not found for vehicle-scoped review');
   await prisma.userDataScope.create({
     data: {
@@ -175,6 +178,7 @@ async function main() {
       reason: `${PREFIX} reviewer scope`,
     },
   });
+  expect(await prisma.userDataScope.findFirst({ where: { userId: adminUser.id, scopeType: 'VEHICLE', scopeId: vehicle.id, accessLevel: 'UPDATE' } }), 'Reviewer vehicle scope was not persisted');
   await prisma.userProfileLink.create({ data: { userId: driverFixture.user.id, profileType: 'DRIVER', profileId: driver.id, isPrimary: true, status: 'ACTIVE' } });
   const trip = await prisma.trip.create({ data: { tripNumber: `${PREFIX}-TRIP`, tripType: 'DELIVERY', status: 'STARTED', vehicleId: vehicle.id, driverId: driver.id, originName: 'Hyderabad', destinationName: 'Pune', actualStartAt: new Date(), startOdometer: 1000, createdById: driverFixture.user.id } });
   const tripAdvance = await createAdvance(adminToken, financeToken, {
