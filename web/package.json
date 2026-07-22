@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test:e2e": "npx playwright test",
+    "test:e2e:finance": "npx playwright test e2e/finance-staff-cash.spec.ts",
     "test:e2e:headed": "npx playwright test --headed"
   },
   "dependencies": {
