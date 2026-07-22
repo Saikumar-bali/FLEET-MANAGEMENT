@@ -10,6 +10,7 @@ on:
 permissions:
   actions: read
   contents: read
+  deployments: write
 
 concurrency:
   group: vercel-production-main
@@ -80,9 +81,10 @@ jobs:
             echo ""
             echo "- Deployment owner: GitHub Actions"
             echo "- GitHub environment: \`staging\` (secret storage only)"
+            echo "- GitHub published environment: \`Production\`"
             echo "- Vercel target: \`production\`"
             echo "- Source branch: \`main\`"
-            echo "- Stable production domains are used by applications and health checks."
+            echo "- Stable production domains are used by applications, health checks and GitHub deployment links."
             echo "- Immutable deployment URLs are retained only for audit and rollback."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -300,6 +302,44 @@ jobs:
           curl --fail --silent --show-error --retry 18 --retry-delay 5 --retry-all-errors "$WEB_PRODUCTION_URL/" > /dev/null
           curl --fail --silent --show-error --retry 18 --retry-delay 5 --retry-all-errors "$WEB_PRODUCTION_URL/login" > /dev/null
 
+  publish-production:
+    name: Publish stable GitHub Production deployment
+    needs:
+      - deploy-backend
+      - deploy-web
+    if: >-
+      needs.deploy-backend.result == 'success' &&
+      needs.deploy-web.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: Production
+      url: ${{ needs.deploy-web.outputs.web_production_url }}
+    steps:
+      - name: Confirm stable production deployment URLs
+        env:
+          BACKEND_PRODUCTION_URL: ${{ needs.deploy-backend.outputs.backend_production_url }}
+          WEB_PRODUCTION_URL: ${{ needs.deploy-web.outputs.web_production_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$BACKEND_PRODUCTION_URL" in
+            https://*) ;;
+            *) echo "::error::Stable backend production URL is missing or invalid."; exit 1 ;;
+          esac
+
+          case "$WEB_PRODUCTION_URL" in
+            https://*) ;;
+            *) echo "::error::Stable web production URL is missing or invalid."; exit 1 ;;
+          esac
+
+          {
+            echo "## GitHub Production deployment"
+            echo ""
+            echo "- Stable web URL: $WEB_PRODUCTION_URL"
+            echo "- Stable backend URL: $BACKEND_PRODUCTION_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   deployment-summary:
     name: Publish production deployment summary
     if: always()
@@ -307,6 +347,7 @@ jobs:
       - validate
       - deploy-backend
       - deploy-web
+      - publish-production
     runs-on: ubuntu-latest
     steps:
       - name: Enforce deployment result and write summary
@@ -314,6 +355,7 @@ jobs:
           VALIDATE_RESULT: ${{ needs.validate.result }}
           BACKEND_RESULT: ${{ needs.deploy-backend.result }}
           WEB_RESULT: ${{ needs.deploy-web.result }}
+          PUBLISH_RESULT: ${{ needs.publish-production.result }}
           BACKEND_PRODUCTION_URL: ${{ needs.deploy-backend.outputs.backend_production_url }}
           BACKEND_DEPLOYMENT_URL: ${{ needs.deploy-backend.outputs.backend_deployment_url }}
           WEB_PRODUCTION_URL: ${{ needs.deploy-web.outputs.web_production_url }}
@@ -328,6 +370,7 @@ jobs:
             echo "- Validation: \`$VALIDATE_RESULT\`"
             echo "- Backend: \`$BACKEND_RESULT\`"
             echo "- Web: \`$WEB_RESULT\`"
+            echo "- GitHub Production publication: \`$PUBLISH_RESULT\`"
             echo ""
             echo "### Stable production URLs"
             [ -n "$BACKEND_PRODUCTION_URL" ] && echo "- Backend: $BACKEND_PRODUCTION_URL"
@@ -341,3 +384,4 @@ jobs:
           test "$VALIDATE_RESULT" = "success"
           test "$BACKEND_RESULT" = "success"
           test "$WEB_RESULT" = "success"
+          test "$PUBLISH_RESULT" = "success"
