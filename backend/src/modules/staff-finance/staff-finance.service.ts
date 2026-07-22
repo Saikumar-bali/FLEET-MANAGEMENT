@@ -397,13 +397,20 @@ async function operationalRecord(db: Db, kind: OperationalExpenseKind, id: strin
   return record as any;
 }
 
-export async function approveOperationalExpense(kind: OperationalExpenseKind, id: string, approverId: string | null | undefined, notes?: string | null) {
+export async function approveOperationalExpense(
+  kind: OperationalExpenseKind,
+  id: string,
+  approverId: string | null | undefined,
+  notes?: string | null,
+  options: { allowDraft?: boolean } = {},
+) {
   return prisma.$transaction(async (tx) => {
     const table = kind === 'FUEL' ? 'fuel_entries' : 'expenses';
     await tx.$queryRawUnsafe(`SELECT id FROM "${table}" WHERE id=$1 FOR UPDATE`, id);
     const record = await operationalRecord(tx, kind, id);
     if (record.status === 'APPROVED' && record.financialPostedAt) return record;
-    if (record.status !== 'SUBMITTED') throw new AppError(`Only submitted ${kind === 'FUEL' ? 'fuel entries' : 'expenses'} can be approved`, 409);
+    const approvableStatuses = options.allowDraft ? ['DRAFT', 'SUBMITTED'] : ['SUBMITTED'];
+    if (!approvableStatuses.includes(record.status)) throw new AppError(`Only submitted ${kind === 'FUEL' ? 'fuel entries' : 'expenses'} can be approved`, 409);
     const recordAmount = amount(kind === 'FUEL' ? record.totalAmount : record.amount);
     const expenseCode = kind === 'FUEL' ? 'EXPENSE:FUEL' : `EXPENSE:${String(record.category ?? 'GENERAL').toUpperCase()}`;
     const paymentSource = record.paymentSource ?? 'COMPANY_ACCOUNT';
