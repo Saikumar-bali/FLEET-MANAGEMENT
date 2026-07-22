@@ -47,7 +47,7 @@ export async function updateUserController(req: Request, res: Response) {
     action: 'user.update',
     entityType: 'user',
     entityId: user.id,
-    metadata: { username: user.username, roleId: user.role.id, status: user.status },
+    metadata: { username: user.username, email: user.email, roleId: user.role.id, status: user.status },
   });
 
   return sendSuccess(res, user, 'User updated successfully');

@@ -71,6 +71,7 @@ export function UserDetailPage() {
 
   // Account form
   const [editName, setEditName] = useState(''); const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editMobile, setEditMobile] = useState(''); const [editRoleId, setEditRoleId] = useState('');
   const [statusTarget, setStatusTarget] = useState<'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -160,6 +161,7 @@ export function UserDetailPage() {
       const links = Array.isArray(plRes.data) ? plRes.data : [];
       setProfileLinks(links);
       setEditName(userRes.data.name); setEditUsername(userRes.data.username ?? '');
+      setEditEmail(userRes.data.email);
       setEditMobile(userRes.data.mobile ?? ''); setEditRoleId(userRes.data.role.id);
 
       // Fetch staff profile if linked
@@ -225,7 +227,7 @@ export function UserDetailPage() {
   async function handleUpdateProfile() {
     if (!auth.accessToken || !id) return;
     setIsSaving(true); setMessage(null); setError(null);
-    try { const res = await updateUser(auth.accessToken, id, { name: editName, username: editUsername, mobile: editMobile }); setUser(res.data); showToast('Profile updated.', 'success'); }
+    try { const res = await updateUser(auth.accessToken, id, { name: editName, username: editUsername, email: editEmail, mobile: editMobile }); setUser(res.data); setEditEmail(res.data.email); showToast('Account updated.', 'success'); }
     catch (e) { const msg = e instanceof ApiError ? e.message : 'Failed to update.'; showToast(msg, 'error'); setError(msg); } finally { setIsSaving(false); }
   }
 
@@ -664,13 +666,14 @@ export function UserDetailPage() {
       {activeTab === 'account' && (
         <div style={{ display: 'grid', gap: '1rem' }}>
           <article className="card" style={{ padding: '1.25rem' }}>
-            <FormSection title="Edit Account" description="Update name, username, or mobile.">
+            <FormSection title="Edit Account" description="Update name, username, email, or mobile.">
               <div className="form-grid">
                 <label><span>Name</span><input value={editName} onChange={e => setEditName(e.target.value)} /></label>
                 <label><span>Username</span><input value={editUsername} onChange={e => setEditUsername(e.target.value)} /></label>
+                <label><span>Email</span><input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} autoComplete="email" required /></label>
                 <label><span>Mobile</span><input value={editMobile} onChange={e => setEditMobile(e.target.value)} /></label>
               </div>
-              <div className="button-row"><button type="button" className="primary-button" onClick={handleUpdateProfile} disabled={isSaving}>{isSaving ? 'Saving...' : 'Update profile'}</button></div>
+              <div className="button-row"><button type="button" className="primary-button" onClick={handleUpdateProfile} disabled={isSaving || !editEmail.trim()}>{isSaving ? 'Saving...' : 'Update account'}</button></div>
             </FormSection>
           </article>
           <article className="card" style={{ padding: '1.25rem' }}>

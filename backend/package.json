@@ -40,6 +40,7 @@
     "seed:vehicle-checkout-permissions": "ts-node scripts/seed-vehicle-checkout-permissions.ts",
     "test:user-profile-link": "ts-node scripts/user-profile-link-test.ts",
     "test:user-profile-link-api": "ts-node scripts/user-profile-link-api-test.ts",
+    "test:user-account-email": "ts-node scripts/user-account-email-api-test.ts",
     "test:driver-portal-security": "ts-node scripts/driver-portal-security-test.ts",
     "test:driver-portal-actions": "ts-node scripts/driver-portal-actions-test.ts",
     "test:driver-submission-review": "ts-node scripts/driver-submission-review-test.ts",

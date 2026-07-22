@@ -224,6 +224,7 @@ export async function updateUser(params: {
     input: {
       name?: string;
       username?: string;
+      email?: string;
       mobile?: string;
       roleId?: string;
       status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
@@ -253,6 +254,10 @@ export async function updateUser(params: {
     await ensureUsernameAvailable(input.username, userId);
   }
 
+  if (input.email) {
+    await ensureEmailAvailable(input.email, userId);
+  }
+
   await assertSuperAdminSafety({
     targetUser: user,
     nextRoleId: input.roleId,
@@ -271,6 +276,7 @@ export async function updateUser(params: {
     data: {
       name: input.name,
       username: input.username,
+      email: input.email,
       mobile: input.mobile === '' ? null : input.mobile,
       roleId: input.roleId,
       status: input.status,

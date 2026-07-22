@@ -132,6 +132,39 @@ async function ensureTestUser(
 }
 
 test.describe('User Access Management', () => {
+  test('super_admin can edit and persist a user account email', async ({ page, request }) => {
+    test.setTimeout(90_000);
+    const cred = getCredential('super_admin');
+    if (!cred) {
+      throw new Error('Missing SUPER_ADMIN credentials in env. Set CI_SUPER_ADMIN_IDENTIFIER and CI_SUPER_ADMIN_PASSWORD.');
+    }
+
+    await loginAsRole(page, 'super_admin');
+    const apiBase = getApiBase();
+    const token = await getAuthToken(page);
+    const { id: userId } = await ensureTestUser(request, apiBase, token);
+    const originalUser = await apiGet(request, apiBase, token, `/api/v1/users/${userId}`) as { email: string };
+    const updatedEmail = 'phase_access_ui_test_user_updated@test.local';
+
+    try {
+      await page.goto(`/users/${userId}`);
+      await page.getByRole('button', { name: 'Account', exact: true }).click();
+
+      const emailInput = page.getByLabel('Email', { exact: true });
+      await expect(emailInput).toHaveValue(originalUser.email);
+      await emailInput.fill(updatedEmail.toUpperCase());
+      await page.getByRole('button', { name: 'Update account', exact: true }).click();
+
+      await expect(page.getByText('Account updated.', { exact: true })).toBeVisible();
+      await expect(emailInput).toHaveValue(updatedEmail);
+
+      const persistedUser = await apiGet(request, apiBase, token, `/api/v1/users/${userId}`) as { email: string };
+      expect(persistedUser.email).toBe(updatedEmail);
+    } finally {
+      await apiPatch(request, apiBase, token, `/api/v1/users/${userId}`, { email: originalUser.email });
+    }
+  });
+
   test('super_admin can manage user access end-to-end', async ({ page, request }) => {
     test.setTimeout(120_000);
     const cred = getCredential('super_admin');

@@ -234,6 +234,7 @@ export function updateUser(
   payload: Partial<{
     name: string;
     username: string;
+    email: string;
     mobile: string;
     roleId: string;
     status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';

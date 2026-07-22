@@ -171,6 +171,10 @@ jobs:
         run: npm run test:user-profile-link-api
         working-directory: backend
 
+      - name: User account email API tests
+        run: npm run test:user-account-email
+        working-directory: backend
+
       - name: Profile link diagnostics
         run: npm run profile-link:diagnose
         working-directory: backend
