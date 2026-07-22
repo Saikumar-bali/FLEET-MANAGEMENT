@@ -1,4 +1,4 @@
-name: Deploy Vercel after CI
+name: Deploy Vercel production after CI
 
 on:
   workflow_run:
@@ -10,15 +10,14 @@ on:
 permissions:
   actions: read
   contents: read
-  deployments: write
 
 concurrency:
-  group: vercel-staging-main
+  group: vercel-production-main
   cancel-in-progress: false
 
 jobs:
   validate:
-    name: Validate deployment gate and secrets
+    name: Validate production deployment gate and secrets
     if: >-
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
@@ -26,7 +25,12 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    environment: staging
+    # The existing GitHub environment is only a protected secret store. The
+    # deployment itself targets Vercel production. deployment:false prevents
+    # GitHub from creating a misleading "staging" deployment record.
+    environment:
+      name: staging
+      deployment: false
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -35,7 +39,7 @@ jobs:
       DEPLOY_DATABASE_URL: ${{ secrets.DEPLOY_DATABASE_URL }}
       DEPLOY_DIRECT_URL: ${{ secrets.DEPLOY_DIRECT_URL }}
     steps:
-      - name: Confirm CI-success deployment context
+      - name: Confirm CI-success production context
         shell: bash
         run: |
           set -euo pipefail
@@ -71,12 +75,25 @@ jobs:
 
           test "$missing" -eq 0
 
+      - name: Explain deployment target
+        shell: bash
+        run: |
+          {
+            echo "## Deployment target"
+            echo ""
+            echo "- GitHub environment: \`staging\` (secret storage only; no GitHub deployment record)"
+            echo "- Vercel target: \`production\`"
+            echo "- Source branch: \`main\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   deploy-backend:
-    name: Migrate database and deploy backend
+    name: Migrate database and deploy backend production
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    environment: staging
+    environment:
+      name: staging
+      deployment: false
     env:
       DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -116,25 +133,56 @@ jobs:
         run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
         working-directory: backend
 
-      - name: Deploy backend
+      - name: Validate backend Vercel production environment
+        shell: bash
+        working-directory: backend
+        run: |
+          set -euo pipefail
+
+          env_file=".vercel/.env.production.local"
+          test -f "$env_file" || {
+            echo "::error::Vercel did not return a production environment file for the backend project. Verify VERCEL_BACKEND_PROJECT_ID and VERCEL_ORG_ID."
+            exit 1
+          }
+
+          required_runtime=(DATABASE_URL DIRECT_URL JWT_SECRET CORS_ORIGIN)
+          missing=0
+          for name in "${required_runtime[@]}"; do
+            if ! grep -Eq "^${name}=" "$env_file"; then
+              echo "::error::$name is missing from the backend Vercel project's Production environment variables."
+              missing=1
+            fi
+          done
+
+          test "$missing" -eq 0
+          echo "Backend Vercel production environment contains all required variable names."
+
+      - name: Deploy backend production
         id: deploy
         shell: bash
         working-directory: backend
         run: |
           set -euo pipefail
 
-          BACKEND_URL="$(
+          BACKEND_URL="$({
             npx --yes vercel@latest deploy \
               --prod \
               --yes \
               --archive=tgz \
               --token="$VERCEL_TOKEN" \
               --meta githubCommitSha="$DEPLOY_SHA"
-          )"
+          } | tail -n 1 | tr -d '\r')"
 
-          test -n "$BACKEND_URL"
+          case "$BACKEND_URL" in
+            https://*) ;;
+            *)
+              echo "::error::Vercel CLI did not return a valid backend deployment URL."
+              exit 1
+              ;;
+          esac
+
           echo "url=$BACKEND_URL" >> "$GITHUB_OUTPUT"
-          echo "Backend deployment created."
+          echo "Backend production deployment created."
 
       - name: Verify backend health
         shell: bash
@@ -159,11 +207,13 @@ jobs:
           '
 
   deploy-web:
-    name: Deploy web after backend health passes
+    name: Deploy web production after backend health passes
     needs: deploy-backend
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: staging
+    environment:
+      name: staging
+      deployment: false
     env:
       DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -194,14 +244,14 @@ jobs:
         run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
         working-directory: web
 
-      - name: Deploy web
+      - name: Deploy web production
         id: deploy
         shell: bash
         working-directory: web
         run: |
           set -euo pipefail
 
-          WEB_URL="$(
+          WEB_URL="$({
             npx --yes vercel@latest deploy \
               --prod \
               --yes \
@@ -209,11 +259,18 @@ jobs:
               --token="$VERCEL_TOKEN" \
               --build-env VITE_API_URL="$BACKEND_URL" \
               --meta githubCommitSha="$DEPLOY_SHA"
-          )"
+          } | tail -n 1 | tr -d '\r')"
 
-          test -n "$WEB_URL"
+          case "$WEB_URL" in
+            https://*) ;;
+            *)
+              echo "::error::Vercel CLI did not return a valid web deployment URL."
+              exit 1
+              ;;
+          esac
+
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
-          echo "Web deployment created."
+          echo "Web production deployment created."
 
       - name: Verify web routes
         shell: bash
@@ -226,7 +283,7 @@ jobs:
           curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors "$WEB_URL/login" > /dev/null
 
   deployment-summary:
-    name: Publish deployment summary
+    name: Publish production deployment summary
     if: always()
     needs:
       - validate
@@ -246,7 +303,7 @@ jobs:
           set -euo pipefail
 
           {
-            echo "## Vercel deployment"
+            echo "## Vercel production deployment"
             echo ""
             echo "- Validation: \`$VALIDATE_RESULT\`"
             echo "- Backend: \`$BACKEND_RESULT\`"
