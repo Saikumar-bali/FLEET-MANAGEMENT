@@ -1,0 +1,260 @@
+name: Deploy Vercel after CI
+
+on:
+  workflow_run:
+    workflows: ["CI, Security and Backend Sync"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  deployments: write
+
+concurrency:
+  group: vercel-staging-main
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate deployment gate and secrets
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_BACKEND_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+      VERCEL_WEB_PROJECT_ID: ${{ secrets.VERCEL_WEB_PROJECT_ID }}
+      DEPLOY_DATABASE_URL: ${{ secrets.DEPLOY_DATABASE_URL }}
+      DEPLOY_DIRECT_URL: ${{ secrets.DEPLOY_DIRECT_URL }}
+    steps:
+      - name: Confirm CI-success deployment context
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            test "${{ github.event.workflow_run.conclusion }}" = "success"
+            test "${{ github.event.workflow_run.head_branch }}" = "main"
+          else
+            test "${{ github.ref }}" = "refs/heads/main"
+          fi
+
+      - name: Validate required deployment secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required=(
+            VERCEL_TOKEN
+            VERCEL_ORG_ID
+            VERCEL_BACKEND_PROJECT_ID
+            VERCEL_WEB_PROJECT_ID
+            DEPLOY_DATABASE_URL
+            DEPLOY_DIRECT_URL
+          )
+
+          missing=0
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured in the staging GitHub environment or repository secrets."
+              missing=1
+            fi
+          done
+
+          test "$missing" -eq 0
+
+  deploy-backend:
+    name: Migrate database and deploy backend
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+      DATABASE_URL: ${{ secrets.DEPLOY_DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DEPLOY_DIRECT_URL }}
+    outputs:
+      backend_url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Check out the CI-approved commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+        working-directory: backend
+
+      - name: Apply committed database migrations
+        run: npm run prisma:migrate:deploy
+        working-directory: backend
+
+      - name: Link backend Vercel project
+        run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+        working-directory: backend
+
+      - name: Deploy backend
+        id: deploy
+        shell: bash
+        working-directory: backend
+        run: |
+          set -euo pipefail
+
+          BACKEND_URL="$(
+            npx --yes vercel@latest deploy \
+              --prod \
+              --yes \
+              --archive=tgz \
+              --token="$VERCEL_TOKEN" \
+              --meta githubCommitSha="$DEPLOY_SHA"
+          )"
+
+          test -n "$BACKEND_URL"
+          echo "url=$BACKEND_URL" >> "$GITHUB_OUTPUT"
+          echo "Backend deployment created."
+
+      - name: Verify backend health
+        shell: bash
+        env:
+          BACKEND_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 12 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            "$BACKEND_URL/api/v1/health" > /tmp/backend-health.json
+
+          node -e '
+            const fs = require("node:fs");
+            const body = JSON.parse(fs.readFileSync("/tmp/backend-health.json", "utf8"));
+            if (!body || body.success === false) process.exit(1);
+          '
+
+  deploy-web:
+    name: Deploy web after backend health passes
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    env:
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEB_PROJECT_ID }}
+      BACKEND_URL: ${{ needs.deploy-backend.outputs.backend_url }}
+    outputs:
+      web_url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Check out the CI-approved commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Link web Vercel project
+        run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+        working-directory: web
+
+      - name: Deploy web
+        id: deploy
+        shell: bash
+        working-directory: web
+        run: |
+          set -euo pipefail
+
+          WEB_URL="$(
+            npx --yes vercel@latest deploy \
+              --prod \
+              --yes \
+              --archive=tgz \
+              --token="$VERCEL_TOKEN" \
+              --build-env VITE_API_URL="$BACKEND_URL" \
+              --meta githubCommitSha="$DEPLOY_SHA"
+          )"
+
+          test -n "$WEB_URL"
+          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Web deployment created."
+
+      - name: Verify web routes
+        shell: bash
+        env:
+          WEB_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors "$WEB_URL/" > /dev/null
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors "$WEB_URL/login" > /dev/null
+
+  deployment-summary:
+    name: Publish deployment summary
+    if: always()
+    needs:
+      - validate
+      - deploy-backend
+      - deploy-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce deployment result and write summary
+        env:
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          BACKEND_RESULT: ${{ needs.deploy-backend.result }}
+          WEB_RESULT: ${{ needs.deploy-web.result }}
+          BACKEND_URL: ${{ needs.deploy-backend.outputs.backend_url }}
+          WEB_URL: ${{ needs.deploy-web.outputs.web_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Vercel deployment"
+            echo ""
+            echo "- Validation: \`$VALIDATE_RESULT\`"
+            echo "- Backend: \`$BACKEND_RESULT\`"
+            echo "- Web: \`$WEB_RESULT\`"
+            [ -n "$BACKEND_URL" ] && echo "- Backend URL: $BACKEND_URL"
+            [ -n "$WEB_URL" ] && echo "- Web URL: $WEB_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          test "$VALIDATE_RESULT" = "success"
+          test "$BACKEND_RESULT" = "success"
+          test "$WEB_RESULT" = "success"
