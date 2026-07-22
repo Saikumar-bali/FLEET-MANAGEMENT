@@ -161,6 +161,20 @@ async function main() {
 
   const driver = await prisma.driver.create({ data: { name: `${PREFIX} Driver`, mobile: `91${String(Date.now()).slice(-10)}`, licenseNumber: `${PREFIX}-LIC`, status: 'ON_TRIP' } });
   const vehicle = await prisma.vehicle.create({ data: { vehicleNumber: `${PREFIX}-VEH`, vehicleType: 'TRUCK', fuelType: 'DIESEL', currentDriverId: driver.id, status: 'ON_TRIP' } });
+  const adminIdentifier = process.env.CI_ADMIN_IDENTIFIER || process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME;
+  const adminUser = await prisma.user.findFirst({
+    where: { OR: [{ email: adminIdentifier }, { username: adminIdentifier }] },
+  });
+  expect(adminUser, 'Admin fixture user not found for vehicle-scoped review');
+  await prisma.userDataScope.create({
+    data: {
+      userId: adminUser.id,
+      scopeType: 'VEHICLE',
+      scopeId: vehicle.id,
+      accessLevel: 'UPDATE',
+      reason: `${PREFIX} reviewer scope`,
+    },
+  });
   await prisma.userProfileLink.create({ data: { userId: driverFixture.user.id, profileType: 'DRIVER', profileId: driver.id, isPrimary: true, status: 'ACTIVE' } });
   const trip = await prisma.trip.create({ data: { tripNumber: `${PREFIX}-TRIP`, tripType: 'DELIVERY', status: 'STARTED', vehicleId: vehicle.id, driverId: driver.id, originName: 'Hyderabad', destinationName: 'Pune', actualStartAt: new Date(), startOdometer: 1000, createdById: driverFixture.user.id } });
   const tripAdvance = await createAdvance(adminToken, financeToken, {
@@ -171,7 +185,8 @@ async function main() {
   const fuel = await api('POST', '/me/driver-fuel', driverToken, { vehicleId: vehicle.id, tripId: trip.id, totalAmount: 2500, quantityLiters: 25, paymentSource: 'STAFF_WALLET', paymentMode: 'CASH' });
   expect(fuel.status === 201, `Driver fuel creation failed: ${JSON.stringify(fuel.body)}`);
   expect((await api('POST', `/fuel/${fuel.data.id}/submit`, driverToken, {})).status === 200, 'Fuel submission failed');
-  expect((await api('POST', `/fuel/${fuel.data.id}/approve`, adminToken, {})).status === 200, 'Fuel approval failed');
+  const fuelApproval = await api('POST', `/fuel/${fuel.data.id}/approve`, adminToken, {});
+  expect(fuelApproval.status === 200, `Fuel approval failed: ${fuelApproval.status} ${JSON.stringify(fuelApproval.body)}`);
   const duplicateFuelApproval = await api('POST', `/fuel/${fuel.data.id}/approve`, adminToken, {});
   expect(duplicateFuelApproval.status >= 400, 'Duplicate approval must be rejected');
   const fuelDebits = await prisma.staffWalletEntry.count({ where: { sourceType: 'FUEL', sourceId: fuel.data.id, entryType: 'EXPENSE' } });
