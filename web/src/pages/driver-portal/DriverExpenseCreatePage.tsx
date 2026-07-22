@@ -25,7 +25,7 @@ export function DriverExpenseCreatePage() {
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ vehicleId: '', tripId: '', category: '', amount: '', expenseDate: '', notes: '' });
+  const [form, setForm] = useState({ vehicleId: '', tripId: '', category: '', amount: '', expenseDate: '', paymentSource: 'STAFF_WALLET', notes: '' });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
@@ -82,6 +82,7 @@ export function DriverExpenseCreatePage() {
         amount: Number(form.amount),
         tripId: form.tripId || undefined,
         expenseDate: form.expenseDate || undefined,
+        paymentSource: form.paymentSource,
         notes: form.notes || undefined,
       });
       navigate('/driver-portal/expenses');
@@ -142,6 +143,17 @@ export function DriverExpenseCreatePage() {
                 </select>
               </label>
               <label className="form-group">
+                <span>Paid using *</span>
+                <select value={form.paymentSource} onChange={(e) => setForm({ ...form, paymentSource: e.target.value })}>
+                  <option value="STAFF_WALLET">Trip allowance / staff wallet</option>
+                  <option value="PERSONAL_MONEY">My personal money — reimburse me</option>
+                  <option value="COMPANY_ACCOUNT">Company paid directly</option>
+                  <option value="CORPORATE_CARD">Corporate card</option>
+                  <option value="VENDOR_CREDIT">Vendor credit</option>
+                </select>
+                <small className="helper-text">Wallet-paid claims require a trip and are deducted only after approval.</small>
+              </label>
+              <label className="form-group">
                 <span>Notes</span>
                 <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={4} placeholder="Add location, vendor, reason, or approval context" />
               </label>
@@ -166,7 +178,7 @@ export function DriverExpenseCreatePage() {
             <p className="helper-text">Receipt</p>
             <strong>{receiptFile ? receiptFile.name : 'Not attached'}</strong>
             <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1.25rem' }}>
-              <button type="submit" className="primary-button" disabled={submitting || !form.vehicleId || !form.category || !form.amount}>{submitting ? 'Submitting...' : 'Submit Claim'}</button>
+              <button type="submit" className="primary-button" disabled={submitting || !form.vehicleId || !form.category || !form.amount || (form.paymentSource === 'STAFF_WALLET' && !form.tripId)}>{submitting ? 'Submitting...' : 'Submit Claim'}</button>
               <button type="button" className="secondary-button" onClick={() => navigate('/driver-portal/expenses')}>Cancel</button>
             </div>
           </aside>

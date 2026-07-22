@@ -236,6 +236,7 @@ export const updateFinanceTransactionSchema = z.object({
 
 // ─── Payment Record ───
 export const createPaymentRecordSchema = z.object({
+  direction: z.enum(['INCOMING', 'OUTGOING']).optional(),
   transactionId: z.string().optional(),
   tripBillingId: z.string().optional(),
   accountId: z.string().optional(),
@@ -251,6 +252,11 @@ export const createPaymentRecordSchema = z.object({
   collectedByDriverId: z.string().optional(),
   referenceNumber: z.string().optional(),
   notes: z.string().optional(),
+});
+
+export const reconcilePaymentSchema = z.object({
+  status: z.enum(['RECONCILED', 'REJECTED']),
+  notes: z.string().max(2000).optional(),
 });
 
 export const updatePaymentRecordSchema = z.object({

@@ -36,6 +36,7 @@ import driverSubmissionRoutes from './modules/driver-submissions/driver-submissi
 import workspaceRoutes from './modules/workspace/workspace.routes';
 import dispatchRoutes from './modules/dispatch/dispatch.routes';
 import staffProfileRoutes from './modules/staff-profiles/staff-profiles.routes';
+import staffFinanceRoutes from './modules/staff-finance/staff-finance.routes';
 import { sendError } from './utils/response';
 
 const app = express();
@@ -98,6 +99,7 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/repairs', repairRoutes);
 app.use('/api/v1', vehicleComplianceRoutes);
 app.use('/api/v1/finance', financeRoutes);
+app.use('/api/v1/finance', staffFinanceRoutes);
 app.use('/api/v1', driverAdvanceRoutes);
 app.use('/api/v1', podBillingRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);

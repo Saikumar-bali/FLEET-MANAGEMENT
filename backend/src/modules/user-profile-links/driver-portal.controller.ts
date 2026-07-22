@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma';
 import { getDriverIdForUser, getProfileLinkForDiagnostics } from '../user-profile-links/user-profile-links.service';
 import { createAuditLog } from '../audit/audit.service';
 import { extractFromReceipt } from '../fuel/fuel-receipt-extraction.service';
+import { openSettlementsForTrip } from '../staff-finance/staff-finance.service';
 
 function generateTripNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -597,6 +598,8 @@ export async function driverEndTripController(req: Request, res: Response) {
       },
     });
 
+    await openSettlementsForTrip(tx, trip.id, userId);
+
     return t;
   });
 
@@ -665,12 +668,15 @@ export async function driverCreateFuelController(req: Request, res: Response) {
   const driver = await getLinkedDriver(req.authUser!.id);
   const userId = req.authUser!.id;
 
-  const { vehicleId, fuelDate, totalAmount, quantityLiters, odometerReading, stationName, receiptNumber, paymentMode, notes } = req.body;
+  const { vehicleId, tripId, fuelDate, totalAmount, quantityLiters, odometerReading, stationName, receiptNumber, paymentMode, paymentSource, financeAccountId, notes } = req.body;
   if (!vehicleId || !totalAmount) {
     throw new AppError('vehicleId and totalAmount are required', 400);
   }
 
   await assertDriverOwnsVehicle(driver.id, vehicleId, req.authDataScopes);
+  if (tripId) await assertDriverOwnsTrip(driver.id, tripId);
+  const source = paymentSource ?? 'COMPANY_ACCOUNT';
+  if (source === 'STAFF_WALLET' && !tripId) throw new AppError('Select the trip when paying from your staff wallet', 400);
 
   let pricePerLiter: number | null = null;
   if (quantityLiters && totalAmount) {
@@ -680,6 +686,7 @@ export async function driverCreateFuelController(req: Request, res: Response) {
   const entry = await prisma.fuelEntry.create({
     data: {
       vehicleId,
+      tripId: tripId ?? null,
       driverId: driver.id,
       fuelDate: fuelDate ? new Date(fuelDate) : new Date(),
       fuelType: 'DIESEL',
@@ -691,6 +698,9 @@ export async function driverCreateFuelController(req: Request, res: Response) {
       stationName: stationName ?? null,
       receiptNumber: receiptNumber ?? null,
       paymentMode: paymentMode ?? null,
+      paymentSource: source,
+      financeAccountId: financeAccountId ?? null,
+      paidByUserId: source === 'STAFF_WALLET' || source === 'PERSONAL_MONEY' ? userId : null,
       notes: notes ?? null,
       status: 'DRAFT',
       createdById: userId,
@@ -784,7 +794,7 @@ export async function driverCreateExpenseController(req: Request, res: Response)
   const driver = await getLinkedDriver(req.authUser!.id);
   const userId = req.authUser!.id;
 
-  const { vehicleId, tripId, category, amount, expenseDate, notes } = req.body;
+  const { vehicleId, tripId, category, amount, expenseDate, paymentSource, financeAccountId, notes } = req.body;
   if (!vehicleId || !category || !amount) {
     throw new AppError('vehicleId, category, and amount are required', 400);
   }
@@ -793,6 +803,8 @@ export async function driverCreateExpenseController(req: Request, res: Response)
   if (tripId) {
     await assertDriverOwnsTrip(driver.id, tripId);
   }
+  const source = paymentSource ?? 'COMPANY_ACCOUNT';
+  if (source === 'STAFF_WALLET' && !tripId) throw new AppError('Select the trip when paying from your staff wallet', 400);
 
   const entry = await prisma.expense.create({
     data: {
@@ -801,6 +813,9 @@ export async function driverCreateExpenseController(req: Request, res: Response)
       driverId: driver.id,
       category,
       amount,
+      paymentSource: source,
+      financeAccountId: financeAccountId ?? null,
+      paidByUserId: source === 'STAFF_WALLET' || source === 'PERSONAL_MONEY' ? userId : null,
       expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
       notes: notes ?? null,
       status: 'DRAFT',

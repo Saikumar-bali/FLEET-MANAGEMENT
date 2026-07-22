@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { assertEditable, assertTransition, dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
 import { createNotification } from '../notifications/notifications.service';
+import { approveOperationalExpense, reverseOperationalExpense } from '../staff-finance/staff-finance.service';
 
 type ExpenseInput = {
   vehicleId: string;
@@ -13,6 +14,8 @@ type ExpenseInput = {
   amount: number;
   vendor?: string | null;
   receiptNumber?: string | null;
+  paymentSource?: 'STAFF_WALLET' | 'COMPANY_ACCOUNT' | 'CORPORATE_CARD' | 'VENDOR_CREDIT' | 'PERSONAL_MONEY';
+  financeAccountId?: string | null;
   notes?: string | null;
 };
 
@@ -26,6 +29,8 @@ function expenseData(input: Partial<ExpenseInput>) {
     amount: input.amount,
     vendor: input.vendor,
     receiptNumber: input.receiptNumber,
+    paymentSource: input.paymentSource,
+    financeAccountId: input.financeAccountId,
     notes: input.notes,
   };
 }
@@ -71,11 +76,15 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>, ca
 export async function transitionExpense(id: string, status: WorkflowRecordStatus, userId?: string | null, notes?: string | null) {
   const existing = await getExpense(id);
   assertTransition(existing.status, status);
-  const item = await prisma.expense.update({
-    where: { id },
-    data: { status, notes: notes === undefined ? existing.notes : notes, approvedById: status === 'APPROVED' ? userId ?? null : undefined, approvedAt: status === 'APPROVED' ? new Date() : undefined },
-    include: workflowInclude,
-  });
+  const item = status === 'APPROVED'
+    ? await approveOperationalExpense('EXPENSE', id, userId, notes).then(() => getExpense(id))
+    : status === 'CANCELLED' && existing.status === 'APPROVED'
+      ? await reverseOperationalExpense('EXPENSE', id, userId, notes).then(() => getExpense(id))
+    : await prisma.expense.update({
+        where: { id },
+        data: { status, notes: notes === undefined ? existing.notes : notes },
+        include: workflowInclude,
+      });
 
   try {
     if (status === 'SUBMITTED') {

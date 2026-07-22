@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const expenseIdParamsSchema = z.object({ id: z.string().min(1) });
 const statusEnum = z.enum(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED']);
+const paymentSourceEnum = z.enum(['STAFF_WALLET', 'COMPANY_ACCOUNT', 'CORPORATE_CARD', 'VENDOR_CREDIT', 'PERSONAL_MONEY']);
 
 const expenseFields = {
   vehicleId: z.string().min(1, 'Vehicle is required'),
@@ -12,6 +13,8 @@ const expenseFields = {
   amount: z.number().positive(),
   vendor: z.string().optional().nullable(),
   receiptNumber: z.string().optional().nullable(),
+  paymentSource: paymentSourceEnum.default('COMPANY_ACCOUNT'),
+  financeAccountId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 };
 

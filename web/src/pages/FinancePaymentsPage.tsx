@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getPayments, createPayment, deletePayment } from '../services/api';
+import { getPayments, createPayment, deletePayment, reconcilePayment } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { PaymentRecord } from '../types/auth';
@@ -12,6 +12,7 @@ import { PageHeader } from '../components/PageHeader';
 import FinancePaymentClosurePage from './FinancePaymentClosurePage';
 
 type PaymentForm = {
+  direction: 'INCOMING' | 'OUTGOING';
   transactionId: string;
   tripBillingId: string;
   accountId: string;
@@ -30,6 +31,7 @@ type PaymentForm = {
 };
 
 const initialForm: PaymentForm = {
+  direction: 'INCOMING',
   transactionId: '',
   tripBillingId: '',
   accountId: '',
@@ -60,6 +62,7 @@ function FinancePaymentsManagerPage() {
 
   const canCreate = auth.hasPermission('payments_create');
   const canDelete = auth.hasPermission('payments_delete');
+  const canReconcile = auth.hasPermission('finance_reconcile');
 
   useEffect(() => {
     const load = async () => {
@@ -84,6 +87,7 @@ function FinancePaymentsManagerPage() {
     const selected = items.find((i) => i.id === selectedId);
     if (selected) {
       setForm({
+        direction: selected.direction ?? 'INCOMING',
         transactionId: selected.transactionId ?? '',
         tripBillingId: selected.tripBillingId ?? '',
         accountId: selected.accountId ?? '',
@@ -119,6 +123,7 @@ function FinancePaymentsManagerPage() {
 
     try {
       const payload: Record<string, unknown> = {
+        direction: form.direction,
         transactionId: form.transactionId || undefined,
         tripBillingId: form.tripBillingId || undefined,
         accountId: form.accountId || undefined,
@@ -151,20 +156,27 @@ function FinancePaymentsManagerPage() {
 
   async function handleDelete(id: string) {
     if (!auth.accessToken) return;
-    if (!window.confirm('Are you sure you want to delete this payment?')) return;
+    if (!window.confirm('Reverse this payment? The original audit record will be retained.')) return;
     try {
       await deletePayment(auth.accessToken, id);
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      if (selectedId === id) {
-        setSelectedId(null);
-        setForm(initialForm);
-      }
-      setMessage('Payment deleted.');
-      showToast('Payment deleted.', 'success');
+      setItems((prev) => prev.map((item) => item.id === id ? { ...item, reversedAt: new Date().toISOString() } : item));
+      setMessage('Payment reversed. The original entry remains in the audit trail.');
+      showToast('Payment reversed.', 'success');
     } catch (caughtError) {
       const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to delete payment.';
       setError(msg);
       showToast(msg, 'error');
+    }
+  }
+
+  async function handleReconcile(id: string, status: 'RECONCILED' | 'REJECTED') {
+    if (!auth.accessToken) return;
+    try {
+      const response = await reconcilePayment(auth.accessToken, id, status);
+      setItems((prev) => prev.map((item) => item.id === id ? response.data : item));
+      showToast(status === 'RECONCILED' ? 'Payment reconciled.' : 'Payment rejected during reconciliation.', status === 'RECONCILED' ? 'success' : 'warning');
+    } catch (caughtError) {
+      showToast(caughtError instanceof ApiError ? caughtError.message : 'Reconciliation failed.', 'error');
     }
   }
 
@@ -211,12 +223,13 @@ function FinancePaymentsManagerPage() {
               <thead>
                 <tr>
                   <th>Payment#</th>
+                  <th>Direction</th>
                   <th>Amount</th>
                   <th>Date</th>
                   <th>Mode</th>
                   <th>Reference</th>
                   <th>Vendor/Customer</th>
-                  <th>Notes</th>
+                  <th>Reconciliation</th>
                   <th></th>
                 </tr>
               </thead>
@@ -228,14 +241,17 @@ function FinancePaymentsManagerPage() {
                     onClick={() => setSelectedId(item.id)}
                   >
                     <td>{item.paymentNumber ?? '—'}</td>
+                    <td><span className={item.direction === 'INCOMING' ? 'status-pill status-pill-success' : 'status-pill status-pill-warning'}>{item.direction}</span></td>
                     <td>{item.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                     <td>{new Date(item.paymentDate).toLocaleDateString('en-IN')}</td>
                     <td>{item.paymentMode}</td>
                     <td>{item.referenceNumber ?? '—'}</td>
                     <td>{item.vendorId ?? item.customerId ?? '—'}</td>
-                    <td>{item.notes ?? '—'}</td>
+                    <td><span className="status-pill status-pill-default">{item.reversedAt ? 'REVERSED' : item.reconciledStatus ?? 'UNRECONCILED'}</span></td>
                     <td>
-                      {canDelete ? (
+                      <div className="custody-row-actions">
+                      {canReconcile && !item.reversedAt && item.reconciledStatus === 'UNRECONCILED' ? <><button type="button" onClick={(e) => { e.stopPropagation(); void handleReconcile(item.id, 'RECONCILED'); }}>Reconcile</button><button type="button" onClick={(e) => { e.stopPropagation(); void handleReconcile(item.id, 'REJECTED'); }}>Reject</button></> : null}
+                      {canDelete && !item.reversedAt ? (
                         <button
                           type="button"
                           className="danger-button"
@@ -244,9 +260,10 @@ function FinancePaymentsManagerPage() {
                             void handleDelete(item.id);
                           }}
                         >
-                          Delete
+                          Reverse
                         </button>
                       ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -265,6 +282,13 @@ function FinancePaymentsManagerPage() {
             </div>
 
             <form data-testid="finance-payment-form" className="stack-form" onSubmit={handleSubmit}>
+              <label>
+                <span className="field-label">Direction *</span>
+                <select value={form.direction} onChange={(e) => setForm((f) => ({ ...f, direction: e.target.value as PaymentForm['direction'] }))}>
+                  <option value="INCOMING">Incoming — customer receipt</option>
+                  <option value="OUTGOING">Outgoing — vendor/company payment</option>
+                </select>
+              </label>
               <label>
                 <span className="field-label">Transaction ID</span>
                 <input value={form.transactionId} onChange={(e) => setForm((f) => ({ ...f, transactionId: e.target.value }))} />

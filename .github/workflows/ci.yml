@@ -21,7 +21,7 @@ jobs:
   backend:
     name: Backend build and integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -191,6 +191,10 @@ jobs:
         run: npm run test:driver-advance-settlement
         working-directory: backend
 
+      - name: Staff finance ledger end-to-end scenarios
+        run: npm run test:staff-finance-e2e
+        working-directory: backend
+
       - name: Driver portal integration tests
         run: npm run test:driver-portal-integration
         working-directory: backend
@@ -206,6 +210,18 @@ jobs:
       - name: Mechanic assignment isolation
         run: npm run test:rbac-mechanic
         working-directory: backend
+
+      - name: Install finance browser-test dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Install Chromium for finance browser tests
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+
+      - name: Staff finance UI/UX browser scenarios
+        run: npx playwright test e2e/finance-staff-cash.spec.ts
+        working-directory: web
 
       - name: Show backend log on failure
         if: failure()

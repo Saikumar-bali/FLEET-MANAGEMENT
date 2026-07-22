@@ -1,6 +1,7 @@
 import { Prisma, TripStatus, TripType, TripHistoryAction } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
+import { createAllowanceForScheduledTrip, openSettlementsForTrip } from '../staff-finance/staff-finance.service';
 
 function generateTripNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -434,6 +435,14 @@ export async function scheduleTrip(
       },
     });
 
+    await createAllowanceForScheduledTrip(tx, {
+      id: updatedTrip.id,
+      tripType: updatedTrip.tripType,
+      driverId: updatedTrip.driverId,
+      vehicleId: updatedTrip.vehicleId,
+      distanceKm: updatedTrip.distanceKm,
+    }, userId);
+
     return updatedTrip;
   });
 
@@ -653,6 +662,8 @@ export async function completeTrip(
         createdById: userId ?? null,
       },
     });
+
+    await openSettlementsForTrip(tx, tripId, userId);
 
     return updatedTrip;
   });

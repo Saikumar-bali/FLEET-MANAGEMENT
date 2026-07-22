@@ -14,6 +14,7 @@ import {
   listIssueSubmissions, getIssueSubmission,
   listInspectionSubmissions, getInspectionSubmission,
 } from './driver-submissions.service';
+import { approveOperationalExpense } from '../staff-finance/staff-finance.service';
 
 // Issue/Inspection records use VEHICLE scope type but their id is NOT the vehicle id.
 // This helper checks the vehicleId field on the record directly.
@@ -196,14 +197,10 @@ export async function approveFuelController(req: Request, res: Response) {
   assertCanUpdateResource(actor, 'FUEL_ENTRY' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
+  await approveOperationalExpense('FUEL', existing.id, req.authUser!.id, existing.notes, { allowDraft: true });
   const item = await prisma.fuelEntry.update({
     where: { id: existing.id },
-    data: {
-      status: 'APPROVED',
-      approvedById: req.authUser!.id,
-      approvedAt: new Date(),
-      reviewComments: req.body.reason || null,
-    },
+    data: { reviewComments: req.body.reason || null },
   });
 
   await createAuditLog(req, {
@@ -269,14 +266,10 @@ export async function approveExpenseController(req: Request, res: Response) {
   assertCanUpdateResource(actor, 'EXPENSE' as ResourceType, existing as unknown as Record<string, unknown>);
   await assertNotOwnDriverSubmission(req.authUser!.id, existing);
 
+  await approveOperationalExpense('EXPENSE', existing.id, req.authUser!.id, existing.notes, { allowDraft: true });
   const item = await prisma.expense.update({
     where: { id: existing.id },
-    data: {
-      status: 'APPROVED',
-      approvedById: req.authUser!.id,
-      approvedAt: new Date(),
-      reviewComments: req.body.reason || null,
-    },
+    data: { reviewComments: req.body.reason || null },
   });
 
   await createAuditLog(req, {

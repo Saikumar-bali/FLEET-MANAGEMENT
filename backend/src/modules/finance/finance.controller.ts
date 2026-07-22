@@ -135,6 +135,10 @@ export class FinanceController {
     return sendSuccess(res, await service.updateTransaction(String(req.params.id), req.body));
   }
 
+  async postTransaction(req: Request, res: Response) {
+    return sendSuccess(res, await service.postTransaction(String(req.params.id), req.authUser!.id), 'Transaction posted to the journal');
+  }
+
   async deleteTransaction(req: Request, res: Response) {
     return sendSuccess(res, await service.deleteTransaction(String(req.params.id)));
   }
@@ -156,6 +160,10 @@ export class FinanceController {
 
   async deletePayment(req: Request, res: Response) {
     return sendSuccess(res, await service.deletePayment(String(req.params.id)));
+  }
+
+  async reconcilePayment(req: Request, res: Response) {
+    return sendSuccess(res, await service.reconcilePayment(String(req.params.id), req.authUser!.id, req.body.status, req.body.notes), 'Payment reconciliation updated');
   }
 
   // ─── Stats ───

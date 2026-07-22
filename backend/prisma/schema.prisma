@@ -647,6 +647,11 @@ model FuelEntry {
   stationName          String?              @map("station_name")
   receiptNumber        String?              @map("receipt_number")
   paymentMode          String?              @map("payment_mode")
+  paymentSource        ExpensePaymentSource @default(COMPANY_ACCOUNT) @map("payment_source")
+  financeAccountId     String?              @map("finance_account_id")
+  paidByUserId         String?              @map("paid_by_user_id")
+  financialPostedAt    DateTime?            @map("financial_posted_at")
+  journalEntryId       String?              @map("journal_entry_id")
   extractionStatus     ExtractionStatus     @default(NOT_REQUIRED) @map("extraction_status")
   extractionConfidence Decimal?             @map("extraction_confidence") @db.Decimal(5, 4)
   extractionRawText    String?              @map("extraction_raw_text") @db.Text
@@ -682,6 +687,11 @@ model Expense {
   amount        Decimal              @db.Decimal(14, 2)
   vendor        String?
   receiptNumber String?              @map("receipt_number")
+  paymentSource     ExpensePaymentSource @default(COMPANY_ACCOUNT) @map("payment_source")
+  financeAccountId  String?              @map("finance_account_id")
+  paidByUserId      String?              @map("paid_by_user_id")
+  financialPostedAt DateTime?            @map("financial_posted_at")
+  journalEntryId    String?              @map("journal_entry_id")
   notes         String?
   status        WorkflowRecordStatus @default(DRAFT)
   reviewComments String?             @map("review_comments")
@@ -1123,6 +1133,94 @@ enum FinanceHistoryAction {
   STATUS_CHANGED
 }
 
+enum ExpensePaymentSource {
+  STAFF_WALLET
+  COMPANY_ACCOUNT
+  CORPORATE_CARD
+  VENDOR_CREDIT
+  PERSONAL_MONEY
+}
+
+enum WalletEntryDirection {
+  CREDIT
+  DEBIT
+}
+
+enum WalletEntryType {
+  DISBURSEMENT
+  EXPENSE
+  CASH_RETURN
+  CARRY_FORWARD
+  REIMBURSEMENT
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum WalletAllocationStatus {
+  ACTIVE
+  RECONCILING
+  CLOSED
+  CANCELLED
+}
+
+enum StaffAdvanceContextType {
+  TRIP
+  REPAIR
+  MAINTENANCE
+  PURCHASE
+  OTHER
+}
+
+enum StaffAdvanceStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  FUNDED
+  ACTIVE
+  RECONCILING
+  CLOSED
+  NEEDS_CHANGES
+  REJECTED
+  CANCELLED
+}
+
+enum AdvanceFundingMode {
+  USE_EXISTING_BALANCE
+  PRESERVE_EXISTING_BALANCE
+}
+
+enum StaffSettlementStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  CASH_CONFIRMED
+  CLOSED
+  NEEDS_CHANGES
+  REJECTED
+  CANCELLED
+}
+
+enum SettlementDisposition {
+  RETURN
+  CARRY_FORWARD
+}
+
+enum JournalEntryStatus {
+  POSTED
+  REVERSED
+}
+
+enum JournalLineSide {
+  DEBIT
+  CREDIT
+}
+
+enum FinancePaymentDirection {
+  INCOMING
+  OUTGOING
+}
+
 model VehicleRegistrationDetail {
   id                String   @id @default(cuid())
   vehicleId         String   @unique @map("vehicle_id")
@@ -1483,6 +1581,7 @@ model TripBilling {
   createdBy                User?                    @relation("TripBillingCreatedBy", fields: [createdById], references: [id])
   updatedBy                User?                    @relation("TripBillingUpdatedBy", fields: [updatedById], references: [id])
   payments                 PaymentRecord[]
+  paymentAllocations PaymentAllocation[]
   documents                Document[]
 
   @@unique([tripId])
@@ -1513,6 +1612,8 @@ model FinanceTransaction {
   transactionDate   DateTime               @map("transaction_date")
   paymentMode       PaymentMode            @map("payment_mode")
   paymentStatus     FinancePaymentStatus   @default(PENDING) @map("payment_status")
+  financialPostedAt DateTime?              @map("financial_posted_at")
+  journalEntryId    String?                @map("journal_entry_id")
   referenceNumber   String?                @map("reference_number")
   description       String?
   createdById       String?                @map("created_by_id")
@@ -1551,6 +1652,7 @@ model PaymentRecord {
   vendorId              String?             @map("vendor_id")
   customerId            String?             @map("customer_id")
   amount                Decimal
+  direction           FinancePaymentDirection @default(INCOMING)
   paymentDate           DateTime            @map("payment_date")
   paymentMode           PaymentMode         @map("payment_mode")
   upiReference          String?             @map("upi_reference")
@@ -1561,22 +1663,253 @@ model PaymentRecord {
   collectedByDriverId   String?             @map("collected_by_driver_id")
   reconciledStatus      String?             @default("UNRECONCILED") @map("reconciled_status")
   reconciledAt          DateTime?           @map("reconciled_at")
+  reconciledById      String?                 @map("reconciled_by_id")
+  reversedAt          DateTime?               @map("reversed_at")
+  reversalOfId        String?                 @map("reversal_of_id")
   referenceNumber       String?             @map("reference_number")
   notes                 String?
   createdById           String?             @map("created_by_id")
   createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
   transaction           FinanceTransaction? @relation(fields: [transactionId], references: [id])
   tripBilling           TripBilling?        @relation(fields: [tripBillingId], references: [id])
   account               FinanceAccount?     @relation(fields: [accountId], references: [id])
   vendor                Vendor?             @relation(fields: [vendorId], references: [id])
   customer              Customer?           @relation(fields: [customerId], references: [id])
   createdBy             User?               @relation("PaymentRecordCreatedBy", fields: [createdById], references: [id])
+  allocations         PaymentAllocation[]
 
   @@index([transactionId])
   @@index([tripBillingId])
   @@index([paymentDate])
   @@index([paymentNumber])
   @@map("payment_records")
+}
+
+model StaffWallet {
+  id              String             @id @default(cuid())
+  userId          String             @unique @map("user_id")
+  currency        String             @default("INR")
+  currentBalance  Decimal            @default(0) @map("current_balance") @db.Decimal(14, 2)
+  reservedBalance Decimal            @default(0) @map("reserved_balance") @db.Decimal(14, 2)
+  version         Int                @default(0)
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  entries         StaffWalletEntry[]
+  allocations     WalletAllocation[]
+
+  @@map("staff_wallets")
+}
+
+model StaffAdvance {
+  id                       String                  @id @default(cuid())
+  advanceNumber            String                  @unique @map("advance_number")
+  beneficiaryUserId        String                  @map("beneficiary_user_id")
+  contextType              StaffAdvanceContextType @map("context_type")
+  contextId                String                  @map("context_id")
+  tripId                   String?                 @map("trip_id")
+  vehicleId                String?                 @map("vehicle_id")
+  accountId                String?                 @map("account_id")
+  targetAllowance          Decimal                 @map("target_allowance") @db.Decimal(14, 2)
+  existingBalanceAllocated Decimal                 @default(0) @map("existing_balance_allocated") @db.Decimal(14, 2)
+  newCashIssued            Decimal                 @default(0) @map("new_cash_issued") @db.Decimal(14, 2)
+  totalAllocated           Decimal                 @default(0) @map("total_allocated") @db.Decimal(14, 2)
+  spentAmount              Decimal                 @default(0) @map("spent_amount") @db.Decimal(14, 2)
+  returnedAmount           Decimal                 @default(0) @map("returned_amount") @db.Decimal(14, 2)
+  carriedForwardAmount     Decimal                 @default(0) @map("carried_forward_amount") @db.Decimal(14, 2)
+  reimbursementAmount      Decimal                 @default(0) @map("reimbursement_amount") @db.Decimal(14, 2)
+  fundingMode              AdvanceFundingMode      @default(USE_EXISTING_BALANCE) @map("funding_mode")
+  paymentMode              PaymentMode             @default(CASH) @map("payment_mode")
+  status                   StaffAdvanceStatus      @default(DRAFT)
+  purpose                  String?
+  notes                    String?
+  dueDate                  DateTime?               @map("due_date")
+  submittedAt              DateTime?               @map("submitted_at")
+  approvedAt               DateTime?               @map("approved_at")
+  fundedAt                 DateTime?               @map("funded_at")
+  closedAt                 DateTime?               @map("closed_at")
+  createdById              String?                 @map("created_by_id")
+  approvedById             String?                 @map("approved_by_id")
+  fundedById               String?                 @map("funded_by_id")
+  createdAt                DateTime                @default(now()) @map("created_at")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+  allocation               WalletAllocation?
+  settlements              StaffSettlement[]
+  walletEntries            StaffWalletEntry[]
+
+  @@unique([beneficiaryUserId, contextType, contextId])
+  @@index([beneficiaryUserId, status])
+  @@index([tripId])
+  @@map("staff_advances")
+}
+
+model WalletAllocation {
+  id              String                 @id @default(cuid())
+  walletId        String                 @map("wallet_id")
+  advanceId       String                 @unique @map("advance_id")
+  tripId          String?                @map("trip_id")
+  allocatedAmount Decimal                @map("allocated_amount") @db.Decimal(14, 2)
+  consumedAmount  Decimal                @default(0) @map("consumed_amount") @db.Decimal(14, 2)
+  releasedAmount  Decimal                @default(0) @map("released_amount") @db.Decimal(14, 2)
+  status          WalletAllocationStatus @default(ACTIVE)
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  wallet          StaffWallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  advance         StaffAdvance           @relation(fields: [advanceId], references: [id], onDelete: Restrict)
+  entries         StaffWalletEntry[]
+
+  @@index([walletId, status])
+  @@index([tripId, status])
+  @@map("wallet_allocations")
+}
+
+model StaffWalletEntry {
+  id             String               @id @default(cuid())
+  walletId       String               @map("wallet_id")
+  allocationId   String?              @map("allocation_id")
+  advanceId      String?              @map("advance_id")
+  direction      WalletEntryDirection
+  entryType      WalletEntryType      @map("entry_type")
+  amount         Decimal              @db.Decimal(14, 2)
+  balanceBefore  Decimal              @map("balance_before") @db.Decimal(14, 2)
+  balanceAfter   Decimal              @map("balance_after") @db.Decimal(14, 2)
+  reservedBefore Decimal              @map("reserved_before") @db.Decimal(14, 2)
+  reservedAfter  Decimal              @map("reserved_after") @db.Decimal(14, 2)
+  sourceType     String               @map("source_type")
+  sourceId       String               @map("source_id")
+  idempotencyKey String               @unique @map("idempotency_key")
+  description    String?
+  createdById    String?              @map("created_by_id")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  wallet         StaffWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  allocation     WalletAllocation?    @relation(fields: [allocationId], references: [id], onDelete: SetNull)
+  advance        StaffAdvance?        @relation(fields: [advanceId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("staff_wallet_entries")
+}
+
+model StaffSettlement {
+  id                    String                @id @default(cuid())
+  settlementNumber      String                @unique @map("settlement_number")
+  advanceId             String                @map("advance_id")
+  disposition           SettlementDisposition
+  approvedSpend         Decimal               @default(0) @map("approved_spend") @db.Decimal(14, 2)
+  declaredReturnAmount  Decimal               @default(0) @map("declared_return_amount") @db.Decimal(14, 2)
+  confirmedReturnAmount Decimal               @default(0) @map("confirmed_return_amount") @db.Decimal(14, 2)
+  carryForwardAmount    Decimal               @default(0) @map("carry_forward_amount") @db.Decimal(14, 2)
+  reimbursementAmount   Decimal               @default(0) @map("reimbursement_amount") @db.Decimal(14, 2)
+  varianceAmount        Decimal               @default(0) @map("variance_amount") @db.Decimal(14, 2)
+  status                StaffSettlementStatus @default(DRAFT)
+  notes                 String?
+  paymentMode           PaymentMode?          @map("payment_mode")
+  referenceNumber       String?               @map("reference_number")
+  cashReceiptNumber     String?               @unique @map("cash_receipt_number")
+  proofDocumentId       String?               @map("proof_document_id")
+  createdById           String?               @map("created_by_id")
+  approvedById          String?               @map("approved_by_id")
+  cashierId             String?               @map("cashier_id")
+  submittedAt           DateTime?             @map("submitted_at")
+  approvedAt            DateTime?             @map("approved_at")
+  cashConfirmedAt       DateTime?             @map("cash_confirmed_at")
+  closedAt              DateTime?             @map("closed_at")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+  advance               StaffAdvance          @relation(fields: [advanceId], references: [id], onDelete: Restrict)
+  lines                 StaffSettlementLine[]
+
+  @@index([advanceId, status])
+  @@map("staff_settlements")
+}
+
+model StaffSettlementLine {
+  id            String                @id @default(cuid())
+  settlementId  String                @map("settlement_id")
+  lineType      String                @map("line_type")
+  sourceId      String?               @map("source_id")
+  paymentSource ExpensePaymentSource? @map("payment_source")
+  amount        Decimal               @db.Decimal(14, 2)
+  description   String?
+  createdAt     DateTime              @default(now()) @map("created_at")
+  settlement    StaffSettlement       @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@index([lineType, sourceId])
+  @@map("staff_settlement_lines")
+}
+
+model JournalEntry {
+  id             String             @id @default(cuid())
+  entryNumber    String             @unique @map("entry_number")
+  idempotencyKey String             @unique @map("idempotency_key")
+  sourceType     String             @map("source_type")
+  sourceId       String             @map("source_id")
+  postingDate    DateTime           @map("posting_date")
+  description    String?
+  status         JournalEntryStatus @default(POSTED)
+  reversedById   String?            @map("reversed_by_id")
+  createdById    String?            @map("created_by_id")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  lines          JournalLine[]
+
+  @@index([sourceType, sourceId])
+  @@index([postingDate, status])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id                String          @id @default(cuid())
+  journalEntryId    String          @map("journal_entry_id")
+  side              JournalLineSide
+  accountCode       String          @map("account_code")
+  financeAccountId  String?         @map("finance_account_id")
+  amount            Decimal         @db.Decimal(14, 2)
+  tripId            String?         @map("trip_id")
+  vehicleId         String?         @map("vehicle_id")
+  beneficiaryUserId String?         @map("beneficiary_user_id")
+  description       String?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  journalEntry      JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountCode])
+  @@index([tripId])
+  @@map("journal_lines")
+}
+
+model PaymentAllocation {
+  id            String        @id @default(cuid())
+  paymentId     String        @map("payment_id")
+  tripBillingId String        @map("trip_billing_id")
+  amount        Decimal       @db.Decimal(14, 2)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  payment       PaymentRecord @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  tripBilling   TripBilling   @relation(fields: [tripBillingId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, tripBillingId])
+  @@index([tripBillingId])
+  @@map("payment_allocations")
+}
+
+model TripAllowancePolicy {
+  id                   String             @id @default(cuid())
+  name                 String
+  tripType             TripType?          @map("trip_type")
+  baseAmount           Decimal            @default(0) @map("base_amount") @db.Decimal(14, 2)
+  perKmAmount          Decimal            @default(0) @map("per_km_amount") @db.Decimal(14, 2)
+  maxAmount            Decimal?           @map("max_amount") @db.Decimal(14, 2)
+  autoApproveThreshold Decimal?           @map("auto_approve_threshold") @db.Decimal(14, 2)
+  fundingMode          AdvanceFundingMode @default(USE_EXISTING_BALANCE) @map("funding_mode")
+  accountId            String?            @map("account_id")
+  paymentMode          PaymentMode        @default(CASH) @map("payment_mode")
+  autoFund             Boolean            @default(false) @map("auto_fund")
+  isActive             Boolean            @default(true) @map("is_active")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@index([tripType, isActive])
+  @@map("trip_allowance_policies")
 }
 
 model FinanceHistory {

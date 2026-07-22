@@ -21,6 +21,7 @@ import {
   financeQuerySchema,
   pnlQuerySchema,
   idParamsSchema,
+  reconcilePaymentSchema,
 } from './finance.validators';
 
 const router = Router();
@@ -62,11 +63,25 @@ router.post(
   asyncHandler(financeController.createAccount),
 );
 
+router.patch(
+  '/payments/:id/reconcile',
+  requireAnyPermission(['finance_reconcile']),
+  validateRequest({ params: idParamsSchema, body: reconcilePaymentSchema }),
+  asyncHandler(financeController.reconcilePayment),
+);
+
 router.put(
   '/accounts/:id',
   requireAnyPermission(['finance_update']),
   validateRequest({ params: idParamsSchema, body: updateFinanceAccountSchema }),
   asyncHandler(financeController.updateAccount),
+);
+
+router.patch(
+  '/transactions/:id/post',
+  requireAnyPermission(['finance_approve']),
+  validateRequest({ params: idParamsSchema }),
+  asyncHandler(financeController.postTransaction),
 );
 
 router.delete(
