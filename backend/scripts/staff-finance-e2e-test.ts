@@ -198,20 +198,17 @@ async function main() {
 
   const companyExpense = await api('POST', '/me/driver-expenses', driverToken, { vehicleId: vehicle.id, tripId: trip.id, category: 'TOLL', amount: 300, paymentSource: 'COMPANY_ACCOUNT', financeAccountId: accountId });
   expect(companyExpense.status === 201, 'Company-paid expense creation failed');
-  await api('POST', `/expenses/${companyExpense.data.id}/submit`, driverToken, {});
   const walletBeforeCompanyApproval = await prisma.staffWallet.findUniqueOrThrow({ where: { userId: driverFixture.user.id } });
-  expect((await api('POST', `/expenses/${companyExpense.data.id}/approve`, adminToken, {})).status === 200, 'Company-paid expense approval failed');
+  expect((await api('PATCH', `/driver-submissions/expenses/${companyExpense.data.id}/approve`, adminToken, { reason: 'Receipt verified' })).status === 200, 'Company-paid expense approval failed');
   const walletAfterCompanyApproval = await prisma.staffWallet.findUniqueOrThrow({ where: { userId: driverFixture.user.id } });
   expect(walletAfterCompanyApproval.currentBalance.equals(walletBeforeCompanyApproval.currentBalance), 'Company-paid expense must not debit staff wallet');
 
   const personalExpense = await api('POST', '/me/driver-expenses', driverToken, { vehicleId: vehicle.id, tripId: trip.id, category: 'MEALS', amount: 500, paymentSource: 'PERSONAL_MONEY' });
   expect(personalExpense.status === 201, 'Personal expense creation failed');
-  await api('POST', `/expenses/${personalExpense.data.id}/submit`, driverToken, {});
-  expect((await api('POST', `/expenses/${personalExpense.data.id}/approve`, adminToken, {})).status === 200, 'Personal expense approval failed');
+  expect((await api('PATCH', `/driver-submissions/expenses/${personalExpense.data.id}/approve`, adminToken, { reason: 'Receipt verified' })).status === 200, 'Personal expense approval failed');
 
   const rejectedExpense = await api('POST', '/me/driver-expenses', driverToken, { vehicleId: vehicle.id, tripId: trip.id, category: 'OTHER', amount: 999, paymentSource: 'STAFF_WALLET' });
-  await api('POST', `/expenses/${rejectedExpense.data.id}/submit`, driverToken, {});
-  expect((await api('POST', `/expenses/${rejectedExpense.data.id}/reject`, adminToken, { notes: 'Receipt invalid' })).status === 200, 'Expense rejection failed');
+  expect((await api('PATCH', `/driver-submissions/expenses/${rejectedExpense.data.id}/reject`, adminToken, { reason: 'Receipt invalid' })).status === 200, 'Expense rejection failed');
   expect(await prisma.journalEntry.count({ where: { sourceType: 'EXPENSE', sourceId: rejectedExpense.data.id } }) === 0, 'Rejected expense must not post to the journal');
   pass('Wallet, company-paid, personal-money, duplicate, and rejected expense posting');
 
