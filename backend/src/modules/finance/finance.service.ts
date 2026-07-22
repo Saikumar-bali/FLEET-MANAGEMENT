@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { FinanceQuery, PnlQuery } from './finance.types';
+import { getJournalPnl, postJournalEntry } from '../staff-finance/staff-finance.service';
 
 function generateTransactionNumber(): string {
   const timestamp = Date.now();
@@ -98,13 +99,15 @@ export class FinanceService {
   }
 
   async createAccount(data: Record<string, unknown>) {
+    const openingBalance = data.openingBalance != null ? new Decimal(data.openingBalance as number) : new Decimal(0);
     return this.prisma.financeAccount.create({
       data: {
         name: data.name as string,
         type: data.type as any,
         accountNumberMasked: data.accountNumberMasked as string | undefined,
         bankName: data.bankName as string | undefined,
-        openingBalance: data.openingBalance != null ? new Decimal(data.openingBalance as number) : undefined,
+        openingBalance,
+        currentBalance: openingBalance,
       },
     });
   }
@@ -651,8 +654,40 @@ export class FinanceService {
     });
   }
 
+  async postTransaction(id: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe('SELECT id FROM "finance_transactions" WHERE id=$1 FOR UPDATE', id);
+      const transaction = await tx.financeTransaction.findUnique({ where: { id }, include: { category: true } });
+      if (!transaction) throw new AppError('Transaction not found', 404);
+      if (transaction.financialPostedAt && transaction.journalEntryId) return transaction;
+      if (['FAILED', 'CANCELLED'].includes(transaction.paymentStatus)) throw new AppError('Failed or cancelled transactions cannot be posted', 409);
+      if (!['INCOME', 'EXPENSE'].includes(transaction.transactionType)) throw new AppError('Transfers and adjustments require explicit journal accounts and cannot use the simple post action', 409);
+      const category = (transaction.category?.name || 'GENERAL').trim().replace(/\s+/g, '_').toUpperCase();
+      const journal = await postJournalEntry(tx, {
+        idempotencyKey: `finance-transaction:${transaction.id}:post`,
+        sourceType: 'FINANCE_TRANSACTION',
+        sourceId: transaction.id,
+        description: transaction.description || `${transaction.transactionType} ${transaction.transactionNumber}`,
+        createdById: userId,
+        lines: transaction.transactionType === 'INCOME'
+          ? [
+              { side: 'DEBIT', accountCode: transaction.customerId ? `ACCOUNTS_RECEIVABLE:${transaction.customerId}` : 'ACCOUNTS_RECEIVABLE', amount: transaction.totalAmount, tripId: transaction.tripId, vehicleId: transaction.vehicleId },
+              { side: 'CREDIT', accountCode: `REVENUE:${category}`, amount: transaction.totalAmount, tripId: transaction.tripId, vehicleId: transaction.vehicleId },
+            ]
+          : [
+              { side: 'DEBIT', accountCode: `EXPENSE:${category}`, amount: transaction.totalAmount, tripId: transaction.tripId, vehicleId: transaction.vehicleId },
+              { side: 'CREDIT', accountCode: transaction.vendorId ? `ACCOUNTS_PAYABLE:${transaction.vendorId}` : 'ACCOUNTS_PAYABLE', amount: transaction.totalAmount, tripId: transaction.tripId, vehicleId: transaction.vehicleId },
+            ],
+      });
+      return tx.financeTransaction.update({ where: { id }, data: { financialPostedAt: new Date(), journalEntryId: journal.id, updatedById: userId } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
+
   async updateTransaction(id: string, data: Record<string, unknown>) {
-    await this.getTransaction(id);
+    const current = await this.getTransaction(id);
+    if (current.financialPostedAt || current.paymentStatus === 'PAID' || current.payments.length > 0) {
+      throw new AppError('Posted or paid transactions are immutable. Create a reversal or adjustment instead.', 409);
+    }
 
     const vendorId = data.vendorId != null ? String(data.vendorId) : undefined;
     const customerId = data.customerId != null ? String(data.customerId) : undefined;
@@ -720,8 +755,8 @@ export class FinanceService {
 
   async deleteTransaction(id: string) {
     const txn = await this.getTransaction(id);
-    if (txn.payments && txn.payments.length > 0) {
-      throw new AppError('Cannot delete transaction with payments', 409);
+    if (txn.financialPostedAt || txn.paymentStatus !== 'PENDING' || (txn.payments && txn.payments.length > 0)) {
+      throw new AppError('Only unposted pending transactions without payments can be deleted', 409);
     }
     await this.prisma.financeTransaction.delete({ where: { id } });
     return { deleted: true };
@@ -784,6 +819,7 @@ export class FinanceService {
     const transactionId = data.transactionId ? String(data.transactionId) : undefined;
     const tripBillingId = data.tripBillingId ? String(data.tripBillingId) : undefined;
     const collectedByDriverId = data.collectedByDriverId ? String(data.collectedByDriverId) : undefined;
+    const direction = (data.direction as 'INCOMING' | 'OUTGOING' | undefined) ?? (vendorId && !customerId && !tripBillingId ? 'OUTGOING' : 'INCOMING');
 
     if (vendorId) {
       const vendor = await this.prisma.vendor.findUnique({ where: { id: vendorId } });
@@ -793,120 +829,152 @@ export class FinanceService {
       const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
       if (!customer) throw new AppError('Customer not found', 404);
     }
-    if (accountId) {
-      const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
-      if (!account) throw new AppError('Account not found', 404);
-    }
+    if (!accountId) throw new AppError('A finance account is required for every payment', 400);
+    const account = await this.prisma.financeAccount.findUnique({ where: { id: accountId } });
+    if (!account || !account.isActive) throw new AppError('Active account not found', 404);
     if (transactionId) {
       const txn = await this.prisma.financeTransaction.findUnique({ where: { id: transactionId } });
       if (!txn) throw new AppError('Transaction not found', 404);
     }
-    if (tripBillingId) {
-      const billing = await this.prisma.tripBilling.findUnique({ where: { id: tripBillingId } });
-      if (!billing) throw new AppError('Trip billing not found', 404);
-      if (billing.paymentStatus === 'CANCELLED') {
-        throw new AppError('Cannot create payment for cancelled billing', 409);
-      }
-      const newPaidAmount = billing.paidAmount.plus(amount);
-      if (newPaidAmount.greaterThan(billing.netReceivable)) {
-        throw new AppError(`Payment amount exceeds balance. Balance: ${billing.netReceivable}, Payment: ${amount}`, 409);
-      }
-    }
+    if (transactionId && tripBillingId) throw new AppError('Allocate a payment to either a finance transaction or a trip invoice, not both', 400);
+    if (tripBillingId && direction !== 'INCOMING') throw new AppError('Invoice collections must be incoming payments', 400);
     if (collectedByDriverId) {
       const driver = await this.prisma.driver.findUnique({ where: { id: collectedByDriverId } });
       if (!driver) throw new AppError('Driver not found', 404);
     }
 
-    const payment = await this.prisma.paymentRecord.create({
-      data: {
-        paymentNumber: generatePaymentNumber(),
-        transactionId,
-        tripBillingId,
-        accountId,
-        vendorId,
-        customerId,
-        amount,
-        paymentDate: new Date(data.paymentDate as string),
-        paymentMode: data.paymentMode as any,
-        upiReference: data.upiReference as string | undefined,
-        bankUtrNumber: data.bankUtrNumber as string | undefined,
-        chequeNumber: data.chequeNumber as string | undefined,
-        chequeDate: data.chequeDate ? new Date(data.chequeDate as string) : undefined,
-        collectedByDriverId,
-        referenceNumber: data.referenceNumber as string | undefined,
-        notes: data.notes as string | undefined,
-        createdById: userId,
-      },
-      include: { account: true, vendor: true, customer: true, transaction: true, tripBilling: true },
-    });
-
-    // Update account balance
-    if (data.accountId) {
-      await this.prisma.financeAccount.update({
-        where: { id: data.accountId as string },
-        data: { currentBalance: { increment: amount } },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe('SELECT id FROM "finance_accounts" WHERE id=$1 FOR UPDATE', accountId);
+      let billing: any = null;
+      let financeTransaction: any = null;
+      if (transactionId) {
+        await tx.$queryRawUnsafe('SELECT id FROM "finance_transactions" WHERE id=$1 FOR UPDATE', transactionId);
+        financeTransaction = await tx.financeTransaction.findUnique({ where: { id: transactionId } });
+        if (!financeTransaction) throw new AppError('Transaction not found', 404);
+        if (!financeTransaction.financialPostedAt) throw new AppError('Post the finance transaction before recording its payment', 409);
+        const expectedDirection = financeTransaction.transactionType === 'INCOME' ? 'INCOMING' : financeTransaction.transactionType === 'EXPENSE' ? 'OUTGOING' : null;
+        if (!expectedDirection || direction !== expectedDirection) throw new AppError('Payment direction does not match the posted transaction', 409);
+        const existingPayments = await tx.paymentRecord.aggregate({ where: { transactionId, reversedAt: null }, _sum: { amount: true } });
+        const outstanding = financeTransaction.totalAmount.minus(existingPayments._sum.amount ?? 0);
+        if (amount.greaterThan(outstanding)) throw new AppError(`Payment amount exceeds live transaction balance. Balance: ${outstanding}`, 409);
+      }
+      if (tripBillingId) {
+        await tx.$queryRawUnsafe('SELECT id FROM "trip_billings" WHERE id=$1 FOR UPDATE', tripBillingId);
+        billing = await tx.tripBilling.findUnique({ where: { id: tripBillingId } });
+        if (!billing) throw new AppError('Trip billing not found', 404);
+        if (['CANCELLED', 'UNBILLED'].includes(billing.paymentStatus)) throw new AppError('Only approved/billed invoices can receive payments', 409);
+        const liveBalance = billing.netReceivable.minus(billing.paidAmount);
+        if (amount.greaterThan(liveBalance)) throw new AppError(`Payment amount exceeds live invoice balance. Balance: ${liveBalance}`, 409);
+      }
+      if (direction === 'OUTGOING') {
+        const changed = await tx.$executeRawUnsafe('UPDATE "finance_accounts" SET "current_balance"="current_balance"-$2, "updated_at"=NOW() WHERE id=$1 AND "current_balance">=$2', accountId, amount);
+        if (changed !== 1) throw new AppError('Insufficient account balance for outgoing payment', 409);
+      } else {
+        await tx.financeAccount.update({ where: { id: accountId }, data: { currentBalance: { increment: amount } } });
+      }
+      const payment = await tx.paymentRecord.create({
+        data: {
+          paymentNumber: generatePaymentNumber(), transactionId, tripBillingId, accountId, vendorId, customerId, amount, direction,
+          paymentDate: new Date(data.paymentDate as string), paymentMode: data.paymentMode as any,
+          upiReference: data.upiReference as string | undefined, bankUtrNumber: data.bankUtrNumber as string | undefined,
+          chequeNumber: data.chequeNumber as string | undefined, chequeDate: data.chequeDate ? new Date(data.chequeDate as string) : undefined,
+          collectedByDriverId, referenceNumber: data.referenceNumber as string | undefined, notes: data.notes as string | undefined, createdById: userId,
+        },
       });
-    }
-
-    // Update trip billing paid amount and status
-    if (data.tripBillingId) {
-      const billing = await this.prisma.tripBilling.findUnique({ where: { id: data.tripBillingId as string } });
       if (billing) {
         const newPaidAmount = billing.paidAmount.plus(amount);
         const newBalanceAmount = billing.netReceivable.minus(newPaidAmount);
-        let newStatus: any = 'PARTIALLY_PAID';
-        if (newBalanceAmount.lte(0)) {
-          newStatus = 'PAID';
-        }
-        await this.prisma.tripBilling.update({
-          where: { id: data.tripBillingId as string },
-          data: {
-            paidAmount: newPaidAmount,
-            balanceAmount: newBalanceAmount,
-            paymentStatus: newStatus,
-          },
-        });
+        await tx.tripBilling.update({ where: { id: billing.id }, data: { paidAmount: newPaidAmount, balanceAmount: newBalanceAmount, paymentStatus: newBalanceAmount.lte(0) ? 'PAID' : 'PARTIALLY_PAID' } });
+        await tx.paymentAllocation.create({ data: { paymentId: payment.id, tripBillingId: billing.id, amount } });
       }
-    }
-
-    return payment;
+      if (financeTransaction) {
+        const paid = await tx.paymentRecord.aggregate({ where: { transactionId: financeTransaction.id, reversedAt: null }, _sum: { amount: true } });
+        const paidAmount = paid._sum.amount ?? new Decimal(0);
+        await tx.financeTransaction.update({ where: { id: financeTransaction.id }, data: { paymentStatus: paidAmount.greaterThanOrEqualTo(financeTransaction.totalAmount) ? 'PAID' : 'PARTIAL' } });
+      }
+      await postJournalEntry(tx, {
+        idempotencyKey: `payment:${payment.id}:post`, sourceType: 'PAYMENT', sourceId: payment.id, createdById: userId,
+        description: `${direction === 'INCOMING' ? 'Incoming receipt' : 'Outgoing payment'} ${payment.paymentNumber}`,
+        lines: direction === 'INCOMING'
+          ? [
+              { side: 'DEBIT', accountCode: `FINANCE_ACCOUNT:${accountId}`, financeAccountId: accountId, amount },
+              { side: 'CREDIT', accountCode: billing ? 'ACCOUNTS_RECEIVABLE' : financeTransaction?.customerId ? `ACCOUNTS_RECEIVABLE:${financeTransaction.customerId}` : financeTransaction ? 'ACCOUNTS_RECEIVABLE' : 'UNALLOCATED_RECEIPTS', amount, tripId: billing?.tripId ?? financeTransaction?.tripId },
+            ]
+          : [
+              { side: 'DEBIT', accountCode: vendorId ? `ACCOUNTS_PAYABLE:${vendorId}` : financeTransaction?.vendorId ? `ACCOUNTS_PAYABLE:${financeTransaction.vendorId}` : financeTransaction ? 'ACCOUNTS_PAYABLE' : 'GENERAL_PAYABLE', amount, tripId: financeTransaction?.tripId },
+              { side: 'CREDIT', accountCode: `FINANCE_ACCOUNT:${accountId}`, financeAccountId: accountId, amount },
+            ],
+      });
+      return tx.paymentRecord.findUniqueOrThrow({ where: { id: payment.id }, include: { account: true, vendor: true, customer: true, transaction: true, tripBilling: true, allocations: true } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
-  async deletePayment(id: string) {
-    const payment = await this.getPayment(id);
-
-    // Reverse account balance
-    if (payment.accountId) {
-      await this.prisma.financeAccount.update({
-        where: { id: payment.accountId },
-        data: { currentBalance: { decrement: payment.amount } },
-      });
-    }
-
-    // Reverse trip billing
-    if (payment.tripBillingId) {
-      const billing = await this.prisma.tripBilling.findUnique({ where: { id: payment.tripBillingId } });
-      if (billing) {
-        const newPaidAmount = billing.paidAmount.minus(payment.amount);
-        const newBalanceAmount = billing.netReceivable.minus(newPaidAmount);
-        await this.prisma.tripBilling.update({
-          where: { id: payment.tripBillingId },
-          data: {
-            paidAmount: newPaidAmount,
-            balanceAmount: newBalanceAmount,
-            paymentStatus: newBalanceAmount.equals(0) && newPaidAmount.equals(0) ? 'BILLED' : newPaidAmount.equals(0) ? 'UNBILLED' : newBalanceAmount.lte(0) ? 'PAID' : 'PARTIALLY_PAID',
-          },
-        });
+  async deletePayment(id: string, reconciliation?: { userId: string; notes?: string }) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe('SELECT id FROM "payment_records" WHERE id=$1 FOR UPDATE', id);
+      const payment = await tx.paymentRecord.findUnique({ where: { id } });
+      if (!payment) throw new AppError('Payment record not found', 404);
+      if (payment.reversedAt) throw new AppError('Payment is already reversed', 409);
+      if (payment.reconciledStatus === 'RECONCILED') throw new AppError('Reconciled payments cannot be reversed until reconciliation is reopened', 409);
+      if (!payment.accountId) throw new AppError('Payment has no account to reverse', 409);
+      await tx.$queryRawUnsafe('SELECT id FROM "finance_accounts" WHERE id=$1 FOR UPDATE', payment.accountId);
+      const reverseDirection = payment.direction === 'INCOMING' ? 'OUTGOING' : 'INCOMING';
+      if (reverseDirection === 'OUTGOING') {
+        const changed = await tx.$executeRawUnsafe('UPDATE "finance_accounts" SET "current_balance"="current_balance"-$2, "updated_at"=NOW() WHERE id=$1 AND "current_balance">=$2', payment.accountId, payment.amount);
+        if (changed !== 1) throw new AppError('Account balance is insufficient to reverse the receipt', 409);
+      } else await tx.financeAccount.update({ where: { id: payment.accountId }, data: { currentBalance: { increment: payment.amount } } });
+      if (payment.tripBillingId) {
+        await tx.$queryRawUnsafe('SELECT id FROM "trip_billings" WHERE id=$1 FOR UPDATE', payment.tripBillingId);
+        const billing = await tx.tripBilling.findUniqueOrThrow({ where: { id: payment.tripBillingId } });
+        const paidAmount = billing.paidAmount.minus(payment.amount);
+        const balanceAmount = billing.netReceivable.minus(paidAmount);
+        await tx.tripBilling.update({ where: { id: billing.id }, data: { paidAmount, balanceAmount, paymentStatus: paidAmount.lte(0) ? 'BILLED' : 'PARTIALLY_PAID' } });
       }
-    }
+      const reversal = await tx.paymentRecord.create({ data: { paymentNumber: generatePaymentNumber(), accountId: payment.accountId, vendorId: payment.vendorId, customerId: payment.customerId, amount: payment.amount, direction: reverseDirection, paymentDate: new Date(), paymentMode: payment.paymentMode, referenceNumber: `REVERSAL:${payment.paymentNumber}`, notes: `Reversal of ${payment.paymentNumber}`, createdById: payment.createdById, reversalOfId: payment.id } });
+      await tx.paymentRecord.update({
+        where: { id },
+        data: {
+          reversedAt: new Date(),
+          ...(reconciliation ? {
+            reconciledStatus: 'REJECTED',
+            reconciledAt: new Date(),
+            reconciledById: reconciliation.userId,
+            notes: reconciliation.notes ? `${payment.notes ? `${payment.notes}\n` : ''}Reconciliation rejected: ${reconciliation.notes}` : payment.notes,
+          } : {}),
+        },
+      });
+      if (payment.transactionId) {
+        const transaction = await tx.financeTransaction.findUniqueOrThrow({ where: { id: payment.transactionId } });
+        const paid = await tx.paymentRecord.aggregate({ where: { transactionId: payment.transactionId, reversedAt: null }, _sum: { amount: true } });
+        const paidAmount = paid._sum.amount ?? new Decimal(0);
+        await tx.financeTransaction.update({ where: { id: transaction.id }, data: { paymentStatus: paidAmount.lte(0) ? 'PENDING' : paidAmount.greaterThanOrEqualTo(transaction.totalAmount) ? 'PAID' : 'PARTIAL' } });
+      }
+      await postJournalEntry(tx, {
+        idempotencyKey: `payment:${payment.id}:reverse`, sourceType: 'PAYMENT_REVERSAL', sourceId: payment.id, description: `Reversal of ${payment.paymentNumber}`, createdById: payment.createdById,
+        lines: payment.direction === 'INCOMING'
+          ? [{ side: 'DEBIT', accountCode: payment.tripBillingId ? 'ACCOUNTS_RECEIVABLE' : 'UNALLOCATED_RECEIPTS', amount: payment.amount }, { side: 'CREDIT', accountCode: `FINANCE_ACCOUNT:${payment.accountId}`, financeAccountId: payment.accountId, amount: payment.amount }]
+          : [{ side: 'DEBIT', accountCode: `FINANCE_ACCOUNT:${payment.accountId}`, financeAccountId: payment.accountId, amount: payment.amount }, { side: 'CREDIT', accountCode: payment.vendorId ? `ACCOUNTS_PAYABLE:${payment.vendorId}` : 'GENERAL_PAYABLE', amount: payment.amount }],
+      });
+      return { reversed: true, reversalPaymentId: reversal.id };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }
 
-    await this.prisma.paymentRecord.delete({ where: { id } });
-    return { deleted: true };
+  async reconcilePayment(id: string, userId: string, status: 'RECONCILED' | 'REJECTED', notes?: string) {
+    const payment = await this.prisma.paymentRecord.findUnique({ where: { id } });
+    if (!payment || payment.reversedAt) throw new AppError('Active payment not found', 404);
+    if (payment.reconciledStatus !== 'UNRECONCILED') throw new AppError('Payment has already been reviewed', 409);
+    if (status === 'REJECTED') {
+      await this.deletePayment(id, { userId, notes });
+      return this.prisma.paymentRecord.findUniqueOrThrow({ where: { id } });
+    }
+    return this.prisma.paymentRecord.update({ where: { id }, data: { reconciledStatus: status, reconciledAt: new Date(), reconciledById: userId, notes: notes ? `${payment.notes ? `${payment.notes}\n` : ''}Reconciliation: ${notes}` : payment.notes } });
   }
 
   // ─── P&L ───
 
   async getPnl(query: PnlQuery) {
+    return getJournalPnl(query);
+    /* Legacy operational-table P&L retained below for migration reference only.
     const { dateFrom, dateTo, vehicleId, driverId, tripId, customerId } = query;
 
     const txnWhere: Prisma.FinanceTransactionWhereInput = {
@@ -1108,6 +1176,7 @@ export class FinanceService {
       netProfit: Number(totalIncome.minus(totalExpenses)),
       breakdown,
     };
+    */
   }
 
   // ─── Dashboard Summary ───
@@ -1117,26 +1186,9 @@ export class FinanceService {
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const [currentMonthIncome, currentMonthExpenses, pendingPayments, overduePayments, totalReceivable, totalPayable, recentTransactions] = await Promise.all([
-      this.prisma.financeTransaction.aggregate({
-        _sum: { amount: true },
-        where: {
-          transactionType: 'INCOME',
-          transactionDate: { gte: currentMonthStart, lte: currentMonthEnd },
-        },
-      }),
-      this.prisma.financeTransaction.aggregate({
-        _sum: { amount: true },
-        where: {
-          transactionType: 'EXPENSE',
-          transactionDate: { gte: currentMonthStart, lte: currentMonthEnd },
-        },
-      }),
-      this.prisma.paymentRecord.count({
-        where: {
-          transaction: { paymentStatus: 'PENDING' },
-        },
-      }),
+    const [pnl, pendingPayments, overduePayments, totalReceivable, totalPayable, recentTransactions, walletCustody, walletReserved, openSettlements] = await Promise.all([
+      getJournalPnl({ dateFrom: currentMonthStart.toISOString(), dateTo: currentMonthEnd.toISOString() }),
+      this.prisma.paymentRecord.count({ where: { reconciledStatus: 'UNRECONCILED', reversedAt: null } }),
       this.prisma.tripBilling.count({
         where: {
           paymentStatus: 'OVERDUE',
@@ -1155,15 +1207,22 @@ export class FinanceService {
         orderBy: { createdAt: 'desc' },
         include: { vendor: true, customer: true, driver: true, account: true, category: true },
       }),
+      this.prisma.staffWallet.aggregate({ _sum: { currentBalance: true } }),
+      this.prisma.staffWallet.aggregate({ _sum: { reservedBalance: true } }),
+      this.prisma.staffSettlement.count({ where: { status: { in: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'CASH_CONFIRMED', 'NEEDS_CHANGES'] } } }),
     ]);
 
     return {
-      currentMonthIncome: currentMonthIncome._sum.amount || new Decimal(0),
-      currentMonthExpenses: currentMonthExpenses._sum.amount || new Decimal(0),
+      currentMonthIncome: pnl.totalIncome,
+      currentMonthExpenses: pnl.totalExpenses,
+      currentMonthNetProfit: pnl.netProfit,
       pendingPayments,
       overduePayments,
       totalReceivable: totalReceivable._sum.balanceAmount || new Decimal(0),
       totalPayable: totalPayable._sum.amount || new Decimal(0),
+      staffCustodyBalance: walletCustody._sum.currentBalance || new Decimal(0),
+      staffReservedBalance: walletReserved._sum.reservedBalance || new Decimal(0),
+      openSettlements,
       recentTransactions,
     };
   }

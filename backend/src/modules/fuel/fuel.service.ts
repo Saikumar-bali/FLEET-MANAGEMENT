@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { assertEditable, assertTransition, dateRange, validateReferences, workflowInclude } from '../workflow-records/workflow-records.service';
 import { createNotification } from '../notifications/notifications.service';
+import { approveOperationalExpense, reverseOperationalExpense } from '../staff-finance/staff-finance.service';
 
 type FuelInput = {
   vehicleId: string;
@@ -18,6 +19,8 @@ type FuelInput = {
   stationName?: string | null;
   receiptNumber?: string | null;
   paymentMode?: string | null;
+  paymentSource?: 'STAFF_WALLET' | 'COMPANY_ACCOUNT' | 'CORPORATE_CARD' | 'VENDOR_CREDIT' | 'PERSONAL_MONEY';
+  financeAccountId?: string | null;
   notes?: string | null;
   createdById?: string | null;
 };
@@ -82,6 +85,8 @@ function buildFuelData(input: FuelInput) {
     stationName: input.stationName,
     receiptNumber: input.receiptNumber,
     paymentMode: input.paymentMode,
+    paymentSource: input.paymentSource,
+    financeAccountId: input.financeAccountId,
     notes: input.notes,
   };
 }
@@ -145,6 +150,8 @@ export async function updateFuel(id: string, input: Partial<FuelInput>, canAppro
     stationName: input.stationName !== undefined ? input.stationName : existing.stationName,
     receiptNumber: input.receiptNumber !== undefined ? input.receiptNumber : existing.receiptNumber,
     paymentMode: input.paymentMode !== undefined ? input.paymentMode : existing.paymentMode,
+    paymentSource: input.paymentSource !== undefined ? input.paymentSource : existing.paymentSource,
+    financeAccountId: input.financeAccountId !== undefined ? input.financeAccountId : existing.financeAccountId,
     notes: input.notes !== undefined ? input.notes : existing.notes,
   };
 
@@ -159,11 +166,15 @@ export async function updateFuel(id: string, input: Partial<FuelInput>, canAppro
 export async function transitionFuel(id: string, status: WorkflowRecordStatus, userId?: string | null, notes?: string | null) {
   const existing = await getFuel(id);
   assertTransition(existing.status, status);
-  const item = await prisma.fuelEntry.update({
-    where: { id },
-    data: { status, notes: notes === undefined ? existing.notes : notes, approvedById: status === 'APPROVED' ? userId ?? null : undefined, approvedAt: status === 'APPROVED' ? new Date() : undefined },
-    include: workflowInclude,
-  });
+  const item = status === 'APPROVED'
+    ? await approveOperationalExpense('FUEL', id, userId, notes).then(() => getFuel(id))
+    : status === 'CANCELLED' && existing.status === 'APPROVED'
+      ? await reverseOperationalExpense('FUEL', id, userId, notes).then(() => getFuel(id))
+    : await prisma.fuelEntry.update({
+        where: { id },
+        data: { status, notes: notes === undefined ? existing.notes : notes },
+        include: workflowInclude,
+      });
 
   try {
     if (status === 'SUBMITTED') {

@@ -4,6 +4,7 @@ import {
   createFinanceTransaction,
   updateFinanceTransaction,
   deleteFinanceTransaction,
+  postFinanceTransaction,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -67,6 +68,7 @@ export function FinanceTransactionsPage() {
   const canCreate = auth.hasPermission('finance_transactions_create');
   const canUpdate = auth.hasPermission('finance_transactions_update');
   const canDelete = auth.hasPermission('finance_transactions_delete');
+  const canPost = auth.hasPermission('finance_approve');
 
   useEffect(() => {
     const load = async () => {
@@ -176,6 +178,18 @@ export function FinanceTransactionsPage() {
     }
   }
 
+  async function handlePost(id: string) {
+    if (!auth.accessToken || !window.confirm('Post this transaction to the immutable journal?')) return;
+    try {
+      const response = await postFinanceTransaction(auth.accessToken, id);
+      setItems((prev) => prev.map((item) => item.id === id ? response.data : item));
+      showToast('Transaction posted to the journal.', 'success');
+    } catch (caughtError) {
+      const msg = caughtError instanceof ApiError ? caughtError.message : 'Failed to post transaction.';
+      showToast(msg, 'error');
+    }
+  }
+
   const filteredItems = items.filter((item) => {
     if (filterPaymentStatus && item.paymentStatus !== filterPaymentStatus) return false;
     if (filterDateFrom && item.transactionDate < filterDateFrom) return false;
@@ -268,12 +282,15 @@ export function FinanceTransactionsPage() {
                   <td>{item.transactionType}</td>
                   <td>{item.totalAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</td>
                   <td>{item.paymentMode}</td>
-                  <td><StatusBadge status={item.paymentStatus} /></td>
+                  <td><StatusBadge status={item.financialPostedAt ? 'POSTED' : item.paymentStatus} /></td>
                   <td>{new Date(item.transactionDate).toLocaleDateString('en-IN')}</td>
                   <td>{item.driver?.name ?? item.vendor?.name ?? item.customer?.name ?? '—'}</td>
                   <td>
                     <div className="button-row" style={{ gap: 'var(--space-2)' }}>
-                      {canUpdate ? (
+                      {canPost && !item.financialPostedAt && ['INCOME', 'EXPENSE'].includes(item.transactionType) ? (
+                        <button type="button" className="primary-button" onClick={() => void handlePost(item.id)}>Post</button>
+                      ) : null}
+                      {canUpdate && !item.financialPostedAt ? (
                         <button
                           type="button"
                           className="secondary-button"
@@ -282,7 +299,7 @@ export function FinanceTransactionsPage() {
                           Edit
                         </button>
                       ) : null}
-                      {canDelete ? (
+                      {canDelete && !item.financialPostedAt ? (
                         <button
                           type="button"
                           className="danger-button"

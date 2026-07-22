@@ -689,6 +689,8 @@ export interface FinanceTransaction {
   transactionDate: string;
   paymentMode: string;
   paymentStatus: 'PENDING' | 'PAID' | 'PARTIAL' | 'FAILED' | 'CANCELLED';
+  financialPostedAt?: string | null;
+  journalEntryId?: string | null;
   referenceNumber?: string | null;
   description?: string | null;
   createdAt: string;
@@ -700,6 +702,7 @@ export interface FinanceTransaction {
 
 export interface PaymentRecord {
   id: string;
+  direction: 'INCOMING' | 'OUTGOING';
   paymentNumber?: string | null;
   transactionId?: string | null;
   tripBillingId?: string | null;
@@ -716,6 +719,9 @@ export interface PaymentRecord {
   collectedByDriverId?: string | null;
   reconciledStatus?: string | null;
   reconciledAt?: string | null;
+  reconciledById?: string | null;
+  reversedAt?: string | null;
+  reversalOfId?: string | null;
   referenceNumber?: string | null;
   notes?: string | null;
   createdAt: string;

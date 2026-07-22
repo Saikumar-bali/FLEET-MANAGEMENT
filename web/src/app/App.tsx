@@ -50,6 +50,7 @@ const FinanceReportsPage = lazy(() => import('../pages/FinanceReportsPage'));
 const PodBillingChainPage = lazy(() => import('../pages/PodBillingChainPage'));
 const FinanceDriverAdvancesPage = lazy(() => import('../pages/FinanceDriverAdvancesPage'));
 const FinanceDriverSettlementsPage = lazy(() => import('../pages/FinanceDriverSettlementsPage'));
+const FinanceStaffCashPage = lazy(() => import('../pages/FinanceStaffCashPage'));
 
 const DriverPortalHome = lazy(() => import('../pages/driver-portal/DriverPortalHome').then(m => ({ default: m.DriverPortalHome })));
 const DriverProfilePage = lazy(() => import('../pages/driver-portal/DriverProfilePage').then(m => ({ default: m.DriverProfilePage })));
@@ -129,6 +130,9 @@ function App() {
                     <Route element={<FinanceLayout />}>
                       <Route element={<ProtectedRoute requiredPermissions={['finance_view', 'pnl_view']} />}>
                         <Route path="/finance" element={<Suspense fallback={<Loading />}><FinancePage /></Suspense>} />
+                      </Route>
+                      <Route element={<ProtectedRoute requiredPermissions={['staff_wallet_view', 'staff_advance_manage']} />}>
+                        <Route path="/finance/staff-cash" element={<Suspense fallback={<Loading />}><FinanceStaffCashPage /></Suspense>} />
                       </Route>
                       <Route element={<ProtectedRoute requiredPermissions={['driver_advance_view']} />}>
                         <Route path="/finance/driver-advances" element={<Suspense fallback={<Loading />}><FinanceDriverAdvancesPage /></Suspense>} />

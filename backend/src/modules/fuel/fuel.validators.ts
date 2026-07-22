@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const fuelIdParamsSchema = z.object({ id: z.string().min(1) });
 const statusEnum = z.enum(['DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED']);
 const entryModeEnum = z.enum(['QUICK_AMOUNT', 'FULL_DETAILS', 'RECEIPT_ASSISTED']);
+const paymentSourceEnum = z.enum(['STAFF_WALLET', 'COMPANY_ACCOUNT', 'CORPORATE_CARD', 'VENDOR_CREDIT', 'PERSONAL_MONEY']);
 
 const baseFuelFields = {
   vehicleId: z.string().min(1, 'Vehicle is required'),
@@ -14,6 +15,8 @@ const baseFuelFields = {
   stationName: z.string().optional().nullable(),
   receiptNumber: z.string().optional().nullable(),
   paymentMode: z.string().optional().nullable(),
+  paymentSource: paymentSourceEnum.default('COMPANY_ACCOUNT'),
+  financeAccountId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 };
 

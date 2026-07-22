@@ -849,6 +849,7 @@ export function getFinanceTransactions(token: string, params?: WorkflowQuery) { 
 export function getFinanceTransaction(token: string, id: string) { return request<FinanceTransaction>(`/finance/transactions/${id}`, { token }); }
 export function createFinanceTransaction(token: string, data: Record<string, unknown>) { return request<FinanceTransaction>('/finance/transactions', { method: 'POST', body: JSON.stringify(data), token }); }
 export function updateFinanceTransaction(token: string, id: string, data: Record<string, unknown>) { return request<FinanceTransaction>(`/finance/transactions/${id}`, { method: 'PUT', body: JSON.stringify(data), token }); }
+export function postFinanceTransaction(token: string, id: string) { return request<FinanceTransaction>(`/finance/transactions/${id}/post`, { method: 'PATCH', body: '{}', token }); }
 export function deleteFinanceTransaction(token: string, id: string) { return request<null>(`/finance/transactions/${id}`, { method: 'DELETE', token }); }
 
 export function getPayments(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PaginatedResponse<PaymentRecord>>(`/finance/payments${q ? `?${q}` : ''}`, { token }); }
@@ -858,6 +859,20 @@ export function deletePayment(token: string, id: string) { return request<null>(
 
 export function getFinanceDashboardSummary(token: string) { return request<FinanceDashboardSummary>('/finance/dashboard-summary', { token }); }
 export function getFinancePnl(token: string, params?: WorkflowQuery) { const q = workflowQuery(params); return request<PnlSummary>(`/finance/pnl${q ? `?${q}` : ''}`, { token }); }
+
+// Canonical staff custody, allowance and settlement ledger
+export function getStaffWallets(token: string, params?: Record<string, unknown>) { const q = workflowQuery(params as WorkflowQuery); return request<any>(`/finance/staff-wallets${q ? `?${q}` : ''}`, { token }); }
+export function getStaffWallet(token: string, userId: string) { return request<any>(`/finance/staff-wallets/${userId}`, { token }); }
+export function getStaffAdvances(token: string, params?: Record<string, unknown>) { const q = workflowQuery(params as WorkflowQuery); return request<any>(`/finance/staff-advances${q ? `?${q}` : ''}`, { token }); }
+export function createStaffAdvance(token: string, data: Record<string, unknown>) { return request<any>('/finance/staff-advances', { method: 'POST', body: JSON.stringify(data), token }); }
+export function transitionStaffAdvance(token: string, id: string, action: 'submit' | 'approve' | 'reject' | 'request-changes' | 'fund' | 'cancel', data: Record<string, unknown> = {}) { return request<any>(`/finance/staff-advances/${id}/${action}`, { method: 'PATCH', body: JSON.stringify(data), token }); }
+export function getStaffSettlements(token: string, params?: Record<string, unknown>) { const q = workflowQuery(params as WorkflowQuery); return request<any>(`/finance/staff-settlements${q ? `?${q}` : ''}`, { token }); }
+export function createStaffSettlement(token: string, data: Record<string, unknown>) { return request<any>('/finance/staff-settlements', { method: 'POST', body: JSON.stringify(data), token }); }
+export function transitionStaffSettlement(token: string, id: string, action: 'submit' | 'approve' | 'confirm' | 'cancel', data: Record<string, unknown> = {}) { return request<any>(`/finance/staff-settlements/${id}/${action}`, { method: 'PATCH', body: JSON.stringify(data), token }); }
+export function getAllowancePolicies(token: string) { return request<any[]>('/finance/allowance-policies', { token }); }
+export function createAllowancePolicy(token: string, data: Record<string, unknown>) { return request<any>('/finance/allowance-policies', { method: 'POST', body: JSON.stringify(data), token }); }
+export function updateAllowancePolicy(token: string, id: string, data: Record<string, unknown>) { return request<any>(`/finance/allowance-policies/${id}`, { method: 'PATCH', body: JSON.stringify(data), token }); }
+export function reconcilePayment(token: string, id: string, status: 'RECONCILED' | 'REJECTED', notes?: string) { return request<PaymentRecord>(`/finance/payments/${id}/reconcile`, { method: 'PATCH', body: JSON.stringify({ status, notes }), token }); }
 
 // ─── Phase 2: User Access Management API ───
 
@@ -1004,11 +1019,11 @@ export function cancelDriverTrip(token: string, tripId: string, payload?: { note
   return request<DriverPortalTrip>(`/me/driver-trips/${tripId}/cancel`, { method: 'PATCH', token, body: JSON.stringify(payload || {}) });
 }
 
-export function createDriverFuel(token: string, payload: { vehicleId: string; totalAmount: number; quantityLiters?: number; fuelDate?: string; odometerReading?: number; stationName?: string; receiptNumber?: string; paymentMode?: string; notes?: string }) {
+export function createDriverFuel(token: string, payload: { vehicleId: string; tripId?: string; totalAmount: number; quantityLiters?: number; fuelDate?: string; odometerReading?: number; stationName?: string; receiptNumber?: string; paymentMode?: string; paymentSource?: string; notes?: string }) {
   return request<DriverPortalFuelEntry>('/me/driver-fuel', { method: 'POST', token, body: JSON.stringify(payload) });
 }
 
-export function createDriverExpense(token: string, payload: { vehicleId: string; category: string; amount: number; tripId?: string; expenseDate?: string; notes?: string }) {
+export function createDriverExpense(token: string, payload: { vehicleId: string; category: string; amount: number; tripId?: string; expenseDate?: string; paymentSource?: string; notes?: string }) {
   return request<DriverPortalExpense>('/me/driver-expenses', { method: 'POST', token, body: JSON.stringify(payload) });
 }
 

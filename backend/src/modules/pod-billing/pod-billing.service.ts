@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
+import { postJournalEntry } from '../staff-finance/staff-finance.service';
 import { createAuditLog } from '../audit/audit.service';
 import { uploadDocument } from '../documents/documents.service';
 import { createNotification } from '../notifications/notifications.service';
@@ -333,27 +335,28 @@ export async function approveBilling(req: Request, billingId: string, notes?: st
   const hasVerifiedPod = billing.trip.documents.some((doc) => doc.documentType === 'TRIP_POD' && doc.verificationStatus === 'VERIFIED' && doc.documentStatus === 'ACTIVE');
   if (!hasVerifiedPod) throw new AppError('Verified POD is required before finance approval', 400);
 
-  const updated = await prisma.tripBilling.update({
-    where: { id: billingId },
-    data: {
-      paymentStatus: 'BILLED',
-      notes: appendNote(billing.notes, notes ? `Finance approved: ${notes}` : 'Finance approved'),
-      updatedById: userId,
-    },
-    include: { trip: true, customer: true, vehicle: true, driver: true },
-  });
-
-  await prisma.financeHistory.create({
-    data: {
-      entityType: 'TRIP_BILLING',
-      entityId: billingId,
-      action: 'STATUS_CHANGED',
-      remarks: notes || 'Finance approved billing',
-      createdById: userId,
-      oldValues: { paymentStatus: billing.paymentStatus },
-      newValues: { paymentStatus: 'BILLED' },
-    },
-  });
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.$queryRawUnsafe('SELECT id FROM "trip_billings" WHERE id=$1 FOR UPDATE', billingId);
+    const live = await tx.tripBilling.findUniqueOrThrow({ where: { id: billingId } });
+    if (live.paymentStatus === 'BILLED') return tx.tripBilling.findUniqueOrThrow({ where: { id: billingId }, include: { trip: true, customer: true, vehicle: true, driver: true } });
+    const item = await tx.tripBilling.update({
+      where: { id: billingId },
+      data: { paymentStatus: 'BILLED', notes: appendNote(live.notes, notes ? `Finance approved: ${notes}` : 'Finance approved'), updatedById: userId },
+      include: { trip: true, customer: true, vehicle: true, driver: true },
+    });
+    await tx.financeHistory.create({
+      data: { entityType: 'TRIP_BILLING', entityId: billingId, action: 'STATUS_CHANGED', remarks: notes || 'Finance approved billing', createdById: userId, oldValues: { paymentStatus: live.paymentStatus }, newValues: { paymentStatus: 'BILLED' } },
+    });
+    await postJournalEntry(tx, {
+      idempotencyKey: `trip-billing:${billingId}:approve`, sourceType: 'TRIP_BILLING', sourceId: billingId, createdById: userId,
+      description: `Freight revenue recognized for ${billing.trip.tripNumber}`,
+      lines: [
+        { side: 'DEBIT', accountCode: 'ACCOUNTS_RECEIVABLE', amount: live.netReceivable, tripId: live.tripId, vehicleId: live.vehicleId },
+        { side: 'CREDIT', accountCode: 'REVENUE:FREIGHT', amount: live.netReceivable, tripId: live.tripId, vehicleId: live.vehicleId },
+      ],
+    });
+    return item;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   await createNotification({
     title: 'Billing approved',

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { createDriverFuel, getMyDriverVehicles, uploadDriverFuelReceipt } from '../../services/api';
-import type { DriverPortalVehicle, ReceiptExtractionResult } from '../../types/auth';
+import { createDriverFuel, getMyDriverTrips, getMyDriverVehicles, uploadDriverFuelReceipt } from '../../services/api';
+import type { DriverPortalTrip, DriverPortalVehicle, ReceiptExtractionResult } from '../../types/auth';
 import { PageHeader } from '../../components/PageHeader';
 
 const AMOUNT_CHIPS = [1000, 2000, 5000, 10000];
@@ -12,16 +12,19 @@ export function DriverFuelCreatePage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [vehicles, setVehicles] = useState<DriverPortalVehicle[]>([]);
+  const [trips, setTrips] = useState<DriverPortalTrip[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     vehicleId: '',
+    tripId: '',
     totalAmount: '',
     quantityLiters: '',
     fuelDate: '',
     stationName: '',
     paymentMode: '',
+    paymentSource: 'STAFF_WALLET',
     notes: '',
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -38,6 +41,7 @@ export function DriverFuelCreatePage() {
       setVehicles(list);
       if (list.length === 1) setForm((f) => ({ ...f, vehicleId: list[0].id }));
     }).finally(() => setVehiclesLoading(false));
+    getMyDriverTrips(auth.accessToken, { page: 1, limit: 50 }).then((res) => setTrips(res.data?.items || []));
   }, [auth.accessToken]);
 
   const calculatedPricePerLiter = form.totalAmount && form.quantityLiters
@@ -60,6 +64,7 @@ export function DriverFuelCreatePage() {
     try {
       const res = await uploadDriverFuelReceipt(auth.accessToken, receiptFile, {
         vehicleId: form.vehicleId,
+        ...(form.tripId ? { tripId: form.tripId } : {}),
         fuelDate: form.fuelDate,
         stationName: form.stationName,
         paymentMode: form.paymentMode,
@@ -95,11 +100,13 @@ export function DriverFuelCreatePage() {
     try {
       await createDriverFuel(auth.accessToken, {
         vehicleId: form.vehicleId,
+        tripId: form.tripId || undefined,
         totalAmount: Number(form.totalAmount),
         quantityLiters: form.quantityLiters ? Number(form.quantityLiters) : undefined,
         fuelDate: form.fuelDate || undefined,
         stationName: form.stationName || undefined,
         paymentMode: form.paymentMode || undefined,
+        paymentSource: form.paymentSource,
         notes: form.notes || undefined,
       });
       navigate('/driver-portal/fuel');
@@ -190,6 +197,13 @@ export function DriverFuelCreatePage() {
 
           <div className="form-two-column">
             <label>
+              <span className="field-label">Trip *</span>
+              <select value={form.tripId} onChange={(e) => setForm({ ...form, tripId: e.target.value })} required={form.paymentSource === 'STAFF_WALLET'}>
+                <option value="">Select active trip</option>
+                {trips.filter((trip) => !['COMPLETED', 'CANCELLED'].includes(trip.status)).map((trip) => <option key={trip.id} value={trip.id}>{trip.tripNumber} — {trip.originName} → {trip.destinationName}</option>)}
+              </select>
+            </label>
+            <label>
               <span className="field-label">Payment Mode (optional)</span>
               <select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}>
                 <option value="">Select</option>
@@ -197,6 +211,16 @@ export function DriverFuelCreatePage() {
                 <option value="CARD">Card</option>
                 <option value="UPI">UPI</option>
                 <option value="CREDIT">Credit</option>
+              </select>
+            </label>
+            <label>
+              <span className="field-label">Paid using *</span>
+              <select value={form.paymentSource} onChange={(e) => setForm({ ...form, paymentSource: e.target.value })}>
+                <option value="STAFF_WALLET">Trip allowance / staff wallet</option>
+                <option value="PERSONAL_MONEY">My personal money — reimburse me</option>
+                <option value="COMPANY_ACCOUNT">Company paid directly</option>
+                <option value="CORPORATE_CARD">Corporate card</option>
+                <option value="VENDOR_CREDIT">Vendor credit</option>
               </select>
             </label>
             <label>
@@ -266,7 +290,7 @@ export function DriverFuelCreatePage() {
           )}
 
           <div className="action-panel">
-            <button type="submit" className="primary-button fuel-submit-btn" disabled={submitting || !form.vehicleId || !form.totalAmount}>
+            <button type="submit" className="primary-button fuel-submit-btn" disabled={submitting || !form.vehicleId || !form.totalAmount || (form.paymentSource === 'STAFF_WALLET' && !form.tripId)}>
               {submitting ? 'Saving...' : 'Save Fuel Entry'}
             </button>
             <button type="button" className="secondary-button" onClick={() => navigate('/driver-portal/fuel')}>Cancel</button>
