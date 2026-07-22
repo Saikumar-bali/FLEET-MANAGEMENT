@@ -25,9 +25,6 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    # The existing GitHub environment is only a protected secret store. The
-    # deployment itself targets Vercel production. deployment:false prevents
-    # GitHub from creating a misleading "staging" deployment record.
     environment:
       name: staging
       deployment: false
@@ -75,15 +72,18 @@ jobs:
 
           test "$missing" -eq 0
 
-      - name: Explain deployment target
+      - name: Explain deployment ownership and URLs
         shell: bash
         run: |
           {
             echo "## Deployment target"
             echo ""
-            echo "- GitHub environment: \`staging\` (secret storage only; no GitHub deployment record)"
+            echo "- Deployment owner: GitHub Actions"
+            echo "- GitHub environment: \`staging\` (secret storage only)"
             echo "- Vercel target: \`production\`"
             echo "- Source branch: \`main\`"
+            echo "- Stable production domains are used by applications and health checks."
+            echo "- Immutable deployment URLs are retained only for audit and rollback."
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-backend:
@@ -102,7 +102,8 @@ jobs:
       DATABASE_URL: ${{ secrets.DEPLOY_DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DEPLOY_DIRECT_URL }}
     outputs:
-      backend_url: ${{ steps.deploy.outputs.url }}
+      backend_production_url: ${{ steps.resolve.outputs.production_url }}
+      backend_deployment_url: ${{ steps.resolve.outputs.deployment_url }}
     steps:
       - name: Check out the CI-approved commit
         uses: actions/checkout@v6
@@ -164,7 +165,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          BACKEND_URL="$({
+          DEPLOYMENT_URL="$({
             npx --yes vercel@latest deploy \
               --prod \
               --yes \
@@ -173,7 +174,7 @@ jobs:
               --meta githubCommitSha="$DEPLOY_SHA"
           } | tail -n 1 | tr -d '\r')"
 
-          case "$BACKEND_URL" in
+          case "$DEPLOYMENT_URL" in
             https://*) ;;
             *)
               echo "::error::Vercel CLI did not return a valid backend deployment URL."
@@ -181,13 +182,20 @@ jobs:
               ;;
           esac
 
-          echo "url=$BACKEND_URL" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "Backend production deployment created."
 
-      - name: Verify backend health
+      - name: Resolve stable backend production domain
+        id: resolve
+        env:
+          VERCEL_DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+          VERCEL_PRODUCTION_URL: ${{ vars.VERCEL_BACKEND_PRODUCTION_URL }}
+        run: node .github/scripts/resolve-vercel-production-url.mjs
+
+      - name: Verify backend through stable production domain
         shell: bash
         env:
-          BACKEND_URL: ${{ steps.deploy.outputs.url }}
+          BACKEND_PRODUCTION_URL: ${{ steps.resolve.outputs.production_url }}
         run: |
           set -euo pipefail
 
@@ -195,10 +203,10 @@ jobs:
             --fail \
             --silent \
             --show-error \
-            --retry 12 \
+            --retry 18 \
             --retry-delay 5 \
             --retry-all-errors \
-            "$BACKEND_URL/api/v1/health" > /tmp/backend-health.json
+            "$BACKEND_PRODUCTION_URL/api/v1/health" > /tmp/backend-health.json
 
           node -e '
             const fs = require("node:fs");
@@ -219,9 +227,10 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEB_PROJECT_ID }}
-      BACKEND_URL: ${{ needs.deploy-backend.outputs.backend_url }}
+      BACKEND_PRODUCTION_URL: ${{ needs.deploy-backend.outputs.backend_production_url }}
     outputs:
-      web_url: ${{ steps.deploy.outputs.url }}
+      web_production_url: ${{ steps.resolve.outputs.production_url }}
+      web_deployment_url: ${{ steps.resolve.outputs.deployment_url }}
     steps:
       - name: Check out the CI-approved commit
         uses: actions/checkout@v6
@@ -244,24 +253,26 @@ jobs:
         run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
         working-directory: web
 
-      - name: Deploy web production
+      - name: Deploy web production with stable backend API URL
         id: deploy
         shell: bash
         working-directory: web
         run: |
           set -euo pipefail
 
-          WEB_URL="$({
+          test -n "$BACKEND_PRODUCTION_URL"
+
+          DEPLOYMENT_URL="$({
             npx --yes vercel@latest deploy \
               --prod \
               --yes \
               --archive=tgz \
               --token="$VERCEL_TOKEN" \
-              --build-env VITE_API_URL="$BACKEND_URL" \
+              --build-env VITE_API_URL="$BACKEND_PRODUCTION_URL" \
               --meta githubCommitSha="$DEPLOY_SHA"
           } | tail -n 1 | tr -d '\r')"
 
-          case "$WEB_URL" in
+          case "$DEPLOYMENT_URL" in
             https://*) ;;
             *)
               echo "::error::Vercel CLI did not return a valid web deployment URL."
@@ -269,18 +280,25 @@ jobs:
               ;;
           esac
 
-          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
           echo "Web production deployment created."
 
-      - name: Verify web routes
+      - name: Resolve stable web production domain
+        id: resolve
+        env:
+          VERCEL_DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+          VERCEL_PRODUCTION_URL: ${{ vars.VERCEL_WEB_PRODUCTION_URL }}
+        run: node .github/scripts/resolve-vercel-production-url.mjs
+
+      - name: Verify web through stable production domain
         shell: bash
         env:
-          WEB_URL: ${{ steps.deploy.outputs.url }}
+          WEB_PRODUCTION_URL: ${{ steps.resolve.outputs.production_url }}
         run: |
           set -euo pipefail
 
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors "$WEB_URL/" > /dev/null
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-all-errors "$WEB_URL/login" > /dev/null
+          curl --fail --silent --show-error --retry 18 --retry-delay 5 --retry-all-errors "$WEB_PRODUCTION_URL/" > /dev/null
+          curl --fail --silent --show-error --retry 18 --retry-delay 5 --retry-all-errors "$WEB_PRODUCTION_URL/login" > /dev/null
 
   deployment-summary:
     name: Publish production deployment summary
@@ -296,8 +314,10 @@ jobs:
           VALIDATE_RESULT: ${{ needs.validate.result }}
           BACKEND_RESULT: ${{ needs.deploy-backend.result }}
           WEB_RESULT: ${{ needs.deploy-web.result }}
-          BACKEND_URL: ${{ needs.deploy-backend.outputs.backend_url }}
-          WEB_URL: ${{ needs.deploy-web.outputs.web_url }}
+          BACKEND_PRODUCTION_URL: ${{ needs.deploy-backend.outputs.backend_production_url }}
+          BACKEND_DEPLOYMENT_URL: ${{ needs.deploy-backend.outputs.backend_deployment_url }}
+          WEB_PRODUCTION_URL: ${{ needs.deploy-web.outputs.web_production_url }}
+          WEB_DEPLOYMENT_URL: ${{ needs.deploy-web.outputs.web_deployment_url }}
         shell: bash
         run: |
           set -euo pipefail
@@ -308,8 +328,14 @@ jobs:
             echo "- Validation: \`$VALIDATE_RESULT\`"
             echo "- Backend: \`$BACKEND_RESULT\`"
             echo "- Web: \`$WEB_RESULT\`"
-            [ -n "$BACKEND_URL" ] && echo "- Backend URL: $BACKEND_URL"
-            [ -n "$WEB_URL" ] && echo "- Web URL: $WEB_URL"
+            echo ""
+            echo "### Stable production URLs"
+            [ -n "$BACKEND_PRODUCTION_URL" ] && echo "- Backend: $BACKEND_PRODUCTION_URL"
+            [ -n "$WEB_PRODUCTION_URL" ] && echo "- Web: $WEB_PRODUCTION_URL"
+            echo ""
+            echo "### Immutable deployment URLs (audit and rollback)"
+            [ -n "$BACKEND_DEPLOYMENT_URL" ] && echo "- Backend deployment: $BACKEND_DEPLOYMENT_URL"
+            [ -n "$WEB_DEPLOYMENT_URL" ] && echo "- Web deployment: $WEB_DEPLOYMENT_URL"
           } >> "$GITHUB_STEP_SUMMARY"
 
           test "$VALIDATE_RESULT" = "success"
